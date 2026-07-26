@@ -1,0 +1,36 @@
+# Git / IDE
+.git
+.gitignore
+**/.DS_Store
+**/.idea
+**/.vscode
+**/*.md
+
+# Env / secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Backend
+backend/bin
+backend/tmp
+backend/*.exe
+backend/coverage*
+backend/.air.toml
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/.vite
+frontend/*.log
+frontend/.oxlintrc.json
+frontend/package-lock.json
+
+# Docker / compose local overrides
+docker-compose.override.yml
+
+# Docs / misc
+docs
+**/__pycache__
+**/*.test

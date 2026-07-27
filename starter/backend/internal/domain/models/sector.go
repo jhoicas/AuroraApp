@@ -21,5 +21,5 @@ type Sector struct {
 }
 
 func (Sector) TableName() string {
-	return "sectors"
+	return "sectores"
 }

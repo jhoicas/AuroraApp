@@ -15,6 +15,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// ErrSectorNotFound indica que no existe un sector con el código indicado.
+var ErrSectorNotFound = errors.New("sector not found")
+
 // SectorListParams filtros de listado paginado.
 type SectorListParams struct {
 	Page   int
@@ -85,6 +88,9 @@ func (r *CatalogRepository) ListSectors(ctx context.Context, p SectorListParams)
 // UpsertSectorByCode inserta o actualiza un sector por código único.
 // Devuelve created=true si fue inserción.
 func (r *CatalogRepository) UpsertSectorByCode(ctx context.Context, sector *models.Sector) (created bool, err error) {
+	if sector == nil {
+		return false, fmt.Errorf("sector is nil")
+	}
 	now := time.Now().UTC()
 	var existing models.Sector
 	err = r.db.WithContext(ctx).Where("code = ?", sector.Code).First(&existing).Error
@@ -186,11 +192,22 @@ func (r *CatalogRepository) ListProgramsSubprograms(ctx context.Context, p Progr
 }
 
 // FindSectorIDByCode resuelve sector_id por código DNP.
+// Si el sector no existe, retorna ErrSectorNotFound (nunca un ID nulo usable).
 func (r *CatalogRepository) FindSectorIDByCode(ctx context.Context, code string) (uuid.UUID, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return uuid.Nil, fmt.Errorf("%w: código vacío", ErrSectorNotFound)
+	}
 	var sector models.Sector
-	err := r.db.WithContext(ctx).Select("id").Where("code = ?", strings.TrimSpace(code)).First(&sector).Error
+	err := r.db.WithContext(ctx).Select("id").Where("code = ?", code).First(&sector).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return uuid.Nil, fmt.Errorf("%w: código %s", ErrSectorNotFound, code)
+		}
 		return uuid.Nil, err
+	}
+	if sector.ID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("%w: código %s", ErrSectorNotFound, code)
 	}
 	return sector.ID, nil
 }
@@ -235,6 +252,198 @@ func (r *CatalogRepository) UpsertProgramSubprogramByCode(ctx context.Context, i
 		return false, err
 	}
 	return true, nil
+}
+
+// CatalogProductListParams filtros para catalogo_productos.
+type CatalogProductListParams struct {
+	Page   int
+	Limit  int
+	Search string
+}
+
+// CatalogProductListResult resultado paginado.
+type CatalogProductListResult struct {
+	Items    []models.CatalogProduct
+	Total    int64
+	Page     int
+	Limit    int
+	LastPage int
+}
+
+// ListCatalogProducts lista con búsqueda ILIKE y paginación (5|10|20).
+func (r *CatalogRepository) ListCatalogProducts(ctx context.Context, p CatalogProductListParams) (*CatalogProductListResult, error) {
+	page := p.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := normalizeCatalogLimit(p.Limit)
+	offset := (page - 1) * limit
+
+	q := r.db.WithContext(ctx).Model(&models.CatalogProduct{})
+	if search := strings.TrimSpace(p.Search); search != "" {
+		pattern := "%" + escapeILIKE(search) + "%"
+		q = q.Where(
+			`(producto ILIKE ? ESCAPE '\' OR codigo_producto ILIKE ? ESCAPE '\' OR
+			  nombre_programa ILIKE ? ESCAPE '\' OR codigo_programa ILIKE ? ESCAPE '\' OR
+			  nombre_sector ILIKE ? ESCAPE '\' OR sector ILIKE ? ESCAPE '\' OR
+			  indicador_producto ILIKE ? ESCAPE '\')`,
+			pattern, pattern, pattern, pattern, pattern, pattern, pattern,
+		)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("count catalogo_productos: %w", err)
+	}
+
+	items := make([]models.CatalogProduct, 0, limit)
+	if err := q.Order("codigo_producto ASC").
+		Limit(limit).Offset(offset).Find(&items).Error; err != nil {
+		return nil, fmt.Errorf("list catalogo_productos: %w", err)
+	}
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage == 0 {
+		lastPage = 1
+	}
+
+	return &CatalogProductListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+// UpsertCatalogProductByCode inserta/actualiza por codigo_producto.
+func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item *models.CatalogProduct) (created bool, err error) {
+	now := time.Now().UTC()
+	var existing models.CatalogProduct
+	err = r.db.WithContext(ctx).
+		Where("codigo_producto = ?", item.CodigoProducto).
+		First(&existing).Error
+	if err == nil {
+		existing.TenantID = item.TenantID
+		existing.Sector = item.Sector
+		existing.NombreSector = item.NombreSector
+		existing.CodigoPrograma = item.CodigoPrograma
+		existing.NombrePrograma = item.NombrePrograma
+		existing.Producto = item.Producto
+		existing.Descripcion = item.Descripcion
+		existing.MedidoATravesDe = item.MedidoATravesDe
+		existing.CodigoIndicadorProducto = item.CodigoIndicadorProducto
+		existing.IndicadorProducto = item.IndicadorProducto
+		existing.UnidadDeMedida = item.UnidadDeMedida
+		existing.IndicadorPrincipal = item.IndicadorPrincipal
+		existing.EsNacional = item.EsNacional
+		existing.EsTerritorial = item.EsTerritorial
+		existing.ODS = item.ODS
+		existing.MetaODS = item.MetaODS
+		existing.TipologiaGeneralSUIFP = item.TipologiaGeneralSUIFP
+		existing.TipologiaD = item.TipologiaD
+		existing.TipologiaE = item.TipologiaE
+		existing.TipologiaAPIIP = item.TipologiaAPIIP
+		existing.TipologiaBPIIP = item.TipologiaBPIIP
+		existing.TipologiaCPIIP = item.TipologiaCPIIP
+		existing.TieneEDT = item.TieneEDT
+		existing.EDT = item.EDT
+		if err := r.db.WithContext(ctx).
+			Model(&existing).
+			Select(
+				"TenantID", "Sector", "NombreSector", "CodigoPrograma", "NombrePrograma",
+				"Producto", "Descripcion", "MedidoATravesDe", "CodigoIndicadorProducto",
+				"IndicadorProducto", "UnidadDeMedida", "IndicadorPrincipal", "EsNacional",
+				"EsTerritorial", "ODS", "MetaODS", "TipologiaGeneralSUIFP", "TipologiaD",
+				"TipologiaE", "TipologiaAPIIP", "TipologiaBPIIP", "TipologiaCPIIP",
+				"TieneEDT", "EDT",
+			).
+			Updates(&existing).Error; err != nil {
+			return false, err
+		}
+		*item = existing
+		return false, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, err
+	}
+
+	if item.ID == uuid.Nil {
+		item.ID = uuid.New()
+	}
+	item.CreatedAt = now
+	if err := r.db.WithContext(ctx).Create(item).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// GetCatalogProductByID obtiene un producto del catálogo por UUID.
+func (r *CatalogRepository) GetCatalogProductByID(ctx context.Context, id uuid.UUID) (*models.CatalogProduct, error) {
+	var item models.CatalogProduct
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// UpdateCatalogProductByID actualiza un producto del catálogo por UUID.
+func (r *CatalogRepository) UpdateCatalogProductByID(ctx context.Context, id uuid.UUID, item *models.CatalogProduct) error {
+	var existing models.CatalogProduct
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&existing).Error; err != nil {
+		return err
+	}
+	existing.Sector = item.Sector
+	existing.NombreSector = item.NombreSector
+	existing.CodigoPrograma = item.CodigoPrograma
+	existing.NombrePrograma = item.NombrePrograma
+	existing.CodigoProducto = item.CodigoProducto
+	existing.Producto = item.Producto
+	existing.Descripcion = item.Descripcion
+	existing.MedidoATravesDe = item.MedidoATravesDe
+	existing.CodigoIndicadorProducto = item.CodigoIndicadorProducto
+	existing.IndicadorProducto = item.IndicadorProducto
+	existing.UnidadDeMedida = item.UnidadDeMedida
+	existing.IndicadorPrincipal = item.IndicadorPrincipal
+	existing.EsNacional = item.EsNacional
+	existing.EsTerritorial = item.EsTerritorial
+	existing.ODS = item.ODS
+	existing.MetaODS = item.MetaODS
+	existing.TipologiaGeneralSUIFP = item.TipologiaGeneralSUIFP
+	existing.TipologiaD = item.TipologiaD
+	existing.TipologiaE = item.TipologiaE
+	existing.TipologiaAPIIP = item.TipologiaAPIIP
+	existing.TipologiaBPIIP = item.TipologiaBPIIP
+	existing.TipologiaCPIIP = item.TipologiaCPIIP
+	existing.TieneEDT = item.TieneEDT
+	existing.EDT = item.EDT
+	if err := r.db.WithContext(ctx).
+		Model(&existing).
+		Select(
+			"Sector", "NombreSector", "CodigoPrograma", "NombrePrograma", "CodigoProducto",
+			"Producto", "Descripcion", "MedidoATravesDe", "CodigoIndicadorProducto",
+			"IndicadorProducto", "UnidadDeMedida", "IndicadorPrincipal", "EsNacional",
+			"EsTerritorial", "ODS", "MetaODS", "TipologiaGeneralSUIFP", "TipologiaD",
+			"TipologiaE", "TipologiaAPIIP", "TipologiaBPIIP", "TipologiaCPIIP",
+			"TieneEDT", "EDT",
+		).
+		Updates(&existing).Error; err != nil {
+		return err
+	}
+	*item = existing
+	return nil
+}
+
+// DeleteCatalogProductByID elimina un producto del catálogo por UUID.
+func (r *CatalogRepository) DeleteCatalogProductByID(ctx context.Context, id uuid.UUID) error {
+	res := r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.CatalogProduct{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func normalizeCatalogLimit(limit int) int {

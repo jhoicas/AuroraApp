@@ -10,6 +10,7 @@ import AIKnowledgePage from './pages/admin/AIKnowledgePage';
 import CatalogImporter from './components/CatalogImporter';
 import SectorsCatalogPage from './pages/admin/SectorsCatalogPage';
 import ProgramsCatalogPage from './pages/admin/ProgramsCatalogPage';
+import ProductsCatalogPage from './pages/admin/ProductsCatalogPage';
 import CatalogPlaceholderPage from './pages/admin/CatalogPlaceholderPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
@@ -34,15 +35,7 @@ function App() {
               <Route path="catalogs" element={<Navigate to="/admin/catalogs/sectors" replace />} />
               <Route path="catalogs/sectors" element={<SectorsCatalogPage />} />
               <Route path="catalogs/programs" element={<ProgramsCatalogPage />} />
-              <Route
-                path="catalogs/products"
-                element={
-                  <CatalogPlaceholderPage
-                    title="Productos"
-                    description="Catálogo de productos DNP — próximamente."
-                  />
-                }
-              />
+              <Route path="catalogs/products" element={<ProductsCatalogPage />} />
               <Route
                 path="catalogs/indicators"
                 element={

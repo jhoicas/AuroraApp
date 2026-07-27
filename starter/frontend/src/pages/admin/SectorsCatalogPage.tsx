@@ -48,6 +48,17 @@ export default function SectorsCatalogPage() {
     void fetchSectors({ page, limit, search: debouncedQuery });
   }, [page, limit, debouncedQuery, fetchSectors]);
 
+  const handleDownloadTemplate = () => {
+    const csv = 'codigo,nombre\n"01","Sector de Ejemplo"';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'plantilla_sectores.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleImportFile = async (file: File | undefined) => {
     if (!file) return;
     setImporting(true);
@@ -113,6 +124,14 @@ export default function SectorsCatalogPage() {
               className="hidden"
               onChange={(e) => void handleImportFile(e.target.files?.[0])}
             />
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="h-12 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[20px]">download</span>
+              Descargar Plantilla
+            </button>
             <button
               type="button"
               disabled={importing}

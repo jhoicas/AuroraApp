@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"strconv"
@@ -154,6 +156,61 @@ func (h *CatalogHandler) ImportSectors(c *fiber.Ctx) error {
 	})
 }
 
+// CreateProgram crea un programa/subprograma individual (upsert por códigos).
+func (h *CatalogHandler) CreateProgram(c *fiber.Ctx) error {
+	var req dto.CreateProgramRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	req.CodigoSector = strings.TrimSpace(req.CodigoSector)
+	req.NombreSector = strings.TrimSpace(req.NombreSector)
+	req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+	req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+	req.AmbitoAplicacion = strings.TrimSpace(req.AmbitoAplicacion)
+	req.CodigoSubprograma = strings.TrimSpace(req.CodigoSubprograma)
+	req.NombreSubprograma = strings.TrimSpace(req.NombreSubprograma)
+	req.Observaciones = strings.TrimSpace(req.Observaciones)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	sectorID, err := h.repo.FindSectorIDByCode(c.Context(), req.CodigoSector)
+	if err != nil {
+		if errors.Is(err, postgres.ErrSectorNotFound) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+					req.CodigoSector,
+				),
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to resolve sector",
+		})
+	}
+
+	nombreSector := req.NombreSector
+	if nombreSector == "" {
+		nombreSector = req.CodigoSector
+	}
+
+	item := models.ProgramSubprogram{
+		SectorID:          sectorID,
+		CodigoSector:      req.CodigoSector,
+		NombreSector:      nombreSector,
+		CodigoPrograma:    req.CodigoPrograma,
+		NombrePrograma:    req.NombrePrograma,
+		AmbitoAplicacion:  req.AmbitoAplicacion,
+		CodigoSubprograma: req.CodigoSubprograma,
+		NombreSubprograma: req.NombreSubprograma,
+		Observaciones:     req.Observaciones,
+	}
+	if _, err := h.repo.UpsertProgramSubprogramByCode(c.Context(), &item); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create program"})
+	}
+	return c.Status(fiber.StatusCreated).JSON(toProgramSubprogramResponse(item))
+}
+
 func (h *CatalogHandler) ListPrograms(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -232,8 +289,26 @@ func (h *CatalogHandler) ImportPrograms(c *fiber.Ctx) error {
 
 		sectorID, err := h.repo.FindSectorIDByCode(c.Context(), row.CodigoSector)
 		if err != nil {
-			skipped++
-			continue
+			if errors.Is(err, postgres.ErrSectorNotFound) {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": fmt.Sprintf(
+						"El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+						strings.TrimSpace(row.CodigoSector),
+					),
+				})
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "failed to resolve sector during import",
+				"details": err.Error(),
+			})
+		}
+		if sectorID == uuid.Nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+					strings.TrimSpace(row.CodigoSector),
+				),
+			})
 		}
 
 		item := models.ProgramSubprogram{
@@ -309,6 +384,272 @@ func (h *CatalogHandler) ListProgramsBySector(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(data)
+}
+
+func (h *CatalogHandler) ListCatalogProducts(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := strings.TrimSpace(c.Query("search"))
+	if search == "" {
+		search = strings.TrimSpace(c.Query("q"))
+	}
+
+	result, err := h.repo.ListCatalogProducts(c.Context(), postgres.CatalogProductListParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to list products",
+			"details": err.Error(),
+		})
+	}
+
+	data := make([]dto.CatalogProductResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		data = append(data, toCatalogProductResponse(item))
+	}
+
+	return c.JSON(dto.PaginatedCatalogProductsResponse{
+		Data: data,
+		Meta: dto.PaginationMeta{
+			Total:    result.Total,
+			Page:     result.Page,
+			Limit:    result.Limit,
+			LastPage: result.LastPage,
+		},
+	})
+}
+
+// CreateProduct crea un producto del catálogo (upsert por codigo_producto).
+func (h *CatalogHandler) CreateProduct(c *fiber.Ctx) error {
+	var req dto.CreateCatalogProductRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	req.Sector = strings.TrimSpace(req.Sector)
+	req.NombreSector = strings.TrimSpace(req.NombreSector)
+	req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+	req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+	req.CodigoProducto = strings.TrimSpace(req.CodigoProducto)
+	req.Producto = strings.TrimSpace(req.Producto)
+	req.Descripcion = strings.TrimSpace(req.Descripcion)
+	req.MedidoATravesDe = strings.TrimSpace(req.MedidoATravesDe)
+	req.CodigoIndicadorProducto = strings.TrimSpace(req.CodigoIndicadorProducto)
+	req.IndicadorProducto = strings.TrimSpace(req.IndicadorProducto)
+	req.UnidadDeMedida = strings.TrimSpace(req.UnidadDeMedida)
+	req.ODS = strings.TrimSpace(req.ODS)
+	req.MetaODS = strings.TrimSpace(req.MetaODS)
+	req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
+	req.TipologiaD = strings.TrimSpace(req.TipologiaD)
+	req.TipologiaE = strings.TrimSpace(req.TipologiaE)
+	req.TipologiaAPIIP = strings.TrimSpace(req.TipologiaAPIIP)
+	req.TipologiaBPIIP = strings.TrimSpace(req.TipologiaBPIIP)
+	req.TipologiaCPIIP = strings.TrimSpace(req.TipologiaCPIIP)
+	req.EDT = strings.TrimSpace(req.EDT)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	item := models.CatalogProduct{
+		Sector:                  req.Sector,
+		NombreSector:            req.NombreSector,
+		CodigoPrograma:          req.CodigoPrograma,
+		NombrePrograma:          req.NombrePrograma,
+		CodigoProducto:          req.CodigoProducto,
+		Producto:                req.Producto,
+		Descripcion:             req.Descripcion,
+		MedidoATravesDe:         req.MedidoATravesDe,
+		CodigoIndicadorProducto: req.CodigoIndicadorProducto,
+		IndicadorProducto:       req.IndicadorProducto,
+		UnidadDeMedida:          req.UnidadDeMedida,
+		IndicadorPrincipal:      req.IndicadorPrincipal,
+		EsNacional:              req.EsNacional,
+		EsTerritorial:           req.EsTerritorial,
+		ODS:                     req.ODS,
+		MetaODS:                 req.MetaODS,
+		TipologiaGeneralSUIFP:   req.TipologiaGeneralSUIFP,
+		TipologiaD:              req.TipologiaD,
+		TipologiaE:              req.TipologiaE,
+		TipologiaAPIIP:          req.TipologiaAPIIP,
+		TipologiaBPIIP:          req.TipologiaBPIIP,
+		TipologiaCPIIP:          req.TipologiaCPIIP,
+		TieneEDT:                req.TieneEDT,
+		EDT:                     req.EDT,
+	}
+	if _, err := h.repo.UpsertCatalogProductByCode(c.Context(), &item); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create product"})
+	}
+	return c.Status(fiber.StatusCreated).JSON(toCatalogProductResponse(item))
+}
+
+// UpdateProduct actualiza un producto del catálogo por ID.
+func (h *CatalogHandler) UpdateProduct(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid product id"})
+	}
+
+	var req dto.CreateCatalogProductRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	req.Sector = strings.TrimSpace(req.Sector)
+	req.NombreSector = strings.TrimSpace(req.NombreSector)
+	req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+	req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+	req.CodigoProducto = strings.TrimSpace(req.CodigoProducto)
+	req.Producto = strings.TrimSpace(req.Producto)
+	req.Descripcion = strings.TrimSpace(req.Descripcion)
+	req.MedidoATravesDe = strings.TrimSpace(req.MedidoATravesDe)
+	req.CodigoIndicadorProducto = strings.TrimSpace(req.CodigoIndicadorProducto)
+	req.IndicadorProducto = strings.TrimSpace(req.IndicadorProducto)
+	req.UnidadDeMedida = strings.TrimSpace(req.UnidadDeMedida)
+	req.ODS = strings.TrimSpace(req.ODS)
+	req.MetaODS = strings.TrimSpace(req.MetaODS)
+	req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
+	req.TipologiaD = strings.TrimSpace(req.TipologiaD)
+	req.TipologiaE = strings.TrimSpace(req.TipologiaE)
+	req.TipologiaAPIIP = strings.TrimSpace(req.TipologiaAPIIP)
+	req.TipologiaBPIIP = strings.TrimSpace(req.TipologiaBPIIP)
+	req.TipologiaCPIIP = strings.TrimSpace(req.TipologiaCPIIP)
+	req.EDT = strings.TrimSpace(req.EDT)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	item := models.CatalogProduct{
+		Sector:                  req.Sector,
+		NombreSector:            req.NombreSector,
+		CodigoPrograma:          req.CodigoPrograma,
+		NombrePrograma:          req.NombrePrograma,
+		CodigoProducto:          req.CodigoProducto,
+		Producto:                req.Producto,
+		Descripcion:             req.Descripcion,
+		MedidoATravesDe:         req.MedidoATravesDe,
+		CodigoIndicadorProducto: req.CodigoIndicadorProducto,
+		IndicadorProducto:       req.IndicadorProducto,
+		UnidadDeMedida:          req.UnidadDeMedida,
+		IndicadorPrincipal:      req.IndicadorPrincipal,
+		EsNacional:              req.EsNacional,
+		EsTerritorial:           req.EsTerritorial,
+		ODS:                     req.ODS,
+		MetaODS:                 req.MetaODS,
+		TipologiaGeneralSUIFP:   req.TipologiaGeneralSUIFP,
+		TipologiaD:              req.TipologiaD,
+		TipologiaE:              req.TipologiaE,
+		TipologiaAPIIP:          req.TipologiaAPIIP,
+		TipologiaBPIIP:          req.TipologiaBPIIP,
+		TipologiaCPIIP:          req.TipologiaCPIIP,
+		TieneEDT:                req.TieneEDT,
+		EDT:                     req.EDT,
+	}
+	if err := h.repo.UpdateCatalogProductByID(c.Context(), id, &item); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "product not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update product"})
+	}
+	return c.JSON(toCatalogProductResponse(item))
+}
+
+// DeleteProduct elimina un producto del catálogo por ID.
+func (h *CatalogHandler) DeleteProduct(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid product id"})
+	}
+	if err := h.repo.DeleteCatalogProductByID(c.Context(), id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "product not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete product"})
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// ImportProducts importa productos desde XLSX o CSV (multipart "file").
+func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+	}
+
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	var rows []postgres.ProductImportRow
+	switch ext {
+	case ".xlsx", ".xls":
+		rows, err = postgres.ParseProductsFromXLSX(src)
+	case ".csv":
+		rows, err = postgres.ParseProductsFromCSV(src)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unsupported file type; use .xlsx or .csv",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	inserted, updated, skipped := 0, 0, 0
+	for _, row := range rows {
+		if row.CodigoProducto == "" || row.Producto == "" {
+			skipped++
+			continue
+		}
+		item := models.CatalogProduct{
+			Sector:                  strings.TrimSpace(row.Sector),
+			NombreSector:            strings.TrimSpace(row.NombreSector),
+			CodigoPrograma:          strings.TrimSpace(row.CodigoPrograma),
+			NombrePrograma:          strings.TrimSpace(row.NombrePrograma),
+			CodigoProducto:          strings.TrimSpace(row.CodigoProducto),
+			Producto:                strings.TrimSpace(row.Producto),
+			Descripcion:             strings.TrimSpace(row.Descripcion),
+			MedidoATravesDe:         strings.TrimSpace(row.MedidoATravesDe),
+			CodigoIndicadorProducto: strings.TrimSpace(row.CodigoIndicadorProducto),
+			IndicadorProducto:       strings.TrimSpace(row.IndicadorProducto),
+			UnidadDeMedida:          strings.TrimSpace(row.UnidadDeMedida),
+			IndicadorPrincipal:      row.IndicadorPrincipal,
+			EsNacional:              row.EsNacional,
+			EsTerritorial:           row.EsTerritorial,
+			ODS:                     strings.TrimSpace(row.ODS),
+			MetaODS:                 strings.TrimSpace(row.MetaODS),
+			TipologiaGeneralSUIFP:   strings.TrimSpace(row.TipologiaGeneralSUIFP),
+			TipologiaD:              strings.TrimSpace(row.TipologiaD),
+			TipologiaE:              strings.TrimSpace(row.TipologiaE),
+			TipologiaAPIIP:          strings.TrimSpace(row.TipologiaAPIIP),
+			TipologiaBPIIP:          strings.TrimSpace(row.TipologiaBPIIP),
+			TipologiaCPIIP:          strings.TrimSpace(row.TipologiaCPIIP),
+			TieneEDT:                row.TieneEDT,
+			EDT:                     strings.TrimSpace(row.EDT),
+		}
+		created, err := h.repo.UpsertCatalogProductByCode(c.Context(), &item)
+		if err != nil {
+			skipped++
+			continue
+		}
+		if created {
+			inserted++
+		} else {
+			updated++
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.ProductImportResponse{
+		Status:          "success",
+		Message:         "Importación de productos procesada",
+		Inserted:        inserted,
+		Updated:         updated,
+		Skipped:         skipped,
+		TotalRowsParsed: len(rows),
+	})
 }
 
 func (h *CatalogHandler) SearchProducts(c *fiber.Ctx) error {
@@ -398,6 +739,43 @@ func toProgramSubprogramResponse(p models.ProgramSubprogram) dto.ProgramSubprogr
 		NombreSubprograma: p.NombreSubprograma,
 		Observaciones:     p.Observaciones,
 		CreatedAt:         p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+func toCatalogProductResponse(p models.CatalogProduct) dto.CatalogProductResponse {
+	var tenantID *string
+	if p.TenantID != nil {
+		s := p.TenantID.String()
+		tenantID = &s
+	}
+	return dto.CatalogProductResponse{
+		ID:                      p.ID.String(),
+		TenantID:                tenantID,
+		Sector:                  p.Sector,
+		NombreSector:            p.NombreSector,
+		CodigoPrograma:          p.CodigoPrograma,
+		NombrePrograma:          p.NombrePrograma,
+		CodigoProducto:          p.CodigoProducto,
+		Producto:                p.Producto,
+		Descripcion:             p.Descripcion,
+		MedidoATravesDe:         p.MedidoATravesDe,
+		CodigoIndicadorProducto: p.CodigoIndicadorProducto,
+		IndicadorProducto:       p.IndicadorProducto,
+		UnidadDeMedida:          p.UnidadDeMedida,
+		IndicadorPrincipal:      p.IndicadorPrincipal,
+		EsNacional:              p.EsNacional,
+		EsTerritorial:           p.EsTerritorial,
+		ODS:                     p.ODS,
+		MetaODS:                 p.MetaODS,
+		TipologiaGeneralSUIFP:   p.TipologiaGeneralSUIFP,
+		TipologiaD:              p.TipologiaD,
+		TipologiaE:              p.TipologiaE,
+		TipologiaAPIIP:          p.TipologiaAPIIP,
+		TipologiaBPIIP:          p.TipologiaBPIIP,
+		TipologiaCPIIP:          p.TipologiaCPIIP,
+		TieneEDT:                p.TieneEDT,
+		EDT:                     p.EDT,
+		CreatedAt:               p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
 

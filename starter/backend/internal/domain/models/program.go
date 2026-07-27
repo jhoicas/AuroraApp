@@ -20,5 +20,5 @@ type Program struct {
 }
 
 func (Program) TableName() string {
-	return "programs"
+	return "programas_subprogramas"
 }

@@ -10,6 +10,7 @@ func AllModels() []any {
 		&Sector{},
 		&Program{},
 		&ProgramSubprogram{},
+		&CatalogProduct{},
 		&Product{},
 		&Project{},
 		&AILog{},

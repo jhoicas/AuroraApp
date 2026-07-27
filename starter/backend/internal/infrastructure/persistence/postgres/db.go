@@ -45,6 +45,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureProjectsSchema(db)
 	ensureSectorsSchema(db)
 	ensureProgramasSubprogramasSchema(db)
+	ensureCatalogoProductosSchema(db)
 
 	if err := EnsureSystemRoles(db); err != nil {
 		return nil, fmt.Errorf("ensure system roles: %w", err)
@@ -142,10 +143,10 @@ func ensureProjectsSchema(db *gorm.DB) {
 	execSchemaStatements(db, "ensure projects schema", statements)
 }
 
-// ensureSectorsSchema garantiza tabla sectors y columnas DNP (application, observations).
+// ensureSectorsSchema garantiza tabla sectores y columnas DNP (application, observations).
 func ensureSectorsSchema(db *gorm.DB) {
 	statements := []string{
-		`CREATE TABLE IF NOT EXISTS sectors (
+		`CREATE TABLE IF NOT EXISTS sectores (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			code VARCHAR(50) NOT NULL,
 			name VARCHAR(255) NOT NULL,
@@ -154,16 +155,16 @@ func ensureSectorsSchema(db *gorm.DB) {
 			created_at TIMESTAMPTZ,
 			updated_at TIMESTAMPTZ
 		)`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS code VARCHAR(50)`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS name VARCHAR(255)`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS application TEXT`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS observations TEXT`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
-		`ALTER TABLE sectors ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_sectors_code ON sectors (code)`,
-		`CREATE INDEX IF NOT EXISTS idx_sectors_name ON sectors (name)`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS code VARCHAR(50)`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS name VARCHAR(255)`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS application TEXT`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS observations TEXT`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_sectores_code ON sectores (code)`,
+		`CREATE INDEX IF NOT EXISTS idx_sectores_name ON sectores (name)`,
 	}
-	execSchemaStatements(db, "ensure sectors schema", statements)
+	execSchemaStatements(db, "ensure sectores schema", statements)
 }
 
 func ensureProgramasSubprogramasSchema(db *gorm.DB) {
@@ -197,6 +198,69 @@ func ensureProgramasSubprogramasSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_programas_subprogramas_sector_id ON programas_subprogramas (sector_id)`,
 	}
 	execSchemaStatements(db, "ensure programas_subprogramas schema", statements)
+}
+
+func ensureCatalogoProductosSchema(db *gorm.DB) {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS catalogo_productos (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID,
+			sector VARCHAR(50),
+			nombre_sector VARCHAR(255),
+			codigo_programa VARCHAR(50),
+			nombre_programa TEXT,
+			codigo_producto VARCHAR(50) NOT NULL,
+			producto TEXT NOT NULL,
+			descripcion TEXT,
+			medido_a_traves_de TEXT,
+			codigo_indicador_producto VARCHAR(100),
+			indicador_producto TEXT,
+			unidad_de_medida VARCHAR(255),
+			indicador_principal BOOLEAN DEFAULT FALSE,
+			es_nacional BOOLEAN DEFAULT FALSE,
+			es_territorial BOOLEAN DEFAULT FALSE,
+			ods TEXT,
+			meta_ods TEXT,
+			tipologia_general_suifp TEXT,
+			tipologia_d TEXT,
+			tipologia_e TEXT,
+			tipologia_a_piip TEXT,
+			tipologia_b_piip TEXT,
+			tipologia_c_piip TEXT,
+			tiene_edt BOOLEAN DEFAULT FALSE,
+			edt TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS sector VARCHAR(50)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS nombre_sector VARCHAR(255)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS codigo_programa VARCHAR(50)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS nombre_programa TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS codigo_producto VARCHAR(50)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS producto TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS descripcion TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS medido_a_traves_de TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS codigo_indicador_producto VARCHAR(100)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS indicador_producto TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS unidad_de_medida VARCHAR(255)`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS indicador_principal BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS es_nacional BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS es_territorial BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS ods TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS meta_ods TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_general_suifp TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_d TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_e TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_a_piip TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_b_piip TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_c_piip TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tiene_edt BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS edt TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogo_productos_codigo ON catalogo_productos (codigo_producto)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_programa ON catalogo_productos (codigo_programa)`,
+	}
+	execSchemaStatements(db, "ensure catalogo_productos schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

@@ -41,6 +41,18 @@ type SectorImportResponse struct {
 	TotalRowsParsed int    `json:"total_rows_parsed"`
 }
 
+// CreateProgramRequest alta manual de programa/subprograma (matriz DNP aplanada).
+type CreateProgramRequest struct {
+	CodigoSector      string `json:"codigo_sector" validate:"required,min=1,max=50"`
+	NombreSector      string `json:"nombre_sector" validate:"omitempty,max=255"`
+	CodigoPrograma    string `json:"codigo_programa" validate:"required,min=1,max=50"`
+	NombrePrograma    string `json:"nombre_programa" validate:"required,min=1"`
+	AmbitoAplicacion  string `json:"ambito_aplicacion" validate:"omitempty,max=2000"`
+	CodigoSubprograma string `json:"codigo_subprograma" validate:"required,min=1,max=50"`
+	NombreSubprograma string `json:"nombre_subprograma" validate:"required,min=1"`
+	Observaciones     string `json:"observaciones" validate:"omitempty,max=5000"`
+}
+
 // ProgramSubprogramResponse fila del catálogo programas/subprogramas.
 type ProgramSubprogramResponse struct {
 	ID                string  `json:"id"`
@@ -81,7 +93,82 @@ type ProgramResponse struct {
 	Name     string `json:"name"`
 }
 
-// ProductResponse producto del catálogo DNP.
+// CreateCatalogProductRequest alta manual de producto (matriz DNP aplanada).
+type CreateCatalogProductRequest struct {
+	Sector                  string `json:"sector" validate:"omitempty,max=50"`
+	NombreSector            string `json:"nombre_sector" validate:"omitempty,max=255"`
+	CodigoPrograma          string `json:"codigo_programa" validate:"omitempty,max=50"`
+	NombrePrograma          string `json:"nombre_programa" validate:"omitempty"`
+	CodigoProducto          string `json:"codigo_producto" validate:"required,min=1,max=50"`
+	Producto                string `json:"producto" validate:"required,min=1"`
+	Descripcion             string `json:"descripcion" validate:"omitempty"`
+	MedidoATravesDe         string `json:"medido_a_traves_de" validate:"omitempty"`
+	CodigoIndicadorProducto string `json:"codigo_indicador_producto" validate:"omitempty,max=100"`
+	IndicadorProducto       string `json:"indicador_producto" validate:"omitempty"`
+	UnidadDeMedida          string `json:"unidad_de_medida" validate:"omitempty,max=255"`
+	IndicadorPrincipal      bool   `json:"indicador_principal"`
+	EsNacional              bool   `json:"es_nacional"`
+	EsTerritorial           bool   `json:"es_territorial"`
+	ODS                     string `json:"ods" validate:"omitempty"`
+	MetaODS                 string `json:"meta_ods" validate:"omitempty"`
+	TipologiaGeneralSUIFP   string `json:"tipologia_general_suifp" validate:"omitempty"`
+	TipologiaD              string `json:"tipologia_d" validate:"omitempty"`
+	TipologiaE              string `json:"tipologia_e" validate:"omitempty"`
+	TipologiaAPIIP          string `json:"tipologia_a_piip" validate:"omitempty"`
+	TipologiaBPIIP          string `json:"tipologia_b_piip" validate:"omitempty"`
+	TipologiaCPIIP          string `json:"tipologia_c_piip" validate:"omitempty"`
+	TieneEDT                bool   `json:"tiene_edt"`
+	EDT                     string `json:"edt" validate:"omitempty"`
+}
+
+// CatalogProductResponse fila del catálogo de productos DNP.
+type CatalogProductResponse struct {
+	ID                      string  `json:"id"`
+	TenantID                *string `json:"tenant_id,omitempty"`
+	Sector                  string  `json:"sector"`
+	NombreSector            string  `json:"nombre_sector"`
+	CodigoPrograma          string  `json:"codigo_programa"`
+	NombrePrograma          string  `json:"nombre_programa"`
+	CodigoProducto          string  `json:"codigo_producto"`
+	Producto                string  `json:"producto"`
+	Descripcion             string  `json:"descripcion"`
+	MedidoATravesDe         string  `json:"medido_a_traves_de"`
+	CodigoIndicadorProducto string  `json:"codigo_indicador_producto"`
+	IndicadorProducto       string  `json:"indicador_producto"`
+	UnidadDeMedida          string  `json:"unidad_de_medida"`
+	IndicadorPrincipal      bool    `json:"indicador_principal"`
+	EsNacional              bool    `json:"es_nacional"`
+	EsTerritorial           bool    `json:"es_territorial"`
+	ODS                     string  `json:"ods"`
+	MetaODS                 string  `json:"meta_ods"`
+	TipologiaGeneralSUIFP   string  `json:"tipologia_general_suifp"`
+	TipologiaD              string  `json:"tipologia_d"`
+	TipologiaE              string  `json:"tipologia_e"`
+	TipologiaAPIIP          string  `json:"tipologia_a_piip"`
+	TipologiaBPIIP          string  `json:"tipologia_b_piip"`
+	TipologiaCPIIP          string  `json:"tipologia_c_piip"`
+	TieneEDT                bool    `json:"tiene_edt"`
+	EDT                     string  `json:"edt"`
+	CreatedAt               string  `json:"created_at"`
+}
+
+// PaginatedCatalogProductsResponse listado paginado de productos del catálogo.
+type PaginatedCatalogProductsResponse struct {
+	Data []CatalogProductResponse `json:"data"`
+	Meta PaginationMeta           `json:"meta"`
+}
+
+// ProductImportResponse resultado de importación masiva de productos.
+type ProductImportResponse struct {
+	Status          string `json:"status"`
+	Message         string `json:"message"`
+	Inserted        int    `json:"inserted"`
+	Updated         int    `json:"updated"`
+	Skipped         int    `json:"skipped"`
+	TotalRowsParsed int    `json:"total_rows_parsed"`
+}
+
+// ProductResponse producto del catálogo DNP (tabla products, explorador).
 type ProductResponse struct {
 	ID        string  `json:"id"`
 	ProgramID string  `json:"program_id"`
@@ -90,7 +177,7 @@ type ProductResponse struct {
 	Name      string  `json:"name"`
 }
 
-// PaginatedProductsResponse búsqueda de productos paginada.
+// PaginatedProductsResponse búsqueda de productos paginada (explorador DNP).
 type PaginatedProductsResponse struct {
 	Data       []ProductResponse `json:"data"`
 	Page       int               `json:"page"`

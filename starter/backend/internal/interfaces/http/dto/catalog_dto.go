@@ -97,7 +97,7 @@ type ProgramResponse struct {
 type CreateCatalogProductRequest struct {
 	Sector                  string `json:"sector" validate:"omitempty,max=50"`
 	NombreSector            string `json:"nombre_sector" validate:"omitempty,max=255"`
-	CodigoPrograma          string `json:"codigo_programa" validate:"omitempty,max=50"`
+	CodigoPrograma          string `json:"codigo_programa" validate:"required,min=1,max=50"`
 	NombrePrograma          string `json:"nombre_programa" validate:"omitempty"`
 	CodigoProducto          string `json:"codigo_producto" validate:"required,min=1,max=50"`
 	Producto                string `json:"producto" validate:"required,min=1"`
@@ -112,11 +112,11 @@ type CreateCatalogProductRequest struct {
 	ODS                     string `json:"ods" validate:"omitempty"`
 	MetaODS                 string `json:"meta_ods" validate:"omitempty"`
 	TipologiaGeneralSUIFP   string `json:"tipologia_general_suifp" validate:"omitempty"`
-	TipologiaD              string `json:"tipologia_d" validate:"omitempty"`
-	TipologiaE              string `json:"tipologia_e" validate:"omitempty"`
-	TipologiaAPIIP          string `json:"tipologia_a_piip" validate:"omitempty"`
-	TipologiaBPIIP          string `json:"tipologia_b_piip" validate:"omitempty"`
-	TipologiaCPIIP          string `json:"tipologia_c_piip" validate:"omitempty"`
+	TipologiaD              bool   `json:"tipologia_d"`
+	TipologiaE              bool   `json:"tipologia_e"`
+	TipologiaAPIIP          bool   `json:"tipologia_a_piip"`
+	TipologiaBPIIP          bool   `json:"tipologia_b_piip"`
+	TipologiaCPIIP          bool   `json:"tipologia_c_piip"`
 	TieneEDT                bool   `json:"tiene_edt"`
 	EDT                     string `json:"edt" validate:"omitempty"`
 }
@@ -142,11 +142,11 @@ type CatalogProductResponse struct {
 	ODS                     string  `json:"ods"`
 	MetaODS                 string  `json:"meta_ods"`
 	TipologiaGeneralSUIFP   string  `json:"tipologia_general_suifp"`
-	TipologiaD              string  `json:"tipologia_d"`
-	TipologiaE              string  `json:"tipologia_e"`
-	TipologiaAPIIP          string  `json:"tipologia_a_piip"`
-	TipologiaBPIIP          string  `json:"tipologia_b_piip"`
-	TipologiaCPIIP          string  `json:"tipologia_c_piip"`
+	TipologiaD              bool    `json:"tipologia_d"`
+	TipologiaE              bool    `json:"tipologia_e"`
+	TipologiaAPIIP          bool    `json:"tipologia_a_piip"`
+	TipologiaBPIIP          bool    `json:"tipologia_b_piip"`
+	TipologiaCPIIP          bool    `json:"tipologia_c_piip"`
 	TieneEDT                bool    `json:"tiene_edt"`
 	EDT                     string  `json:"edt"`
 	CreatedAt               string  `json:"created_at"`

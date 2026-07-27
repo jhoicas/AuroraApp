@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import { api } from '../../lib/api';
 import {
@@ -30,41 +31,14 @@ const emptyForm: CreateProductInput = {
   objetivos_de_desarrollo_sostenible_ods: '',
   meta_ods: '',
   tipologia_general_suifp: '',
-  tipologia_d: '',
-  tipologia_e: '',
-  tipologia_a: '',
-  tipologia_b: '',
-  tipologia_c: '',
+  tipologia_d: false,
+  tipologia_e: false,
+  tipologia_a: false,
+  tipologia_b: false,
+  tipologia_c: false,
   tiene_edt: false,
   edt: '',
 };
-
-const TABLE_COLUMNS: { key: keyof CreateProductInput; label: string }[] = [
-  { key: 'sector', label: 'Sector' },
-  { key: 'nombre_del_sector', label: 'Nombre Sector' },
-  { key: 'codigo_del_programa', label: 'Cód. Programa' },
-  { key: 'nombre_del_programa', label: 'Nombre Programa' },
-  { key: 'codigo_del_producto', label: 'Cód. Producto' },
-  { key: 'producto', label: 'Producto' },
-  { key: 'descripcion', label: 'Descripción' },
-  { key: 'medido_a_traves_de', label: 'Medido a través de' },
-  { key: 'codigo_del_indicador_de_producto', label: 'Cód. Indicador' },
-  { key: 'indicador_de_producto', label: 'Indicador' },
-  { key: 'unidad_de_medida', label: 'Unidad' },
-  { key: 'indicador_principal', label: 'Ind. Principal' },
-  { key: 'es_nacional', label: 'Nacional' },
-  { key: 'es_territorial', label: 'Territorial' },
-  { key: 'objetivos_de_desarrollo_sostenible_ods', label: 'ODS' },
-  { key: 'meta_ods', label: 'Meta ODS' },
-  { key: 'tipologia_general_suifp', label: 'Tip. General' },
-  { key: 'tipologia_d', label: 'Tip. D' },
-  { key: 'tipologia_e', label: 'Tip. E' },
-  { key: 'tipologia_a', label: 'Tip. A' },
-  { key: 'tipologia_b', label: 'Tip. B' },
-  { key: 'tipologia_c', label: 'Tip. C' },
-  { key: 'tiene_edt', label: 'Tiene EDT' },
-  { key: 'edt', label: 'EDT' },
-];
 
 const inputClass =
   'w-full rounded-lg border border-[#bec9c8] px-3 py-2.5 text-[#121c2c] focus:outline-none focus:ring-2 focus:ring-[#006162]';
@@ -131,12 +105,6 @@ function productToForm(row: Product): CreateProductInput {
   };
 }
 
-function formatCell(value: string | boolean | undefined): string {
-  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
-  const text = (value ?? '').toString().trim();
-  return text || '—';
-}
-
 export default function ProductsCatalogPage() {
   const catalogProducts = useCatalogStore((s) => s.catalogProducts);
   const catalogProductsMeta = useCatalogStore((s) => s.catalogProductsMeta);
@@ -146,7 +114,6 @@ export default function ProductsCatalogPage() {
   const createProduct = useCatalogStore((s) => s.createProduct);
   const updateProduct = useCatalogStore((s) => s.updateProduct);
   const deleteProduct = useCatalogStore((s) => s.deleteProduct);
-  const importProducts = useCatalogStore((s) => s.importProducts);
   const clearError = useCatalogStore((s) => s.clearError);
 
   const [query, setQuery] = useState('');
@@ -164,9 +131,7 @@ export default function ProductsCatalogPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const programOptions = useMemo(() => {
     const map = new Map<string, { code: string; name: string }>();
@@ -200,36 +165,9 @@ export default function ProductsCatalogPage() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const handleDownloadTemplate = () => {
-    const csv =
-      'sector,nombre_del_sector,codigo_del_programa,nombre_del_programa,codigo_del_producto,producto,descripcion,medido_a_traves_de,codigo_del_indicador_de_producto,indicador_de_producto,unidad_de_medida,indicador_principal,es_nacional,es_territorial,objetivos_de_desarrollo_sostenible_ods,meta_ods,tipologia_general_suifp,tipologia_d,tipologia_e,tipologia_a,tipologia_b,tipologia_c,tiene_edt,edt\n"01","Sector Ejemplo","0101","Programa Ejemplo","010101","Producto Ejemplo","Descripción","Encuesta","IND01","Indicador","Porcentaje","Sí","Sí","No","ODS 1","Meta 1.1","General","Tipo D","Tipo E","Tipo A","Tipo B","Tipo C","Sí","EDT Ejemplo"';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'plantilla_productos_2.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportFile = async (file: File | undefined) => {
-    if (!file) return;
-    setImporting(true);
-    setFlash(null);
-    clearError();
-    try {
-      const result = await importProducts(file);
-      setFlash(
-        `${result.message}: ${result.inserted} nuevos, ${result.updated} actualizados, ${result.skipped} omitidos.`,
-      );
-      setPage(1);
-      void fetchCatalogProducts({ page: 1, limit, search: debouncedQuery });
-    } catch (err) {
-      setFlash(err instanceof Error ? err.message : 'Error al importar');
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const refreshList = () => {
+    void fetchCatalogProducts({ page: 1, limit, search: debouncedQuery });
+    setPage(1);
   };
 
   const loadModalOptions = async () => {
@@ -286,6 +224,11 @@ export default function ProductsCatalogPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!form.codigo_del_programa.trim()) {
+      setFormError('Debe seleccionar un programa existente.');
+      setActiveSection('A');
+      return;
+    }
     if (!form.codigo_del_producto.trim() || !form.producto.trim()) {
       setFormError('Código del producto y nombre del producto son obligatorios.');
       setActiveSection('A');
@@ -302,8 +245,7 @@ export default function ProductsCatalogPage() {
         setFlash(`Producto «${form.codigo_del_producto.trim()}» guardado correctamente.`);
       }
       setModalOpen(false);
-      setPage(1);
-      void fetchCatalogProducts({ page: 1, limit, search: debouncedQuery });
+      refreshList();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -330,57 +272,43 @@ export default function ProductsCatalogPage() {
     }
   };
 
-  const colSpan = TABLE_COLUMNS.length + 1;
-
   return (
     <div className="-m-6 font-body text-[#121c2c]">
-      <div className="p-6 md:p-12 max-w-[1280px] mx-auto">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8">
+      <div className="p-6 md:p-12 max-w-[1280px] mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
           <div>
             <h3 className="font-headline text-2xl font-semibold text-[#121c2c] mb-1">Productos</h3>
             <p className="text-base text-[#3f4949]">
-              Catálogo maestro MGA / DNP. Alta manual o carga masiva CSV/XLSX.
+              Catálogo MGA / DNP. Cada producto se vincula a un programa (y sector) existente.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-              onChange={(e) => void handleImportFile(e.target.files?.[0])}
-            />
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
-              className="h-12 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[20px]">download</span>
-              Descargar Plantilla
-            </button>
-            <button
-              type="button"
-              disabled={importing}
-              onClick={() => fileInputRef.current?.click()}
-              className="h-12 px-6 bg-white text-[#006a68] font-bold rounded-lg border border-[#006a68] inline-flex items-center gap-2 hover:bg-[#E6FFFA] transition-colors disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                {importing ? 'hourglass_top' : 'upload_file'}
-              </span>
-              {importing ? 'Importando…' : 'Importar Archivo'}
-            </button>
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="h-12 px-6 bg-[#006162] text-white font-bold rounded-lg inline-flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              Añadir Registro
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="h-12 px-6 bg-[#006162] text-white font-bold rounded-lg inline-flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            Añadir Registro
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
+        <CatalogImporter
+          variant="products"
+          onImported={(result) => {
+            const msg =
+              'message' in result && result.message
+                ? `${result.message}${
+                    'inserted' in result
+                      ? `: ${result.inserted ?? 0} nuevos, ${result.updated ?? 0} actualizados`
+                      : ''
+                  }`
+                : 'Importación de productos completada.';
+            setFlash(msg);
+            refreshList();
+          }}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div
             className={`md:col-span-8 glass-card bg-white/95 p-5 rounded-xl border border-[#E2E8F0] flex items-center gap-4 transition-all duration-300 hover:border-[#319795] ${
               searchFocused ? 'ring-2 ring-[#006162] ring-offset-2' : ''
@@ -418,10 +346,12 @@ export default function ProductsCatalogPage() {
 
         {(error || flash) && (
           <div
-            className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
+            className={`rounded-lg border px-4 py-3 text-sm ${
               error && !flash
                 ? 'border-red-200 bg-red-50 text-red-700'
-                : flash?.toLowerCase().includes('error') || flash?.toLowerCase().includes('no se pudo')
+                : flash?.toLowerCase().includes('error') ||
+                    flash?.toLowerCase().includes('no existe') ||
+                    flash?.toLowerCase().includes('no se pudo')
                   ? 'border-red-200 bg-red-50 text-red-700'
                   : 'border-teal-200 bg-teal-50 text-teal-800'
             }`}
@@ -439,28 +369,31 @@ export default function ProductsCatalogPage() {
           </div>
         )}
 
-        <div className="glass-card bg-white/95 rounded-xl border border-[#E2E8F0] overflow-hidden shadow-sm transition-all duration-300 hover:border-[#319795]">
+        <div className="glass-card bg-white/95 rounded-xl border border-[#E2E8F0] overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[3200px] text-left border-collapse">
+            <table className="w-full min-w-[900px] text-left border-collapse">
               <thead className="bg-[#2c7a7b] text-[#c1ffff]">
                 <tr>
-                  {TABLE_COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className="px-4 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap"
-                    >
-                      {col.label}
-                    </th>
-                  ))}
-                  <th className="px-4 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap sticky right-0 bg-[#2c7a7b] z-10 text-right min-w-[140px]">
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Cód. Producto
+                  </th>
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">Nombre</th>
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">
+                    Programa
+                  </th>
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">Sector</th>
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Ind. Principal
+                  </th>
+                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs text-right sticky right-0 bg-[#2c7a7b]">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="text-sm text-[#121c2c]">
+              <tbody className="text-sm md:text-base text-[#121c2c]">
                 {isLoadingProducts && (
                   <tr>
-                    <td colSpan={colSpan} className="px-6 py-10 text-center text-[#3f4949]">
+                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
                       <span className="inline-flex items-center gap-2">
                         <span className="material-symbols-outlined animate-spin text-[#006162]">
                           progress_activity
@@ -472,8 +405,8 @@ export default function ProductsCatalogPage() {
                 )}
                 {!isLoadingProducts && catalogProducts.length === 0 && (
                   <tr>
-                    <td colSpan={colSpan} className="px-6 py-10 text-center text-[#3f4949]">
-                      No hay registros. Añade un producto o importa un archivo.
+                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
+                      No hay productos. Importe el catálogo o añada un registro manualmente.
                     </td>
                   </tr>
                 )}
@@ -481,18 +414,38 @@ export default function ProductsCatalogPage() {
                   catalogProducts.map((row) => (
                     <tr
                       key={row.id}
-                      className="even:bg-[#E6FFFA] hover:bg-[#e7eeff] transition-colors align-top group"
+                      className="even:bg-[#E6FFFA] hover:bg-[#e7eeff] transition-colors align-top"
                     >
-                      {TABLE_COLUMNS.map((col) => (
-                        <td
-                          key={col.key}
-                          className="px-4 py-3 whitespace-nowrap max-w-[220px] truncate"
-                          title={formatCell(row[col.key])}
+                      <td className="px-5 py-4 font-bold whitespace-nowrap">
+                        {row.codigo_del_producto}
+                      </td>
+                      <td className="px-5 py-4 max-w-[280px]">
+                        <span className="line-clamp-2">{row.producto}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="font-semibold">{row.codigo_del_programa || '—'}</span>
+                        <span className="block text-[#3f4949] text-sm mt-0.5 line-clamp-1">
+                          {row.nombre_del_programa || '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="font-semibold">{row.sector || '—'}</span>
+                        <span className="block text-[#3f4949] text-sm mt-0.5 line-clamp-1">
+                          {row.nombre_del_sector || '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${
+                            row.indicador_principal
+                              ? 'bg-teal-100 text-teal-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
                         >
-                          {formatCell(row[col.key])}
-                        </td>
-                      ))}
-                      <td className="px-4 py-3 sticky right-0 bg-inherit z-10 text-right whitespace-nowrap border-l border-[#E2E8F0]">
+                          {row.indicador_principal ? 'Sí' : 'No'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 sticky right-0 bg-inherit text-right whitespace-nowrap border-l border-[#E2E8F0]">
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
@@ -602,10 +555,11 @@ export default function ProductsCatalogPage() {
                   </div>
                   <div>
                     <label htmlFor="prod-programa" className={labelClass}>
-                      Programa
+                      Programa *
                     </label>
                     <select
                       id="prod-programa"
+                      required
                       value={form.codigo_del_programa}
                       onChange={(e) => handleProgramChange(e.target.value)}
                       disabled={loadingOptions || !form.sector}
@@ -635,7 +589,6 @@ export default function ProductsCatalogPage() {
                       value={form.codigo_del_producto}
                       onChange={(e) => setField('codigo_del_producto', e.target.value)}
                       className={inputClass}
-                      placeholder="Código único"
                     />
                   </div>
                   <div>
@@ -648,7 +601,6 @@ export default function ProductsCatalogPage() {
                       value={form.producto}
                       onChange={(e) => setField('producto', e.target.value)}
                       className={inputClass}
-                      placeholder="Nombre del producto"
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -661,7 +613,6 @@ export default function ProductsCatalogPage() {
                       value={form.descripcion}
                       onChange={(e) => setField('descripcion', e.target.value)}
                       className={`${inputClass} resize-y`}
-                      placeholder="Descripción del producto"
                     />
                   </div>
                 </section>
@@ -682,7 +633,7 @@ export default function ProductsCatalogPage() {
                   </div>
                   <div>
                     <label htmlFor="prod-cod-ind" className={labelClass}>
-                      Código Indicador de Producto
+                      Código Indicador
                     </label>
                     <input
                       id="prod-cod-ind"
@@ -715,7 +666,7 @@ export default function ProductsCatalogPage() {
                   </div>
                   <div>
                     <label htmlFor="prod-ods" className={labelClass}>
-                      Objetivos de Desarrollo Sostenible (ODS)
+                      ODS
                     </label>
                     <input
                       id="prod-ods"
@@ -737,41 +688,34 @@ export default function ProductsCatalogPage() {
                       className={inputClass}
                     />
                   </div>
-                  <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-6 pt-1">
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.indicador_principal}
-                        onChange={(e) => setField('indicador_principal', e.target.checked)}
-                        className="rounded border-[#bec9c8] text-[#006162] focus:ring-[#006162]"
-                      />
-                      Indicador Principal
-                    </label>
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.es_nacional}
-                        onChange={(e) => setField('es_nacional', e.target.checked)}
-                        className="rounded border-[#bec9c8] text-[#006162] focus:ring-[#006162]"
-                      />
-                      Es Nacional
-                    </label>
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.es_territorial}
-                        onChange={(e) => setField('es_territorial', e.target.checked)}
-                        className="rounded border-[#bec9c8] text-[#006162] focus:ring-[#006162]"
-                      />
-                      Es Territorial
-                    </label>
+                  <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-6">
+                    {(
+                      [
+                        ['indicador_principal', 'Indicador Principal'],
+                        ['es_nacional', 'Es Nacional'],
+                        ['es_territorial', 'Es Territorial'],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form[key]}
+                          onChange={(e) => setField(key, e.target.checked)}
+                          className="rounded border-[#bec9c8] text-[#006162] focus:ring-[#006162]"
+                        />
+                        {label}
+                      </label>
+                    ))}
                   </div>
                 </section>
               )}
 
               {activeSection === 'C' && (
                 <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
+                  <div className="sm:col-span-2 lg:col-span-3">
                     <label htmlFor="prod-tip-gen" className={labelClass}>
                       Tipología General SUIFP
                     </label>
@@ -782,72 +726,29 @@ export default function ProductsCatalogPage() {
                       className={inputClass}
                     />
                   </div>
-                  <div>
-                    <label htmlFor="prod-tip-d" className={labelClass}>
-                      Tipología D
-                    </label>
-                    <input
-                      id="prod-tip-d"
-                      value={form.tipologia_d}
-                      onChange={(e) => setField('tipologia_d', e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="prod-tip-e" className={labelClass}>
-                      Tipología E
-                    </label>
-                    <input
-                      id="prod-tip-e"
-                      value={form.tipologia_e}
-                      onChange={(e) => setField('tipologia_e', e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="prod-tip-a" className={labelClass}>
-                      Tipología A
-                    </label>
-                    <input
-                      id="prod-tip-a"
-                      value={form.tipologia_a}
-                      onChange={(e) => setField('tipologia_a', e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="prod-tip-b" className={labelClass}>
-                      Tipología B
-                    </label>
-                    <input
-                      id="prod-tip-b"
-                      value={form.tipologia_b}
-                      onChange={(e) => setField('tipologia_b', e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="prod-tip-c" className={labelClass}>
-                      Tipología C
-                    </label>
-                    <input
-                      id="prod-tip-c"
-                      value={form.tipologia_c}
-                      onChange={(e) => setField('tipologia_c', e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="flex items-end pb-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer">
+                  {(
+                    [
+                      ['tipologia_d', 'Tipología D'],
+                      ['tipologia_e', 'Tipología E'],
+                      ['tipologia_a', 'Tipología A'],
+                      ['tipologia_b', 'Tipología B'],
+                      ['tipologia_c', 'Tipología C'],
+                      ['tiene_edt', 'Tiene EDT'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f4949] cursor-pointer h-11"
+                    >
                       <input
                         type="checkbox"
-                        checked={form.tiene_edt}
-                        onChange={(e) => setField('tiene_edt', e.target.checked)}
+                        checked={form[key]}
+                        onChange={(e) => setField(key, e.target.checked)}
                         className="rounded border-[#bec9c8] text-[#006162] focus:ring-[#006162]"
                       />
-                      Tiene EDT
+                      {label}
                     </label>
-                  </div>
+                  ))}
                   <div className="sm:col-span-2">
                     <label htmlFor="prod-edt" className={labelClass}>
                       EDT
@@ -857,7 +758,6 @@ export default function ProductsCatalogPage() {
                       value={form.edt}
                       onChange={(e) => setField('edt', e.target.value)}
                       className={inputClass}
-                      placeholder="Referencia EDT"
                     />
                   </div>
                 </section>
@@ -874,10 +774,8 @@ export default function ProductsCatalogPage() {
                   {activeSection !== 'A' && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setActiveSection(activeSection === 'C' ? 'B' : 'A')
-                      }
-                      className="h-11 px-4 rounded-lg border border-[#bec9c8] font-semibold text-[#3f4949] hover:bg-[#f0f3ff]"
+                      onClick={() => setActiveSection(activeSection === 'C' ? 'B' : 'A')}
+                      className="h-11 px-4 rounded-lg border border-[#bec9c8] font-semibold text-[#3f4949]"
                     >
                       Anterior
                     </button>
@@ -885,10 +783,8 @@ export default function ProductsCatalogPage() {
                   {activeSection !== 'C' && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setActiveSection(activeSection === 'A' ? 'B' : 'C')
-                      }
-                      className="h-11 px-4 rounded-lg border border-[#006a68] text-[#006a68] font-semibold hover:bg-[#E6FFFA]"
+                      onClick={() => setActiveSection(activeSection === 'A' ? 'B' : 'C')}
+                      className="h-11 px-4 rounded-lg border border-[#006a68] text-[#006a68] font-semibold"
                     >
                       Siguiente
                     </button>
@@ -898,31 +794,20 @@ export default function ProductsCatalogPage() {
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="h-11 px-5 rounded-lg border border-[#bec9c8] font-semibold text-[#3f4949] hover:bg-[#f0f3ff]"
+                    className="h-11 px-5 rounded-lg border border-[#bec9c8] font-semibold text-[#3f4949]"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={saving || loadingOptions}
-                    className="h-11 px-6 rounded-lg bg-[#006162] text-white font-bold hover:opacity-90 disabled:opacity-50"
+                    className="h-11 px-6 rounded-lg bg-[#006162] text-white font-bold disabled:opacity-50"
                   >
                     {saving ? 'Guardando…' : editingId ? 'Actualizar' : 'Guardar'}
                   </button>
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {importing && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 pointer-events-none">
-          <div className="bg-white rounded-xl shadow-lg px-6 py-4 flex items-center gap-3 border border-[#bec9c8]">
-            <span className="material-symbols-outlined animate-spin text-[#006162]">
-              progress_activity
-            </span>
-            <span className="font-semibold text-[#121c2c]">Importando archivo…</span>
           </div>
         </div>
       )}

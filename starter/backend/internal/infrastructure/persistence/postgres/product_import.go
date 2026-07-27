@@ -30,11 +30,11 @@ type ProductImportRow struct {
 	ODS                     string
 	MetaODS                 string
 	TipologiaGeneralSUIFP   string
-	TipologiaD              string
-	TipologiaE              string
-	TipologiaAPIIP          string
-	TipologiaBPIIP          string
-	TipologiaCPIIP          string
+	TipologiaD              bool
+	TipologiaE              bool
+	TipologiaAPIIP          bool
+	TipologiaBPIIP          bool
+	TipologiaCPIIP          bool
 	TieneEDT                bool
 	EDT                     string
 }
@@ -161,11 +161,11 @@ func parseProductRows(rows [][]string) ([]ProductImportRow, error) {
 			ODS:                     ods,
 			MetaODS:                 metaODS,
 			TipologiaGeneralSUIFP:   productCellAt(row, idxTipGen),
-			TipologiaD:              productCellAt(row, idxTipD),
-			TipologiaE:              productCellAt(row, idxTipE),
-			TipologiaAPIIP:          productCellAt(row, idxTipA),
-			TipologiaBPIIP:          productCellAt(row, idxTipB),
-			TipologiaCPIIP:          productCellAt(row, idxTipC),
+			TipologiaD:              parseProductBool(productCellAt(row, idxTipD)),
+			TipologiaE:              parseProductBool(productCellAt(row, idxTipE)),
+			TipologiaAPIIP:          parseProductBool(productCellAt(row, idxTipA)),
+			TipologiaBPIIP:          parseProductBool(productCellAt(row, idxTipB)),
+			TipologiaCPIIP:          parseProductBool(productCellAt(row, idxTipC)),
 			TieneEDT:                parseProductBool(productCellAt(row, idxTieneEDT)),
 			EDT:                     productCellAt(row, idxEDT),
 		}

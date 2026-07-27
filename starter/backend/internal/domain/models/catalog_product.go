@@ -7,12 +7,13 @@ import (
 )
 
 // CatalogProduct fila del catálogo DNP catalogo_productos (maestro plano).
+// Un producto pertenece a un Programa (codigo_programa) y este a un Sector.
 type CatalogProduct struct {
 	ID                      uuid.UUID  `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID                *uuid.UUID `gorm:"column:tenant_id;type:uuid;index" json:"tenant_id,omitempty"`
 	Sector                  string     `gorm:"column:sector;type:varchar(50)" json:"sector"`
 	NombreSector            string     `gorm:"column:nombre_sector;type:varchar(255)" json:"nombre_sector"`
-	CodigoPrograma          string     `gorm:"column:codigo_programa;type:varchar(50)" json:"codigo_programa"`
+	CodigoPrograma          string     `gorm:"column:codigo_programa;type:varchar(50);not null;index" json:"codigo_programa"`
 	NombrePrograma          string     `gorm:"column:nombre_programa;type:text" json:"nombre_programa"`
 	CodigoProducto          string     `gorm:"column:codigo_producto;type:varchar(50);not null;uniqueIndex:idx_catalogo_productos_codigo" json:"codigo_producto"`
 	Producto                string     `gorm:"column:producto;type:text;not null" json:"producto"`
@@ -27,11 +28,11 @@ type CatalogProduct struct {
 	ODS                     string     `gorm:"column:ods;type:text" json:"ods"`
 	MetaODS                 string     `gorm:"column:meta_ods;type:text" json:"meta_ods"`
 	TipologiaGeneralSUIFP   string     `gorm:"column:tipologia_general_suifp;type:text" json:"tipologia_general_suifp"`
-	TipologiaD              string     `gorm:"column:tipologia_d;type:text" json:"tipologia_d"`
-	TipologiaE              string     `gorm:"column:tipologia_e;type:text" json:"tipologia_e"`
-	TipologiaAPIIP          string     `gorm:"column:tipologia_a_piip;type:text" json:"tipologia_a_piip"`
-	TipologiaBPIIP          string     `gorm:"column:tipologia_b_piip;type:text" json:"tipologia_b_piip"`
-	TipologiaCPIIP          string     `gorm:"column:tipologia_c_piip;type:text" json:"tipologia_c_piip"`
+	TipologiaD              bool       `gorm:"column:tipologia_d;default:false" json:"tipologia_d"`
+	TipologiaE              bool       `gorm:"column:tipologia_e;default:false" json:"tipologia_e"`
+	TipologiaAPIIP          bool       `gorm:"column:tipologia_a_piip;default:false" json:"tipologia_a_piip"`
+	TipologiaBPIIP          bool       `gorm:"column:tipologia_b_piip;default:false" json:"tipologia_b_piip"`
+	TipologiaCPIIP          bool       `gorm:"column:tipologia_c_piip;default:false" json:"tipologia_c_piip"`
 	TieneEDT                bool       `gorm:"column:tiene_edt;default:false" json:"tiene_edt"`
 	EDT                     string     `gorm:"column:edt;type:text" json:"edt"`
 	CreatedAt               time.Time  `gorm:"column:created_at;not null" json:"created_at"`

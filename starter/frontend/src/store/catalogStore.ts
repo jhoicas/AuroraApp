@@ -67,11 +67,11 @@ export type Product = {
   objetivos_de_desarrollo_sostenible_ods: string;
   meta_ods: string;
   tipologia_general_suifp: string;
-  tipologia_d: string;
-  tipologia_e: string;
-  tipologia_a: string;
-  tipologia_b: string;
-  tipologia_c: string;
+  tipologia_d: boolean;
+  tipologia_e: boolean;
+  tipologia_a: boolean;
+  tipologia_b: boolean;
+  tipologia_c: boolean;
   tiene_edt: boolean;
   edt: string;
   created_at?: string;
@@ -118,11 +118,11 @@ type ApiCatalogProduct = {
   ods: string;
   meta_ods: string;
   tipologia_general_suifp: string;
-  tipologia_d: string;
-  tipologia_e: string;
-  tipologia_a_piip: string;
-  tipologia_b_piip: string;
-  tipologia_c_piip: string;
+  tipologia_d: boolean;
+  tipologia_e: boolean;
+  tipologia_a_piip: boolean;
+  tipologia_b_piip: boolean;
+  tipologia_c_piip: boolean;
   tiene_edt: boolean;
   edt: string;
   created_at?: string;
@@ -189,11 +189,11 @@ export type CreateProductInput = {
   objetivos_de_desarrollo_sostenible_ods: string;
   meta_ods: string;
   tipologia_general_suifp: string;
-  tipologia_d: string;
-  tipologia_e: string;
-  tipologia_a: string;
-  tipologia_b: string;
-  tipologia_c: string;
+  tipologia_d: boolean;
+  tipologia_e: boolean;
+  tipologia_a: boolean;
+  tipologia_b: boolean;
+  tipologia_c: boolean;
   tiene_edt: boolean;
   edt: string;
 };
@@ -273,11 +273,11 @@ export function mapApiProductToMga(row: ApiCatalogProduct): Product {
     objetivos_de_desarrollo_sostenible_ods: row.ods ?? '',
     meta_ods: row.meta_ods ?? '',
     tipologia_general_suifp: row.tipologia_general_suifp ?? '',
-    tipologia_d: row.tipologia_d ?? '',
-    tipologia_e: row.tipologia_e ?? '',
-    tipologia_a: row.tipologia_a_piip ?? '',
-    tipologia_b: row.tipologia_b_piip ?? '',
-    tipologia_c: row.tipologia_c_piip ?? '',
+    tipologia_d: Boolean(row.tipologia_d),
+    tipologia_e: Boolean(row.tipologia_e),
+    tipologia_a: Boolean(row.tipologia_a_piip),
+    tipologia_b: Boolean(row.tipologia_b_piip),
+    tipologia_c: Boolean(row.tipologia_c_piip),
     tiene_edt: Boolean(row.tiene_edt),
     edt: row.edt ?? '',
     created_at: row.created_at,
@@ -304,11 +304,11 @@ function mapMgaProductToApi(input: CreateProductInput) {
     ods: input.objetivos_de_desarrollo_sostenible_ods.trim(),
     meta_ods: input.meta_ods.trim(),
     tipologia_general_suifp: input.tipologia_general_suifp.trim(),
-    tipologia_d: input.tipologia_d.trim(),
-    tipologia_e: input.tipologia_e.trim(),
-    tipologia_a_piip: input.tipologia_a.trim(),
-    tipologia_b_piip: input.tipologia_b.trim(),
-    tipologia_c_piip: input.tipologia_c.trim(),
+    tipologia_d: input.tipologia_d,
+    tipologia_e: input.tipologia_e,
+    tipologia_a_piip: input.tipologia_a,
+    tipologia_b_piip: input.tipologia_b,
+    tipologia_c_piip: input.tipologia_c,
     tiene_edt: input.tiene_edt,
     edt: input.edt.trim(),
   };
@@ -524,6 +524,7 @@ export const useCatalogStore = create<CatalogState>((set) => ({
     try {
       const { data } = await api.post<CatalogImportResult>('/catalog/products/import', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
       });
       return data;
     } catch (err) {

@@ -18,6 +18,9 @@ import (
 // ErrSectorNotFound indica que no existe un sector con el código indicado.
 var ErrSectorNotFound = errors.New("sector not found")
 
+// ErrProgramNotFound indica que no existe un programa con el código indicado.
+var ErrProgramNotFound = errors.New("program not found")
+
 // SectorListParams filtros de listado paginado.
 type SectorListParams struct {
 	Page   int
@@ -56,7 +59,7 @@ func (r *CatalogRepository) ListSectors(ctx context.Context, p SectorListParams)
 	if search := strings.TrimSpace(p.Search); search != "" {
 		pattern := "%" + escapeILIKE(search) + "%"
 		q = q.Where(
-			"(code ILIKE ? ESCAPE '\\' OR name ILIKE ? ESCAPE '\\')",
+			"(codigo ILIKE ? ESCAPE '\\' OR nombre ILIKE ? ESCAPE '\\')",
 			pattern, pattern,
 		)
 	}
@@ -67,7 +70,7 @@ func (r *CatalogRepository) ListSectors(ctx context.Context, p SectorListParams)
 	}
 
 	items := make([]models.Sector, 0, limit)
-	if err := q.Order("code ASC").Limit(limit).Offset(offset).Find(&items).Error; err != nil {
+	if err := q.Order("codigo ASC").Limit(limit).Offset(offset).Find(&items).Error; err != nil {
 		return nil, fmt.Errorf("list sectors: %w", err)
 	}
 
@@ -93,7 +96,7 @@ func (r *CatalogRepository) UpsertSectorByCode(ctx context.Context, sector *mode
 	}
 	now := time.Now().UTC()
 	var existing models.Sector
-	err = r.db.WithContext(ctx).Where("code = ?", sector.Code).First(&existing).Error
+	err = r.db.WithContext(ctx).Where("codigo = ?", sector.Code).First(&existing).Error
 	if err == nil {
 		existing.Name = sector.Name
 		existing.Application = sector.Application
@@ -118,11 +121,11 @@ func (r *CatalogRepository) UpsertSectorByCode(ctx context.Context, sector *mode
 	sector.CreatedAt = now
 	sector.UpdatedAt = now
 	if err := r.db.WithContext(ctx).Create(sector).Error; err != nil {
-		// Carrera: otro proceso insertó el mismo code.
+		// Carrera: otro proceso insertó el mismo codigo.
 		if err2 := r.db.WithContext(ctx).
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "code"}},
-				DoUpdates: clause.AssignmentColumns([]string{"name", "application", "observations", "updated_at"}),
+				Columns:   []clause.Column{{Name: "codigo"}},
+				DoUpdates: clause.AssignmentColumns([]string{"nombre", "aplicacion", "observaciones", "updated_at"}),
 			}).Create(sector).Error; err2 != nil {
 			return false, err2
 		}
@@ -199,7 +202,7 @@ func (r *CatalogRepository) FindSectorIDByCode(ctx context.Context, code string)
 		return uuid.Nil, fmt.Errorf("%w: código vacío", ErrSectorNotFound)
 	}
 	var sector models.Sector
-	err := r.db.WithContext(ctx).Select("id").Where("code = ?", code).First(&sector).Error
+	err := r.db.WithContext(ctx).Select("id").Where("codigo = ?", code).First(&sector).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return uuid.Nil, fmt.Errorf("%w: código %s", ErrSectorNotFound, code)
@@ -210,6 +213,26 @@ func (r *CatalogRepository) FindSectorIDByCode(ctx context.Context, code string)
 		return uuid.Nil, fmt.Errorf("%w: código %s", ErrSectorNotFound, code)
 	}
 	return sector.ID, nil
+}
+
+// ProgramExistsByCode verifica integridad referencial: el código debe existir en programas_subprogramas.
+func (r *CatalogRepository) ProgramExistsByCode(ctx context.Context, code string) (bool, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return false, fmt.Errorf("%w: código vacío", ErrProgramNotFound)
+	}
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.ProgramSubprogram{}).
+		Where("codigo_programa = ?", code).
+		Limit(1).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return false, fmt.Errorf("%w: código %s", ErrProgramNotFound, code)
+	}
+	return true, nil
 }
 
 // UpsertProgramSubprogramByCode inserta/actualiza por (codigo_programa, codigo_subprograma).
@@ -376,6 +399,130 @@ func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item
 		return false, err
 	}
 	return true, nil
+}
+
+// catalogProductUpsertColumns columnas actualizadas en ON CONFLICT (codigo_producto).
+var catalogProductUpsertColumns = []string{
+	"tenant_id", "sector", "nombre_sector", "codigo_programa", "nombre_programa",
+	"producto", "descripcion", "medido_a_traves_de", "codigo_indicador_producto",
+	"indicador_producto", "unidad_de_medida", "indicador_principal", "es_nacional",
+	"es_territorial", "ods", "meta_ods", "tipologia_general_suifp", "tipologia_d",
+	"tipologia_e", "tipologia_a_piip", "tipologia_b_piip", "tipologia_c_piip",
+	"tiene_edt", "edt",
+}
+
+const catalogProductBatchSize = 500
+
+// ProductBulkUpsertResult contadores de una importación masiva.
+type ProductBulkUpsertResult struct {
+	Inserted int
+	Updated  int
+}
+
+// LoadProgramCodeSet carga los códigos de programa existentes (una sola consulta).
+func (r *CatalogRepository) LoadProgramCodeSet(ctx context.Context) (map[string]struct{}, error) {
+	var codes []string
+	if err := r.db.WithContext(ctx).Model(&models.ProgramSubprogram{}).
+		Distinct("codigo_programa").
+		Pluck("codigo_programa", &codes).Error; err != nil {
+		return nil, fmt.Errorf("load program codes: %w", err)
+	}
+	set := make(map[string]struct{}, len(codes))
+	for _, c := range codes {
+		c = strings.TrimSpace(c)
+		if c != "" {
+			set[c] = struct{}{}
+		}
+	}
+	return set, nil
+}
+
+// ExistingProductCodes devuelve el subconjunto de códigos que ya existen en catalogo_productos.
+func (r *CatalogRepository) ExistingProductCodes(ctx context.Context, codes []string) (map[string]struct{}, error) {
+	set := make(map[string]struct{})
+	if len(codes) == 0 {
+		return set, nil
+	}
+	const chunk = 1000
+	for i := 0; i < len(codes); i += chunk {
+		end := i + chunk
+		if end > len(codes) {
+			end = len(codes)
+		}
+		var found []string
+		if err := r.db.WithContext(ctx).Model(&models.CatalogProduct{}).
+			Where("codigo_producto IN ?", codes[i:end]).
+			Pluck("codigo_producto", &found).Error; err != nil {
+			return nil, fmt.Errorf("existing product codes: %w", err)
+		}
+		for _, c := range found {
+			set[c] = struct{}{}
+		}
+	}
+	return set, nil
+}
+
+// BulkUpsertCatalogProducts inserta/actualiza productos en lotes con ON CONFLICT.
+// Deduplica por codigo_producto (gana la última aparición). No valida programas.
+func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items []models.CatalogProduct) (*ProductBulkUpsertResult, error) {
+	if len(items) == 0 {
+		return &ProductBulkUpsertResult{}, nil
+	}
+
+	// Última fila gana si el CSV trae códigos repetidos.
+	byCode := make(map[string]models.CatalogProduct, len(items))
+	order := make([]string, 0, len(items))
+	for _, it := range items {
+		code := strings.TrimSpace(it.CodigoProducto)
+		if code == "" {
+			continue
+		}
+		it.CodigoProducto = code
+		if _, seen := byCode[code]; !seen {
+			order = append(order, code)
+		}
+		byCode[code] = it
+	}
+
+	deduped := make([]models.CatalogProduct, 0, len(order))
+	codes := make([]string, 0, len(order))
+	now := time.Now().UTC()
+	for _, code := range order {
+		it := byCode[code]
+		if it.ID == uuid.Nil {
+			it.ID = uuid.New()
+		}
+		if it.CreatedAt.IsZero() {
+			it.CreatedAt = now
+		}
+		deduped = append(deduped, it)
+		codes = append(codes, code)
+	}
+
+	existing, err := r.ExistingProductCodes(ctx, codes)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "codigo_producto"}},
+			DoUpdates: clause.AssignmentColumns(catalogProductUpsertColumns),
+		}).
+		CreateInBatches(deduped, catalogProductBatchSize).Error; err != nil {
+		return nil, fmt.Errorf("bulk upsert catalog products: %w", err)
+	}
+
+	updated := 0
+	for _, code := range codes {
+		if _, ok := existing[code]; ok {
+			updated++
+		}
+	}
+	return &ProductBulkUpsertResult{
+		Inserted: len(codes) - updated,
+		Updated:  updated,
+	}, nil
 }
 
 // GetCatalogProductByID obtiene un producto del catálogo por UUID.

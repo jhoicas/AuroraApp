@@ -143,26 +143,26 @@ func ensureProjectsSchema(db *gorm.DB) {
 	execSchemaStatements(db, "ensure projects schema", statements)
 }
 
-// ensureSectorsSchema garantiza tabla sectores y columnas DNP (application, observations).
+// ensureSectorsSchema garantiza tabla sectores con columnas en español (codigo, nombre, etc.).
 func ensureSectorsSchema(db *gorm.DB) {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS sectores (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			code VARCHAR(50) NOT NULL,
-			name VARCHAR(255) NOT NULL,
-			application TEXT,
-			observations TEXT,
+			codigo VARCHAR(50) NOT NULL,
+			nombre VARCHAR(255) NOT NULL,
+			aplicacion TEXT,
+			observaciones TEXT,
 			created_at TIMESTAMPTZ,
 			updated_at TIMESTAMPTZ
 		)`,
-		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS code VARCHAR(50)`,
-		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS name VARCHAR(255)`,
-		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS application TEXT`,
-		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS observations TEXT`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS codigo VARCHAR(50)`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS nombre VARCHAR(255)`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS aplicacion TEXT`,
+		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS observaciones TEXT`,
 		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
 		`ALTER TABLE sectores ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_sectores_code ON sectores (code)`,
-		`CREATE INDEX IF NOT EXISTS idx_sectores_name ON sectores (name)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_sectores_codigo ON sectores (codigo)`,
+		`CREATE INDEX IF NOT EXISTS idx_sectores_nombre ON sectores (nombre)`,
 	}
 	execSchemaStatements(db, "ensure sectores schema", statements)
 }
@@ -222,11 +222,11 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 			ods TEXT,
 			meta_ods TEXT,
 			tipologia_general_suifp TEXT,
-			tipologia_d TEXT,
-			tipologia_e TEXT,
-			tipologia_a_piip TEXT,
-			tipologia_b_piip TEXT,
-			tipologia_c_piip TEXT,
+			tipologia_d BOOLEAN DEFAULT FALSE,
+			tipologia_e BOOLEAN DEFAULT FALSE,
+			tipologia_a_piip BOOLEAN DEFAULT FALSE,
+			tipologia_b_piip BOOLEAN DEFAULT FALSE,
+			tipologia_c_piip BOOLEAN DEFAULT FALSE,
 			tiene_edt BOOLEAN DEFAULT FALSE,
 			edt TEXT,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -249,14 +249,35 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS ods TEXT`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS meta_ods TEXT`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_general_suifp TEXT`,
-		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_d TEXT`,
-		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_e TEXT`,
-		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_a_piip TEXT`,
-		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_b_piip TEXT`,
-		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_c_piip TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_d BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_e BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_a_piip BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_b_piip BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_c_piip BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tiene_edt BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS edt TEXT`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		// Convierte tipologías legacy TEXT → BOOLEAN si aplica (idempotente ante fallo).
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_d TYPE boolean
+			USING (CASE WHEN lower(coalesce(tipologia_d::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_e TYPE boolean
+			USING (CASE WHEN lower(coalesce(tipologia_e::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_a_piip TYPE boolean
+			USING (CASE WHEN lower(coalesce(tipologia_a_piip::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_b_piip TYPE boolean
+			USING (CASE WHEN lower(coalesce(tipologia_b_piip::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_c_piip TYPE boolean
+			USING (CASE WHEN lower(coalesce(tipologia_c_piip::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
+		EXCEPTION WHEN others THEN NULL; END $$`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogo_productos_codigo ON catalogo_productos (codigo_producto)`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_programa ON catalogo_productos (codigo_programa)`,
 	}

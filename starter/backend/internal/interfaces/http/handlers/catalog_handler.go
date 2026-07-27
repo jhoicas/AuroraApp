@@ -368,7 +368,7 @@ func (h *CatalogHandler) ListProgramsBySector(c *fiber.Ctx) error {
 	var programs []models.Program
 	if err := h.db.WithContext(c.Context()).
 		Where("sector_id = ?", sectorID).
-		Order("code ASC").
+		Order("codigo_programa ASC").
 		Find(&programs).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list programs"})
 	}
@@ -442,14 +442,21 @@ func (h *CatalogHandler) CreateProduct(c *fiber.Ctx) error {
 	req.ODS = strings.TrimSpace(req.ODS)
 	req.MetaODS = strings.TrimSpace(req.MetaODS)
 	req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
-	req.TipologiaD = strings.TrimSpace(req.TipologiaD)
-	req.TipologiaE = strings.TrimSpace(req.TipologiaE)
-	req.TipologiaAPIIP = strings.TrimSpace(req.TipologiaAPIIP)
-	req.TipologiaBPIIP = strings.TrimSpace(req.TipologiaBPIIP)
-	req.TipologiaCPIIP = strings.TrimSpace(req.TipologiaCPIIP)
 	req.EDT = strings.TrimSpace(req.EDT)
 	if err := dto.Validate(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if _, err := h.repo.ProgramExistsByCode(c.Context(), req.CodigoPrograma); err != nil {
+		if errors.Is(err, postgres.ErrProgramNotFound) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El programa con código %s no existe en la base de datos. Por favor, créelo primero",
+					req.CodigoPrograma,
+				),
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify program"})
 	}
 
 	item := models.CatalogProduct{
@@ -509,14 +516,21 @@ func (h *CatalogHandler) UpdateProduct(c *fiber.Ctx) error {
 	req.ODS = strings.TrimSpace(req.ODS)
 	req.MetaODS = strings.TrimSpace(req.MetaODS)
 	req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
-	req.TipologiaD = strings.TrimSpace(req.TipologiaD)
-	req.TipologiaE = strings.TrimSpace(req.TipologiaE)
-	req.TipologiaAPIIP = strings.TrimSpace(req.TipologiaAPIIP)
-	req.TipologiaBPIIP = strings.TrimSpace(req.TipologiaBPIIP)
-	req.TipologiaCPIIP = strings.TrimSpace(req.TipologiaCPIIP)
 	req.EDT = strings.TrimSpace(req.EDT)
 	if err := dto.Validate(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if _, err := h.repo.ProgramExistsByCode(c.Context(), req.CodigoPrograma); err != nil {
+		if errors.Is(err, postgres.ErrProgramNotFound) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El programa con código %s no existe en la base de datos. Por favor, créelo primero",
+					req.CodigoPrograma,
+				),
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify program"})
 	}
 
 	item := models.CatalogProduct{
@@ -598,16 +612,44 @@ func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	inserted, updated, skipped := 0, 0, 0
+	programCodes, err := h.repo.LoadProgramCodeSet(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to load programs for import validation",
+			"details": err.Error(),
+		})
+	}
+
+	skipped := 0
+	toUpsert := make([]models.CatalogProduct, 0, len(rows))
 	for _, row := range rows {
-		if row.CodigoProducto == "" || row.Producto == "" {
+		if strings.TrimSpace(row.CodigoProducto) == "" || strings.TrimSpace(row.Producto) == "" {
 			skipped++
 			continue
 		}
-		item := models.CatalogProduct{
+		codigoPrograma := strings.TrimSpace(row.CodigoPrograma)
+		if codigoPrograma == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El producto «%s» no tiene código de programa. Cada producto debe pertenecer a un programa existente",
+					strings.TrimSpace(row.CodigoProducto),
+				),
+			})
+		}
+		if _, ok := programCodes[codigoPrograma]; !ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf(
+					"El programa con código %s no existe en la base de datos. Por favor, créelo primero (producto %s)",
+					codigoPrograma,
+					strings.TrimSpace(row.CodigoProducto),
+				),
+			})
+		}
+
+		toUpsert = append(toUpsert, models.CatalogProduct{
 			Sector:                  strings.TrimSpace(row.Sector),
 			NombreSector:            strings.TrimSpace(row.NombreSector),
-			CodigoPrograma:          strings.TrimSpace(row.CodigoPrograma),
+			CodigoPrograma:          codigoPrograma,
 			NombrePrograma:          strings.TrimSpace(row.NombrePrograma),
 			CodigoProducto:          strings.TrimSpace(row.CodigoProducto),
 			Producto:                strings.TrimSpace(row.Producto),
@@ -622,31 +664,29 @@ func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
 			ODS:                     strings.TrimSpace(row.ODS),
 			MetaODS:                 strings.TrimSpace(row.MetaODS),
 			TipologiaGeneralSUIFP:   strings.TrimSpace(row.TipologiaGeneralSUIFP),
-			TipologiaD:              strings.TrimSpace(row.TipologiaD),
-			TipologiaE:              strings.TrimSpace(row.TipologiaE),
-			TipologiaAPIIP:          strings.TrimSpace(row.TipologiaAPIIP),
-			TipologiaBPIIP:          strings.TrimSpace(row.TipologiaBPIIP),
-			TipologiaCPIIP:          strings.TrimSpace(row.TipologiaCPIIP),
+			TipologiaD:              row.TipologiaD,
+			TipologiaE:              row.TipologiaE,
+			TipologiaAPIIP:          row.TipologiaAPIIP,
+			TipologiaBPIIP:          row.TipologiaBPIIP,
+			TipologiaCPIIP:          row.TipologiaCPIIP,
 			TieneEDT:                row.TieneEDT,
 			EDT:                     strings.TrimSpace(row.EDT),
-		}
-		created, err := h.repo.UpsertCatalogProductByCode(c.Context(), &item)
-		if err != nil {
-			skipped++
-			continue
-		}
-		if created {
-			inserted++
-		} else {
-			updated++
-		}
+		})
+	}
+
+	result, err := h.repo.BulkUpsertCatalogProducts(c.Context(), toUpsert)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to import products",
+			"details": err.Error(),
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(dto.ProductImportResponse{
 		Status:          "success",
 		Message:         "Importación de productos procesada",
-		Inserted:        inserted,
-		Updated:         updated,
+		Inserted:        result.Inserted,
+		Updated:         result.Updated,
 		Skipped:         skipped,
 		TotalRowsParsed: len(rows),
 	})
@@ -669,8 +709,8 @@ func (h *CatalogHandler) SearchProducts(c *fiber.Ctx) error {
 	if q != "" {
 		pattern := "%" + escapeILIKE(q) + "%"
 		query = query.Where(
-			"(name ILIKE ? ESCAPE '\\' OR code ILIKE ? ESCAPE '\\' OR code_bpin ILIKE ? ESCAPE '\\')",
-			pattern, pattern, pattern,
+			"(producto ILIKE ? ESCAPE '\\' OR codigo_producto ILIKE ? ESCAPE '\\')",
+			pattern, pattern,
 		)
 	}
 
@@ -680,7 +720,7 @@ func (h *CatalogHandler) SearchProducts(c *fiber.Ctx) error {
 	}
 
 	products := make([]models.Product, 0)
-	if err := query.Order("code ASC").Limit(pageSize).Offset(offset).Find(&products).Error; err != nil {
+	if err := query.Order("codigo_producto ASC").Limit(pageSize).Offset(offset).Find(&products).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to search products"})
 	}
 

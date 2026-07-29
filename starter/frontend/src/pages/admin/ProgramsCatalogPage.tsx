@@ -7,6 +7,7 @@ import {
   type CatalogSector,
   type CreateProgramInput,
 } from '../../store/catalogStore';
+import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 
@@ -57,6 +58,7 @@ export default function ProgramsCatalogPage() {
   const clearError = useCatalogStore((s) => s.clearError);
 
   const [query, setQuery] = useState(initialQ);
+  useCopilotSearchSync('programs', setQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQ.trim());
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);

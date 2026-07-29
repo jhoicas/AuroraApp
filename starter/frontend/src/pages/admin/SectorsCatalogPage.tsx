@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import { useCatalogStore } from '../../store/catalogStore';
+import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 
@@ -23,6 +24,7 @@ export default function SectorsCatalogPage() {
   const clearError = useCatalogStore((s) => s.clearError);
 
   const [query, setQuery] = useState('');
+  useCopilotSearchSync('sectors', setQuery);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);

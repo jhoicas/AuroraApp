@@ -21,6 +21,8 @@ func AllModels() []any {
 		&AiKnowledgeNode{},
 		&AiKnowledgeLink{},
 		&AiUsageLog{},
+		&AiChatMessage{},
+		&ProjectEvaluation{},
 		&BudgetItem{},
 	}
 }

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.5",
+    "@types/react-window": "^1.8.8",
     "autoprefixer": "^10.5.3",
     "axios": "^1.18.1",
     "lucide-react": "^1.24.0",
@@ -20,6 +21,8 @@
     "react-dropzone": "^14.2.3",
     "react-force-graph-2d": "^1.29.1",
     "react-router-dom": "^7.18.1",
+    "react-window": "^2.3.0",
+    "recharts": "^3.10.1",
     "tailwindcss": "^3.4.17",
     "zustand": "^5.0.14"
   },

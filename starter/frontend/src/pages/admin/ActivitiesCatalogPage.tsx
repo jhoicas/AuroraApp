@@ -3,6 +3,7 @@ import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import ActivityDetailModal from '../../components/admin/ActivityDetailModal';
 import { useCatalogStore, type CatalogActivity } from '../../store/catalogStore';
+import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 
@@ -21,6 +22,7 @@ export default function ActivitiesCatalogPage() {
   const clearError = useCatalogStore((s) => s.clearError);
 
   const [query, setQuery] = useState('');
+  useCopilotSearchSync('activities', setQuery);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);

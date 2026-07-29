@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import CreateProjectModal from '../../components/Tenant/CreateProjectModal';
 import { useAuth } from '../../context/AuthContext';
 import { useProjectStore } from '../../store/projectStore';
@@ -35,13 +45,32 @@ export default function ProjectsDashboard() {
   const isLoading = useProjectStore((s) => s.isLoading);
   const error = useProjectStore((s) => s.error);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const evaluationSummary = useProjectStore((s) => s.evaluationSummary);
+  const fetchEvaluationSummary = useProjectStore((s) => s.fetchEvaluationSummary);
   const clearError = useProjectStore((s) => s.clearError);
 
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     void fetchProjects();
-  }, [fetchProjects]);
+    void fetchEvaluationSummary();
+  }, [fetchProjects, fetchEvaluationSummary]);
+
+  const chartData = useMemo(() => {
+    return evaluationSummary.map((item) => {
+      const project = projects.find((p) => p.id === item.project_id);
+      const label = project?.name
+        ? project.name.length > 18
+          ? `${project.name.slice(0, 18)}…`
+          : project.name
+        : item.alternative_name.slice(0, 18);
+      return {
+        name: label,
+        vpn: Math.round(item.vpn),
+        tir: item.tir != null ? Math.round(item.tir * 10000) / 100 : 0,
+      };
+    });
+  }, [evaluationSummary, projects]);
 
   const stats = useMemo(() => {
     const active = projects.filter((p) =>
@@ -105,6 +134,34 @@ export default function ProjectsDashboard() {
           </div>
         ))}
       </div>
+
+      {chartData.length > 0 && (
+        <section className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Indicadores financieros (motor Go)</h3>
+          <p className="text-sm text-gray-500 mb-4">VPN y TIR (%) de la última evaluación por proyecto.</p>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="vpn" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="tir" orientation="right" tick={{ fontSize: 11 }} unit="%" />
+                <Tooltip
+                  formatter={(value, name) => {
+                    const num = typeof value === 'number' ? value : Number(value ?? 0);
+                    return name === 'tir'
+                      ? [`${num}%`, 'TIR']
+                      : [num.toLocaleString('es-CO'), 'VPN'];
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="vpn" dataKey="vpn" name="VPN" fill="#006162" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="tir" dataKey="tir" name="TIR (%)" fill="#2c7a7b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
 
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Proyectos en formulación</h3>
 

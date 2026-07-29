@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
 import AuroraCopilot from '../components/AuroraCopilot/AuroraCopilot';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
@@ -159,7 +160,9 @@ export default function SuperAdminLayout() {
           </div>
         </header>
         <div className="p-6">
-          <Outlet />
+          <ErrorBoundary fallbackTitle="Error en el panel de administración">
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
       <AuroraCopilot />

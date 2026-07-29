@@ -202,10 +202,9 @@ func (h *AITelemetryHandler) LogTelemetry(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
 	}
-
-	action := strings.TrimSpace(req.Action)
-	if action == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "action is required"})
+	req.Action = strings.TrimSpace(req.Action)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
@@ -215,7 +214,7 @@ func (h *AITelemetryHandler) LogTelemetry(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid user"})
 	}
 
-	h.telemetry.LogAsync(userID, role, action)
+	h.telemetry.LogAsync(userID, role, req.Action)
 	return c.JSON(fiber.Map{"ok": true})
 }
 

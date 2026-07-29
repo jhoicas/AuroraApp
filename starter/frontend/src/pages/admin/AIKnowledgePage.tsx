@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ForceGraphMethods } from 'react-force-graph-2d';
 import { useDropzone } from 'react-dropzone';
+import AiAuditPanel from '../../components/admin/AiAuditPanel';
 import {
   nodeTypeColors,
   nodeTypeLabels,
@@ -10,7 +12,7 @@ import {
 
 const ForceGraph2D = lazy(() => import('react-force-graph-2d'));
 
-type GraphDatum = KnowledgeGraphNode & { color: string; val: number };
+type GraphDatum = KnowledgeGraphNode & { color: string; val: number; x?: number; y?: number };
 
 export default function AIKnowledgePage() {
   const {
@@ -26,7 +28,7 @@ export default function AIKnowledgePage() {
 
   const [selectedNode, setSelectedNode] = useState<KnowledgeGraphNode | null>(null);
   const [hoverNode, setHoverNode] = useState<KnowledgeGraphNode | null>(null);
-  const graphRef = useRef<{ zoomToFit?: (ms?: number, padding?: number) => void } | null>(null);
+  const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -307,6 +309,8 @@ export default function AIKnowledgePage() {
           )}
         </section>
       </div>
+
+      <AiAuditPanel />
     </div>
   );
 }

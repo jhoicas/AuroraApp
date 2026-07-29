@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
 
 export type KnowledgeIngestSummary = {
@@ -47,6 +48,14 @@ type AiKnowledgeState = {
   clearError: () => void;
 };
 
+function extractError(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    return (err.response?.data as { error?: string } | undefined)?.error || fallback;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export const useAiKnowledgeStore = create<AiKnowledgeState>((set, get) => ({
   graph: null,
   lastIngest: null,
@@ -71,12 +80,7 @@ export const useAiKnowledgeStore = create<AiKnowledgeState>((set, get) => ({
       set({ graph: data, loadingGraph: false });
       void get().logTelemetry('view_graph');
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-            'No se pudo cargar el grafo de conocimiento';
-      set({ loadingGraph: false, error: message });
+      set({ loadingGraph: false, error: extractError(err, 'No se pudo cargar el grafo de conocimiento') });
     }
   },
 
@@ -93,11 +97,7 @@ export const useAiKnowledgeStore = create<AiKnowledgeState>((set, get) => ({
       await get().fetchGraph();
       return data;
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-            'Error al ingerir el XML MGA';
+      const message = extractError(err, 'Error al ingerir el XML MGA');
       set({ ingesting: false, error: message });
       throw new Error(message);
     }

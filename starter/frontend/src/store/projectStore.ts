@@ -46,6 +46,27 @@ export type CreateBudgetItemPayload = {
   product_id?: string;
 };
 
+export type EvaluationSummaryItem = {
+  project_id: string;
+  alternative_name: string;
+  vpn: number;
+  tir?: number | null;
+  created_at: string;
+};
+
+export type EvaluationResult = {
+  alternative_name: string;
+  discount_rate: number;
+  cash_flows: number[];
+  vpn: number;
+  tir?: number | null;
+};
+
+export type EvaluateProjectPayload = {
+  discount_rate: number;
+  alternatives: { name: string; cash_flows: number[] }[];
+};
+
 type PaginatedProjects = {
   data: Project[];
   page: number;
@@ -58,6 +79,7 @@ type ProjectState = {
   projects: Project[];
   currentProject: Project | null;
   budget: BudgetItem[];
+  evaluationSummary: EvaluationSummaryItem[];
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
@@ -68,6 +90,8 @@ type ProjectState = {
   fetchBudget: (projectId: string) => Promise<void>;
   addBudgetItem: (projectId: string, data: CreateBudgetItemPayload) => Promise<BudgetItem>;
   deleteBudgetItem: (projectId: string, itemId: string) => Promise<void>;
+  fetchEvaluationSummary: (limit?: number) => Promise<void>;
+  evaluateProject: (projectId: string, payload: EvaluateProjectPayload) => Promise<EvaluationResult[]>;
   clearError: () => void;
   clearCurrentProject: () => void;
 };
@@ -84,6 +108,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   currentProject: null,
   budget: [],
+  evaluationSummary: [],
   isLoading: false,
   isSaving: false,
   error: null,
@@ -210,6 +235,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch (err) {
       const message = extractError(err, 'No se pudo eliminar el ítem');
       set({ error: message });
+      throw new Error(message);
+    }
+  },
+
+  fetchEvaluationSummary: async (limit = 20) => {
+    try {
+      const { data } = await api.get<{ data: EvaluationSummaryItem[] }>('/projects/evaluations/summary', {
+        params: { limit },
+      });
+      set({ evaluationSummary: data.data ?? [] });
+    } catch (err) {
+      set({ error: extractError(err, 'No se pudo cargar el resumen de evaluaciones') });
+    }
+  },
+
+  evaluateProject: async (projectId, payload) => {
+    set({ isSaving: true, error: null });
+    try {
+      const { data } = await api.post<{ evaluations: EvaluationResult[] }>(
+        `/projects/${projectId}/evaluate`,
+        payload,
+      );
+      const results = data.evaluations ?? [];
+      await get().fetchEvaluationSummary();
+      set({ isSaving: false });
+      return results;
+    } catch (err) {
+      const message = extractError(err, 'No se pudo evaluar el proyecto');
+      set({ isSaving: false, error: message });
       throw new Error(message);
     }
   },

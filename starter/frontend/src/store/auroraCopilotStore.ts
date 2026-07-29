@@ -22,6 +22,9 @@ type AuroraChatResponse = {
   reply: string;
   action_cards: ActionCardPayload[];
   model: string;
+  session_id: string;
+  user_message_id: string;
+  assistant_message_id: string;
 };
 
 type AuroraCopilotState = {
@@ -29,15 +32,21 @@ type AuroraCopilotState = {
   messages: CopilotMessage[];
   isTyping: boolean;
   error: string | null;
+  sessionId: string | null;
+  abortController: AbortController | null;
   toggleOpen: () => void;
   open: () => void;
   close: () => void;
   sendMessage: (message: string, routeContext: string) => Promise<void>;
+  cancelGeneration: () => void;
   clearError: () => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
+    if (err.code === 'ERR_CANCELED') {
+      return 'Generación cancelada.';
+    }
     return (err.response?.data as { error?: string } | undefined)?.error || fallback;
   }
   return fallback;
@@ -48,16 +57,30 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   messages: [],
   isTyping: false,
   error: null,
+  sessionId: null,
+  abortController: null,
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen, error: null })),
   open: () => set({ isOpen: true, error: null }),
   close: () => set({ isOpen: false }),
+
   clearError: () => set({ error: null }),
+
+  cancelGeneration: () => {
+    const controller = get().abortController;
+    if (controller) {
+      controller.abort();
+    }
+    set({ isTyping: false, abortController: null });
+  },
 
   sendMessage: async (message, routeContext) => {
     const trimmed = message.trim();
     if (!trimmed) return;
 
+    get().abortController?.abort();
+
+    const controller = new AbortController();
     const userMsg: CopilotMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -68,16 +91,23 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       messages: [...get().messages, userMsg],
       isTyping: true,
       error: null,
+      abortController: controller,
     });
 
     try {
-      const { data } = await api.post<AuroraChatResponse>('/ai/aurora/chat', {
-        message: trimmed,
-        route_context: routeContext,
-      });
+      const sessionId = get().sessionId;
+      const { data } = await api.post<AuroraChatResponse>(
+        '/ai/aurora/chat',
+        {
+          message: trimmed,
+          route_context: routeContext,
+          ...(sessionId ? { session_id: sessionId } : {}),
+        },
+        { signal: controller.signal },
+      );
 
       const assistantMsg: CopilotMessage = {
-        id: `assistant-${Date.now()}`,
+        id: data.assistant_message_id || `assistant-${Date.now()}`,
         role: 'assistant',
         content: data.reply,
         actionCards: (data.action_cards ?? []).map((c) => ({
@@ -91,10 +121,17 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       set({
         messages: [...get().messages, assistantMsg],
         isTyping: false,
+        sessionId: data.session_id,
+        abortController: null,
       });
     } catch (err) {
+      if (isAxiosError(err) && err.code === 'ERR_CANCELED') {
+        set({ isTyping: false, abortController: null });
+        return;
+      }
       set({
         isTyping: false,
+        abortController: null,
         error: extractError(err, 'Aurora no pudo responder. Verifica tu conexión o la API key de Anthropic.'),
       });
     }

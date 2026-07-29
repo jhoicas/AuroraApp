@@ -11,6 +11,7 @@ import {
   api,
   clearStoredToken,
   getStoredToken,
+  setStoredRefreshToken,
   setStoredToken,
   setUnauthorizedHandler,
 } from '../lib/api';
@@ -26,6 +27,7 @@ export type AuthUser = {
 
 type LoginResponse = {
   token: string;
+  refresh_token?: string;
   user: AuthUser;
 };
 
@@ -90,6 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const user = canonicalizeUser(data.user);
     setStoredToken(data.token);
+    if (data.refresh_token) {
+      setStoredRefreshToken(data.refresh_token);
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setToken(data.token);
     setUser(user);

@@ -53,8 +53,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	claims := httpmw.Claims{
-		UserID: user.ID.String(),
-		Role:   strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+		UserID:    user.ID.String(),
+		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
@@ -72,6 +73,19 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue token"})
 	}
 
+	refreshClaims := claims
+	refreshClaims.TokenType = "refresh"
+	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		Subject:   user.ID.String(),
+	}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshSigned, err := refreshToken.SignedString([]byte(h.jwtSecret))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue refresh token"})
+	}
+
 	var tenantID *string
 	if user.TenantID != nil {
 		s := user.TenantID.String()
@@ -79,7 +93,8 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(dto.LoginResponse{
-		Token: signed,
+		Token:        signed,
+		RefreshToken: refreshSigned,
 		User: dto.LoginUserResponse{
 			ID:       user.ID.String(),
 			Email:    user.Email,
@@ -188,5 +203,70 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		Message:  "Institución registrada correctamente. Ya puede iniciar sesión.",
 		TenantID: tenant.ID.String(),
 		Email:    user.Email,
+	})
+}
+
+func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
+	var req dto.RefreshTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	req.RefreshToken = strings.TrimSpace(req.RefreshToken)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	claims, err := httpmw.ParseRefreshClaims(h.jwtSecret, req.RefreshToken)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+	}
+
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+	}
+
+	var user models.User
+	if err := h.db.WithContext(c.Context()).Preload("Role").Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "user not found"})
+	}
+
+	accessClaims := httpmw.Claims{
+		UserID:    user.ID.String(),
+		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+		TokenType: "access",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			Subject:   user.ID.String(),
+		},
+	}
+	if user.TenantID != nil {
+		tid := user.TenantID.String()
+		accessClaims.TenantID = &tid
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	signed, err := accessToken.SignedString([]byte(h.jwtSecret))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue token"})
+	}
+
+	refreshClaims := accessClaims
+	refreshClaims.TokenType = "refresh"
+	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		Subject:   user.ID.String(),
+	}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshSigned, err := refreshToken.SignedString([]byte(h.jwtSecret))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue refresh token"})
+	}
+
+	return c.JSON(dto.RefreshTokenResponse{
+		Token:        signed,
+		RefreshToken: refreshSigned,
 	})
 }

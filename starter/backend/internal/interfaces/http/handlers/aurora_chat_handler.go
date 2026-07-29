@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -20,6 +21,7 @@ import (
 type AuroraChatHandler struct {
 	db        *gorm.DB
 	repo      *postgres.AiKnowledgeRepository
+	chatRepo  *postgres.AiChatRepository
 	embedder  services.EmbeddingProvider
 	anthropic *llm.AnthropicClient
 	telemetry *services.TelemetryService
@@ -29,13 +31,14 @@ func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.T
 	return &AuroraChatHandler{
 		db:        db,
 		repo:      postgres.NewAiKnowledgeRepository(db),
+		chatRepo:  postgres.NewAiChatRepository(db),
 		embedder:  services.NewEmbeddingProvider(cfg),
 		anthropic: llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
 		telemetry: telemetry,
 	}
 }
 
-// Chat POST /api/v1/ai/aurora/chat — Aurora Copilot con Anthropic + RAG MGA.
+// Chat POST /api/v1/ai/aurora/chat — Anthropic + RAG + persistencia transaccional.
 func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
 	role, _ := c.Locals(httpmw.LocalsRole).(string)
@@ -49,8 +52,22 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
 	}
 	req.Message = strings.TrimSpace(req.Message)
-	if req.Message == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "message is required"})
+	req.RouteContext = strings.TrimSpace(req.RouteContext)
+	req.SessionID = strings.TrimSpace(req.SessionID)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	sessionID := req.SessionID
+	if sessionID == "" {
+		sessionID = uuid.New().String()
+	}
+
+	var tenantID *uuid.UUID
+	if tidRaw, _ := c.Locals(httpmw.LocalsTenantID).(string); tidRaw != "" {
+		if tid, err := uuid.Parse(tidRaw); err == nil {
+			tenantID = &tid
+		}
 	}
 
 	ragContext := h.buildRAGContext(c, req.Message)
@@ -66,6 +83,23 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	}
 
 	reply, cards := parseAuroraResponse(raw)
+	cardsJSON, _ := json.Marshal(cards)
+
+	userMsg := postgres.NewChatMessage(
+		userID, tenantID, sessionID,
+		models.ChatRoleUser, req.Message, "", "[]", req.RouteContext,
+	)
+	assistantMsg := postgres.NewChatMessage(
+		userID, tenantID, sessionID,
+		models.ChatRoleAssistant, reply, h.anthropic.Model(), string(cardsJSON), req.RouteContext,
+	)
+
+	if err := h.chatRepo.SavePair(c.Context(), postgres.ChatMessagePair{
+		User:      userMsg,
+		Assistant: assistantMsg,
+	}); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to persist chat history"})
+	}
 
 	if h.telemetry != nil {
 		h.telemetry.LogAsync(userID, role, models.TelemetryAskCopilot)
@@ -75,6 +109,9 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 		Reply:       reply,
 		ActionCards: cards,
 		Model:       h.anthropic.Model(),
+		SessionID:   sessionID,
+		UserMsgID:   userMsg.ID.String(),
+		AssistantID: assistantMsg.ID.String(),
 	})
 }
 
@@ -83,7 +120,7 @@ func (h *AuroraChatHandler) buildRAGContext(c *fiber.Ctx, query string) string {
 	if err != nil {
 		return ""
 	}
-	nodes, err := h.repo.SearchSimilar(c.Context(), vec, 4)
+	nodes, err := h.repo.SearchSimilar(c.Context(), vec, 6)
 	if err != nil || len(nodes) == 0 {
 		return ""
 	}

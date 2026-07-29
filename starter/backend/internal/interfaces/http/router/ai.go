@@ -42,4 +42,12 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	)
 	knowledge.Post("/ingest", kh.IngestKnowledge)
 	knowledge.Get("/graph", kh.GetKnowledgeGraph)
+
+	audit := app.Group("/api/v1/ai/audit",
+		httpmw.RequireAuth(cfg.JWTSecret),
+		httpmw.RequireRole("SUPER_ADMIN"),
+	)
+	ah := handlers.NewAIAuditHandler(db)
+	audit.Get("/usage", ah.ListUsageLogs)
+	audit.Get("/chat", ah.ListChatMessages)
 }

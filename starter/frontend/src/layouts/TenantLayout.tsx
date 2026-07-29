@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
@@ -59,7 +60,9 @@ export default function TenantLayout() {
           <div className="text-sm text-gray-600">{user?.full_name || user?.email}</div>
         </header>
         <div className="p-6 print:p-0 print:m-0 print:w-full">
-          <Outlet />
+          <ErrorBoundary fallbackTitle="Error en el espacio de trabajo">
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

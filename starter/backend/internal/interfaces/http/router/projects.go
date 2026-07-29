@@ -11,6 +11,7 @@ import (
 func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	ph := handlers.NewProjectHandler(db)
 	bh := handlers.NewBudgetHandler(db)
+	eh := handlers.NewProjectEvaluationHandler(db)
 
 	projects := app.Group("/api/v1/projects",
 		httpmw.RequireAuth(jwtSecret),
@@ -19,8 +20,11 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 
 	projects.Post("/", ph.Create)
 	projects.Get("/", ph.List)
+	projects.Get("/evaluations/summary", eh.ListTenantEvaluations)
 	projects.Get("/:id", ph.GetByID)
 	projects.Patch("/:id/details", ph.UpdateDetails)
+	projects.Post("/:id/evaluate", eh.Evaluate)
+	projects.Get("/:id/evaluations", eh.ListEvaluations)
 
 	projects.Post("/:id/budget", bh.Create)
 	projects.Get("/:id/budget", bh.List)

@@ -11,4 +11,5 @@ func RegisterAuthRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	h := handlers.NewAuthHandler(db, jwtSecret)
 	app.Post("/api/v1/auth/login", h.Login)
 	app.Post("/api/v1/auth/register", h.Register)
+	app.Post("/api/v1/auth/refresh", h.Refresh)
 }

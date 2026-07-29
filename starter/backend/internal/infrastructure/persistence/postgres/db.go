@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"aurora-backend/internal/domain/models"
 
@@ -34,6 +35,15 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}
 
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("sql db handle: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(20)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	log.Println("PostgreSQL connection pool: maxOpen=100 maxIdle=20 maxLifetime=1h")
+
 	reconcileTenantUniqueConstraints(db)
 
 	if err := autoMigrateSafe(db); err != nil {
@@ -63,6 +73,12 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.AiUsageLog{}); err != nil {
 		log.Printf("automigrate AiUsageLog: %v", err)
 	}
+	if err := db.AutoMigrate(&models.AiChatMessage{}); err != nil {
+		log.Printf("automigrate AiChatMessage: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ProjectEvaluation{}); err != nil {
+		log.Printf("automigrate ProjectEvaluation: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -77,6 +93,8 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureAiKnowledgeSchema(db)
 	ensureAiKnowledgeLinksSchema(db)
 	ensureAiUsageLogsSchema(db)
+	ensureAiChatMessagesSchema(db)
+	ensureProjectEvaluationsSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -674,6 +692,8 @@ func ensureAiKnowledgeSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_project_key ON ai_knowledge_nodes (project_key)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_node_type ON ai_knowledge_nodes (node_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_created_at ON ai_knowledge_nodes (created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_embedding_hnsw
+			ON ai_knowledge_nodes USING hnsw (embedding vector_cosine_ops)`,
 	}
 	execSchemaStatements(db, "ensure ai_knowledge schema", statements)
 
@@ -753,6 +773,52 @@ func ensureAiUsageLogsSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_created ON ai_usage_logs (created_at)`,
 	}
 	execSchemaStatements(db, "ensure ai_usage_logs schema", statements)
+}
+
+func ensureAiChatMessagesSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS ai_chat_messages (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			tenant_id UUID,
+			session_id VARCHAR(64) NOT NULL,
+			role VARCHAR(20) NOT NULL,
+			content TEXT NOT NULL,
+			model VARCHAR(100),
+			action_cards JSONB DEFAULT '[]',
+			route_context VARCHAR(500),
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		log.Printf("ensure ai_chat_messages schema: %v", err)
+	}
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user ON ai_chat_messages (user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session ON ai_chat_messages (session_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_created ON ai_chat_messages (created_at DESC)`,
+	}
+	execSchemaStatements(db, "ensure ai_chat_messages schema", statements)
+}
+
+func ensureProjectEvaluationsSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS project_evaluations (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			project_id UUID NOT NULL,
+			tenant_id UUID NOT NULL,
+			alternative_name VARCHAR(255) NOT NULL,
+			discount_rate DOUBLE PRECISION NOT NULL,
+			cash_flows JSONB NOT NULL,
+			vpn DOUBLE PRECISION NOT NULL,
+			tir DOUBLE PRECISION,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		log.Printf("ensure project_evaluations schema: %v", err)
+	}
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_project_evaluations_project ON project_evaluations (project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_evaluations_tenant ON project_evaluations (tenant_id)`,
+	}
+	execSchemaStatements(db, "ensure project_evaluations schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

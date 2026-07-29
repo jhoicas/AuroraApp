@@ -3,6 +3,7 @@ import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import DeliverableDetailModal from '../../components/admin/DeliverableDetailModal';
 import { useCatalogStore, type CatalogDeliverable } from '../../store/catalogStore';
+import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 
@@ -21,6 +22,7 @@ export default function DeliverablesCatalogPage() {
   const clearError = useCatalogStore((s) => s.clearError);
 
   const [query, setQuery] = useState('');
+  useCopilotSearchSync('deliverables', setQuery);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);

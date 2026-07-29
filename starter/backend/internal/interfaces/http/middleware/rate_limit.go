@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 )
 
 // RateLimitPerUser limita peticiones por usuario JWT (fallback: IP).
-// limit = peticiones por minuto permitidas.
 func RateLimitPerUser(perMinute int) fiber.Handler {
 	if perMinute < 1 {
 		perMinute = 10
@@ -40,7 +40,7 @@ func RateLimitPerUser(perMinute int) fiber.Handler {
 
 		if !getLimiter(key).Allow() {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
-				"error": "rate limit exceeded: max 10 requests per minute",
+				"error": fmt.Sprintf("rate limit exceeded: max %d requests per minute", perMinute),
 			})
 		}
 		return c.Next()

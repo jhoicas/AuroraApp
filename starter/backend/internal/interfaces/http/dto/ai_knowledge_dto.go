@@ -33,7 +33,3 @@ type KnowledgeGraphResponse struct {
 	Nodes []KnowledgeGraphNode `json:"nodes"`
 	Links []KnowledgeGraphLink `json:"links"`
 }
-
-type TelemetryLogRequest struct {
-	Action string `json:"action"`
-}

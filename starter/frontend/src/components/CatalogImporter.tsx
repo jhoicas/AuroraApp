@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { CheckCircle2, Download, FileSpreadsheet, LoaderCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, LoaderCircle } from 'lucide-react';
 import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
-import type { CatalogImportResult } from '../store/catalogStore';
+import type { CatalogImportResult, CatalogImportRowError } from '../store/catalogStore';
 
 type CatalogSummary = {
   status?: string;
@@ -19,6 +19,8 @@ type CatalogSummary = {
   updated?: number;
   skipped?: number;
   total_rows_parsed?: number;
+  errors?: CatalogImportRowError[];
+  details?: CatalogImportRowError[] | string;
 };
 
 type CatalogImporterProps = {
@@ -96,11 +98,47 @@ export function downloadProductTemplate(): void {
 
 function extractUploadError(err: unknown): string {
   if (isAxiosError(err)) {
-    const msg = (err.response?.data as { error?: string } | undefined)?.error;
-    return msg || err.message || 'No se pudo importar el archivo';
+    const data = err.response?.data as
+      | { error?: string; details?: string | CatalogImportRowError[] }
+      | undefined;
+    if (data?.error) return data.error;
+    if (typeof data?.details === 'string' && data.details.trim()) return data.details;
+    return err.message || 'No se pudo importar el archivo';
   }
   if (err instanceof Error) return err.message;
   return 'No se pudo importar el archivo';
+}
+
+function extractImportRowErrors(
+  data: CatalogImportResult | CatalogSummary | null | undefined,
+): CatalogImportRowError[] {
+  if (!data) return [];
+
+  if (Array.isArray(data.errors) && data.errors.length > 0) {
+    return data.errors.filter((item) => Boolean(item?.message?.trim()));
+  }
+
+  if (Array.isArray(data.details)) {
+    return data.details.filter((item) => Boolean(item?.message?.trim()));
+  }
+
+  if (typeof data.details === 'string' && data.details.trim()) {
+    return [{ message: data.details.trim() }];
+  }
+
+  return [];
+}
+
+function formatImportRowError(item: CatalogImportRowError, index: number): string {
+  const parts: string[] = [];
+  if (item.row != null && item.row > 0) {
+    parts.push(`Fila ${item.row}`);
+  }
+  if (item.codigo_producto?.trim()) {
+    parts.push(`Código ${item.codigo_producto.trim()}`);
+  }
+  const prefix = parts.length > 0 ? `${parts.join(' · ')}: ` : `Registro ${index + 1}: `;
+  return `${prefix}${item.message}`;
 }
 
 export default function CatalogImporter({
@@ -116,6 +154,7 @@ export default function CatalogImporter({
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<CatalogSummary | null>(null);
+  const [importErrors, setImportErrors] = useState<CatalogImportRowError[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const uploadCatalog = async (selectedFile?: File | null) => {
@@ -132,6 +171,7 @@ export default function CatalogImporter({
     );
     setIsProcessing(true);
     setSummary(null);
+    setImportErrors([]);
     setError(null);
 
     try {
@@ -140,6 +180,7 @@ export default function CatalogImporter({
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000,
         });
+        const rowErrors = extractImportRowErrors(data);
         setSummary({
           status: data.status,
           message: data.message,
@@ -148,7 +189,9 @@ export default function CatalogImporter({
           skipped: data.skipped,
           total_rows_parsed: data.total_rows_parsed,
           productos_inserted: data.inserted,
+          errors: rowErrors,
         });
+        setImportErrors(rowErrors);
         setStatus(
           `${data.message}: ${data.inserted} nuevos, ${data.updated} actualizados, ${data.skipped} omitidos.`,
         );
@@ -162,13 +205,20 @@ export default function CatalogImporter({
         if (!response.ok) {
           throw new Error(data.message || 'No se pudo importar el catálogo');
         }
+        const rowErrors = extractImportRowErrors(data);
         setSummary(data);
+        setImportErrors(rowErrors);
         setStatus(data.message || 'Catálogo actualizado correctamente');
         onImported?.(data);
       }
     } catch (err) {
       const msg = extractUploadError(err);
+      const rowErrors =
+        isAxiosError(err) && err.response?.data
+          ? extractImportRowErrors(err.response.data as CatalogSummary)
+          : [{ message: msg }];
       setError(msg);
+      setImportErrors(rowErrors);
       setStatus(msg);
     } finally {
       setIsProcessing(false);
@@ -287,6 +337,40 @@ export default function CatalogImporter({
             </div>
             <div className="mt-2 text-2xl font-semibold text-slate-800">{summary.skipped ?? 0}</div>
           </div>
+        </div>
+      )}
+
+      {importErrors.length > 0 && (
+        <div
+          className={`mt-4 rounded-2xl border p-4 ${
+            error ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'
+          }`}
+        >
+          <div
+            className={`flex items-center gap-2 text-sm font-semibold ${
+              error ? 'text-red-800' : 'text-amber-800'
+            }`}
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Detalle de Errores
+            <span className="font-normal">({importErrors.length})</span>
+          </div>
+          <p className={`mt-1 text-sm ${error ? 'text-red-700' : 'text-amber-700'}`}>
+            {error
+              ? 'La importación no se completó. Revise los registros señalados:'
+              : 'Algunas filas fueron omitidas o requieren corrección:'}
+          </p>
+          <ul
+            className={`mt-3 max-h-64 overflow-y-auto rounded-xl border bg-white/80 text-sm divide-y ${
+              error ? 'border-red-100 divide-red-100 text-red-700' : 'border-amber-100 divide-amber-100 text-amber-800'
+            }`}
+          >
+            {importErrors.map((item, index) => (
+              <li key={`${item.row ?? 'row'}-${item.codigo_producto ?? 'code'}-${index}`} className="px-3 py-2">
+                {formatImportRowError(item, index)}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

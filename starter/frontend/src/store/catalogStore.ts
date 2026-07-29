@@ -142,6 +142,12 @@ type PaginatedProducts = {
   q: string;
 };
 
+export type CatalogImportRowError = {
+  row?: number;
+  codigo_producto?: string;
+  message: string;
+};
+
 export type CatalogImportResult = {
   status: string;
   message: string;
@@ -149,6 +155,8 @@ export type CatalogImportResult = {
   updated: number;
   skipped: number;
   total_rows_parsed: number;
+  errors?: CatalogImportRowError[];
+  details?: CatalogImportRowError[] | string;
 };
 
 export type CreateSectorInput = {

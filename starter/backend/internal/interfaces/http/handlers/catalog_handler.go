@@ -597,12 +597,12 @@ func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
 	defer src.Close()
 
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-	var rows []postgres.ProductImportRow
+	var parsed *postgres.ProductParseResult
 	switch ext {
 	case ".xlsx", ".xls":
-		rows, err = postgres.ParseProductsFromXLSX(src)
+		parsed, err = postgres.ParseProductsFromXLSX(src)
 	case ".csv":
-		rows, err = postgres.ParseProductsFromCSV(src)
+		parsed, err = postgres.ParseProductsFromCSV(src)
 	default:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "unsupported file type; use .xlsx or .csv",
@@ -621,38 +621,93 @@ func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
 	}
 
 	skipped := 0
-	toUpsert := make([]models.CatalogProduct, 0, len(rows))
-	for _, row := range rows {
-		if strings.TrimSpace(row.CodigoProducto) == "" || strings.TrimSpace(row.Producto) == "" {
+	importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+	for _, pe := range parsed.Errors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Row:            pe.Row,
+			CodigoProducto: pe.CodigoProducto,
+			Message:        pe.Message,
+		})
+	}
+
+	toUpsert := make([]models.CatalogProduct, 0, len(parsed.Rows))
+	for _, row := range parsed.Rows {
+		rowNum := row.SourceRow
+		if rowNum <= 0 {
+			rowNum = 0
+		}
+		codigoProducto := strings.TrimSpace(row.CodigoProducto)
+		nombreProducto := strings.TrimSpace(row.Producto)
+		if codigoProducto == "" || nombreProducto == "" {
 			skipped++
+			var msg string
+			switch {
+			case codigoProducto == "" && nombreProducto == "":
+				msg = "Fila vacía: se requieren código y nombre de producto"
+			case codigoProducto == "":
+				msg = "Falta código de producto"
+			default:
+				msg = "Falta nombre de producto"
+			}
+			importErrors = append(importErrors, dto.ImportRowError{
+				Row:            rowNum,
+				CodigoProducto: codigoProducto,
+				Message:        msg,
+			})
 			continue
 		}
+
 		codigoPrograma := strings.TrimSpace(row.CodigoPrograma)
+		nombrePrograma := strings.TrimSpace(row.NombrePrograma)
 		if codigoPrograma == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf(
-					"El producto «%s» no tiene código de programa. Cada producto debe pertenecer a un programa existente",
-					strings.TrimSpace(row.CodigoProducto),
-				),
+			skipped++
+			importErrors = append(importErrors, dto.ImportRowError{
+				Row:            rowNum,
+				CodigoProducto: codigoProducto,
+				Message:        "Falta código de programa (columna índice 2: Código del Programa)",
 			})
+			continue
+		}
+		if len(codigoPrograma) > 15 {
+			skipped++
+			importErrors = append(importErrors, dto.ImportRowError{
+				Row:            rowNum,
+				CodigoProducto: codigoProducto,
+				Message:        "Estructura de columnas inválida o código mal formado",
+			})
+			continue
+		}
+		if len(codigoProducto) > 50 {
+			skipped++
+			importErrors = append(importErrors, dto.ImportRowError{
+				Row:            rowNum,
+				CodigoProducto: codigoProducto[:50] + "…",
+				Message:        "Estructura de columnas inválida o código mal formado",
+			})
+			continue
 		}
 		if _, ok := programCodes[codigoPrograma]; !ok {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf(
-					"El programa con código %s no existe en la base de datos. Por favor, créelo primero (producto %s)",
+			skipped++
+			importErrors = append(importErrors, dto.ImportRowError{
+				Row:            rowNum,
+				CodigoProducto: codigoProducto,
+				Message: fmt.Sprintf(
+					"El programa con código «%s» no existe en la base de datos. Por favor, créelo primero (nombre de programa leído: «%s»)",
 					codigoPrograma,
-					strings.TrimSpace(row.CodigoProducto),
+					nombrePrograma,
 				),
 			})
+			continue
 		}
 
 		toUpsert = append(toUpsert, models.CatalogProduct{
 			Sector:                  strings.TrimSpace(row.Sector),
 			NombreSector:            strings.TrimSpace(row.NombreSector),
 			CodigoPrograma:          codigoPrograma,
-			NombrePrograma:          strings.TrimSpace(row.NombrePrograma),
-			CodigoProducto:          strings.TrimSpace(row.CodigoProducto),
-			Producto:                strings.TrimSpace(row.Producto),
+			NombrePrograma:          nombrePrograma,
+			CodigoProducto:          codigoProducto,
+			Producto:                nombreProducto,
 			Descripcion:             strings.TrimSpace(row.Descripcion),
 			MedidoATravesDe:         strings.TrimSpace(row.MedidoATravesDe),
 			CodigoIndicadorProducto: strings.TrimSpace(row.CodigoIndicadorProducto),
@@ -682,13 +737,30 @@ func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error {
 		})
 	}
 
+	for _, be := range result.BatchErrors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Message: be,
+		})
+	}
+
+	msg := "Importación de productos procesada"
+	if len(importErrors) > 0 {
+		msg = fmt.Sprintf(
+			"Importación procesada con %d advertencias/errores de fila (válidas para upsert: %d)",
+			len(importErrors),
+			len(toUpsert),
+		)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(dto.ProductImportResponse{
 		Status:          "success",
-		Message:         "Importación de productos procesada",
+		Message:         msg,
 		Inserted:        result.Inserted,
 		Updated:         result.Updated,
 		Skipped:         skipped,
-		TotalRowsParsed: len(rows),
+		TotalRowsParsed: parsed.TotalRows,
+		Errors:          importErrors,
 	})
 }
 

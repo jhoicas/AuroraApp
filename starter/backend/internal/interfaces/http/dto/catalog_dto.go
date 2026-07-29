@@ -158,14 +158,22 @@ type PaginatedCatalogProductsResponse struct {
 	Meta PaginationMeta           `json:"meta"`
 }
 
+// ImportRowError detalle de una fila omitida o inválida en importación masiva.
+type ImportRowError struct {
+	Row            int    `json:"row"`
+	CodigoProducto string `json:"codigo_producto,omitempty"`
+	Message        string `json:"message"`
+}
+
 // ProductImportResponse resultado de importación masiva de productos.
 type ProductImportResponse struct {
-	Status          string `json:"status"`
-	Message         string `json:"message"`
-	Inserted        int    `json:"inserted"`
-	Updated         int    `json:"updated"`
-	Skipped         int    `json:"skipped"`
-	TotalRowsParsed int    `json:"total_rows_parsed"`
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	Inserted        int              `json:"inserted"`
+	Updated         int              `json:"updated"`
+	Skipped         int              `json:"skipped"`
+	TotalRowsParsed int              `json:"total_rows_parsed"`
+	Errors          []ImportRowError `json:"errors,omitempty"`
 }
 
 // ProductResponse producto del catálogo DNP (tabla products, explorador).

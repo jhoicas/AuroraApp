@@ -415,8 +415,9 @@ const catalogProductBatchSize = 500
 
 // ProductBulkUpsertResult contadores de una importación masiva.
 type ProductBulkUpsertResult struct {
-	Inserted int
-	Updated  int
+	Inserted    int
+	Updated     int
+	BatchErrors []string
 }
 
 // LoadProgramCodeSet carga los códigos de programa existentes (una sola consulta).
@@ -463,7 +464,8 @@ func (r *CatalogRepository) ExistingProductCodes(ctx context.Context, codes []st
 }
 
 // BulkUpsertCatalogProducts inserta/actualiza productos en lotes con ON CONFLICT.
-// Deduplica por codigo_producto (gana la última aparición). No valida programas.
+// Deduplica por codigo_producto (gana la última aparición). Un fallo en un lote
+// NO aborta los lotes restantes: reintenta fila a fila y registra el error.
 func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items []models.CatalogProduct) (*ProductBulkUpsertResult, error) {
 	if len(items) == 0 {
 		return &ProductBulkUpsertResult{}, nil
@@ -504,25 +506,62 @@ func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items
 		return nil, err
 	}
 
-	if err := r.db.WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "codigo_producto"}},
-			DoUpdates: clause.AssignmentColumns(catalogProductUpsertColumns),
-		}).
-		CreateInBatches(deduped, catalogProductBatchSize).Error; err != nil {
-		return nil, fmt.Errorf("bulk upsert catalog products: %w", err)
+	result := &ProductBulkUpsertResult{
+		BatchErrors: make([]string, 0),
+	}
+
+	conflict := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "codigo_producto"}},
+		DoUpdates: clause.AssignmentColumns(catalogProductUpsertColumns),
+	}
+
+	// Flush por lotes: un error en el lote N no detiene el lote N+1.
+	for i := 0; i < len(deduped); i += catalogProductBatchSize {
+		end := i + catalogProductBatchSize
+		if end > len(deduped) {
+			end = len(deduped)
+		}
+		batch := deduped[i:end]
+		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
+			// Reintento fila a fila para no perder el resto del lote ni los lotes siguientes.
+			for _, item := range batch {
+				one := item
+				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
+					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
+						"código %s: %v",
+						one.CodigoProducto,
+						errOne,
+					))
+				}
+			}
+		}
 	}
 
 	updated := 0
+	failed := make(map[string]struct{}, len(result.BatchErrors))
+	for _, msg := range result.BatchErrors {
+		// Extrae código del prefijo "código X:"
+		if strings.HasPrefix(msg, "código ") {
+			rest := strings.TrimPrefix(msg, "código ")
+			if idx := strings.Index(rest, ":"); idx > 0 {
+				failed[rest[:idx]] = struct{}{}
+			}
+		}
+	}
 	for _, code := range codes {
+		if _, bad := failed[code]; bad {
+			continue
+		}
 		if _, ok := existing[code]; ok {
 			updated++
 		}
 	}
-	return &ProductBulkUpsertResult{
-		Inserted: len(codes) - updated,
-		Updated:  updated,
-	}, nil
+	result.Updated = updated
+	result.Inserted = len(codes) - updated - len(failed)
+	if result.Inserted < 0 {
+		result.Inserted = 0
+	}
+	return result, nil
 }
 
 // GetCatalogProductByID obtiene un producto del catálogo por UUID.

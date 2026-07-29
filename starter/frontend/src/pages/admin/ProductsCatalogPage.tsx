@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
+import ProductDetailModal from '../../components/admin/ProductDetailModal';
 import { api } from '../../lib/api';
 import {
   useCatalogStore,
@@ -123,6 +124,7 @@ export default function ProductsCatalogPage() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [activeSection, setActiveSection] = useState<ModalSection>('A');
   const [form, setForm] = useState<CreateProductInput>(emptyForm);
   const [sectorOptions, setSectorOptions] = useState<CatalogSector[]>([]);
@@ -449,6 +451,15 @@ export default function ProductsCatalogPage() {
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
+                            onClick={() => setViewingProduct(row)}
+                            className="h-9 px-3 rounded-lg border border-[#006a68] text-[#006a68] text-xs font-bold inline-flex items-center gap-1 hover:bg-[#E6FFFA]"
+                            title="Ver ficha técnica"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            Ver
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => openEditModal(row)}
                             className="h-9 px-3 rounded-lg bg-[#006a68] text-white text-xs font-bold inline-flex items-center gap-1 hover:opacity-90"
                           >
@@ -483,6 +494,13 @@ export default function ProductsCatalogPage() {
           />
         </div>
       </div>
+
+      {viewingProduct && (
+        <ProductDetailModal
+          product={viewingProduct}
+          onClose={() => setViewingProduct(null)}
+        />
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

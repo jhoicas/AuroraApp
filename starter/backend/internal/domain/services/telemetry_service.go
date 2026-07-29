@@ -11,16 +11,38 @@ import (
 	"gorm.io/gorm"
 )
 
-// TelemetryService registra uso de IA de forma asíncrona (no bloquea requests HTTP).
-type TelemetryService struct {
-	db *gorm.DB
-	ch chan models.AiUsageLog
+// UsageLogRepository abstrae la persistencia de telemetría (permite mocks en tests).
+type UsageLogRepository interface {
+	Create(ctx context.Context, entry *models.AiUsageLog) error
 }
 
+type gormUsageLogRepo struct {
+	db *gorm.DB
+}
+
+func (r *gormUsageLogRepo) Create(ctx context.Context, entry *models.AiUsageLog) error {
+	return r.db.WithContext(ctx).Create(entry).Error
+}
+
+// TelemetryService registra uso de IA de forma asíncrona (no bloquea requests HTTP).
+type TelemetryService struct {
+	repo UsageLogRepository
+	ch   chan models.AiUsageLog
+}
+
+// NewTelemetryService crea el servicio con persistencia GORM y buffer de 256.
 func NewTelemetryService(db *gorm.DB) *TelemetryService {
+	return NewTelemetryServiceWithRepo(&gormUsageLogRepo{db: db}, 256)
+}
+
+// NewTelemetryServiceWithRepo permite inyectar repositorio y tamaño de buffer (tests).
+func NewTelemetryServiceWithRepo(repo UsageLogRepository, bufferSize int) *TelemetryService {
+	if bufferSize < 1 {
+		bufferSize = 1
+	}
 	s := &TelemetryService{
-		db: db,
-		ch: make(chan models.AiUsageLog, 256),
+		repo: repo,
+		ch:   make(chan models.AiUsageLog, bufferSize),
 	}
 	go s.worker()
 	return s
@@ -28,10 +50,17 @@ func NewTelemetryService(db *gorm.DB) *TelemetryService {
 
 func (s *TelemetryService) worker() {
 	for entry := range s.ch {
-		if err := s.db.Create(&entry).Error; err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := s.repo.Create(ctx, &entry); err != nil {
 			log.Printf("telemetry: insert failed: %v", err)
 		}
+		cancel()
 	}
+}
+
+// Close cierra el canal del worker (útil en tests para drenar sin deadlock).
+func (s *TelemetryService) Close() {
+	close(s.ch)
 }
 
 // LogAsync encola un evento de telemetría sin bloquear al caller.
@@ -49,7 +78,7 @@ func (s *TelemetryService) LogAsync(userID uuid.UUID, role, action string) {
 		go func(e models.AiUsageLog) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			if err := s.db.WithContext(ctx).Create(&e).Error; err != nil {
+			if err := s.repo.Create(ctx, &e); err != nil {
 				log.Printf("telemetry: fallback insert failed: %v", err)
 			}
 		}(entry)
@@ -58,11 +87,11 @@ func (s *TelemetryService) LogAsync(userID uuid.UUID, role, action string) {
 
 // LogSync persiste de forma síncrona (tests / casos críticos).
 func (s *TelemetryService) LogSync(ctx context.Context, userID uuid.UUID, role, action string) error {
-	return s.db.WithContext(ctx).Create(&models.AiUsageLog{
+	return s.repo.Create(ctx, &models.AiUsageLog{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Role:      role,
 		Action:    action,
 		CreatedAt: time.Now().UTC(),
-	}).Error
+	})
 }

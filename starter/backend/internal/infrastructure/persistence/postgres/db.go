@@ -213,7 +213,7 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 			producto TEXT NOT NULL,
 			descripcion TEXT,
 			medido_a_traves_de TEXT,
-			codigo_indicador_producto TEXT,
+			codigo_indicador_producto TEXT NOT NULL DEFAULT '',
 			indicador_producto TEXT,
 			unidad_de_medida TEXT,
 			indicador_principal BOOLEAN DEFAULT FALSE,
@@ -270,6 +270,23 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		`ALTER TABLE catalogo_productos ALTER COLUMN meta_ods TYPE TEXT`,
 		`ALTER TABLE catalogo_productos ALTER COLUMN tipologia_general_suifp TYPE TEXT`,
 		`ALTER TABLE catalogo_productos ALTER COLUMN edt TYPE TEXT`,
+		// Normaliza NULLs para que la UNIQUE compuesta sea determinista.
+		`UPDATE catalogo_productos SET codigo_indicador_producto = '' WHERE codigo_indicador_producto IS NULL`,
+		`ALTER TABLE catalogo_productos ALTER COLUMN codigo_indicador_producto SET DEFAULT ''`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos ALTER COLUMN codigo_indicador_producto SET NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		// Elimina la UNIQUE antigua solo por codigo_producto (si existe).
+		`DROP INDEX IF EXISTS idx_catalogo_productos_codigo`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos DROP CONSTRAINT IF EXISTS idx_catalogo_productos_codigo;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_productos DROP CONSTRAINT IF EXISTS catalogo_productos_codigo_producto_key;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		// Llave única compuesta: (codigo_producto, codigo_indicador_producto).
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_indicador
+			ON catalogo_productos (codigo_producto, codigo_indicador_producto)`,
 		// Convierte tipologías legacy TEXT → BOOLEAN si aplica (idempotente ante fallo).
 		`DO $$ BEGIN
 			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_d TYPE boolean
@@ -291,8 +308,8 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 			ALTER TABLE catalogo_productos ALTER COLUMN tipologia_c_piip TYPE boolean
 			USING (CASE WHEN lower(coalesce(tipologia_c_piip::text,'')) IN ('t','true','1','si','sí','yes','x') THEN true ELSE false END);
 		EXCEPTION WHEN others THEN NULL; END $$`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogo_productos_codigo ON catalogo_productos (codigo_producto)`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_programa ON catalogo_productos (codigo_programa)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_codigo_producto ON catalogo_productos (codigo_producto)`,
 	}
 	execSchemaStatements(db, "ensure catalogo_productos schema", statements)
 }

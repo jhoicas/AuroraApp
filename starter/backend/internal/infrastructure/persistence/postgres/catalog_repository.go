@@ -339,12 +339,19 @@ func (r *CatalogRepository) ListCatalogProducts(ctx context.Context, p CatalogPr
 	}, nil
 }
 
-// UpsertCatalogProductByCode inserta/actualiza por codigo_producto.
+// UpsertCatalogProductByCode inserta/actualiza por (codigo_producto, codigo_indicador_producto).
 func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item *models.CatalogProduct) (created bool, err error) {
 	now := time.Now().UTC()
+	item.CodigoProducto = strings.TrimSpace(item.CodigoProducto)
+	item.CodigoIndicadorProducto = strings.TrimSpace(item.CodigoIndicadorProducto)
+
 	var existing models.CatalogProduct
 	err = r.db.WithContext(ctx).
-		Where("codigo_producto = ?", item.CodigoProducto).
+		Where(
+			"codigo_producto = ? AND codigo_indicador_producto = ?",
+			item.CodigoProducto,
+			item.CodigoIndicadorProducto,
+		).
 		First(&existing).Error
 	if err == nil {
 		existing.TenantID = item.TenantID
@@ -355,7 +362,6 @@ func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item
 		existing.Producto = item.Producto
 		existing.Descripcion = item.Descripcion
 		existing.MedidoATravesDe = item.MedidoATravesDe
-		existing.CodigoIndicadorProducto = item.CodigoIndicadorProducto
 		existing.IndicadorProducto = item.IndicadorProducto
 		existing.UnidadDeMedida = item.UnidadDeMedida
 		existing.IndicadorPrincipal = item.IndicadorPrincipal
@@ -375,7 +381,7 @@ func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item
 			Model(&existing).
 			Select(
 				"TenantID", "Sector", "NombreSector", "CodigoPrograma", "NombrePrograma",
-				"Producto", "Descripcion", "MedidoATravesDe", "CodigoIndicadorProducto",
+				"Producto", "Descripcion", "MedidoATravesDe",
 				"IndicadorProducto", "UnidadDeMedida", "IndicadorPrincipal", "EsNacional",
 				"EsTerritorial", "ODS", "MetaODS", "TipologiaGeneralSUIFP", "TipologiaD",
 				"TipologiaE", "TipologiaAPIIP", "TipologiaBPIIP", "TipologiaCPIIP",
@@ -401,10 +407,11 @@ func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item
 	return true, nil
 }
 
-// catalogProductUpsertColumns columnas actualizadas en ON CONFLICT (codigo_producto).
+// catalogProductUpsertColumns columnas actualizadas en ON CONFLICT.
+// No incluye codigo_producto ni codigo_indicador_producto (llave compuesta).
 var catalogProductUpsertColumns = []string{
 	"tenant_id", "sector", "nombre_sector", "codigo_programa", "nombre_programa",
-	"producto", "descripcion", "medido_a_traves_de", "codigo_indicador_producto",
+	"producto", "descripcion", "medido_a_traves_de",
 	"indicador_producto", "unidad_de_medida", "indicador_principal", "es_nacional",
 	"es_territorial", "ods", "meta_ods", "tipologia_general_suifp", "tipologia_d",
 	"tipologia_e", "tipologia_a_piip", "tipologia_b_piip", "tipologia_c_piip",
@@ -438,59 +445,81 @@ func (r *CatalogRepository) LoadProgramCodeSet(ctx context.Context) (map[string]
 	return set, nil
 }
 
-// ExistingProductCodes devuelve el subconjunto de códigos que ya existen en catalogo_productos.
-func (r *CatalogRepository) ExistingProductCodes(ctx context.Context, codes []string) (map[string]struct{}, error) {
+// ExistingProductCompositeKeys devuelve las llaves "codigo_producto_codigo_indicador"
+// que ya existen en catalogo_productos (para los códigos de producto del lote).
+func (r *CatalogRepository) ExistingProductCompositeKeys(ctx context.Context, productCodes []string) (map[string]struct{}, error) {
 	set := make(map[string]struct{})
-	if len(codes) == 0 {
+	if len(productCodes) == 0 {
 		return set, nil
 	}
+	// Dedup códigos de producto para la consulta IN.
+	uniq := make([]string, 0, len(productCodes))
+	seen := make(map[string]struct{}, len(productCodes))
+	for _, c := range productCodes {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, ok := seen[c]; ok {
+			continue
+		}
+		seen[c] = struct{}{}
+		uniq = append(uniq, c)
+	}
+
 	const chunk = 1000
-	for i := 0; i < len(codes); i += chunk {
+	for i := 0; i < len(uniq); i += chunk {
 		end := i + chunk
-		if end > len(codes) {
-			end = len(codes)
+		if end > len(uniq) {
+			end = len(uniq)
 		}
-		var found []string
+		var rows []struct {
+			CodigoProducto          string `gorm:"column:codigo_producto"`
+			CodigoIndicadorProducto string `gorm:"column:codigo_indicador_producto"`
+		}
 		if err := r.db.WithContext(ctx).Model(&models.CatalogProduct{}).
-			Where("codigo_producto IN ?", codes[i:end]).
-			Pluck("codigo_producto", &found).Error; err != nil {
-			return nil, fmt.Errorf("existing product codes: %w", err)
+			Select("codigo_producto, codigo_indicador_producto").
+			Where("codigo_producto IN ?", uniq[i:end]).
+			Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("existing product composite keys: %w", err)
 		}
-		for _, c := range found {
-			set[c] = struct{}{}
+		for _, row := range rows {
+			set[models.ProductCompositeKey(row.CodigoProducto, row.CodigoIndicadorProducto)] = struct{}{}
 		}
 	}
 	return set, nil
 }
 
-// BulkUpsertCatalogProducts inserta/actualiza productos en lotes con ON CONFLICT.
-// Deduplica por codigo_producto (gana la última aparición). Un fallo en un lote
+// BulkUpsertCatalogProducts inserta/actualiza por (codigo_producto, codigo_indicador_producto).
+// Deduplica por esa llave compuesta (última aparición gana). Un fallo en un lote
 // NO aborta los lotes restantes: reintenta fila a fila y registra el error.
 func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items []models.CatalogProduct) (*ProductBulkUpsertResult, error) {
 	if len(items) == 0 {
 		return &ProductBulkUpsertResult{}, nil
 	}
 
-	// Última fila gana si el CSV trae códigos repetidos.
-	byCode := make(map[string]models.CatalogProduct, len(items))
+	byKey := make(map[string]models.CatalogProduct, len(items))
 	order := make([]string, 0, len(items))
+	productCodes := make([]string, 0, len(items))
 	for _, it := range items {
-		code := strings.TrimSpace(it.CodigoProducto)
-		if code == "" {
+		it.CodigoProducto = strings.TrimSpace(it.CodigoProducto)
+		it.CodigoIndicadorProducto = strings.TrimSpace(it.CodigoIndicadorProducto)
+		if it.CodigoProducto == "" {
 			continue
 		}
-		it.CodigoProducto = code
-		if _, seen := byCode[code]; !seen {
-			order = append(order, code)
+		key := models.ProductCompositeKey(it.CodigoProducto, it.CodigoIndicadorProducto)
+		if _, seen := byKey[key]; !seen {
+			order = append(order, key)
+			productCodes = append(productCodes, it.CodigoProducto)
 		}
-		byCode[code] = it
+		byKey[key] = it
 	}
 
 	deduped := make([]models.CatalogProduct, 0, len(order))
-	codes := make([]string, 0, len(order))
+	keys := make([]string, 0, len(order))
 	now := time.Now().UTC()
-	for _, code := range order {
-		it := byCode[code]
+	for _, key := range order {
+		it := byKey[key]
 		if it.ID == uuid.Nil {
 			it.ID = uuid.New()
 		}
@@ -498,10 +527,10 @@ func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items
 			it.CreatedAt = now
 		}
 		deduped = append(deduped, it)
-		codes = append(codes, code)
+		keys = append(keys, key)
 	}
 
-	existing, err := r.ExistingProductCodes(ctx, codes)
+	existing, err := r.ExistingProductCompositeKeys(ctx, productCodes)
 	if err != nil {
 		return nil, err
 	}
@@ -511,11 +540,13 @@ func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items
 	}
 
 	conflict := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "codigo_producto"}},
+		Columns: []clause.Column{
+			{Name: "codigo_producto"},
+			{Name: "codigo_indicador_producto"},
+		},
 		DoUpdates: clause.AssignmentColumns(catalogProductUpsertColumns),
 	}
 
-	// Flush por lotes: un error en el lote N no detiene el lote N+1.
 	for i := 0; i < len(deduped); i += catalogProductBatchSize {
 		end := i + catalogProductBatchSize
 		if end > len(deduped) {
@@ -523,13 +554,12 @@ func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items
 		}
 		batch := deduped[i:end]
 		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
-			// Reintento fila a fila para no perder el resto del lote ni los lotes siguientes.
 			for _, item := range batch {
 				one := item
 				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
 					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
-						"código %s: %v",
-						one.CodigoProducto,
+						"clave %s: %v",
+						models.ProductCompositeKey(one.CodigoProducto, one.CodigoIndicadorProducto),
 						errOne,
 					))
 				}
@@ -537,27 +567,27 @@ func (r *CatalogRepository) BulkUpsertCatalogProducts(ctx context.Context, items
 		}
 	}
 
-	updated := 0
 	failed := make(map[string]struct{}, len(result.BatchErrors))
 	for _, msg := range result.BatchErrors {
-		// Extrae código del prefijo "código X:"
-		if strings.HasPrefix(msg, "código ") {
-			rest := strings.TrimPrefix(msg, "código ")
+		if strings.HasPrefix(msg, "clave ") {
+			rest := strings.TrimPrefix(msg, "clave ")
 			if idx := strings.Index(rest, ":"); idx > 0 {
 				failed[rest[:idx]] = struct{}{}
 			}
 		}
 	}
-	for _, code := range codes {
-		if _, bad := failed[code]; bad {
+
+	updated := 0
+	for _, key := range keys {
+		if _, bad := failed[key]; bad {
 			continue
 		}
-		if _, ok := existing[code]; ok {
+		if _, ok := existing[key]; ok {
 			updated++
 		}
 	}
 	result.Updated = updated
-	result.Inserted = len(codes) - updated - len(failed)
+	result.Inserted = len(keys) - updated - len(failed)
 	if result.Inserted < 0 {
 		result.Inserted = 0
 	}

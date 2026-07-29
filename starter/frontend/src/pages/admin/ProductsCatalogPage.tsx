@@ -372,30 +372,55 @@ export default function ProductsCatalogPage() {
         )}
 
         <div className="glass-card bg-white/95 rounded-xl border border-[#E2E8F0] overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[1600px] text-left border-collapse table-auto">
               <thead className="bg-[#2c7a7b] text-[#c1ffff]">
                 <tr>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                     Cód. Producto
                   </th>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">Nombre</th>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">
-                    Programa
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[280px]">
+                    Nombre / Producto
                   </th>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs">Sector</th>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Cód. Programa
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[250px]">
+                    Nombre Programa
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Sector
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[200px]">
+                    Nombre Sector
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Cód. Indicador
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[300px]">
+                    Indicador de producto
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[140px]">
+                    Unidad de medida
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                     Ind. Principal
                   </th>
-                  <th className="px-5 py-4 font-semibold uppercase tracking-wider text-xs text-right sticky right-0 bg-[#2c7a7b]">
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Nacional
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                    Territorial
+                  </th>
+                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap text-right sticky right-0 z-20 bg-[#2c7a7b] shadow-[-6px_0_8px_-4px_rgba(0,0,0,0.15)]">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="text-sm md:text-base text-[#121c2c]">
+              <tbody className="text-sm text-[#121c2c]">
                 {isLoadingProducts && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
+                    <td colSpan={13} className="px-6 py-10 text-center text-[#3f4949] whitespace-nowrap">
                       <span className="inline-flex items-center gap-2">
                         <span className="material-symbols-outlined animate-spin text-[#006162]">
                           progress_activity
@@ -407,7 +432,7 @@ export default function ProductsCatalogPage() {
                 )}
                 {!isLoadingProducts && catalogProducts.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
+                    <td colSpan={13} className="px-6 py-10 text-center text-[#3f4949] whitespace-nowrap">
                       No hay productos. Importe el catálogo o añada un registro manualmente.
                     </td>
                   </tr>
@@ -416,27 +441,48 @@ export default function ProductsCatalogPage() {
                   catalogProducts.map((row) => (
                     <tr
                       key={row.id}
-                      className="even:bg-[#E6FFFA] hover:bg-[#e7eeff] transition-colors align-top"
+                      className="even:bg-[#E6FFFA] odd:bg-white hover:bg-[#e7eeff] transition-colors group"
                     >
-                      <td className="px-5 py-4 font-bold whitespace-nowrap">
+                      <td className="px-4 py-3 font-bold whitespace-nowrap">
                         {row.codigo_del_producto}
                       </td>
-                      <td className="px-5 py-4 max-w-[280px]">
-                        <span className="line-clamp-2">{row.producto}</span>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap min-w-[280px] max-w-[360px] truncate"
+                        title={row.producto}
+                      >
+                        {row.producto || '—'}
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="font-semibold">{row.codigo_del_programa || '—'}</span>
-                        <span className="block text-[#3f4949] text-sm mt-0.5 line-clamp-1">
-                          {row.nombre_del_programa || '—'}
-                        </span>
+                      <td className="px-4 py-3 whitespace-nowrap font-semibold">
+                        {row.codigo_del_programa || '—'}
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="font-semibold">{row.sector || '—'}</span>
-                        <span className="block text-[#3f4949] text-sm mt-0.5 line-clamp-1">
-                          {row.nombre_del_sector || '—'}
-                        </span>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap min-w-[250px] max-w-[320px] truncate text-[#3f4949]"
+                        title={row.nombre_del_programa}
+                      >
+                        {row.nombre_del_programa || '—'}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3 whitespace-nowrap font-semibold">
+                        {row.sector || '—'}
+                      </td>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap min-w-[200px] max-w-[280px] truncate text-[#3f4949]"
+                        title={row.nombre_del_sector}
+                      >
+                        {row.nombre_del_sector || '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
+                        {row.codigo_del_indicador_de_producto || '—'}
+                      </td>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap min-w-[300px] max-w-[420px] truncate"
+                        title={row.indicador_de_producto}
+                      >
+                        {row.indicador_de_producto || '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
+                        {row.unidad_de_medida || '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${
                             row.indicador_principal
@@ -447,7 +493,13 @@ export default function ProductsCatalogPage() {
                           {row.indicador_principal ? 'Sí' : 'No'}
                         </span>
                       </td>
-                      <td className="px-5 py-4 sticky right-0 bg-inherit text-right whitespace-nowrap border-l border-[#E2E8F0]">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {row.es_nacional ? 'Sí' : 'No'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {row.es_territorial ? 'Sí' : 'No'}
+                      </td>
+                      <td className="px-4 py-3 sticky right-0 z-10 whitespace-nowrap text-right border-l border-[#E2E8F0] bg-white group-even:bg-[#E6FFFA] group-hover:bg-[#e7eeff] shadow-[-6px_0_8px_-4px_rgba(0,0,0,0.08)]">
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"

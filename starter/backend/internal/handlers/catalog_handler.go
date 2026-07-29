@@ -265,7 +265,7 @@ func upsertProducto(db *sql.DB, row []string, headers []string) (int64, error) {
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
 		)
-		ON CONFLICT (codigo_producto) DO UPDATE SET
+		ON CONFLICT (codigo_producto, codigo_indicador_producto) DO UPDATE SET
 			sector = EXCLUDED.sector,
 			nombre_sector = EXCLUDED.nombre_sector,
 			codigo_programa = EXCLUDED.codigo_programa,
@@ -273,7 +273,6 @@ func upsertProducto(db *sql.DB, row []string, headers []string) (int64, error) {
 			producto = EXCLUDED.producto,
 			descripcion = EXCLUDED.descripcion,
 			medido_a_traves_de = EXCLUDED.medido_a_traves_de,
-			codigo_indicador_producto = EXCLUDED.codigo_indicador_producto,
 			indicador_producto = EXCLUDED.indicador_producto,
 			unidad_de_medida = EXCLUDED.unidad_de_medida,
 			indicador_principal = EXCLUDED.indicador_principal,

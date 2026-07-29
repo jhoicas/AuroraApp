@@ -422,7 +422,7 @@ func (h *CatalogHandler) ListCatalogProducts(c *fiber.Ctx) error {
 	})
 }
 
-// CreateProduct crea un producto del catálogo (upsert por codigo_producto).
+// CreateProduct crea un producto del catálogo (upsert por codigo_producto + codigo_indicador).
 func (h *CatalogHandler) CreateProduct(c *fiber.Ctx) error {
 	var req dto.CreateCatalogProductRequest
 	if err := c.BodyParser(&req); err != nil {

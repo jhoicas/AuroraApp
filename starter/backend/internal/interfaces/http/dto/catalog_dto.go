@@ -211,6 +211,87 @@ type EdtImportResponse struct {
 	Errors          []ImportRowError `json:"errors,omitempty"`
 }
 
+// CatalogDeliverableResponse fila del catálogo de entregables.
+type CatalogDeliverableResponse struct {
+	ID                   string  `json:"id"`
+	TenantID             *string `json:"tenant_id,omitempty"`
+	CodigoEntregable     string  `json:"codigo_entregable"`
+	ListadoDeEntregables string  `json:"listado_de_entregables"`
+	CreatedAt            string  `json:"created_at"`
+}
+
+// PaginatedCatalogDeliverableResponse listado paginado de entregables.
+type PaginatedCatalogDeliverableResponse struct {
+	Data []CatalogDeliverableResponse `json:"data"`
+	Meta PaginationMeta               `json:"meta"`
+}
+
+// DeliverableImportResponse resultado de importación masiva de entregables.
+type DeliverableImportResponse struct {
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	Inserted        int              `json:"inserted"`
+	Updated         int              `json:"updated"`
+	Skipped         int              `json:"skipped"`
+	TotalRowsParsed int              `json:"total_rows_parsed"`
+	Errors          []ImportRowError `json:"errors,omitempty"`
+}
+
+// CatalogActivityResponse fila del catálogo de actividades.
+type CatalogActivityResponse struct {
+	ID                   string  `json:"id"`
+	TenantID             *string `json:"tenant_id,omitempty"`
+	CodigoActividad      string  `json:"codigo_actividad"`
+	ListadoDeActividades string  `json:"listado_de_actividades"`
+	UnidadDeMedida       string  `json:"unidad_de_medida"`
+	CreatedAt            string  `json:"created_at"`
+}
+
+// PaginatedCatalogActivityResponse listado paginado de actividades.
+type PaginatedCatalogActivityResponse struct {
+	Data []CatalogActivityResponse `json:"data"`
+	Meta PaginationMeta            `json:"meta"`
+}
+
+// ActivityImportResponse resultado de importación masiva de actividades.
+type ActivityImportResponse struct {
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	Inserted        int              `json:"inserted"`
+	Updated         int              `json:"updated"`
+	Skipped         int              `json:"skipped"`
+	TotalRowsParsed int              `json:"total_rows_parsed"`
+	Errors          []ImportRowError `json:"errors,omitempty"`
+}
+
+// CatalogOdsResponse fila del catálogo ODS.
+type CatalogOdsResponse struct {
+	ID                     string  `json:"id"`
+	TenantID               *string `json:"tenant_id,omitempty"`
+	CodObjetivoOds         string  `json:"cod_objetivo_ods"`
+	DescripcionObjetivoOds string  `json:"descripcion_objetivo_ods"`
+	CodigoMetaOds          string  `json:"codigo_meta_ods"`
+	DescripcionMetaOds     string  `json:"descripcion_meta_ods"`
+	CreatedAt              string  `json:"created_at"`
+}
+
+// PaginatedCatalogOdsResponse listado paginado ODS.
+type PaginatedCatalogOdsResponse struct {
+	Data []CatalogOdsResponse `json:"data"`
+	Meta PaginationMeta       `json:"meta"`
+}
+
+// OdsImportResponse resultado de importación masiva ODS.
+type OdsImportResponse struct {
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	Inserted        int              `json:"inserted"`
+	Updated         int              `json:"updated"`
+	Skipped         int              `json:"skipped"`
+	TotalRowsParsed int              `json:"total_rows_parsed"`
+	Errors          []ImportRowError `json:"errors,omitempty"`
+}
+
 // ProductResponse producto del catálogo DNP (tabla products, explorador).
 type ProductResponse struct {
 	ID        string  `json:"id"`

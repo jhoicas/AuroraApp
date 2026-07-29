@@ -1037,6 +1037,381 @@ func toCatalogEdtResponse(e models.CatalogEdt) dto.CatalogEdtResponse {
 	}
 }
 
+// ListCatalogDeliverables GET /api/v1/catalog/deliverables
+func (h *CatalogHandler) ListCatalogDeliverables(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := strings.TrimSpace(c.Query("search"))
+
+	result, err := h.repo.ListCatalogDeliverables(c.Context(), postgres.CatalogDeliverableListParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	data := make([]dto.CatalogDeliverableResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		data = append(data, toCatalogDeliverableResponse(item))
+	}
+	return c.JSON(dto.PaginatedCatalogDeliverableResponse{
+		Data: data,
+		Meta: dto.PaginationMeta{
+			Total:    result.Total,
+			Page:     result.Page,
+			Limit:    result.Limit,
+			LastPage: result.LastPage,
+		},
+	})
+}
+
+// ImportDeliverables importa el catálogo de entregables desde XLSX o CSV.
+func (h *CatalogHandler) ImportDeliverables(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+	}
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	var parsed *postgres.DeliverableParseResult
+	switch ext {
+	case ".xlsx", ".xls":
+		parsed, err = postgres.ParseDeliverablesFromXLSX(src)
+	case ".csv":
+		parsed, err = postgres.ParseDeliverablesFromCSV(src)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unsupported file type; use .xlsx or .csv",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	skipped := 0
+	importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+	for _, pe := range parsed.Errors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Row:            pe.Row,
+			CodigoProducto: pe.CodigoEntregable,
+			Message:        pe.Message,
+		})
+	}
+
+	toUpsert := make([]models.CatalogDeliverable, 0, len(parsed.Rows))
+	for _, row := range parsed.Rows {
+		toUpsert = append(toUpsert, models.CatalogDeliverable{
+			CodigoEntregable:     strings.TrimSpace(row.CodigoEntregable),
+			ListadoDeEntregables: strings.TrimSpace(row.ListadoDeEntregables),
+		})
+	}
+
+	result, err := h.repo.BulkUpsertCatalogDeliverables(c.Context(), toUpsert)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to import deliverables",
+			"details": err.Error(),
+		})
+	}
+	for _, be := range result.BatchErrors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{Message: be})
+	}
+
+	msg := "Importación de catálogo de entregables procesada"
+	if len(importErrors) > 0 {
+		msg = fmt.Sprintf(
+			"%s (%d advertencias/errores de fila)",
+			msg, len(importErrors),
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.DeliverableImportResponse{
+		Status:          "success",
+		Message:         msg,
+		Inserted:        result.Inserted,
+		Updated:         result.Updated,
+		Skipped:         skipped,
+		TotalRowsParsed: parsed.TotalRows,
+		Errors:          importErrors,
+	})
+}
+
+func toCatalogDeliverableResponse(e models.CatalogDeliverable) dto.CatalogDeliverableResponse {
+	var tenantID *string
+	if e.TenantID != nil {
+		s := e.TenantID.String()
+		tenantID = &s
+	}
+	return dto.CatalogDeliverableResponse{
+		ID:                   e.ID.String(),
+		TenantID:             tenantID,
+		CodigoEntregable:     e.CodigoEntregable,
+		ListadoDeEntregables: e.ListadoDeEntregables,
+		CreatedAt:            e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+// ListCatalogActivities GET /api/v1/catalog/activities
+func (h *CatalogHandler) ListCatalogActivities(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := strings.TrimSpace(c.Query("search"))
+
+	result, err := h.repo.ListCatalogActivities(c.Context(), postgres.CatalogActivityListParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	data := make([]dto.CatalogActivityResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		data = append(data, toCatalogActivityResponse(item))
+	}
+	return c.JSON(dto.PaginatedCatalogActivityResponse{
+		Data: data,
+		Meta: dto.PaginationMeta{
+			Total:    result.Total,
+			Page:     result.Page,
+			Limit:    result.Limit,
+			LastPage: result.LastPage,
+		},
+	})
+}
+
+// ImportActivities importa el catálogo de actividades desde XLSX o CSV.
+func (h *CatalogHandler) ImportActivities(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+	}
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	var parsed *postgres.ActivityParseResult
+	switch ext {
+	case ".xlsx", ".xls":
+		parsed, err = postgres.ParseActivitiesFromXLSX(src)
+	case ".csv":
+		parsed, err = postgres.ParseActivitiesFromCSV(src)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unsupported file type; use .xlsx or .csv",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	skipped := 0
+	importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+	for _, pe := range parsed.Errors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Row:            pe.Row,
+			CodigoProducto: pe.CodigoActividad,
+			Message:        pe.Message,
+		})
+	}
+
+	toUpsert := make([]models.CatalogActivity, 0, len(parsed.Rows))
+	for _, row := range parsed.Rows {
+		toUpsert = append(toUpsert, models.CatalogActivity{
+			CodigoActividad:      strings.TrimSpace(row.CodigoActividad),
+			ListadoDeActividades: strings.TrimSpace(row.ListadoDeActividades),
+			UnidadDeMedida:       strings.TrimSpace(row.UnidadDeMedida),
+		})
+	}
+
+	result, err := h.repo.BulkUpsertCatalogActivities(c.Context(), toUpsert)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to import activities",
+			"details": err.Error(),
+		})
+	}
+	for _, be := range result.BatchErrors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{Message: be})
+	}
+
+	msg := "Importación de catálogo de actividades procesada"
+	if len(importErrors) > 0 {
+		msg = fmt.Sprintf(
+			"%s (%d advertencias/errores de fila)",
+			msg, len(importErrors),
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.ActivityImportResponse{
+		Status:          "success",
+		Message:         msg,
+		Inserted:        result.Inserted,
+		Updated:         result.Updated,
+		Skipped:         skipped,
+		TotalRowsParsed: parsed.TotalRows,
+		Errors:          importErrors,
+	})
+}
+
+func toCatalogActivityResponse(e models.CatalogActivity) dto.CatalogActivityResponse {
+	var tenantID *string
+	if e.TenantID != nil {
+		s := e.TenantID.String()
+		tenantID = &s
+	}
+	return dto.CatalogActivityResponse{
+		ID:                   e.ID.String(),
+		TenantID:             tenantID,
+		CodigoActividad:      e.CodigoActividad,
+		ListadoDeActividades: e.ListadoDeActividades,
+		UnidadDeMedida:       e.UnidadDeMedida,
+		CreatedAt:            e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+// ListCatalogOds GET /api/v1/catalog/ods
+func (h *CatalogHandler) ListCatalogOds(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := strings.TrimSpace(c.Query("search"))
+
+	result, err := h.repo.ListCatalogOds(c.Context(), postgres.CatalogOdsListParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	data := make([]dto.CatalogOdsResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		data = append(data, toCatalogOdsResponse(item))
+	}
+	return c.JSON(dto.PaginatedCatalogOdsResponse{
+		Data: data,
+		Meta: dto.PaginationMeta{
+			Total:    result.Total,
+			Page:     result.Page,
+			Limit:    result.Limit,
+			LastPage: result.LastPage,
+		},
+	})
+}
+
+// ImportOds importa el catálogo ODS desde XLSX o CSV.
+func (h *CatalogHandler) ImportOds(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+	}
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	var parsed *postgres.OdsParseResult
+	switch ext {
+	case ".xlsx", ".xls":
+		parsed, err = postgres.ParseOdsFromXLSX(src)
+	case ".csv":
+		parsed, err = postgres.ParseOdsFromCSV(src)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unsupported file type; use .xlsx or .csv",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	skipped := 0
+	importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+	for _, pe := range parsed.Errors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Row:            pe.Row,
+			CodigoProducto: pe.CodObjetivoOds,
+			Message:        pe.Message,
+		})
+	}
+
+	toUpsert := make([]models.CatalogOds, 0, len(parsed.Rows))
+	for _, row := range parsed.Rows {
+		toUpsert = append(toUpsert, models.CatalogOds{
+			CodObjetivoOds:         strings.TrimSpace(row.CodObjetivoOds),
+			DescripcionObjetivoOds: strings.TrimSpace(row.DescripcionObjetivoOds),
+			CodigoMetaOds:          strings.TrimSpace(row.CodigoMetaOds),
+			DescripcionMetaOds:     strings.TrimSpace(row.DescripcionMetaOds),
+		})
+	}
+
+	result, err := h.repo.BulkUpsertCatalogOds(c.Context(), toUpsert)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to import ods",
+			"details": err.Error(),
+		})
+	}
+	for _, be := range result.BatchErrors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{Message: be})
+	}
+
+	msg := "Importación de catálogo ODS procesada"
+	if len(importErrors) > 0 {
+		msg = fmt.Sprintf(
+			"%s (%d advertencias/errores de fila)",
+			msg, len(importErrors),
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.OdsImportResponse{
+		Status:          "success",
+		Message:         msg,
+		Inserted:        result.Inserted,
+		Updated:         result.Updated,
+		Skipped:         skipped,
+		TotalRowsParsed: parsed.TotalRows,
+		Errors:          importErrors,
+	})
+}
+
+func toCatalogOdsResponse(e models.CatalogOds) dto.CatalogOdsResponse {
+	var tenantID *string
+	if e.TenantID != nil {
+		s := e.TenantID.String()
+		tenantID = &s
+	}
+	return dto.CatalogOdsResponse{
+		ID:                     e.ID.String(),
+		TenantID:               tenantID,
+		CodObjetivoOds:         e.CodObjetivoOds,
+		DescripcionObjetivoOds: e.DescripcionObjetivoOds,
+		CodigoMetaOds:          e.CodigoMetaOds,
+		DescripcionMetaOds:     e.DescripcionMetaOds,
+		CreatedAt:              e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
 func escapeILIKE(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, `%`, `\%`)

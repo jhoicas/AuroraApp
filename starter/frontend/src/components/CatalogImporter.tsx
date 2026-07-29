@@ -24,8 +24,8 @@ type CatalogSummary = {
 };
 
 type CatalogImporterProps = {
-  /** `full` = DNP multi-hoja; `products` = productos MGA; `edt` = catálogo EDT. */
-  variant?: 'full' | 'products' | 'edt';
+  /** `full` = DNP multi-hoja; matriciales: products | edt | deliverables | activities | ods. */
+  variant?: 'full' | 'products' | 'edt' | 'deliverables' | 'activities' | 'ods';
   onImported?: (result: CatalogImportResult | CatalogSummary) => void;
   className?: string;
 };
@@ -66,6 +66,69 @@ export function downloadEdtTemplate(): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = 'plantilla_edt.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+const DELIVERABLE_TEMPLATE_HEADERS = ['Listado de Entregables', 'Código entregable'] as const;
+const DELIVERABLE_TEMPLATE_EXAMPLE = ['Infraestructura en obra blanca', '000000004'] as const;
+
+/** Genera y descarga la plantilla CSV de entregables con BOM UTF-8. */
+export function downloadDeliverableTemplate(): void {
+  const csv = `\uFEFF${DELIVERABLE_TEMPLATE_HEADERS.join(',')}\n${DELIVERABLE_TEMPLATE_EXAMPLE.join(',')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plantilla_entregables.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+const ACTIVITY_TEMPLATE_HEADERS = [
+  'Listado de actividades',
+  'Unidad de medida',
+  'Código actividad',
+] as const;
+const ACTIVITY_TEMPLATE_EXAMPLE = [
+  'Realizar suministro e instalación de cielo raso',
+  'Metros cuadrados',
+  '000000003',
+] as const;
+
+/** Genera y descarga la plantilla CSV de actividades con BOM UTF-8. */
+export function downloadActivityTemplate(): void {
+  const csv = `\uFEFF${ACTIVITY_TEMPLATE_HEADERS.join(',')}\n${ACTIVITY_TEMPLATE_EXAMPLE.join(',')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plantilla_actividades.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+const ODS_TEMPLATE_HEADERS = [
+  'Cod. Objetivo ODS',
+  'Descripción Objetivo ODS',
+  'Código Meta ODS',
+  'Descripción Meta ODS',
+] as const;
+const ODS_TEMPLATE_EXAMPLE = [
+  '1',
+  'Fin de la pobreza',
+  '1.1',
+  'Erradicar la pobreza extrema',
+] as const;
+
+/** Genera y descarga la plantilla CSV ODS con BOM UTF-8. */
+export function downloadOdsTemplate(): void {
+  const csv = `\uFEFF${ODS_TEMPLATE_HEADERS.join(',')}\n${ODS_TEMPLATE_EXAMPLE.join(',')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plantilla_ods.csv';
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -186,14 +249,25 @@ export default function CatalogImporter({
   onImported,
   className = '',
 }: CatalogImporterProps) {
-  const isMatrixImport = variant === 'products' || variant === 'edt';
+  const isMatrixImport =
+    variant === 'products' ||
+    variant === 'edt' ||
+    variant === 'deliverables' ||
+    variant === 'activities' ||
+    variant === 'ods';
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState(
     variant === 'products'
       ? 'Esperando archivo CSV/XLSX de productos'
       : variant === 'edt'
         ? 'Esperando archivo CSV/XLSX de EDT'
-        : 'Esperando archivo Excel',
+        : variant === 'deliverables'
+          ? 'Esperando archivo CSV/XLSX de entregables'
+          : variant === 'activities'
+            ? 'Esperando archivo CSV/XLSX de actividades'
+            : variant === 'ods'
+              ? 'Esperando archivo CSV/XLSX de ODS'
+              : 'Esperando archivo Excel',
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<CatalogSummary | null>(null);
@@ -212,7 +286,13 @@ export default function CatalogImporter({
         ? 'Procesando catálogo de productos. Por favor, espere…'
         : variant === 'edt'
           ? 'Procesando catálogo EDT. Por favor, espere…'
-          : '⏳ Procesando miles de filas del catálogo. Por favor, no cierre esta ventana...',
+          : variant === 'deliverables'
+            ? 'Procesando catálogo de entregables. Por favor, espere…'
+            : variant === 'activities'
+              ? 'Procesando lista de actividades. Por favor, espere…'
+              : variant === 'ods'
+                ? 'Procesando catálogo ODS. Por favor, espere…'
+                : '⏳ Procesando miles de filas del catálogo. Por favor, no cierre esta ventana...',
     );
     setIsProcessing(true);
     setSummary(null);
@@ -221,7 +301,16 @@ export default function CatalogImporter({
 
     try {
       if (isMatrixImport) {
-        const endpoint = variant === 'edt' ? '/catalog/edt/import' : '/catalog/products/import';
+        const endpoint =
+          variant === 'edt'
+            ? '/catalog/edt/import'
+            : variant === 'deliverables'
+              ? '/catalog/deliverables/import'
+              : variant === 'activities'
+                ? '/catalog/activities/import'
+                : variant === 'ods'
+                  ? '/catalog/ods/import'
+                  : '/catalog/products/import';
         const { data } = await api.post<CatalogImportResult>(endpoint, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000,
@@ -236,6 +325,7 @@ export default function CatalogImporter({
           total_rows_parsed: data.total_rows_parsed,
           productos_inserted: variant === 'products' ? data.inserted : undefined,
           edt_inserted: variant === 'edt' ? data.inserted : undefined,
+          ods_inserted: variant === 'ods' ? data.inserted : undefined,
           errors: rowErrors,
         });
         setImportErrors(rowErrors);
@@ -297,14 +387,26 @@ export default function CatalogImporter({
               ? 'Importar Catálogo de Productos'
               : variant === 'edt'
                 ? 'Importar Catálogo EDT'
-                : 'Actualizar Catálogo Oficial DNP'}
+                : variant === 'deliverables'
+                  ? 'Importar Catálogo de Entregables'
+                  : variant === 'activities'
+                    ? 'Importar Lista de actividades'
+                    : variant === 'ods'
+                      ? 'Importar Catálogo ODS'
+                      : 'Actualizar Catálogo Oficial DNP'}
           </h3>
           <p className="text-sm text-[#3f4949]">
             {variant === 'products'
               ? 'Suba el Excel/CSV del catálogo de productos (MGA). Cada producto debe referenciar un código de programa ya existente.'
               : variant === 'edt'
                 ? 'Suba el Excel/CSV de la matriz EDT (producto, entregables nivel 1–3 y actividades).'
-                : 'Suba el archivo oficial del DNP para actualizar sectores, programas, productos, EDT y ODS en la base relacional del sistema.'}
+                : variant === 'deliverables'
+                  ? 'Suba el Excel/CSV con listado de entregables y código entregable (preserva ceros a la izquierda).'
+                  : variant === 'activities'
+                    ? 'Suba el Excel/CSV con listado de actividades, unidad de medida y código actividad (preserva ceros a la izquierda).'
+                    : variant === 'ods'
+                      ? 'Suba el Excel/CSV de objetivos y metas ODS (códigos como 1.10 y 1.a se guardan como texto).'
+                      : 'Suba el archivo oficial del DNP para actualizar sectores, programas, productos, EDT y ODS en la base relacional del sistema.'}
           </p>
         </div>
         {variant === 'products' && (
@@ -321,6 +423,36 @@ export default function CatalogImporter({
           <button
             type="button"
             onClick={downloadEdtTemplate}
+            className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
+          >
+            <Download className="h-5 w-5" aria-hidden />
+            Descargar Plantilla
+          </button>
+        )}
+        {variant === 'deliverables' && (
+          <button
+            type="button"
+            onClick={downloadDeliverableTemplate}
+            className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
+          >
+            <Download className="h-5 w-5" aria-hidden />
+            Descargar Plantilla
+          </button>
+        )}
+        {variant === 'activities' && (
+          <button
+            type="button"
+            onClick={downloadActivityTemplate}
+            className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
+          >
+            <Download className="h-5 w-5" aria-hidden />
+            Descargar Plantilla
+          </button>
+        )}
+        {variant === 'ods' && (
+          <button
+            type="button"
+            onClick={downloadOdsTemplate}
             className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
           >
             <Download className="h-5 w-5" aria-hidden />
@@ -347,14 +479,26 @@ export default function CatalogImporter({
               ? 'Arrastre aquí el archivo de productos (.xlsx / .csv)'
               : variant === 'edt'
                 ? 'Arrastre aquí el archivo EDT (.xlsx / .csv)'
-                : 'Actualizar Catálogo Oficial DNP (Archivo Excel)'}
+                : variant === 'deliverables'
+                  ? 'Arrastre aquí el archivo de entregables (.xlsx / .csv)'
+                  : variant === 'activities'
+                    ? 'Arrastre aquí el archivo de actividades (.xlsx / .csv)'
+                    : variant === 'ods'
+                      ? 'Arrastre aquí el archivo ODS (.xlsx / .csv)'
+                      : 'Actualizar Catálogo Oficial DNP (Archivo Excel)'}
           </p>
           <p className="text-base text-[#3f4949]">
             {variant === 'products'
               ? 'El sistema validará que el programa padre exista antes de insertar cada producto.'
               : variant === 'edt'
                 ? 'La unicidad se define por código de producto estandarizado + código de actividad.'
-                : 'Arrastre aquí el archivo .xlsx del catálogo oficial. El sistema lo procesará y actualizará la fuente de verdad para la IA.'}
+                : variant === 'deliverables'
+                  ? 'La unicidad se define por código entregable (varchar; p. ej. 000000004).'
+                  : variant === 'activities'
+                    ? 'La unicidad se define por código actividad (varchar; p. ej. 000000003).'
+                    : variant === 'ods'
+                      ? 'La unicidad se define por código objetivo + código meta (p. ej. 1 + 1.10).'
+                      : 'Arrastre aquí el archivo .xlsx del catálogo oficial. El sistema lo procesará y actualizará la fuente de verdad para la IA.'}
           </p>
           <button
             type="button"

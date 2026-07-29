@@ -9,6 +9,7 @@ import (
 
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -18,11 +19,12 @@ import (
 )
 
 type AIHandler struct {
-	db *gorm.DB
+	db        *gorm.DB
+	telemetry *services.TelemetryService
 }
 
-func NewAIHandler(db *gorm.DB) *AIHandler {
-	return &AIHandler{db: db}
+func NewAIHandler(db *gorm.DB, telemetry *services.TelemetryService) *AIHandler {
+	return &AIHandler{db: db, telemetry: telemetry}
 }
 
 func (h *AIHandler) Chat(c *fiber.Ctx) error {
@@ -98,6 +100,11 @@ func (h *AIHandler) Chat(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to persist ai logs"})
+	}
+
+	if h.telemetry != nil {
+		role, _ := c.Locals(httpmw.LocalsRole).(string)
+		h.telemetry.LogAsync(userID, role, models.TelemetryAskCopilot)
 	}
 
 	return c.JSON(dto.ChatResponse{

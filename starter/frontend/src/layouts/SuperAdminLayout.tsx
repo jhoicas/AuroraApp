@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
+import AuroraCopilot from '../components/AuroraCopilot/AuroraCopilot';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
@@ -14,16 +15,27 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/sectors', label: 'Sectores' },
   { to: '/admin/catalogs/programs', label: 'Programas' },
   { to: '/admin/catalogs/products', label: 'Productos' },
-  { to: '/admin/catalogs/indicators', label: 'Catálogo EDT' },
-  { to: '/admin/catalogs/funding-sources', label: 'Fuentes de Financiamiento' },
+  { to: '/admin/catalogs/edt', label: 'Catálogo EDT' },
+  { to: '/admin/catalogs/deliverables', label: 'Catálogo de Entregables' },
+  { to: '/admin/catalogs/activities', label: 'Lista de actividades' },
+  { to: '/admin/catalogs/ods', label: 'ODS' },
 ] as const;
 
 function headerTitle(pathname: string): string {
   if (pathname.includes('/admin/catalogs/sectors')) return 'Sectores';
   if (pathname.includes('/admin/catalogs/programs')) return 'Programas';
   if (pathname.includes('/admin/catalogs/products')) return 'Productos';
-  if (pathname.includes('/admin/catalogs/indicators')) return 'Catálogo EDT';
-  if (pathname.includes('/admin/catalogs/funding')) return 'Fuentes de Financiamiento';
+  if (pathname.includes('/admin/catalogs/edt') || pathname.includes('/admin/catalogs/indicators')) {
+    return 'Catálogo EDT';
+  }
+  if (
+    pathname.includes('/admin/catalogs/deliverables') ||
+    pathname.includes('/admin/catalogs/funding')
+  ) {
+    return 'Catálogo de Entregables';
+  }
+  if (pathname.includes('/admin/catalogs/activities')) return 'Lista de actividades';
+  if (pathname.includes('/admin/catalogs/ods')) return 'ODS';
   if (pathname.includes('/admin/catalog')) return 'Catálogos Maestros';
   if (pathname.includes('/admin/tenants')) return 'Gestión de Tenants';
   if (pathname.includes('/admin/ai')) return 'Gestión IA Aurora';
@@ -150,6 +162,7 @@ export default function SuperAdminLayout() {
           <Outlet />
         </div>
       </main>
+      <AuroraCopilot />
     </div>
   );
 }

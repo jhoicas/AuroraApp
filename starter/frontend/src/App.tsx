@@ -12,7 +12,9 @@ import SectorsCatalogPage from './pages/admin/SectorsCatalogPage';
 import ProgramsCatalogPage from './pages/admin/ProgramsCatalogPage';
 import ProductsCatalogPage from './pages/admin/ProductsCatalogPage';
 import EdtCatalogPage from './pages/admin/EdtCatalogPage';
-import CatalogPlaceholderPage from './pages/admin/CatalogPlaceholderPage';
+import DeliverablesCatalogPage from './pages/admin/DeliverablesCatalogPage';
+import ActivitiesCatalogPage from './pages/admin/ActivitiesCatalogPage';
+import OdsCatalogPage from './pages/admin/OdsCatalogPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
 import CatalogPage from './pages/tenant/CatalogPage';
@@ -37,15 +39,14 @@ function App() {
               <Route path="catalogs/sectors" element={<SectorsCatalogPage />} />
               <Route path="catalogs/programs" element={<ProgramsCatalogPage />} />
               <Route path="catalogs/products" element={<ProductsCatalogPage />} />
-              <Route path="catalogs/indicators" element={<EdtCatalogPage />} />
+              <Route path="catalogs/edt" element={<EdtCatalogPage />} />
+              <Route path="catalogs/indicators" element={<Navigate to="/admin/catalogs/edt" replace />} />
+              <Route path="catalogs/deliverables" element={<DeliverablesCatalogPage />} />
+              <Route path="catalogs/activities" element={<ActivitiesCatalogPage />} />
+              <Route path="catalogs/ods" element={<OdsCatalogPage />} />
               <Route
                 path="catalogs/funding-sources"
-                element={
-                  <CatalogPlaceholderPage
-                    title="Fuentes de Financiamiento"
-                    description="Catálogo de fuentes de financiamiento — próximamente."
-                  />
-                }
+                element={<Navigate to="/admin/catalogs/deliverables" replace />}
               />
               <Route path="ai" element={<AIKnowledgePage />} />
               <Route path="import-catalog" element={<CatalogImporter />} />

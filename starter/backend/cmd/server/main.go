@@ -30,7 +30,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:5173,http://127.0.0.1:5173",
+		AllowOrigins: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 	}))
@@ -45,7 +45,7 @@ func main() {
 	router.RegisterProjectRoutes(app, db, cfg.JWTSecret)
 
 	// Paso 5 — Asistente IA
-	router.RegisterAIRoutes(app, db, cfg.JWTSecret)
+	router.RegisterAIRoutes(app, db, cfg)
 
 	// Paso 6 — Catálogo DNP (solo lectura)
 	router.RegisterCatalogRoutes(app, db, cfg.JWTSecret)

@@ -12,9 +12,15 @@ func AllModels() []any {
 		&ProgramSubprogram{},
 		&CatalogProduct{},
 		&CatalogEdt{},
+		&CatalogDeliverable{},
+		&CatalogActivity{},
+		&CatalogOds{},
 		&Product{},
 		&Project{},
 		&AILog{},
+		&AiKnowledgeNode{},
+		&AiKnowledgeLink{},
+		&AiUsageLog{},
 		&BudgetItem{},
 	}
 }

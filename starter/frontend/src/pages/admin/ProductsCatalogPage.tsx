@@ -10,6 +10,7 @@ import {
   type CreateProductInput,
   type Product,
 } from '../../store/catalogStore';
+import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 type ModalSection = 'A' | 'B' | 'C';
@@ -119,6 +120,9 @@ export default function ProductsCatalogPage() {
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useCopilotSearchSync('products', setQuery);
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);
   const [searchFocused, setSearchFocused] = useState(false);

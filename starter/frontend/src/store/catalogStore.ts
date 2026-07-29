@@ -229,6 +229,60 @@ type PaginatedCatalogEdt = {
   meta: CatalogPageMeta;
 };
 
+/** Fila del catálogo de entregables (lista DNP). */
+export type CatalogDeliverable = {
+  id: string;
+  tenant_id?: string | null;
+  codigo_entregable: string;
+  listado_de_entregables: string;
+  created_at?: string;
+};
+
+type PaginatedCatalogDeliverables = {
+  data: CatalogDeliverable[];
+  meta: CatalogPageMeta;
+};
+
+/** Fila del catálogo de actividades (lista DNP). */
+export type CatalogActivity = {
+  id: string;
+  tenant_id?: string | null;
+  codigo_actividad: string;
+  listado_de_actividades: string;
+  unidad_de_medida: string;
+  created_at?: string;
+};
+
+type PaginatedCatalogActivities = {
+  data: CatalogActivity[];
+  meta: CatalogPageMeta;
+};
+
+/** Fila del catálogo ODS (objetivo + meta). */
+export type CatalogOds = {
+  id: string;
+  tenant_id?: string | null;
+  cod_objetivo_ods: string;
+  descripcion_objetivo_ods: string;
+  codigo_meta_ods: string;
+  descripcion_meta_ods: string;
+  created_at?: string;
+};
+
+type PaginatedCatalogOds = {
+  data: CatalogOds[];
+  meta: CatalogPageMeta;
+};
+
+export type CopilotCatalogTarget =
+  | 'ods'
+  | 'products'
+  | 'sectors'
+  | 'programs'
+  | 'edt'
+  | 'deliverables'
+  | 'activities';
+
 type CatalogState = {
   sectors: CatalogSector[];
   sectorsMeta: CatalogPageMeta | null;
@@ -240,10 +294,19 @@ type CatalogState = {
   catalogProductsMeta: CatalogPageMeta | null;
   catalogEdt: CatalogEdt[];
   catalogEdtMeta: CatalogPageMeta | null;
+  catalogDeliverables: CatalogDeliverable[];
+  catalogDeliverablesMeta: CatalogPageMeta | null;
+  catalogActivities: CatalogActivity[];
+  catalogActivitiesMeta: CatalogPageMeta | null;
+  catalogOds: CatalogOds[];
+  catalogOdsMeta: CatalogPageMeta | null;
   isLoading: boolean;
   isLoadingPrograms: boolean;
   isLoadingProducts: boolean;
   isLoadingEdt: boolean;
+  isLoadingDeliverables: boolean;
+  isLoadingActivities: boolean;
+  isLoadingOds: boolean;
   error: string | null;
   fetchSectors: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   createSector: (input: CreateSectorInput) => Promise<CatalogSector>;
@@ -260,10 +323,30 @@ type CatalogState = {
   searchProducts: (query: string) => Promise<void>;
   fetchCatalogEdt: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   importEdt: (file: File) => Promise<CatalogImportResult>;
+  fetchCatalogDeliverables: (opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => Promise<void>;
+  importDeliverables: (file: File) => Promise<CatalogImportResult>;
+  fetchCatalogActivities: (opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => Promise<void>;
+  importActivities: (file: File) => Promise<CatalogImportResult>;
+  fetchCatalogOds: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
+  importOds: (file: File) => Promise<CatalogImportResult>;
   clearPrograms: () => void;
   clearProducts: () => void;
   clearEdt: () => void;
+  clearDeliverables: () => void;
+  clearActivities: () => void;
+  clearOds: () => void;
   clearError: () => void;
+  copilotSearch: { catalog: CopilotCatalogTarget; query: string } | null;
+  applyCopilotSearch: (catalog: CopilotCatalogTarget, query: string) => void;
+  consumeCopilotSearch: (catalog: CopilotCatalogTarget) => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -362,16 +445,33 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   catalogProductsMeta: null,
   catalogEdt: [],
   catalogEdtMeta: null,
+  catalogDeliverables: [],
+  catalogDeliverablesMeta: null,
+  catalogActivities: [],
+  catalogActivitiesMeta: null,
+  catalogOds: [],
+  catalogOdsMeta: null,
   isLoading: false,
   isLoadingPrograms: false,
   isLoadingProducts: false,
   isLoadingEdt: false,
+  isLoadingDeliverables: false,
+  isLoadingActivities: false,
+  isLoadingOds: false,
   error: null,
+  copilotSearch: null,
 
   clearError: () => set({ error: null }),
+  applyCopilotSearch: (catalog, query) =>
+    set({ copilotSearch: { catalog, query: query.trim() } }),
+  consumeCopilotSearch: (catalog) =>
+    set((s) => (s.copilotSearch?.catalog === catalog ? { copilotSearch: null } : {})),
   clearPrograms: () => set({ programs: [], programSubprograms: [], programsMeta: null }),
   clearProducts: () => set({ products: [], catalogProducts: [], catalogProductsMeta: null }),
   clearEdt: () => set({ catalogEdt: [], catalogEdtMeta: null }),
+  clearDeliverables: () => set({ catalogDeliverables: [], catalogDeliverablesMeta: null }),
+  clearActivities: () => set({ catalogActivities: [], catalogActivitiesMeta: null }),
+  clearOds: () => set({ catalogOds: [], catalogOdsMeta: null }),
 
   fetchSectors: async (opts) => {
     set({ isLoading: true, error: null });
@@ -625,6 +725,123 @@ export const useCatalogStore = create<CatalogState>((set) => ({
       return data;
     } catch (err) {
       throw new Error(extractError(err, 'No se pudo importar el archivo EDT'));
+    }
+  },
+
+  fetchCatalogDeliverables: async (opts) => {
+    set({ isLoadingDeliverables: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedCatalogDeliverables>('/catalog/deliverables', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        catalogDeliverables: data.data ?? [],
+        catalogDeliverablesMeta: data.meta ?? null,
+        isLoadingDeliverables: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingDeliverables: false,
+        error: extractError(err, 'No se pudo cargar el catálogo de entregables'),
+        catalogDeliverables: [],
+        catalogDeliverablesMeta: null,
+      });
+    }
+  },
+
+  importDeliverables: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post<CatalogImportResult>('/catalog/deliverables/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo importar el archivo de entregables'));
+    }
+  },
+
+  fetchCatalogActivities: async (opts) => {
+    set({ isLoadingActivities: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedCatalogActivities>('/catalog/activities', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        catalogActivities: data.data ?? [],
+        catalogActivitiesMeta: data.meta ?? null,
+        isLoadingActivities: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingActivities: false,
+        error: extractError(err, 'No se pudo cargar la lista de actividades'),
+        catalogActivities: [],
+        catalogActivitiesMeta: null,
+      });
+    }
+  },
+
+  importActivities: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post<CatalogImportResult>('/catalog/activities/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo importar el archivo de actividades'));
+    }
+  },
+
+  fetchCatalogOds: async (opts) => {
+    set({ isLoadingOds: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedCatalogOds>('/catalog/ods', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        catalogOds: data.data ?? [],
+        catalogOdsMeta: data.meta ?? null,
+        isLoadingOds: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingOds: false,
+        error: extractError(err, 'No se pudo cargar el catálogo ODS'),
+        catalogOds: [],
+        catalogOdsMeta: null,
+      });
+    }
+  },
+
+  importOds: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post<CatalogImportResult>('/catalog/ods/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo importar el archivo ODS'));
     }
   },
 }));

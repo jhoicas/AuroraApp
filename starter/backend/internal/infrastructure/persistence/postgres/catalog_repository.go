@@ -895,6 +895,625 @@ func (r *CatalogRepository) GetCatalogEdtByID(ctx context.Context, id uuid.UUID)
 	return &item, nil
 }
 
+// CatalogDeliverableListParams filtros para catalogo_entregables.
+type CatalogDeliverableListParams struct {
+	Page   int
+	Limit  int
+	Search string
+}
+
+// CatalogDeliverableListResult resultado paginado.
+type CatalogDeliverableListResult struct {
+	Items    []models.CatalogDeliverable
+	Total    int64
+	Page     int
+	Limit    int
+	LastPage int
+}
+
+const catalogDeliverableBatchSize = 500
+
+var catalogDeliverableUpsertColumns = []string{
+	"tenant_id", "listado_de_entregables",
+}
+
+// DeliverableBulkUpsertResult contadores de importación masiva de entregables.
+type DeliverableBulkUpsertResult struct {
+	Inserted    int
+	Updated     int
+	BatchErrors []string
+}
+
+// ListCatalogDeliverables lista con búsqueda ILIKE y paginación.
+func (r *CatalogRepository) ListCatalogDeliverables(ctx context.Context, p CatalogDeliverableListParams) (*CatalogDeliverableListResult, error) {
+	page := p.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := normalizeCatalogLimit(p.Limit)
+	offset := (page - 1) * limit
+
+	q := r.db.WithContext(ctx).Model(&models.CatalogDeliverable{})
+	if s := strings.TrimSpace(p.Search); s != "" {
+		like := "%" + escapeILIKE(s) + "%"
+		q = q.Where(
+			`(codigo_entregable ILIKE ? ESCAPE '\' OR listado_de_entregables ILIKE ? ESCAPE '\')`,
+			like, like,
+		)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]models.CatalogDeliverable, 0, limit)
+	if err := q.Order("codigo_entregable ASC").
+		Limit(limit).Offset(offset).
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage < 1 {
+		lastPage = 1
+	}
+	return &CatalogDeliverableListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+// ExistingDeliverableCodes retorna el set de códigos ya presentes.
+func (r *CatalogRepository) ExistingDeliverableCodes(ctx context.Context, codes []string) (map[string]struct{}, error) {
+	out := make(map[string]struct{})
+	if len(codes) == 0 {
+		return out, nil
+	}
+	uniq := make([]string, 0, len(codes))
+	seen := make(map[string]struct{}, len(codes))
+	for _, c := range codes {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, ok := seen[c]; ok {
+			continue
+		}
+		seen[c] = struct{}{}
+		uniq = append(uniq, c)
+	}
+	const chunk = 500
+	for i := 0; i < len(uniq); i += chunk {
+		end := i + chunk
+		if end > len(uniq) {
+			end = len(uniq)
+		}
+		var rows []struct {
+			CodigoEntregable string `gorm:"column:codigo_entregable"`
+		}
+		if err := r.db.WithContext(ctx).Model(&models.CatalogDeliverable{}).
+			Select("codigo_entregable").
+			Where("codigo_entregable IN ?", uniq[i:end]).
+			Find(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			out[row.CodigoEntregable] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+// BulkUpsertCatalogDeliverables upsert por codigo_entregable en lotes de 500.
+func (r *CatalogRepository) BulkUpsertCatalogDeliverables(ctx context.Context, items []models.CatalogDeliverable) (*DeliverableBulkUpsertResult, error) {
+	if len(items) == 0 {
+		return &DeliverableBulkUpsertResult{}, nil
+	}
+
+	byCode := make(map[string]models.CatalogDeliverable, len(items))
+	order := make([]string, 0, len(items))
+	for _, it := range items {
+		it.CodigoEntregable = strings.TrimSpace(it.CodigoEntregable)
+		it.ListadoDeEntregables = strings.TrimSpace(it.ListadoDeEntregables)
+		if it.CodigoEntregable == "" {
+			continue
+		}
+		if _, seen := byCode[it.CodigoEntregable]; !seen {
+			order = append(order, it.CodigoEntregable)
+		}
+		byCode[it.CodigoEntregable] = it
+	}
+
+	deduped := make([]models.CatalogDeliverable, 0, len(order))
+	now := time.Now().UTC()
+	for _, code := range order {
+		it := byCode[code]
+		if it.ID == uuid.Nil {
+			it.ID = uuid.New()
+		}
+		if it.CreatedAt.IsZero() {
+			it.CreatedAt = now
+		}
+		deduped = append(deduped, it)
+	}
+
+	existing, err := r.ExistingDeliverableCodes(ctx, order)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &DeliverableBulkUpsertResult{BatchErrors: make([]string, 0)}
+	// ON CONFLICT (codigo_entregable) DO UPDATE SET ...
+	conflict := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "codigo_entregable"}},
+		DoUpdates: clause.AssignmentColumns(catalogDeliverableUpsertColumns),
+	}
+
+	for i := 0; i < len(deduped); i += catalogDeliverableBatchSize {
+		end := i + catalogDeliverableBatchSize
+		if end > len(deduped) {
+			end = len(deduped)
+		}
+		batch := deduped[i:end]
+		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
+			for _, item := range batch {
+				one := item
+				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
+					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
+						"codigo %s: %v", one.CodigoEntregable, errOne,
+					))
+				}
+			}
+		}
+	}
+
+	failed := make(map[string]struct{}, len(result.BatchErrors))
+	for _, msg := range result.BatchErrors {
+		if strings.HasPrefix(msg, "codigo ") {
+			rest := strings.TrimPrefix(msg, "codigo ")
+			if idx := strings.Index(rest, ":"); idx > 0 {
+				failed[rest[:idx]] = struct{}{}
+			}
+		}
+	}
+	updated := 0
+	for _, code := range order {
+		if _, bad := failed[code]; bad {
+			continue
+		}
+		if _, ok := existing[code]; ok {
+			updated++
+		}
+	}
+	result.Updated = updated
+	result.Inserted = len(order) - updated - len(failed)
+	if result.Inserted < 0 {
+		result.Inserted = 0
+	}
+	return result, nil
+}
+
+// CatalogActivityListParams filtros para catalogo_actividades.
+type CatalogActivityListParams struct {
+	Page   int
+	Limit  int
+	Search string
+}
+
+// CatalogActivityListResult resultado paginado.
+type CatalogActivityListResult struct {
+	Items    []models.CatalogActivity
+	Total    int64
+	Page     int
+	Limit    int
+	LastPage int
+}
+
+const catalogActivityBatchSize = 500
+
+var catalogActivityUpsertColumns = []string{
+	"tenant_id", "listado_de_actividades", "unidad_de_medida",
+}
+
+// ActivityBulkUpsertResult contadores de importación masiva de actividades.
+type ActivityBulkUpsertResult struct {
+	Inserted    int
+	Updated     int
+	BatchErrors []string
+}
+
+// ListCatalogActivities lista con búsqueda ILIKE y paginación.
+func (r *CatalogRepository) ListCatalogActivities(ctx context.Context, p CatalogActivityListParams) (*CatalogActivityListResult, error) {
+	page := p.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := normalizeCatalogLimit(p.Limit)
+	offset := (page - 1) * limit
+
+	q := r.db.WithContext(ctx).Model(&models.CatalogActivity{})
+	if s := strings.TrimSpace(p.Search); s != "" {
+		like := "%" + escapeILIKE(s) + "%"
+		q = q.Where(
+			`(codigo_actividad ILIKE ? ESCAPE '\' OR listado_de_actividades ILIKE ? ESCAPE '\' OR unidad_de_medida ILIKE ? ESCAPE '\')`,
+			like, like, like,
+		)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]models.CatalogActivity, 0, limit)
+	if err := q.Order("codigo_actividad ASC").
+		Limit(limit).Offset(offset).
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage < 1 {
+		lastPage = 1
+	}
+	return &CatalogActivityListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+// ExistingActivityCodes retorna el set de códigos ya presentes.
+func (r *CatalogRepository) ExistingActivityCodes(ctx context.Context, codes []string) (map[string]struct{}, error) {
+	out := make(map[string]struct{})
+	if len(codes) == 0 {
+		return out, nil
+	}
+	uniq := make([]string, 0, len(codes))
+	seen := make(map[string]struct{}, len(codes))
+	for _, c := range codes {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, ok := seen[c]; ok {
+			continue
+		}
+		seen[c] = struct{}{}
+		uniq = append(uniq, c)
+	}
+	const chunk = 500
+	for i := 0; i < len(uniq); i += chunk {
+		end := i + chunk
+		if end > len(uniq) {
+			end = len(uniq)
+		}
+		var rows []struct {
+			CodigoActividad string `gorm:"column:codigo_actividad"`
+		}
+		if err := r.db.WithContext(ctx).Model(&models.CatalogActivity{}).
+			Select("codigo_actividad").
+			Where("codigo_actividad IN ?", uniq[i:end]).
+			Find(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			out[row.CodigoActividad] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+// BulkUpsertCatalogActivities upsert por codigo_actividad en lotes de 500.
+func (r *CatalogRepository) BulkUpsertCatalogActivities(ctx context.Context, items []models.CatalogActivity) (*ActivityBulkUpsertResult, error) {
+	if len(items) == 0 {
+		return &ActivityBulkUpsertResult{}, nil
+	}
+
+	byCode := make(map[string]models.CatalogActivity, len(items))
+	order := make([]string, 0, len(items))
+	for _, it := range items {
+		it.CodigoActividad = strings.TrimSpace(it.CodigoActividad)
+		it.ListadoDeActividades = strings.TrimSpace(it.ListadoDeActividades)
+		it.UnidadDeMedida = strings.TrimSpace(it.UnidadDeMedida)
+		if it.CodigoActividad == "" {
+			continue
+		}
+		if _, seen := byCode[it.CodigoActividad]; !seen {
+			order = append(order, it.CodigoActividad)
+		}
+		byCode[it.CodigoActividad] = it
+	}
+
+	deduped := make([]models.CatalogActivity, 0, len(order))
+	now := time.Now().UTC()
+	for _, code := range order {
+		it := byCode[code]
+		if it.ID == uuid.Nil {
+			it.ID = uuid.New()
+		}
+		if it.CreatedAt.IsZero() {
+			it.CreatedAt = now
+		}
+		deduped = append(deduped, it)
+	}
+
+	existing, err := r.ExistingActivityCodes(ctx, order)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ActivityBulkUpsertResult{BatchErrors: make([]string, 0)}
+	// ON CONFLICT (codigo_actividad) DO UPDATE SET ...
+	conflict := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "codigo_actividad"}},
+		DoUpdates: clause.AssignmentColumns(catalogActivityUpsertColumns),
+	}
+
+	for i := 0; i < len(deduped); i += catalogActivityBatchSize {
+		end := i + catalogActivityBatchSize
+		if end > len(deduped) {
+			end = len(deduped)
+		}
+		batch := deduped[i:end]
+		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
+			for _, item := range batch {
+				one := item
+				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
+					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
+						"codigo %s: %v", one.CodigoActividad, errOne,
+					))
+				}
+			}
+		}
+	}
+
+	failed := make(map[string]struct{}, len(result.BatchErrors))
+	for _, msg := range result.BatchErrors {
+		if strings.HasPrefix(msg, "codigo ") {
+			rest := strings.TrimPrefix(msg, "codigo ")
+			if idx := strings.Index(rest, ":"); idx > 0 {
+				failed[rest[:idx]] = struct{}{}
+			}
+		}
+	}
+	updated := 0
+	for _, code := range order {
+		if _, bad := failed[code]; bad {
+			continue
+		}
+		if _, ok := existing[code]; ok {
+			updated++
+		}
+	}
+	result.Updated = updated
+	result.Inserted = len(order) - updated - len(failed)
+	if result.Inserted < 0 {
+		result.Inserted = 0
+	}
+	return result, nil
+}
+
+// CatalogOdsListParams filtros para catalogo_ods.
+type CatalogOdsListParams struct {
+	Page   int
+	Limit  int
+	Search string
+}
+
+// CatalogOdsListResult resultado paginado.
+type CatalogOdsListResult struct {
+	Items    []models.CatalogOds
+	Total    int64
+	Page     int
+	Limit    int
+	LastPage int
+}
+
+const catalogOdsBatchSize = 500
+
+var catalogOdsUpsertColumns = []string{
+	"tenant_id", "descripcion_objetivo_ods", "descripcion_meta_ods",
+}
+
+// OdsBulkUpsertResult contadores de importación masiva ODS.
+type OdsBulkUpsertResult struct {
+	Inserted    int
+	Updated     int
+	BatchErrors []string
+}
+
+// ListCatalogOds lista con búsqueda ILIKE y paginación.
+func (r *CatalogRepository) ListCatalogOds(ctx context.Context, p CatalogOdsListParams) (*CatalogOdsListResult, error) {
+	page := p.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := normalizeCatalogLimit(p.Limit)
+	offset := (page - 1) * limit
+
+	q := r.db.WithContext(ctx).Model(&models.CatalogOds{})
+	if s := strings.TrimSpace(p.Search); s != "" {
+		like := "%" + escapeILIKE(s) + "%"
+		q = q.Where(
+			`(cod_objetivo_ods ILIKE ? ESCAPE '\' OR descripcion_objetivo_ods ILIKE ? ESCAPE '\' OR
+			 codigo_meta_ods ILIKE ? ESCAPE '\' OR descripcion_meta_ods ILIKE ? ESCAPE '\')`,
+			like, like, like, like,
+		)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]models.CatalogOds, 0, limit)
+	if err := q.Order("cod_objetivo_ods ASC, codigo_meta_ods ASC").
+		Limit(limit).Offset(offset).
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage < 1 {
+		lastPage = 1
+	}
+	return &CatalogOdsListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+// ExistingOdsCompositeKeys retorna llaves objetivo_meta ya presentes.
+func (r *CatalogRepository) ExistingOdsCompositeKeys(ctx context.Context, objetivoCodes []string) (map[string]struct{}, error) {
+	out := make(map[string]struct{})
+	if len(objetivoCodes) == 0 {
+		return out, nil
+	}
+	uniq := make([]string, 0, len(objetivoCodes))
+	seen := make(map[string]struct{}, len(objetivoCodes))
+	for _, c := range objetivoCodes {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, ok := seen[c]; ok {
+			continue
+		}
+		seen[c] = struct{}{}
+		uniq = append(uniq, c)
+	}
+	const chunk = 500
+	for i := 0; i < len(uniq); i += chunk {
+		end := i + chunk
+		if end > len(uniq) {
+			end = len(uniq)
+		}
+		var rows []struct {
+			CodObjetivoOds string `gorm:"column:cod_objetivo_ods"`
+			CodigoMetaOds  string `gorm:"column:codigo_meta_ods"`
+		}
+		if err := r.db.WithContext(ctx).Model(&models.CatalogOds{}).
+			Select("cod_objetivo_ods, codigo_meta_ods").
+			Where("cod_objetivo_ods IN ?", uniq[i:end]).
+			Find(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			out[models.OdsCompositeKey(row.CodObjetivoOds, row.CodigoMetaOds)] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+// BulkUpsertCatalogOds upsert por (cod_objetivo_ods, codigo_meta_ods) en lotes de 500.
+func (r *CatalogRepository) BulkUpsertCatalogOds(ctx context.Context, items []models.CatalogOds) (*OdsBulkUpsertResult, error) {
+	if len(items) == 0 {
+		return &OdsBulkUpsertResult{}, nil
+	}
+
+	byKey := make(map[string]models.CatalogOds, len(items))
+	order := make([]string, 0, len(items))
+	objetivoCodes := make([]string, 0, len(items))
+	for _, it := range items {
+		it.CodObjetivoOds = strings.TrimSpace(it.CodObjetivoOds)
+		it.CodigoMetaOds = strings.TrimSpace(it.CodigoMetaOds)
+		it.DescripcionObjetivoOds = strings.TrimSpace(it.DescripcionObjetivoOds)
+		it.DescripcionMetaOds = strings.TrimSpace(it.DescripcionMetaOds)
+		if it.CodObjetivoOds == "" || it.CodigoMetaOds == "" {
+			continue
+		}
+		key := models.OdsCompositeKey(it.CodObjetivoOds, it.CodigoMetaOds)
+		if _, seen := byKey[key]; !seen {
+			order = append(order, key)
+			objetivoCodes = append(objetivoCodes, it.CodObjetivoOds)
+		}
+		byKey[key] = it
+	}
+
+	deduped := make([]models.CatalogOds, 0, len(order))
+	now := time.Now().UTC()
+	for _, key := range order {
+		it := byKey[key]
+		if it.ID == uuid.Nil {
+			it.ID = uuid.New()
+		}
+		if it.CreatedAt.IsZero() {
+			it.CreatedAt = now
+		}
+		deduped = append(deduped, it)
+	}
+
+	existing, err := r.ExistingOdsCompositeKeys(ctx, objetivoCodes)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &OdsBulkUpsertResult{BatchErrors: make([]string, 0)}
+	// ON CONFLICT (cod_objetivo_ods, codigo_meta_ods) DO UPDATE SET ...
+	conflict := clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "cod_objetivo_ods"},
+			{Name: "codigo_meta_ods"},
+		},
+		DoUpdates: clause.AssignmentColumns(catalogOdsUpsertColumns),
+	}
+
+	for i := 0; i < len(deduped); i += catalogOdsBatchSize {
+		end := i + catalogOdsBatchSize
+		if end > len(deduped) {
+			end = len(deduped)
+		}
+		batch := deduped[i:end]
+		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
+			for _, item := range batch {
+				one := item
+				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
+					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
+						"clave %s: %v",
+						models.OdsCompositeKey(one.CodObjetivoOds, one.CodigoMetaOds),
+						errOne,
+					))
+				}
+			}
+		}
+	}
+
+	failed := make(map[string]struct{}, len(result.BatchErrors))
+	for _, msg := range result.BatchErrors {
+		if strings.HasPrefix(msg, "clave ") {
+			rest := strings.TrimPrefix(msg, "clave ")
+			if idx := strings.Index(rest, ":"); idx > 0 {
+				failed[rest[:idx]] = struct{}{}
+			}
+		}
+	}
+	updated := 0
+	for _, key := range order {
+		if _, bad := failed[key]; bad {
+			continue
+		}
+		if _, ok := existing[key]; ok {
+			updated++
+		}
+	}
+	result.Updated = updated
+	result.Inserted = len(order) - updated - len(failed)
+	if result.Inserted < 0 {
+		result.Inserted = 0
+	}
+	return result, nil
+}
+
 func normalizeCatalogLimit(limit int) int {
 	switch limit {
 	case 5, 10, 20:

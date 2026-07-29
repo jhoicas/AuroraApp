@@ -21,7 +21,7 @@ func callAnthropic(systemPrompt, userPrompt string) (string, error) {
 	cfg := config.LoadConfig()
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
-		apiKey = cfg.OpenAIApiKey
+		apiKey = cfg.AnthropicApiKey
 	}
 
 	model := os.Getenv("ANTHROPIC_MODEL")

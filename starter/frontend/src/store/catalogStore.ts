@@ -206,6 +206,29 @@ export type CreateProductInput = {
   edt: string;
 };
 
+/** Fila del catálogo EDT (matriz de entregables / actividades). */
+export type CatalogEdt = {
+  id: string;
+  tenant_id?: string | null;
+  codigo_producto_estandarizado: string;
+  nombre_producto: string;
+  codigo_entregable_l1: string;
+  nombre_entregable_l1: string;
+  codigo_entregable_l2: string;
+  nombre_entregable_l2: string;
+  codigo_entregable_l3: string;
+  nombre_entregable_l3: string;
+  codigo_actividad: string;
+  actividad: string;
+  unidad_de_medida: string;
+  created_at?: string;
+};
+
+type PaginatedCatalogEdt = {
+  data: CatalogEdt[];
+  meta: CatalogPageMeta;
+};
+
 type CatalogState = {
   sectors: CatalogSector[];
   sectorsMeta: CatalogPageMeta | null;
@@ -215,9 +238,12 @@ type CatalogState = {
   products: CatalogProduct[];
   catalogProducts: Product[];
   catalogProductsMeta: CatalogPageMeta | null;
+  catalogEdt: CatalogEdt[];
+  catalogEdtMeta: CatalogPageMeta | null;
   isLoading: boolean;
   isLoadingPrograms: boolean;
   isLoadingProducts: boolean;
+  isLoadingEdt: boolean;
   error: string | null;
   fetchSectors: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   createSector: (input: CreateSectorInput) => Promise<CatalogSector>;
@@ -232,8 +258,11 @@ type CatalogState = {
   deleteProduct: (id: string) => Promise<void>;
   importProducts: (file: File) => Promise<CatalogImportResult>;
   searchProducts: (query: string) => Promise<void>;
+  fetchCatalogEdt: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
+  importEdt: (file: File) => Promise<CatalogImportResult>;
   clearPrograms: () => void;
   clearProducts: () => void;
+  clearEdt: () => void;
   clearError: () => void;
 };
 
@@ -331,14 +360,18 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   products: [],
   catalogProducts: [],
   catalogProductsMeta: null,
+  catalogEdt: [],
+  catalogEdtMeta: null,
   isLoading: false,
   isLoadingPrograms: false,
   isLoadingProducts: false,
+  isLoadingEdt: false,
   error: null,
 
   clearError: () => set({ error: null }),
   clearPrograms: () => set({ programs: [], programSubprograms: [], programsMeta: null }),
   clearProducts: () => set({ products: [], catalogProducts: [], catalogProductsMeta: null }),
+  clearEdt: () => set({ catalogEdt: [], catalogEdtMeta: null }),
 
   fetchSectors: async (opts) => {
     set({ isLoading: true, error: null });
@@ -553,6 +586,45 @@ export const useCatalogStore = create<CatalogState>((set) => ({
         error: extractError(err, 'No se pudieron buscar productos'),
         products: [],
       });
+    }
+  },
+
+  fetchCatalogEdt: async (opts) => {
+    set({ isLoadingEdt: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedCatalogEdt>('/catalog/edt', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        catalogEdt: data.data ?? [],
+        catalogEdtMeta: data.meta ?? null,
+        isLoadingEdt: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingEdt: false,
+        error: extractError(err, 'No se pudo cargar el catálogo EDT'),
+        catalogEdt: [],
+        catalogEdtMeta: null,
+      });
+    }
+  },
+
+  importEdt: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post<CatalogImportResult>('/catalog/edt/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo importar el archivo EDT'));
     }
   },
 }));

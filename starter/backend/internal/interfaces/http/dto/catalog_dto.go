@@ -176,6 +176,41 @@ type ProductImportResponse struct {
 	Errors          []ImportRowError `json:"errors,omitempty"`
 }
 
+// CatalogEdtResponse fila del catálogo EDT.
+type CatalogEdtResponse struct {
+	ID                          string  `json:"id"`
+	TenantID                    *string `json:"tenant_id,omitempty"`
+	CodigoProductoEstandarizado string  `json:"codigo_producto_estandarizado"`
+	NombreProducto              string  `json:"nombre_producto"`
+	CodigoEntregableL1          string  `json:"codigo_entregable_l1"`
+	NombreEntregableL1          string  `json:"nombre_entregable_l1"`
+	CodigoEntregableL2          string  `json:"codigo_entregable_l2"`
+	NombreEntregableL2          string  `json:"nombre_entregable_l2"`
+	CodigoEntregableL3          string  `json:"codigo_entregable_l3"`
+	NombreEntregableL3          string  `json:"nombre_entregable_l3"`
+	CodigoActividad             string  `json:"codigo_actividad"`
+	Actividad                   string  `json:"actividad"`
+	UnidadDeMedida              string  `json:"unidad_de_medida"`
+	CreatedAt                   string  `json:"created_at"`
+}
+
+// PaginatedCatalogEdtResponse listado paginado EDT.
+type PaginatedCatalogEdtResponse struct {
+	Data []CatalogEdtResponse `json:"data"`
+	Meta PaginationMeta       `json:"meta"`
+}
+
+// EdtImportResponse resultado de importación masiva EDT.
+type EdtImportResponse struct {
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	Inserted        int              `json:"inserted"`
+	Updated         int              `json:"updated"`
+	Skipped         int              `json:"skipped"`
+	TotalRowsParsed int              `json:"total_rows_parsed"`
+	Errors          []ImportRowError `json:"errors,omitempty"`
+}
+
 // ProductResponse producto del catálogo DNP (tabla products, explorador).
 type ProductResponse struct {
 	ID        string  `json:"id"`

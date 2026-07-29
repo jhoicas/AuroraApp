@@ -24,11 +24,51 @@ type CatalogSummary = {
 };
 
 type CatalogImporterProps = {
-  /** `full` = catálogo DNP multi-hoja legacy; `products` = catálogo de productos MGA. */
-  variant?: 'full' | 'products';
+  /** `full` = DNP multi-hoja; `products` = productos MGA; `edt` = catálogo EDT. */
+  variant?: 'full' | 'products' | 'edt';
   onImported?: (result: CatalogImportResult | CatalogSummary) => void;
   className?: string;
 };
+
+const EDT_TEMPLATE_HEADERS = [
+  'Código producto estandarizado',
+  'Nombre Producto',
+  'Codigo entregable nivel 1',
+  'Nombre entregable nivel 1',
+  'Codigo entregable nivel 2',
+  'Nombre entregable nivel 2',
+  'Codigo entregable nivel 3',
+  'Nombre entregable nivel 3',
+  'Codigo actividad',
+  'Actividad',
+  'Unidad de medida',
+] as const;
+
+const EDT_TEMPLATE_EXAMPLE = [
+  '0101001',
+  'Documentos normativos',
+  '0101001-01',
+  'Entregable nivel 1',
+  '0101001-01-01',
+  'Entregable nivel 2',
+  '0101001-01-01-01',
+  'Entregable nivel 3',
+  'ACT-001',
+  'Elaborar documento',
+  'Número',
+] as const;
+
+/** Genera y descarga la plantilla CSV EDT con BOM UTF-8. */
+export function downloadEdtTemplate(): void {
+  const csv = `\uFEFF${EDT_TEMPLATE_HEADERS.join(',')}\n${EDT_TEMPLATE_EXAMPLE.join(',')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plantilla_edt.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const PRODUCT_TEMPLATE_HEADERS = [
   'Sector',
@@ -146,11 +186,14 @@ export default function CatalogImporter({
   onImported,
   className = '',
 }: CatalogImporterProps) {
+  const isMatrixImport = variant === 'products' || variant === 'edt';
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState(
     variant === 'products'
       ? 'Esperando archivo CSV/XLSX de productos'
-      : 'Esperando archivo Excel',
+      : variant === 'edt'
+        ? 'Esperando archivo CSV/XLSX de EDT'
+        : 'Esperando archivo Excel',
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<CatalogSummary | null>(null);
@@ -167,7 +210,9 @@ export default function CatalogImporter({
     setStatus(
       variant === 'products'
         ? 'Procesando catálogo de productos. Por favor, espere…'
-        : '⏳ Procesando miles de filas del catálogo. Por favor, no cierre esta ventana...',
+        : variant === 'edt'
+          ? 'Procesando catálogo EDT. Por favor, espere…'
+          : '⏳ Procesando miles de filas del catálogo. Por favor, no cierre esta ventana...',
     );
     setIsProcessing(true);
     setSummary(null);
@@ -175,8 +220,9 @@ export default function CatalogImporter({
     setError(null);
 
     try {
-      if (variant === 'products') {
-        const { data } = await api.post<CatalogImportResult>('/catalog/products/import', formData, {
+      if (isMatrixImport) {
+        const endpoint = variant === 'edt' ? '/catalog/edt/import' : '/catalog/products/import';
+        const { data } = await api.post<CatalogImportResult>(endpoint, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000,
         });
@@ -188,7 +234,8 @@ export default function CatalogImporter({
           updated: data.updated,
           skipped: data.skipped,
           total_rows_parsed: data.total_rows_parsed,
-          productos_inserted: data.inserted,
+          productos_inserted: variant === 'products' ? data.inserted : undefined,
+          edt_inserted: variant === 'edt' ? data.inserted : undefined,
           errors: rowErrors,
         });
         setImportErrors(rowErrors);
@@ -226,15 +273,14 @@ export default function CatalogImporter({
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept:
-      variant === 'products'
-        ? {
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
-            'text/csv': ['.csv'],
-          }
-        : {
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-          },
+    accept: isMatrixImport
+      ? {
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
+          'text/csv': ['.csv'],
+        }
+      : {
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+        },
     multiple: false,
     disabled: isProcessing,
     onDrop: (acceptedFiles) => void uploadCatalog(acceptedFiles[0]),
@@ -249,18 +295,32 @@ export default function CatalogImporter({
           <h3 className="text-xl font-semibold text-[#121c2c]">
             {variant === 'products'
               ? 'Importar Catálogo de Productos'
-              : 'Actualizar Catálogo Oficial DNP'}
+              : variant === 'edt'
+                ? 'Importar Catálogo EDT'
+                : 'Actualizar Catálogo Oficial DNP'}
           </h3>
           <p className="text-sm text-[#3f4949]">
             {variant === 'products'
               ? 'Suba el Excel/CSV del catálogo de productos (MGA). Cada producto debe referenciar un código de programa ya existente.'
-              : 'Suba el archivo oficial del DNP para actualizar sectores, programas, productos, EDT y ODS en la base relacional del sistema.'}
+              : variant === 'edt'
+                ? 'Suba el Excel/CSV de la matriz EDT (producto, entregables nivel 1–3 y actividades).'
+                : 'Suba el archivo oficial del DNP para actualizar sectores, programas, productos, EDT y ODS en la base relacional del sistema.'}
           </p>
         </div>
         {variant === 'products' && (
           <button
             type="button"
             onClick={downloadProductTemplate}
+            className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
+          >
+            <Download className="h-5 w-5" aria-hidden />
+            Descargar Plantilla
+          </button>
+        )}
+        {variant === 'edt' && (
+          <button
+            type="button"
+            onClick={downloadEdtTemplate}
             className="h-12 shrink-0 px-4 py-2 bg-gray-100/50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium inline-flex items-center gap-2"
           >
             <Download className="h-5 w-5" aria-hidden />
@@ -285,12 +345,16 @@ export default function CatalogImporter({
           <p className="text-xl font-semibold text-[#121c2c]">
             {variant === 'products'
               ? 'Arrastre aquí el archivo de productos (.xlsx / .csv)'
-              : 'Actualizar Catálogo Oficial DNP (Archivo Excel)'}
+              : variant === 'edt'
+                ? 'Arrastre aquí el archivo EDT (.xlsx / .csv)'
+                : 'Actualizar Catálogo Oficial DNP (Archivo Excel)'}
           </p>
           <p className="text-base text-[#3f4949]">
             {variant === 'products'
               ? 'El sistema validará que el programa padre exista antes de insertar cada producto.'
-              : 'Arrastre aquí el archivo .xlsx del catálogo oficial. El sistema lo procesará y actualizará la fuente de verdad para la IA.'}
+              : variant === 'edt'
+                ? 'La unicidad se define por código de producto estandarizado + código de actividad.'
+                : 'Arrastre aquí el archivo .xlsx del catálogo oficial. El sistema lo procesará y actualizará la fuente de verdad para la IA.'}
           </p>
           <button
             type="button"
@@ -299,7 +363,7 @@ export default function CatalogImporter({
           >
             {isProcessing
               ? 'Procesando archivo...'
-              : variant === 'products'
+              : isMatrixImport
                 ? 'Seleccionar CSV/XLSX'
                 : 'Seleccionar archivo Excel'}
           </button>
@@ -317,7 +381,7 @@ export default function CatalogImporter({
         <p className="mt-1">{status}</p>
       </div>
 
-      {summary && variant === 'products' && (
+      {summary && isMatrixImport && (
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">

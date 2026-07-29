@@ -14,7 +14,7 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/sectors', label: 'Sectores' },
   { to: '/admin/catalogs/programs', label: 'Programas' },
   { to: '/admin/catalogs/products', label: 'Productos' },
-  { to: '/admin/catalogs/indicators', label: 'Indicadores' },
+  { to: '/admin/catalogs/indicators', label: 'Catálogo EDT' },
   { to: '/admin/catalogs/funding-sources', label: 'Fuentes de Financiamiento' },
 ] as const;
 
@@ -22,7 +22,7 @@ function headerTitle(pathname: string): string {
   if (pathname.includes('/admin/catalogs/sectors')) return 'Sectores';
   if (pathname.includes('/admin/catalogs/programs')) return 'Programas';
   if (pathname.includes('/admin/catalogs/products')) return 'Productos';
-  if (pathname.includes('/admin/catalogs/indicators')) return 'Indicadores';
+  if (pathname.includes('/admin/catalogs/indicators')) return 'Catálogo EDT';
   if (pathname.includes('/admin/catalogs/funding')) return 'Fuentes de Financiamiento';
   if (pathname.includes('/admin/catalog')) return 'Catálogos Maestros';
   if (pathname.includes('/admin/tenants')) return 'Gestión de Tenants';

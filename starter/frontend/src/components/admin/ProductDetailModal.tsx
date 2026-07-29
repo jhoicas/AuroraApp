@@ -60,18 +60,6 @@ function Section({
   );
 }
 
-function Badge({ active, label }: { active: boolean; label: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold ${
-        active ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-500'
-      }`}
-    >
-      {label}: {yesNo(active)}
-    </span>
-  );
-}
-
 export default function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
   return (
     <div
@@ -155,22 +143,23 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
             </div>
           </Section>
 
-          <Section title="Tipologías y EDT" icon="category">
+          <Section title="SUIFP" icon="account_balance">
             <div className="sm:col-span-2">
               <Field
-                label="Tipología general SUIFP"
+                label="Tipología General SUIFP"
                 value={product.tipologia_general_suifp}
                 multiline
               />
             </div>
-            <div className="sm:col-span-2 flex flex-wrap gap-2">
-              <Badge active={product.tipologia_d} label="Tipología D" />
-              <Badge active={product.tipologia_e} label="Tipología E" />
-              <Badge active={product.tipologia_a} label="Tipología A" />
-              <Badge active={product.tipologia_b} label="Tipología B" />
-              <Badge active={product.tipologia_c} label="Tipología C" />
-              <Badge active={product.tiene_edt} label="Tiene EDT" />
-            </div>
+            <Field label="Tipología D" value={product.tipologia_d} />
+            <Field label="Tipología E" value={product.tipologia_e} />
+          </Section>
+
+          <Section title="PIIP" icon="engineering">
+            <Field label="Tipología A" value={product.tipologia_a} />
+            <Field label="Tipología B" value={product.tipologia_b} />
+            <Field label="Tipología C" value={product.tipologia_c} />
+            <Field label="Tiene EDT" value={product.tiene_edt} />
             <div className="sm:col-span-2">
               <Field label="EDT" value={product.edt} multiline />
             </div>

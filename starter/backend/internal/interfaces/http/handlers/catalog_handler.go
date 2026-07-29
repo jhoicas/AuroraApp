@@ -891,6 +891,152 @@ func toCatalogProductResponse(p models.CatalogProduct) dto.CatalogProductRespons
 	}
 }
 
+func (h *CatalogHandler) ListCatalogEdt(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := strings.TrimSpace(c.Query("search"))
+	if search == "" {
+		search = strings.TrimSpace(c.Query("q"))
+	}
+
+	result, err := h.repo.ListCatalogEdt(c.Context(), postgres.CatalogEdtListParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to list edt",
+			"details": err.Error(),
+		})
+	}
+
+	data := make([]dto.CatalogEdtResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		data = append(data, toCatalogEdtResponse(item))
+	}
+	return c.JSON(dto.PaginatedCatalogEdtResponse{
+		Data: data,
+		Meta: dto.PaginationMeta{
+			Total:    result.Total,
+			Page:     result.Page,
+			Limit:    result.Limit,
+			LastPage: result.LastPage,
+		},
+	})
+}
+
+// ImportEdt importa el catálogo EDT desde XLSX o CSV (multipart "file").
+func (h *CatalogHandler) ImportEdt(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+	}
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	var parsed *postgres.EdtParseResult
+	switch ext {
+	case ".xlsx", ".xls":
+		parsed, err = postgres.ParseEdtFromXLSX(src)
+	case ".csv":
+		parsed, err = postgres.ParseEdtFromCSV(src)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unsupported file type; use .xlsx or .csv",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	skipped := 0
+	importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+	for _, pe := range parsed.Errors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{
+			Row:            pe.Row,
+			CodigoProducto: pe.CodigoProducto,
+			Message:        pe.Message,
+		})
+	}
+
+	toUpsert := make([]models.CatalogEdt, 0, len(parsed.Rows))
+	for _, row := range parsed.Rows {
+		toUpsert = append(toUpsert, models.CatalogEdt{
+			CodigoProductoEstandarizado: strings.TrimSpace(row.CodigoProductoEstandarizado),
+			NombreProducto:              strings.TrimSpace(row.NombreProducto),
+			CodigoEntregableL1:          strings.TrimSpace(row.CodigoEntregableL1),
+			NombreEntregableL1:          strings.TrimSpace(row.NombreEntregableL1),
+			CodigoEntregableL2:          strings.TrimSpace(row.CodigoEntregableL2),
+			NombreEntregableL2:          strings.TrimSpace(row.NombreEntregableL2),
+			CodigoEntregableL3:          strings.TrimSpace(row.CodigoEntregableL3),
+			NombreEntregableL3:          strings.TrimSpace(row.NombreEntregableL3),
+			CodigoActividad:             strings.TrimSpace(row.CodigoActividad),
+			Actividad:                   strings.TrimSpace(row.Actividad),
+			UnidadDeMedida:              strings.TrimSpace(row.UnidadDeMedida),
+		})
+	}
+
+	result, err := h.repo.BulkUpsertCatalogEdt(c.Context(), toUpsert)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to import edt",
+			"details": err.Error(),
+		})
+	}
+	for _, be := range result.BatchErrors {
+		skipped++
+		importErrors = append(importErrors, dto.ImportRowError{Message: be})
+	}
+
+	msg := "Importación de catálogo EDT procesada"
+	if len(importErrors) > 0 {
+		msg = fmt.Sprintf(
+			"Importación EDT procesada con %d advertencias/errores de fila (válidas para upsert: %d)",
+			len(importErrors),
+			len(toUpsert),
+		)
+	}
+	return c.Status(fiber.StatusOK).JSON(dto.EdtImportResponse{
+		Status:          "success",
+		Message:         msg,
+		Inserted:        result.Inserted,
+		Updated:         result.Updated,
+		Skipped:         skipped,
+		TotalRowsParsed: parsed.TotalRows,
+		Errors:          importErrors,
+	})
+}
+
+func toCatalogEdtResponse(e models.CatalogEdt) dto.CatalogEdtResponse {
+	var tenantID *string
+	if e.TenantID != nil {
+		s := e.TenantID.String()
+		tenantID = &s
+	}
+	return dto.CatalogEdtResponse{
+		ID:                          e.ID.String(),
+		TenantID:                    tenantID,
+		CodigoProductoEstandarizado: e.CodigoProductoEstandarizado,
+		NombreProducto:              e.NombreProducto,
+		CodigoEntregableL1:          e.CodigoEntregableL1,
+		NombreEntregableL1:          e.NombreEntregableL1,
+		CodigoEntregableL2:          e.CodigoEntregableL2,
+		NombreEntregableL2:          e.NombreEntregableL2,
+		CodigoEntregableL3:          e.CodigoEntregableL3,
+		NombreEntregableL3:          e.NombreEntregableL3,
+		CodigoActividad:             e.CodigoActividad,
+		Actividad:                   e.Actividad,
+		UnidadDeMedida:              e.UnidadDeMedida,
+		CreatedAt:                   e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
 func escapeILIKE(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, `%`, `\%`)

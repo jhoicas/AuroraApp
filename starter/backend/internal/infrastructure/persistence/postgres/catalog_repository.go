@@ -662,6 +662,239 @@ func (r *CatalogRepository) DeleteCatalogProductByID(ctx context.Context, id uui
 	return nil
 }
 
+// --- Catálogo EDT -----------------------------------------------------------
+
+// CatalogEdtListParams filtros para catalogo_edt.
+type CatalogEdtListParams struct {
+	Page   int
+	Limit  int
+	Search string
+}
+
+// CatalogEdtListResult resultado paginado.
+type CatalogEdtListResult struct {
+	Items    []models.CatalogEdt
+	Total    int64
+	Page     int
+	Limit    int
+	LastPage int
+}
+
+const catalogEdtBatchSize = 500
+
+var catalogEdtUpsertColumns = []string{
+	"tenant_id", "nombre_producto",
+	"codigo_entregable_l1", "nombre_entregable_l1",
+	"codigo_entregable_l2", "nombre_entregable_l2",
+	"codigo_entregable_l3", "nombre_entregable_l3",
+	"actividad", "unidad_de_medida",
+}
+
+// EdtBulkUpsertResult contadores de importación masiva EDT.
+type EdtBulkUpsertResult struct {
+	Inserted    int
+	Updated     int
+	BatchErrors []string
+}
+
+// ListCatalogEdt lista con búsqueda ILIKE y paginación.
+func (r *CatalogRepository) ListCatalogEdt(ctx context.Context, p CatalogEdtListParams) (*CatalogEdtListResult, error) {
+	page := p.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := normalizeCatalogLimit(p.Limit)
+	offset := (page - 1) * limit
+
+	q := r.db.WithContext(ctx).Model(&models.CatalogEdt{})
+	if search := strings.TrimSpace(p.Search); search != "" {
+		pattern := "%" + escapeILIKE(search) + "%"
+		q = q.Where(
+			`(codigo_producto_estandarizado ILIKE ? ESCAPE '\' OR nombre_producto ILIKE ? ESCAPE '\' OR
+			  codigo_actividad ILIKE ? ESCAPE '\' OR actividad ILIKE ? ESCAPE '\' OR
+			  codigo_entregable_l1 ILIKE ? ESCAPE '\' OR nombre_entregable_l1 ILIKE ? ESCAPE '\' OR
+			  codigo_entregable_l2 ILIKE ? ESCAPE '\' OR nombre_entregable_l2 ILIKE ? ESCAPE '\' OR
+			  codigo_entregable_l3 ILIKE ? ESCAPE '\' OR nombre_entregable_l3 ILIKE ? ESCAPE '\')`,
+			pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern,
+		)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("count catalogo_edt: %w", err)
+	}
+
+	items := make([]models.CatalogEdt, 0, limit)
+	if err := q.Order("codigo_producto_estandarizado ASC, codigo_actividad ASC").
+		Limit(limit).Offset(offset).Find(&items).Error; err != nil {
+		return nil, fmt.Errorf("list catalogo_edt: %w", err)
+	}
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage == 0 {
+		lastPage = 1
+	}
+	return &CatalogEdtListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+// ExistingEdtCompositeKeys carga llaves producto_actividad ya existentes.
+func (r *CatalogRepository) ExistingEdtCompositeKeys(ctx context.Context, productCodes []string) (map[string]struct{}, error) {
+	set := make(map[string]struct{})
+	if len(productCodes) == 0 {
+		return set, nil
+	}
+	uniq := make([]string, 0, len(productCodes))
+	seen := make(map[string]struct{}, len(productCodes))
+	for _, c := range productCodes {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, ok := seen[c]; ok {
+			continue
+		}
+		seen[c] = struct{}{}
+		uniq = append(uniq, c)
+	}
+
+	const chunk = 1000
+	for i := 0; i < len(uniq); i += chunk {
+		end := i + chunk
+		if end > len(uniq) {
+			end = len(uniq)
+		}
+		var rows []struct {
+			CodigoProductoEstandarizado string `gorm:"column:codigo_producto_estandarizado"`
+			CodigoActividad             string `gorm:"column:codigo_actividad"`
+		}
+		if err := r.db.WithContext(ctx).Model(&models.CatalogEdt{}).
+			Select("codigo_producto_estandarizado, codigo_actividad").
+			Where("codigo_producto_estandarizado IN ?", uniq[i:end]).
+			Find(&rows).Error; err != nil {
+			return nil, fmt.Errorf("existing edt keys: %w", err)
+		}
+		for _, row := range rows {
+			set[models.EdtCompositeKey(row.CodigoProductoEstandarizado, row.CodigoActividad)] = struct{}{}
+		}
+	}
+	return set, nil
+}
+
+// BulkUpsertCatalogEdt upsert por (codigo_producto_estandarizado, codigo_actividad) en lotes de 500.
+func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []models.CatalogEdt) (*EdtBulkUpsertResult, error) {
+	if len(items) == 0 {
+		return &EdtBulkUpsertResult{}, nil
+	}
+
+	byKey := make(map[string]models.CatalogEdt, len(items))
+	order := make([]string, 0, len(items))
+	productCodes := make([]string, 0, len(items))
+	for _, it := range items {
+		it.CodigoProductoEstandarizado = strings.TrimSpace(it.CodigoProductoEstandarizado)
+		it.CodigoActividad = strings.TrimSpace(it.CodigoActividad)
+		if it.CodigoProductoEstandarizado == "" {
+			continue
+		}
+		key := models.EdtCompositeKey(it.CodigoProductoEstandarizado, it.CodigoActividad)
+		if _, seen := byKey[key]; !seen {
+			order = append(order, key)
+			productCodes = append(productCodes, it.CodigoProductoEstandarizado)
+		}
+		byKey[key] = it
+	}
+
+	deduped := make([]models.CatalogEdt, 0, len(order))
+	keys := make([]string, 0, len(order))
+	now := time.Now().UTC()
+	for _, key := range order {
+		it := byKey[key]
+		if it.ID == uuid.Nil {
+			it.ID = uuid.New()
+		}
+		if it.CreatedAt.IsZero() {
+			it.CreatedAt = now
+		}
+		deduped = append(deduped, it)
+		keys = append(keys, key)
+	}
+
+	existing, err := r.ExistingEdtCompositeKeys(ctx, productCodes)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &EdtBulkUpsertResult{BatchErrors: make([]string, 0)}
+	// Equivale a: ON CONFLICT (codigo_producto_estandarizado, codigo_actividad) DO UPDATE SET ...
+	// La PK `id` no participa en el conflicto; se conserva el registro existente.
+	conflict := clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "codigo_producto_estandarizado"},
+			{Name: "codigo_actividad"},
+		},
+		DoUpdates: clause.AssignmentColumns(catalogEdtUpsertColumns),
+	}
+
+	for i := 0; i < len(deduped); i += catalogEdtBatchSize {
+		end := i + catalogEdtBatchSize
+		if end > len(deduped) {
+			end = len(deduped)
+		}
+		batch := deduped[i:end]
+		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
+			for _, item := range batch {
+				one := item
+				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
+					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
+						"clave %s: %v",
+						models.EdtCompositeKey(one.CodigoProductoEstandarizado, one.CodigoActividad),
+						errOne,
+					))
+				}
+			}
+		}
+	}
+
+	failed := make(map[string]struct{}, len(result.BatchErrors))
+	for _, msg := range result.BatchErrors {
+		if strings.HasPrefix(msg, "clave ") {
+			rest := strings.TrimPrefix(msg, "clave ")
+			if idx := strings.Index(rest, ":"); idx > 0 {
+				failed[rest[:idx]] = struct{}{}
+			}
+		}
+	}
+	updated := 0
+	for _, key := range keys {
+		if _, bad := failed[key]; bad {
+			continue
+		}
+		if _, ok := existing[key]; ok {
+			updated++
+		}
+	}
+	result.Updated = updated
+	result.Inserted = len(keys) - updated - len(failed)
+	if result.Inserted < 0 {
+		result.Inserted = 0
+	}
+	return result, nil
+}
+
+// GetCatalogEdtByID obtiene una fila EDT por UUID.
+func (r *CatalogRepository) GetCatalogEdtByID(ctx context.Context, id uuid.UUID) (*models.CatalogEdt, error) {
+	var item models.CatalogEdt
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 func normalizeCatalogLimit(limit int) int {
 	switch limit {
 	case 5, 10, 20:

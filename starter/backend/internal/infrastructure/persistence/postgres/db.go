@@ -46,6 +46,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureSectorsSchema(db)
 	ensureProgramasSubprogramasSchema(db)
 	ensureCatalogoProductosSchema(db)
+	ensureCatalogoEdtSchema(db)
 
 	if err := EnsureSystemRoles(db); err != nil {
 		return nil, fmt.Errorf("ensure system roles: %w", err)
@@ -312,6 +313,63 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_codigo_producto ON catalogo_productos (codigo_producto)`,
 	}
 	execSchemaStatements(db, "ensure catalogo_productos schema", statements)
+}
+
+func ensureCatalogoEdtSchema(db *gorm.DB) {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS catalogo_edt (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID,
+			codigo_producto_estandarizado VARCHAR(50) NOT NULL,
+			nombre_producto TEXT,
+			codigo_entregable_l1 VARCHAR(100),
+			nombre_entregable_l1 TEXT,
+			codigo_entregable_l2 VARCHAR(100),
+			nombre_entregable_l2 TEXT,
+			codigo_entregable_l3 VARCHAR(100),
+			nombre_entregable_l3 TEXT,
+			codigo_actividad VARCHAR(100) NOT NULL DEFAULT '',
+			actividad TEXT,
+			unidad_de_medida TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS codigo_producto_estandarizado VARCHAR(50)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS nombre_producto TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS codigo_entregable_l1 VARCHAR(100)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS nombre_entregable_l1 TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS codigo_entregable_l2 VARCHAR(100)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS nombre_entregable_l2 TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS codigo_entregable_l3 VARCHAR(100)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS nombre_entregable_l3 TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS codigo_actividad VARCHAR(100)`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS actividad TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS unidad_de_medida TEXT`,
+		`ALTER TABLE catalogo_edt ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`UPDATE catalogo_edt SET codigo_actividad = '' WHERE codigo_actividad IS NULL`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_actividad SET DEFAULT ''`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_edt ALTER COLUMN codigo_actividad SET NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN nombre_producto TYPE TEXT`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN nombre_entregable_l1 TYPE TEXT`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN nombre_entregable_l2 TYPE TEXT`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN nombre_entregable_l3 TYPE TEXT`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN actividad TYPE TEXT`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN unidad_de_medida TYPE TEXT`,
+		// Forzar VARCHAR en códigos (evita pérdida de ceros si alguna vez fueron numéricos).
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_producto_estandarizado TYPE VARCHAR(50) USING trim(codigo_producto_estandarizado::text)`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l1 TYPE VARCHAR(100) USING trim(COALESCE(codigo_entregable_l1::text, ''))`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l2 TYPE VARCHAR(100) USING trim(COALESCE(codigo_entregable_l2::text, ''))`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l3 TYPE VARCHAR(100) USING trim(COALESCE(codigo_entregable_l3::text, ''))`,
+		`ALTER TABLE catalogo_edt ALTER COLUMN codigo_actividad TYPE VARCHAR(100) USING trim(COALESCE(codigo_actividad::text, ''))`,
+		`DROP INDEX IF EXISTS idx_edt_producto_actividad`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_edt_prod_act
+			ON catalogo_edt (codigo_producto_estandarizado, codigo_actividad)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_edt_producto
+			ON catalogo_edt (codigo_producto_estandarizado)`,
+	}
+	execSchemaStatements(db, "ensure catalogo_edt schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

@@ -11,6 +11,7 @@ import CatalogImporter from './components/CatalogImporter';
 import SectorsCatalogPage from './pages/admin/SectorsCatalogPage';
 import ProgramsCatalogPage from './pages/admin/ProgramsCatalogPage';
 import ProductsCatalogPage from './pages/admin/ProductsCatalogPage';
+import EdtCatalogPage from './pages/admin/EdtCatalogPage';
 import CatalogPlaceholderPage from './pages/admin/CatalogPlaceholderPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
@@ -36,15 +37,7 @@ function App() {
               <Route path="catalogs/sectors" element={<SectorsCatalogPage />} />
               <Route path="catalogs/programs" element={<ProgramsCatalogPage />} />
               <Route path="catalogs/products" element={<ProductsCatalogPage />} />
-              <Route
-                path="catalogs/indicators"
-                element={
-                  <CatalogPlaceholderPage
-                    title="Indicadores"
-                    description="Catálogo de indicadores — próximamente."
-                  />
-                }
-              />
+              <Route path="catalogs/indicators" element={<EdtCatalogPage />} />
               <Route
                 path="catalogs/funding-sources"
                 element={

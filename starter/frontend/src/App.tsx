@@ -19,6 +19,7 @@ import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
 import CatalogPage from './pages/tenant/CatalogPage';
 import AiAssistantPage from './pages/tenant/AiAssistantPage';
+import LandingPage from './pages/LandingPage';
 
 /** Solo disponible cuando Vite se arranca con VITE_E2E=true (suite Playwright). */
 function E2ECrashPage(): never {
@@ -32,7 +33,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
             <Route path="/admin" element={<SuperAdminLayout />}>

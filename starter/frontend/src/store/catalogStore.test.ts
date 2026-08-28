@@ -261,7 +261,32 @@ describe('catalogStore — programas', () => {
     });
 
     expect(store().programs).toEqual([]);
-    expect(store().isLoading).toBe(false);
+    expect(store().isLoadingSectorPrograms).toBe(false);
+  });
+
+  it('fetchProgramsBySector activa el flag de carga del sector', async () => {
+    let resolve!: () => void;
+    const gate = new Promise<void>((r) => {
+      resolve = r;
+    });
+
+    server.use(
+      http.get(apiUrl('/catalog/sectors/s-1/programs'), async () => {
+        await gate;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const pending = store().fetchProgramsBySector('s-1');
+    expect(store().isLoadingSectorPrograms).toBe(true);
+    expect(store().programs).toEqual([]);
+
+    resolve();
+    await act(async () => {
+      await pending;
+    });
+
+    expect(store().isLoadingSectorPrograms).toBe(false);
   });
 
   it('fetchProgramsBySector carga los programas del sector', async () => {
@@ -411,6 +436,23 @@ describe('catalogStore — productos', () => {
     expect(mapped.edt).toBe('');
     expect(mapped.indicador_principal).toBe(false);
     expect(mapped.tipologia_c).toBe(false);
+  });
+
+  it('fetchCatalogProducts usa CATALOG_FULL_LIST_LIMIT por defecto', async () => {
+    let received: URLSearchParams | null = null;
+    server.use(
+      http.get(apiUrl('/catalog/products'), ({ request }) => {
+        received = new URL(request.url).searchParams;
+        return HttpResponse.json({ data: [], meta });
+      }),
+    );
+
+    await act(async () => {
+      await store().fetchCatalogProducts({ search: '4001' });
+    });
+
+    expect(received!.get('limit')).toBe('5000');
+    expect(received!.get('search')).toBe('4001');
   });
 
   it('fetchCatalogProducts mapea el payload del backend', async () => {

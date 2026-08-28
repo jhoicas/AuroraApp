@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchableCombobox, {
   type ComboboxOption,
@@ -23,13 +23,18 @@ export default function CatalogPage() {
   const navigate = useNavigate();
   const sectors = useCatalogStore((s) => s.sectors);
   const programs = useCatalogStore((s) => s.programs);
+  const programsSectorId = useCatalogStore((s) => s.programsSectorId);
   const catalogProducts = useCatalogStore((s) => s.catalogProducts);
-  const isLoading = useCatalogStore((s) => s.isLoading);
+  const catalogProductsProgramCode = useCatalogStore((s) => s.catalogProductsProgramCode);
+  const isLoadingSectors = useCatalogStore((s) => s.isLoading);
+  const isLoadingSectorPrograms = useCatalogStore((s) => s.isLoadingSectorPrograms);
   const isLoadingProducts = useCatalogStore((s) => s.isLoadingProducts);
   const catalogError = useCatalogStore((s) => s.error);
   const fetchSectors = useCatalogStore((s) => s.fetchSectors);
   const fetchPrograms = useCatalogStore((s) => s.fetchProgramsBySector);
   const fetchCatalogProducts = useCatalogStore((s) => s.fetchCatalogProducts);
+  const clearPrograms = useCatalogStore((s) => s.clearPrograms);
+  const clearProducts = useCatalogStore((s) => s.clearProducts);
 
   const createProject = useProjectStore((s) => s.createProject);
   const projectError = useProjectStore((s) => s.error);
@@ -48,39 +53,57 @@ export default function CatalogPage() {
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
   }, [fetchSectors]);
 
-  useEffect(() => {
-    if (!sectorId) {
+  const handleSectorChange = useCallback(
+    (nextSectorId: string) => {
+      setSectorId(nextSectorId);
       setProgramCode('');
       setProductCode('');
-      return;
-    }
-    setProgramCode('');
-    setProductCode('');
-    void fetchPrograms(sectorId);
-  }, [sectorId, fetchPrograms]);
+      clearProducts();
 
-  useEffect(() => {
-    if (!programCode) {
+      if (!nextSectorId) {
+        clearPrograms();
+        return;
+      }
+
+      void fetchPrograms(nextSectorId);
+    },
+    [clearProducts, clearPrograms, fetchPrograms],
+  );
+
+  const handleProgramChange = useCallback(
+    (nextProgramCode: string) => {
+      setProgramCode(nextProgramCode);
       setProductCode('');
-      return;
-    }
-    setProductCode('');
-    void fetchCatalogProducts({
-      page: 1,
-      limit: CATALOG_FULL_LIST_LIMIT,
-      search: programCode,
-    });
-  }, [programCode, fetchCatalogProducts]);
+      clearProducts();
+
+      if (!nextProgramCode) {
+        return;
+      }
+
+      void fetchCatalogProducts({
+        page: 1,
+        limit: CATALOG_FULL_LIST_LIMIT,
+        search: nextProgramCode,
+      });
+    },
+    [clearProducts, fetchCatalogProducts],
+  );
+
+  const handleProductChange = useCallback((nextProductCode: string) => {
+    setProductCode(nextProductCode);
+  }, []);
 
   const selectedSector: CatalogSector | undefined = useMemo(
     () => sectors.find((s) => s.id === sectorId),
     [sectors, sectorId],
   );
 
-  const sectorPrograms: CatalogProgram[] = useMemo(
-    () => programs.filter((p) => p.sector_id === sectorId),
-    [programs, sectorId],
-  );
+  const sectorPrograms: CatalogProgram[] = useMemo(() => {
+    if (!sectorId || programsSectorId !== sectorId) {
+      return [];
+    }
+    return programs.filter((p) => p.sector_id === sectorId);
+  }, [programs, programsSectorId, sectorId]);
 
   const selectedProgram: CatalogProgram | undefined = useMemo(
     () => sectorPrograms.find((p) => p.code === programCode),
@@ -88,13 +111,15 @@ export default function CatalogPage() {
   );
 
   const filteredProducts: Product[] = useMemo(() => {
-    if (!programCode) return [];
+    if (!programCode || catalogProductsProgramCode !== programCode) {
+      return [];
+    }
     return catalogProducts.filter(
       (p) =>
         p.codigo_del_programa === programCode ||
         p.codigo_del_programa.startsWith(programCode),
     );
-  }, [catalogProducts, programCode]);
+  }, [catalogProducts, catalogProductsProgramCode, programCode]);
 
   const selectedProduct: Product | undefined = useMemo(
     () => filteredProducts.find((p) => p.codigo_del_producto === productCode),
@@ -131,8 +156,6 @@ export default function CatalogPage() {
       })),
     [filteredProducts],
   );
-
-  const loadingCascade = isLoading || isLoadingProducts;
 
   const openModal = () => {
     if (!selectedSector || !selectedProgram || !selectedProduct) return;
@@ -222,9 +245,10 @@ export default function CatalogPage() {
                 placeholder="Buscar sector por código o nombre…"
                 options={sectorOptions}
                 value={sectorId}
-                onChange={setSectorId}
-                disabled={loadingCascade && sectors.length === 0}
-                loading={isLoading && sectors.length === 0}
+                onChange={handleSectorChange}
+                disabled={isLoadingSectors && sectors.length === 0}
+                loading={isLoadingSectors && sectors.length === 0}
+                loadingMessage="Cargando sectores…"
                 emptyMessage="No hay sectores cargados en el catálogo maestro."
               />
 
@@ -235,14 +259,15 @@ export default function CatalogPage() {
                 }
                 options={programOptions}
                 value={programCode}
-                onChange={setProgramCode}
+                onChange={handleProgramChange}
                 disabled={!sectorId}
-                loading={Boolean(sectorId) && isLoading}
+                loading={Boolean(sectorId) && isLoadingSectorPrograms}
+                loadingMessage="Cargando programas…"
                 emptyMessage={
                   sectorId ? 'Este sector no tiene programas cargados.' : 'Seleccione un sector primero.'
                 }
               />
-              {sectorId && !isLoading && sectorPrograms.length === 0 && (
+              {sectorId && !isLoadingSectorPrograms && sectorPrograms.length === 0 && (
                 <p className="-mt-3 text-xs text-amber-700">Este sector no tiene programas cargados.</p>
               )}
 
@@ -253,9 +278,10 @@ export default function CatalogPage() {
                 }
                 options={productOptions}
                 value={productCode}
-                onChange={setProductCode}
-                disabled={!programCode}
+                onChange={handleProductChange}
+                disabled={!sectorId || !programCode}
                 loading={Boolean(programCode) && isLoadingProducts}
+                loadingMessage="Cargando productos…"
                 emptyMessage={
                   programCode
                     ? 'No hay productos asociados a este programa en el catálogo maestro.'
@@ -302,13 +328,6 @@ export default function CatalogPage() {
                   Formular Proyecto con este Producto
                 </button>
               </div>
-            )}
-
-            {(isLoading || isLoadingProducts) && (
-              <p className="text-sm text-gray-500 inline-flex items-center gap-2">
-                <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
-                Cargando catálogo…
-              </p>
             )}
           </div>
 

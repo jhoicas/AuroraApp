@@ -292,9 +292,13 @@ type CatalogState = {
   programs: CatalogProgram[];
   programSubprograms: CatalogProgramSubprogram[];
   programsMeta: CatalogPageMeta | null;
+  /** Sector cuyos programas están en `programs` (evita respuestas obsoletas). */
+  programsSectorId: string | null;
   products: CatalogProduct[];
   catalogProducts: Product[];
   catalogProductsMeta: CatalogPageMeta | null;
+  /** Programa cuyos productos están en `catalogProducts`. */
+  catalogProductsProgramCode: string | null;
   catalogEdt: CatalogEdt[];
   catalogEdtMeta: CatalogPageMeta | null;
   catalogDeliverables: CatalogDeliverable[];
@@ -304,6 +308,8 @@ type CatalogState = {
   catalogOds: CatalogOds[];
   catalogOdsMeta: CatalogPageMeta | null;
   isLoading: boolean;
+  /** Carga de programas por sector (wizard tenant /tenant/catalog). */
+  isLoadingSectorPrograms: boolean;
   isLoadingPrograms: boolean;
   isLoadingProducts: boolean;
   isLoadingEdt: boolean;
@@ -443,9 +449,11 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   programs: [],
   programSubprograms: [],
   programsMeta: null,
+  programsSectorId: null,
   products: [],
   catalogProducts: [],
   catalogProductsMeta: null,
+  catalogProductsProgramCode: null,
   catalogEdt: [],
   catalogEdtMeta: null,
   catalogDeliverables: [],
@@ -455,6 +463,7 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   catalogOds: [],
   catalogOdsMeta: null,
   isLoading: false,
+  isLoadingSectorPrograms: false,
   isLoadingPrograms: false,
   isLoadingProducts: false,
   isLoadingEdt: false,
@@ -469,8 +478,20 @@ export const useCatalogStore = create<CatalogState>((set) => ({
     set({ copilotSearch: { catalog, query: query.trim() } }),
   consumeCopilotSearch: (catalog) =>
     set((s) => (s.copilotSearch?.catalog === catalog ? { copilotSearch: null } : {})),
-  clearPrograms: () => set({ programs: [], programSubprograms: [], programsMeta: null }),
-  clearProducts: () => set({ products: [], catalogProducts: [], catalogProductsMeta: null }),
+  clearPrograms: () =>
+    set({
+      programs: [],
+      programSubprograms: [],
+      programsMeta: null,
+      programsSectorId: null,
+    }),
+  clearProducts: () =>
+    set({
+      products: [],
+      catalogProducts: [],
+      catalogProductsMeta: null,
+      catalogProductsProgramCode: null,
+    }),
   clearEdt: () => set({ catalogEdt: [], catalogEdtMeta: null }),
   clearDeliverables: () => set({ catalogDeliverables: [], catalogDeliverablesMeta: null }),
   clearActivities: () => set({ catalogActivities: [], catalogActivitiesMeta: null }),
@@ -531,20 +552,45 @@ export const useCatalogStore = create<CatalogState>((set) => ({
 
   fetchProgramsBySector: async (sectorId) => {
     if (!sectorId) {
-      set({ programs: [] });
+      set({
+        programs: [],
+        programsSectorId: null,
+        isLoadingSectorPrograms: false,
+      });
       return;
     }
-    set({ isLoading: true, error: null });
+
+    set({
+      isLoadingSectorPrograms: true,
+      error: null,
+      programs: [],
+      programsSectorId: sectorId,
+    });
+
     try {
       const { data } = await api.get<CatalogProgram[]>(
         `/catalog/sectors/${sectorId}/programs`,
       );
-      set({ programs: Array.isArray(data) ? data : [], isLoading: false });
+      const programs = Array.isArray(data) ? data : [];
+      set((state) => {
+        if (state.programsSectorId !== sectorId) {
+          return { isLoadingSectorPrograms: false };
+        }
+        return {
+          programs,
+          isLoadingSectorPrograms: false,
+        };
+      });
     } catch (err) {
-      set({
-        isLoading: false,
-        error: extractError(err, 'No se pudieron cargar los programas del sector'),
-        programs: [],
+      set((state) => {
+        if (state.programsSectorId !== sectorId) {
+          return { isLoadingSectorPrograms: false };
+        }
+        return {
+          isLoadingSectorPrograms: false,
+          error: extractError(err, 'No se pudieron cargar los programas del sector'),
+          programs: [],
+        };
       });
     }
   },
@@ -606,26 +652,43 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   },
 
   fetchCatalogProducts: async (opts) => {
-    set({ isLoadingProducts: true, error: null });
+    const programCode = opts?.search?.trim() ?? '';
+    set({
+      isLoadingProducts: true,
+      error: null,
+      catalogProducts: [],
+      catalogProductsProgramCode: programCode || null,
+    });
     try {
       const { data } = await api.get<PaginatedCatalogProducts>('/catalog/products', {
         params: {
           page: opts?.page ?? 1,
-          limit: opts?.limit ?? 10,
-          search: opts?.search?.trim() || undefined,
+          limit: opts?.limit ?? CATALOG_FULL_LIST_LIMIT,
+          search: programCode || undefined,
         },
       });
-      set({
-        catalogProducts: (data.data ?? []).map(mapApiProductToMga),
-        catalogProductsMeta: data.meta ?? null,
-        isLoadingProducts: false,
+      const products = (data.data ?? []).map(mapApiProductToMga);
+      set((state) => {
+        if (state.catalogProductsProgramCode !== (programCode || null)) {
+          return { isLoadingProducts: false };
+        }
+        return {
+          catalogProducts: products,
+          catalogProductsMeta: data.meta ?? null,
+          isLoadingProducts: false,
+        };
       });
     } catch (err) {
-      set({
-        isLoadingProducts: false,
-        error: extractError(err, 'No se pudieron cargar los productos'),
-        catalogProducts: [],
-        catalogProductsMeta: null,
+      set((state) => {
+        if (state.catalogProductsProgramCode !== (programCode || null)) {
+          return { isLoadingProducts: false };
+        }
+        return {
+          isLoadingProducts: false,
+          error: extractError(err, 'No se pudieron cargar los productos'),
+          catalogProducts: [],
+          catalogProductsMeta: null,
+        };
       });
     }
   },

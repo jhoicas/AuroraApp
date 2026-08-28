@@ -5,6 +5,7 @@ import SearchableCombobox, {
 } from '../../components/Catalog/SearchableCombobox';
 import {
   CATALOG_FULL_LIST_LIMIT,
+  formatCatalogProductOptionTitle,
   useCatalogStore,
   type CatalogProgram,
   type CatalogSector,
@@ -43,7 +44,7 @@ export default function CatalogPage() {
 
   const [sectorId, setSectorId] = useState('');
   const [programCode, setProgramCode] = useState('');
-  const [productCode, setProductCode] = useState('');
+  const [productId, setProductId] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export default function CatalogPage() {
     (nextSectorId: string) => {
       setSectorId(nextSectorId);
       setProgramCode('');
-      setProductCode('');
+      setProductId('');
       clearProducts();
 
       if (!nextSectorId) {
@@ -73,7 +74,7 @@ export default function CatalogPage() {
   const handleProgramChange = useCallback(
     (nextProgramCode: string) => {
       setProgramCode(nextProgramCode);
-      setProductCode('');
+      setProductId('');
       clearProducts();
 
       if (!nextProgramCode) {
@@ -89,8 +90,8 @@ export default function CatalogPage() {
     [clearProducts, fetchCatalogProducts],
   );
 
-  const handleProductChange = useCallback((nextProductCode: string) => {
-    setProductCode(nextProductCode);
+  const handleProductChange = useCallback((nextProductId: string) => {
+    setProductId(nextProductId);
   }, []);
 
   const selectedSector: CatalogSector | undefined = useMemo(
@@ -122,8 +123,8 @@ export default function CatalogPage() {
   }, [catalogProducts, catalogProductsProgramCode, programCode]);
 
   const selectedProduct: Product | undefined = useMemo(
-    () => filteredProducts.find((p) => p.codigo_del_producto === productCode),
-    [filteredProducts, productCode],
+    () => filteredProducts.find((p) => p.id === productId),
+    [filteredProducts, productId],
   );
 
   const sectorOptions: ComboboxOption[] = useMemo(
@@ -149,10 +150,12 @@ export default function CatalogPage() {
   const productOptions: ComboboxOption[] = useMemo(
     () =>
       filteredProducts.map((product) => ({
-        value: product.codigo_del_producto,
+        value: product.id,
         code: product.codigo_del_producto,
         label: product.producto,
-        hint: product.descripcion,
+        indicatorCode: product.codigo_del_indicador_de_producto,
+        indicatorLabel: product.indicador_de_producto,
+        hint: product.descripcion?.trim() || undefined,
       })),
     [filteredProducts],
   );
@@ -274,10 +277,12 @@ export default function CatalogPage() {
               <SearchableCombobox
                 label="3. Seleccionar Producto"
                 placeholder={
-                  programCode ? 'Buscar producto por código o nombre…' : 'Primero elija un programa'
+                  programCode
+                    ? 'Buscar por producto o indicador (código o nombre)…'
+                    : 'Primero elija un programa'
                 }
                 options={productOptions}
-                value={productCode}
+                value={productId}
                 onChange={handleProductChange}
                 disabled={!sectorId || !programCode}
                 loading={Boolean(programCode) && isLoadingProducts}
@@ -300,7 +305,9 @@ export default function CatalogPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#006162]">
                   Producto seleccionado
                 </p>
-                <p className="font-semibold text-gray-900">{selectedProduct.producto}</p>
+                <p className="font-semibold text-gray-900">
+                  {formatCatalogProductOptionTitle(selectedProduct)}
+                </p>
                 <p className="text-sm text-gray-600 line-clamp-3">{selectedProduct.descripcion}</p>
                 <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
                   <div>
@@ -314,8 +321,11 @@ export default function CatalogPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-gray-500">Código producto</dt>
-                    <dd>{selectedProduct.codigo_del_producto}</dd>
+                    <dt className="font-medium text-gray-500">Indicador</dt>
+                    <dd>
+                      {selectedProduct.codigo_del_indicador_de_producto} —{' '}
+                      {selectedProduct.indicador_de_producto}
+                    </dd>
                   </div>
                 </dl>
 
@@ -392,8 +402,7 @@ export default function CatalogPage() {
                   <strong>Programa:</strong> {selectedProgram.code} — {selectedProgram.name}
                 </p>
                 <p>
-                  <strong>Producto:</strong> {selectedProduct.codigo_del_producto} —{' '}
-                  {selectedProduct.producto}
+                  <strong>Producto:</strong> {formatCatalogProductOptionTitle(selectedProduct)}
                 </p>
               </div>
 

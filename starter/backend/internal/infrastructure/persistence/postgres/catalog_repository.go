@@ -310,8 +310,8 @@ func (r *CatalogRepository) ListCatalogProducts(ctx context.Context, p CatalogPr
 			`(producto ILIKE ? ESCAPE '\' OR codigo_producto ILIKE ? ESCAPE '\' OR
 			  nombre_programa ILIKE ? ESCAPE '\' OR codigo_programa ILIKE ? ESCAPE '\' OR
 			  nombre_sector ILIKE ? ESCAPE '\' OR sector ILIKE ? ESCAPE '\' OR
-			  indicador_producto ILIKE ? ESCAPE '\')`,
-			pattern, pattern, pattern, pattern, pattern, pattern, pattern,
+			  indicador_producto ILIKE ? ESCAPE '\' OR codigo_indicador_producto ILIKE ? ESCAPE '\')`,
+			pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern,
 		)
 	}
 

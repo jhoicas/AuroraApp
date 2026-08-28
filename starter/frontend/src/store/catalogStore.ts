@@ -380,6 +380,29 @@ function parseSectorsPayload(data: unknown): {
   return { sectors: [], meta: null };
 }
 
+/** Título distinguible para selector DNP: producto + indicador. */
+export function formatCatalogProductOptionTitle(product: Pick<
+  Product,
+  'codigo_del_producto' | 'producto' | 'codigo_del_indicador_de_producto' | 'indicador_de_producto'
+>): string {
+  const code = product.codigo_del_producto.trim();
+  const name = product.producto.trim();
+  const indicatorCode = product.codigo_del_indicador_de_producto.trim();
+  const indicatorName = product.indicador_de_producto.trim();
+
+  const base = code && name ? `${code} — ${name}` : code || name;
+  if (!indicatorCode && !indicatorName) {
+    return base;
+  }
+
+  const indicatorPart =
+    indicatorCode && indicatorName
+      ? `${indicatorCode} - ${indicatorName}`
+      : indicatorCode || indicatorName;
+
+  return `${base} | ${indicatorPart}`;
+}
+
 /** Normaliza respuesta API → 24 campos MGA del frontend. */
 export function mapApiProductToMga(row: ApiCatalogProduct): Product {
   return {

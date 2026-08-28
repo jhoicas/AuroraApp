@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { act } from '@testing-library/react';
 import { apiUrl, errorResponse, server } from '../test/server';
 import {
+  formatCatalogProductOptionTitle,
   mapApiProductToMga,
   useCatalogStore,
   type CreateProductInput,
@@ -413,6 +414,17 @@ describe('catalogStore — programas', () => {
 });
 
 describe('catalogStore — productos', () => {
+  it('formatCatalogProductOptionTitle incluye producto e indicador', () => {
+    expect(
+      formatCatalogProductOptionTitle({
+        codigo_del_producto: '2301002',
+        producto: 'Documentos de evaluación',
+        codigo_del_indicador_de_producto: '01',
+        indicador_de_producto: 'Número de documentos formulados',
+      }),
+    ).toBe('2301002 — Documentos de evaluación | 01 - Número de documentos formulados');
+  });
+
   it('mapApiProductToMga normaliza los 24 campos MGA', () => {
     const mapped = mapApiProductToMga(apiProduct);
 

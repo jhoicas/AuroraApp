@@ -6,6 +6,10 @@ export type ComboboxOption = {
   code?: string;
   /** Texto secundario opcional (descripción, subprograma, etc.). */
   hint?: string;
+  /** Código del indicador (productos DNP con misma fila de producto). */
+  indicatorCode?: string;
+  /** Nombre del indicador. */
+  indicatorLabel?: string;
 };
 
 type SearchableComboboxProps = {
@@ -33,19 +37,37 @@ function matchesQuery(option: ComboboxOption, rawQuery: string): boolean {
   const code = normalizeText(option.code ?? option.value);
   const label = normalizeText(option.label);
   const hint = normalizeText(option.hint ?? '');
-  const combined = `${code} ${label} ${hint}`;
+  const indicatorCode = normalizeText(option.indicatorCode ?? '');
+  const indicatorLabel = normalizeText(option.indicatorLabel ?? '');
+  const combined = `${code} ${label} ${hint} ${indicatorCode} ${indicatorLabel}`;
 
   return (
     code.includes(query) ||
     code.startsWith(query) ||
     label.includes(query) ||
+    indicatorCode.includes(query) ||
+    indicatorCode.startsWith(query) ||
+    indicatorLabel.includes(query) ||
     combined.includes(query)
   );
 }
 
 function formatOptionLabel(option: ComboboxOption): string {
   const code = option.code ?? option.value;
-  return `${code} — ${option.label}`;
+  const base = `${code} — ${option.label}`;
+  const indicatorCode = option.indicatorCode?.trim();
+  const indicatorLabel = option.indicatorLabel?.trim();
+
+  if (!indicatorCode && !indicatorLabel) {
+    return base;
+  }
+
+  const indicatorPart =
+    indicatorCode && indicatorLabel
+      ? `${indicatorCode} - ${indicatorLabel}`
+      : indicatorCode || indicatorLabel;
+
+  return `${base} | ${indicatorPart}`;
 }
 
 /**

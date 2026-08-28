@@ -8,14 +8,16 @@ func AllModels() []any {
 		&Tenant{},
 		&User{},
 		&Sector{},
-		&Program{},
+		// Maestros planos antes de las vistas ligeras (Program / Product comparten
+		// tabla con ellos): evita que la vista cree la tabla con columnas truncadas.
 		&ProgramSubprogram{},
 		&CatalogProduct{},
+		&Program{},
+		&Product{},
 		&CatalogEdt{},
 		&CatalogDeliverable{},
 		&CatalogActivity{},
 		&CatalogOds{},
-		&Product{},
 		&Project{},
 		&AILog{},
 		&AiKnowledgeNode{},

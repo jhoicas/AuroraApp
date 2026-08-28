@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 
@@ -16,15 +15,20 @@ import (
 )
 
 type AIAuditHandler struct {
-	db       *gorm.DB
-	chatRepo *postgres.AiChatRepository
+	usageRepo UsageLogStore
+	chatRepo  ChatStore
 }
 
 func NewAIAuditHandler(db *gorm.DB) *AIAuditHandler {
-	return &AIAuditHandler{
-		db:       db,
-		chatRepo: postgres.NewAiChatRepository(db),
-	}
+	return NewAIAuditHandlerWithDeps(
+		postgres.NewAiUsageLogRepository(db),
+		postgres.NewAiChatRepository(db),
+	)
+}
+
+// NewAIAuditHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAIAuditHandlerWithDeps(usageRepo UsageLogStore, chatRepo ChatStore) *AIAuditHandler {
+	return &AIAuditHandler{usageRepo: usageRepo, chatRepo: chatRepo}
 }
 
 func (h *AIAuditHandler) ListUsageLogs(c *fiber.Ctx) error {
@@ -36,19 +40,9 @@ func (h *AIAuditHandler) ListUsageLogs(c *fiber.Ctx) error {
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	offset := (page - 1) * pageSize
 
-	var total int64
-	if err := h.db.WithContext(c.Context()).Model(&models.AiUsageLog{}).Count(&total).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "count failed"})
-	}
-
-	var rows []models.AiUsageLog
-	if err := h.db.WithContext(c.Context()).
-		Order("created_at DESC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&rows).Error; err != nil {
+	rows, total, err := h.usageRepo.ListPaginated(c.Context(), page, pageSize)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "query failed"})
 	}
 

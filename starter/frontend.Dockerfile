@@ -8,7 +8,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY frontend/package.json ./
-RUN pnpm install
+RUN pnpm install --ignore-scripts
 
 COPY frontend/ ./
 

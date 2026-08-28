@@ -12,6 +12,7 @@ type Config struct {
 	Port              string
 	DatabaseURL       string
 	JWTSecret         string
+	CORSOrigins       string
 	AnthropicApiKey   string
 	AnthropicModel    string
 	HuggingFaceApiKey string
@@ -73,10 +74,16 @@ func LoadConfig() *Config {
 		ollamaURL = "http://127.0.0.1:11434"
 	}
 
+	corsOrigins := strings.TrimSpace(os.Getenv("CORS_ORIGINS"))
+	if corsOrigins == "" {
+		corsOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+	}
+
 	return &Config{
 		Port:              port,
 		DatabaseURL:       databaseURL,
 		JWTSecret:         jwtSecret,
+		CORSOrigins:       corsOrigins,
 		AnthropicApiKey:   strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
 		AnthropicModel:    anthropicModel,
 		HuggingFaceApiKey: strings.TrimSpace(os.Getenv("HUGGINGFACE_API_KEY")),

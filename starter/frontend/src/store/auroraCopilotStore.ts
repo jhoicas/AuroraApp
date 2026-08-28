@@ -34,12 +34,20 @@ type AuroraCopilotState = {
   error: string | null;
   sessionId: string | null;
   abortController: AbortController | null;
+  /** Texto pendiente de enviar (grafo, tooltips, FloatingAssistant). */
+  draftInput: string;
   toggleOpen: () => void;
   open: () => void;
   close: () => void;
   sendMessage: (message: string, routeContext: string) => Promise<void>;
   cancelGeneration: () => void;
   clearError: () => void;
+  /** Reinicia el chat: aborta generación en curso, limpia historial y session_id. */
+  clearChat: () => void;
+  setDraftInput: (value: string) => void;
+  appendToDraft: (text: string) => void;
+  /** Abre el asistente flotante e inyecta un prompt en el input. */
+  askAurora: (prompt: string) => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -59,12 +67,48 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   error: null,
   sessionId: null,
   abortController: null,
+  draftInput: '',
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen, error: null })),
   open: () => set({ isOpen: true, error: null }),
   close: () => set({ isOpen: false }),
 
   clearError: () => set({ error: null }),
+
+  setDraftInput: (value) => set({ draftInput: value }),
+
+  appendToDraft: (text) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const current = get().draftInput.trim();
+    set({
+      draftInput: current ? `${current} ${trimmed}` : trimmed,
+    });
+  },
+
+  askAurora: (prompt) => {
+    const trimmed = prompt.trim();
+    set({
+      isOpen: true,
+      error: null,
+      draftInput: trimmed || get().draftInput,
+    });
+  },
+
+  clearChat: () => {
+    const controller = get().abortController;
+    if (controller) {
+      controller.abort();
+    }
+    set({
+      messages: [],
+      isTyping: false,
+      error: null,
+      sessionId: null,
+      abortController: null,
+      draftInput: '',
+    });
+  },
 
   cancelGeneration: () => {
     const controller = get().abortController;
@@ -92,6 +136,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       isTyping: true,
       error: null,
       abortController: controller,
+      draftInput: '',
     });
 
     try {
@@ -132,7 +177,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       set({
         isTyping: false,
         abortController: null,
-        error: extractError(err, 'Aurora no pudo responder. Verifica tu conexión o la API key de Anthropic.'),
+        error: extractError(err, 'Aurora no pudo responder. Verifica tu conexión.'),
       });
     }
   },

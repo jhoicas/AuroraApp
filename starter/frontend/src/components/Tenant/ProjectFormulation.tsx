@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
+import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import { useProjectStore, type Project } from '../../store/projectStore';
 
 type ProjectFormulationProps = {
@@ -42,10 +43,12 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
         <h3 className="text-lg font-semibold text-gray-800">Formulación MGA</h3>
       </div>
 
-      <div>
-        <label htmlFor="problem_description" className="block text-sm font-medium text-gray-700 mb-1">
-          Descripción del problema
-        </label>
+      <AIAssistedField
+        label="Descripción del problema"
+        htmlFor="problem_description"
+        guidance="Describa el problema central con evidencia (magnitud, población afectada y territorio). Evite soluciones disfrazadas: el problema debe ser una situación negativa verificable, alineada con el árbol de problemas MGA."
+        askPrompt={`¿Cómo debería redactar la descripción del problema central para el proyecto "${project.name}" del sector ${project.sector ?? 'indicado'}? Dame un ejemplo breve según la metodología MGA del DNP.`}
+      >
         <textarea
           id="problem_description"
           rows={5}
@@ -54,12 +57,14 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
           className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#006162] resize-y"
           placeholder="Describe el problema central que el proyecto busca resolver…"
         />
-      </div>
+      </AIAssistedField>
 
-      <div>
-        <label htmlFor="general_objective" className="block text-sm font-medium text-gray-700 mb-1">
-          Objetivo general
-        </label>
+      <AIAssistedField
+        label="Objetivo general"
+        htmlFor="general_objective"
+        guidance="El objetivo general expresa el cambio esperado en la población o territorio. Formúlelo como un resultado alcanzable (infinitivo o enunciado afirmativo), coherente con el problema central y medible a través de indicadores."
+        askPrompt={`¿Cómo debería redactar el objetivo general del proyecto "${project.name}"? Propón una redacción alineada al manual de procedimientos de inversión pública del DNP.`}
+      >
         <textarea
           id="general_objective"
           rows={4}
@@ -68,7 +73,7 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
           className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#006162] resize-y"
           placeholder="Define el objetivo general del proyecto…"
         />
-      </div>
+      </AIAssistedField>
 
       {message && (
         <div className="rounded border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-[#006162]">

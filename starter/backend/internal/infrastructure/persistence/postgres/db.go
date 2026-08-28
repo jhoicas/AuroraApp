@@ -120,6 +120,12 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 // reconcileTenantUniqueConstraints evita el crash de AutoMigrate cuando GORM
 // ejecuta DROP CONSTRAINT "uni_tenants_domain" y el constraint no existe en Supabase.
 func reconcileTenantUniqueConstraints(db *gorm.DB) {
+	// BD nueva (p. ej. la efímera de E2E): AutoMigrate creará tenants con
+	// idx_tenants_domain / idx_tenants_nit desde los tags del modelo.
+	if !db.Migrator().HasTable(&models.Tenant{}) {
+		return
+	}
+
 	// Limpia nombres legacy que GORM intenta dropear sin IF EXISTS.
 	for _, name := range []string{"uni_tenants_domain", "uni_tenants_nit"} {
 		sql := fmt.Sprintf(
@@ -177,6 +183,9 @@ func ensureProjectsSchema(db *gorm.DB) {
 			name TEXT,
 			description TEXT,
 			sector VARCHAR(255),
+			sector_id UUID,
+			program_code VARCHAR(50),
+			product_code VARCHAR(50),
 			problem_description TEXT,
 			general_objective TEXT,
 			status VARCHAR(50) DEFAULT 'DRAFT',
@@ -190,6 +199,9 @@ func ensureProjectsSchema(db *gorm.DB) {
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS name TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS sector VARCHAR(255)`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS sector_id UUID`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS program_code VARCHAR(50)`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS product_code VARCHAR(50)`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS problem_description TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS general_objective TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'DRAFT'`,
@@ -201,6 +213,9 @@ func ensureProjectsSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects (deleted_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)`,
 		`CREATE INDEX IF NOT EXISTS idx_projects_sector ON projects (sector)`,
+		`CREATE INDEX IF NOT EXISTS idx_projects_sector_id ON projects (sector_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_projects_program_code ON projects (program_code)`,
+		`CREATE INDEX IF NOT EXISTS idx_projects_product_code ON projects (product_code)`,
 	}
 	execSchemaStatements(db, "ensure projects schema", statements)
 }
@@ -689,6 +704,7 @@ func ensureAiKnowledgeSchema(db *gorm.DB) {
 			ALTER TABLE ai_knowledge_nodes DROP COLUMN IF EXISTS embedding;
 		EXCEPTION WHEN others THEN NULL; END $$`,
 		`ALTER TABLE IF EXISTS ai_knowledge_nodes ADD COLUMN IF NOT EXISTS embedding vector(384)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_nodes_tenant_id ON ai_knowledge_nodes (tenant_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_project_key ON ai_knowledge_nodes (project_key)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_node_type ON ai_knowledge_nodes (node_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_created_at ON ai_knowledge_nodes (created_at)`,
@@ -707,6 +723,7 @@ func ensureAiKnowledgeSchema(db *gorm.DB) {
 func ensureAiKnowledgeLinksSchema(db *gorm.DB) {
 	createSQL := `CREATE TABLE IF NOT EXISTS ai_knowledge_links (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID,
 			project_key VARCHAR(255) NOT NULL,
 			source_node_id UUID NOT NULL,
 			target_node_id UUID NOT NULL,
@@ -716,6 +733,7 @@ func ensureAiKnowledgeLinksSchema(db *gorm.DB) {
 	if err := db.Exec(createSQL).Error; err != nil {
 		fallback := `CREATE TABLE IF NOT EXISTS ai_knowledge_links (
 			id UUID PRIMARY KEY,
+			tenant_id UUID,
 			project_key VARCHAR(255) NOT NULL,
 			source_node_id UUID NOT NULL,
 			target_node_id UUID NOT NULL,
@@ -728,11 +746,13 @@ func ensureAiKnowledgeLinksSchema(db *gorm.DB) {
 	}
 
 	statements := []string{
+		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS tenant_id UUID`,
 		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS project_key VARCHAR(255)`,
 		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS source_node_id UUID`,
 		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS target_node_id UUID`,
 		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS relationship VARCHAR(80)`,
 		`ALTER TABLE IF EXISTS ai_knowledge_links ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_links_tenant_id ON ai_knowledge_links (tenant_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_links_project ON ai_knowledge_links (project_key)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_links_source ON ai_knowledge_links (source_node_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_knowledge_links_target ON ai_knowledge_links (target_node_id)`,
@@ -840,7 +860,16 @@ func execSchemaStatements(db *gorm.DB, label string, statements []string) {
 }
 
 func autoMigrateSafe(db *gorm.DB) error {
-	err := db.AutoMigrate(models.AllModels()...)
+	// roles y tenants primero: users, projects y el resto declaran FKs hacia ellos.
+	if err := migrateSet(db, []any{&models.Role{}, &models.Tenant{}}); err != nil {
+		return err
+	}
+	return migrateSet(db, models.AllModels())
+}
+
+// migrateSet ejecuta AutoMigrate tolerando 42704 (constraint/índice fantasma).
+func migrateSet(db *gorm.DB, dst []any) error {
+	err := db.AutoMigrate(dst...)
 	if err == nil {
 		return nil
 	}
@@ -849,7 +878,7 @@ func autoMigrateSafe(db *gorm.DB) error {
 	if isMissingConstraintErr(err) {
 		log.Printf("automigrate recoverable (missing constraint): %v", err)
 		reconcileTenantUniqueConstraints(db)
-		err = db.AutoMigrate(models.AllModels()...)
+		err = db.AutoMigrate(dst...)
 		if err == nil {
 			return nil
 		}

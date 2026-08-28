@@ -2,11 +2,16 @@ package dto
 
 // CreateProjectRequest payload para iniciar formulación de un proyecto.
 // tenant_id y creator_id NO se aceptan aquí: salen del JWT.
+//
+// Clasificación programática DNP: sector → programa → producto.
 type CreateProjectRequest struct {
 	Name        string  `json:"name" validate:"required,min=3,max=500"`
 	Description string  `json:"description" validate:"omitempty,max=5000"`
 	CodeBPIN    *string `json:"code_bpin" validate:"omitempty,min=1,max=50"`
 	Sector      string  `json:"sector" validate:"required,min=2,max=255"`
+	SectorID    *string `json:"sector_id" validate:"omitempty,uuid"`
+	ProgramCode *string `json:"program_code" validate:"omitempty,max=50"`
+	ProductCode *string `json:"product_code" validate:"omitempty,max=50"`
 }
 
 // UpdateProjectDetailsRequest campos de formulación MGA.
@@ -24,6 +29,9 @@ type ProjectResponse struct {
 	Description        string  `json:"description,omitempty"`
 	CodeBPIN           *string `json:"code_bpin,omitempty"`
 	Sector             string  `json:"sector,omitempty"`
+	SectorID           *string `json:"sector_id,omitempty"`
+	ProgramCode        *string `json:"program_code,omitempty"`
+	ProductCode        *string `json:"product_code,omitempty"`
 	ProblemDescription string  `json:"problem_description,omitempty"`
 	GeneralObjective   string  `json:"general_objective,omitempty"`
 	Status             string  `json:"status"`

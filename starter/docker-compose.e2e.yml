@@ -1,0 +1,26 @@
+# PostgreSQL efímero con pgvector para la suite Playwright (FASE 6).
+# Uso: docker compose -p aurora-e2e -f docker-compose.e2e.yml up -d --wait
+# Limpieza: docker compose -p aurora-e2e -f docker-compose.e2e.yml down -v
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aurora-e2e-postgres
+    environment:
+      POSTGRES_USER: e2e_user
+      POSTGRES_PASSWORD: e2e_pass
+      POSTGRES_DB: aurora_e2e
+    ports:
+      - "5433:5432"
+    volumes:
+      - aurora_e2e_pgdata:/var/lib/postgresql/data
+      - ./e2e/postgres/init-vector.sql:/docker-entrypoint-initdb.d/01-vector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e_user -d aurora_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  aurora_e2e_pgdata:

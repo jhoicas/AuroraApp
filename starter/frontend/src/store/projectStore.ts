@@ -10,6 +10,9 @@ export type Project = {
   description?: string;
   code_bpin?: string | null;
   sector?: string;
+  sector_id?: string | null;
+  program_code?: string | null;
+  product_code?: string | null;
   problem_description?: string;
   general_objective?: string;
   status: string;
@@ -33,6 +36,9 @@ export type CreateProjectPayload = {
   sector: string;
   description?: string;
   code_bpin?: string;
+  sector_id?: string;
+  program_code?: string;
+  product_code?: string;
 };
 
 export type UpdateProjectDetailsPayload = {
@@ -143,6 +149,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       if (payload.code_bpin?.trim()) {
         body.code_bpin = payload.code_bpin.trim();
+      }
+      if (payload.sector_id?.trim()) {
+        body.sector_id = payload.sector_id.trim();
+      }
+      if (payload.program_code?.trim()) {
+        body.program_code = payload.program_code.trim();
+      }
+      if (payload.product_code?.trim()) {
+        body.product_code = payload.product_code.trim();
       }
 
       const { data } = await api.post<Project>('/projects', body);

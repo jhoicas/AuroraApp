@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -26,9 +27,15 @@ func IdentityFromContext(c *fiber.Ctx) (userID, tenantID uuid.UUID, err error) {
 	return userID, tenantID, nil
 }
 
-// RequireTenant exige que el JWT incluya tenant_id (usuarios de entidad).
+// RequireTenant exige tenant_id para usuarios de entidad. SUPER_ADMIN es una
+// identidad global y puede continuar sin tenant.
 func RequireTenant() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		role, _ := c.Locals(LocalsRole).(string)
+		if strings.EqualFold(strings.TrimSpace(role), "SUPER_ADMIN") {
+			return c.Next()
+		}
+
 		tidRaw, _ := c.Locals(LocalsTenantID).(string)
 		if _, err := uuid.Parse(tidRaw); err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{

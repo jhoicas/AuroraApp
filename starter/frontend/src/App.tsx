@@ -20,6 +20,11 @@ import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
 import CatalogPage from './pages/tenant/CatalogPage';
 import AiAssistantPage from './pages/tenant/AiAssistantPage';
 
+/** Solo disponible cuando Vite se arranca con VITE_E2E=true (suite Playwright). */
+function E2ECrashPage(): never {
+  throw new Error('Fallo E2E controlado para validar ErrorBoundary');
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -77,6 +82,9 @@ function App() {
               <Route path="catalog" element={<CatalogPage />} />
               <Route path="ai" element={<AiAssistantPage />} />
               <Route path="reports" element={<div className="p-4 text-gray-600">Reportes (próximamente)</div>} />
+              {import.meta.env.VITE_E2E === 'true' && (
+                <Route path="e2e-crash" element={<E2ECrashPage />} />
+              )}
             </Route>
           </Route>
 

@@ -12,6 +12,13 @@ import {
 } from 'recharts';
 import CreateProjectModal from '../../components/Tenant/CreateProjectModal';
 import { useAuth } from '../../context/AuthContext';
+import {
+  BAR_NAME_TIR,
+  BAR_NAME_VPN,
+  formatTIR,
+  formatVPN,
+  tooltipFormatter,
+} from '../../lib/financialFormat';
 import { useProjectStore } from '../../store/projectStore';
 
 function formatDate(iso: string): string {
@@ -146,20 +153,49 @@ export default function ProjectsDashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="vpn" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="tir" orientation="right" tick={{ fontSize: 11 }} unit="%" />
-                <Tooltip
-                  formatter={(value, name) => {
-                    const num = typeof value === 'number' ? value : Number(value ?? 0);
-                    return name === 'tir'
-                      ? [`${num}%`, 'TIR']
-                      : [num.toLocaleString('es-CO'), 'VPN'];
-                  }}
-                />
+                <Tooltip formatter={tooltipFormatter} />
                 <Legend />
-                <Bar yAxisId="vpn" dataKey="vpn" name="VPN" fill="#006162" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="tir" dataKey="tir" name="TIR (%)" fill="#2c7a7b" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="vpn" dataKey="vpn" name={BAR_NAME_VPN} fill="#006162" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="tir" dataKey="tir" name={BAR_NAME_TIR} fill="#2c7a7b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          <table className="w-full mt-4 text-sm border-collapse">
+            <caption className="sr-only">Resumen de VPN y TIR por alternativa evaluada</caption>
+            <thead>
+              <tr className="border-b border-gray-200 text-left">
+                <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Proyecto</th>
+                <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Alternativa</th>
+                <th scope="col" className="py-2 pr-2 text-right font-semibold text-gray-700">VPN</th>
+                <th scope="col" className="py-2 text-right font-semibold text-gray-700">TIR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evaluationSummary.map((item) => {
+                const project = projects.find((p) => p.id === item.project_id);
+                return (
+                  <tr
+                    key={`${item.project_id}-${item.alternative_name}-${item.created_at}`}
+                    className="border-b border-gray-100"
+                  >
+                    <td className="py-2 pr-2 text-gray-800">{project?.name ?? 'Proyecto sin nombre'}</td>
+                    <td className="py-2 pr-2 text-gray-700">{item.alternative_name}</td>
+                    <td
+                      className={`py-2 pr-2 text-right tabular-nums font-medium ${
+                        item.vpn >= 0 ? 'text-emerald-700' : 'text-red-700'
+                      }`}
+                    >
+                      {formatVPN(item.vpn)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums font-medium text-gray-900">
+                      {formatTIR(item.tir)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </section>
       )}
 

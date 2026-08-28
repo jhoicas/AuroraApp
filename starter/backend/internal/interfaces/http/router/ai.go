@@ -2,6 +2,7 @@ package router
 
 import (
 	"aurora-backend/internal/config"
+	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/interfaces/http/handlers"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -36,16 +37,30 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	)
 	telemetryGroup.Post("/log", th.LogTelemetry)
 
-	knowledge := app.Group("/api/v1/ai/knowledge",
+	// Lectura del Knowledge Graph: Super Admin + roles de entidad (solo lectura).
+	knowledgeRead := app.Group("/api/v1/ai/knowledge",
 		httpmw.RequireAuth(cfg.JWTSecret),
-		httpmw.RequireRole("SUPER_ADMIN"),
+		httpmw.RequireRole(
+			constants.RoleSuperAdmin,
+			constants.RoleTenantAdmin,
+			constants.RoleFormulador,
+			constants.RoleEvaluador,
+			constants.RoleAnalista,
+			constants.RoleViewer,
+		),
 	)
-	knowledge.Post("/ingest", kh.IngestKnowledge)
-	knowledge.Get("/graph", kh.GetKnowledgeGraph)
+	knowledgeRead.Get("/graph", kh.GetKnowledgeGraph)
+
+	// Ingesta del Cerebro: exclusivo SUPER_ADMIN (recurso global).
+	knowledgeWrite := app.Group("/api/v1/ai/knowledge",
+		httpmw.RequireAuth(cfg.JWTSecret),
+		httpmw.RequireRole(constants.RoleSuperAdmin),
+	)
+	knowledgeWrite.Post("/ingest", kh.IngestKnowledge)
 
 	audit := app.Group("/api/v1/ai/audit",
 		httpmw.RequireAuth(cfg.JWTSecret),
-		httpmw.RequireRole("SUPER_ADMIN"),
+		httpmw.RequireRole(constants.RoleSuperAdmin),
 	)
 	ah := handlers.NewAIAuditHandler(db)
 	audit.Get("/usage", ah.ListUsageLogs)

@@ -19,21 +19,36 @@ import (
 )
 
 type AuroraChatHandler struct {
-	db        *gorm.DB
-	repo      *postgres.AiKnowledgeRepository
-	chatRepo  *postgres.AiChatRepository
+	repo      KnowledgeStore
+	chatRepo  ChatStore
 	embedder  services.EmbeddingProvider
-	anthropic *llm.AnthropicClient
+	anthropic LLMClient
 	telemetry *services.TelemetryService
 }
 
 func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AuroraChatHandler {
+	return NewAuroraChatHandlerWithDeps(
+		postgres.NewAiKnowledgeRepository(db),
+		postgres.NewAiChatRepository(db),
+		services.NewEmbeddingProvider(cfg),
+		llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
+		telemetry,
+	)
+}
+
+// NewAuroraChatHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAuroraChatHandlerWithDeps(
+	repo KnowledgeStore,
+	chatRepo ChatStore,
+	embedder services.EmbeddingProvider,
+	anthropic LLMClient,
+	telemetry *services.TelemetryService,
+) *AuroraChatHandler {
 	return &AuroraChatHandler{
-		db:        db,
-		repo:      postgres.NewAiKnowledgeRepository(db),
-		chatRepo:  postgres.NewAiChatRepository(db),
-		embedder:  services.NewEmbeddingProvider(cfg),
-		anthropic: llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
+		repo:      repo,
+		chatRepo:  chatRepo,
+		embedder:  embedder,
+		anthropic: anthropic,
 		telemetry: telemetry,
 	}
 }
@@ -63,14 +78,9 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 		sessionID = uuid.New().String()
 	}
 
-	var tenantID *uuid.UUID
-	if tidRaw, _ := c.Locals(httpmw.LocalsTenantID).(string); tidRaw != "" {
-		if tid, err := uuid.Parse(tidRaw); err == nil {
-			tenantID = &tid
-		}
-	}
+	tenantID := optionalTenantID(c)
 
-	ragContext := h.buildRAGContext(c, req.Message)
+	ragContext := h.buildRAGContext(c, tenantID, req.Message)
 	system := buildAuroraSystemPrompt(req.RouteContext, ragContext)
 
 	raw, err := h.anthropic.Chat(system, []llm.Message{
@@ -115,12 +125,12 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	})
 }
 
-func (h *AuroraChatHandler) buildRAGContext(c *fiber.Ctx, query string) string {
+func (h *AuroraChatHandler) buildRAGContext(c *fiber.Ctx, tenantID *uuid.UUID, query string) string {
 	vec, err := h.embedder.Embed(query)
 	if err != nil {
 		return ""
 	}
-	nodes, err := h.repo.SearchSimilar(c.Context(), vec, 6)
+	nodes, err := h.repo.SearchSimilar(c.Context(), tenantID, vec, 6)
 	if err != nil || len(nodes) == 0 {
 		return ""
 	}

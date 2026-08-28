@@ -1,3 +1,15 @@
+# AuroraApp — stack de producción / EC2 (Supabase Cloud)
+# Puertos en el host (evitan colisiones con otros servicios):
+#   Frontend  → 3001
+#   Backend   → 8081
+#
+# La base de datos es externa (Supabase). Define DATABASE_URL en backend/.env
+#
+# Uso:
+#   cp .env.example .env
+#   cp backend/.env.example backend/.env   # DATABASE_URL (Supabase), JWT, ANTHROPIC_API_KEY
+#   docker compose up --build -d
+
 services:
   backend:
     build:
@@ -5,17 +17,15 @@ services:
       dockerfile: backend.Dockerfile
     container_name: aurora-backend
     restart: unless-stopped
-    # DATABASE_URL y secretos vienen ÚNICAMENTE de backend/.env (BD real).
-    # No se inyecta Postgres local ni valores por defecto de conexión.
     env_file:
       - ./backend/.env
     environment:
-      # Solo fuerza el puerto del contenedor; DATABASE_URL / JWT / keys salen de env_file.
       PORT: "8080"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
     ports:
       - "8081:8080"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -26,10 +36,13 @@ services:
       context: .
       dockerfile: frontend.Dockerfile
       args:
+        # En EC2 con IP pública: http://<TU_IP>:8081/api/v1
+        # Same-origin vía Nginx proxy: /api/v1
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     container_name: aurora-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "3000:80"
+      - "3001:80"

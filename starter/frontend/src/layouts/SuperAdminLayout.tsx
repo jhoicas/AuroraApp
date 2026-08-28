@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
-import AuroraCopilot from '../components/AuroraCopilot/AuroraCopilot';
+import FloatingAssistant from '../components/AuroraAsistente/FloatingAssistant';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -160,12 +160,12 @@ export default function SuperAdminLayout() {
           </div>
         </header>
         <div className="p-6">
-          <ErrorBoundary fallbackTitle="Error en el panel de administración">
+          <ErrorBoundary key={pathname} fallbackTitle="Error en el panel de administración">
             <Outlet />
           </ErrorBoundary>
         </div>
       </main>
-      <AuroraCopilot />
+      <FloatingAssistant />
     </div>
   );
 }

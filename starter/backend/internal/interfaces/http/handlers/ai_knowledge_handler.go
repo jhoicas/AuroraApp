@@ -18,22 +18,36 @@ import (
 )
 
 type AIKnowledgeHandler struct {
-	db        *gorm.DB
-	repo      *postgres.AiKnowledgeRepository
+	repo      KnowledgeStore
 	embedder  services.EmbeddingProvider
 	telemetry *services.TelemetryService
 }
 
 func NewAIKnowledgeHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AIKnowledgeHandler {
+	return NewAIKnowledgeHandlerWithDeps(
+		postgres.NewAiKnowledgeRepository(db),
+		services.NewEmbeddingProvider(cfg),
+		telemetry,
+	)
+}
+
+// NewAIKnowledgeHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAIKnowledgeHandlerWithDeps(
+	repo KnowledgeStore,
+	embedder services.EmbeddingProvider,
+	telemetry *services.TelemetryService,
+) *AIKnowledgeHandler {
 	return &AIKnowledgeHandler{
-		db:        db,
-		repo:      postgres.NewAiKnowledgeRepository(db),
-		embedder:  services.NewEmbeddingProvider(cfg),
+		repo:      repo,
+		embedder:  embedder,
 		telemetry: telemetry,
 	}
 }
 
 func (h *AIKnowledgeHandler) logTelemetry(c *fiber.Ctx, action string) {
+	if h.telemetry == nil {
+		return
+	}
 	userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
 	role, _ := c.Locals(httpmw.LocalsRole).(string)
 	userID, err := uuid.Parse(userIDStr)
@@ -45,6 +59,8 @@ func (h *AIKnowledgeHandler) logTelemetry(c *fiber.Ctx, action string) {
 
 // IngestKnowledge POST /api/v1/ai/knowledge/ingest
 func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error {
+	tenantID := optionalTenantID(c)
+
 	file, err := c.FormFile("file")
 	if err != nil || file == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "se requiere un archivo XML en el campo 'file'"})
@@ -95,6 +111,7 @@ func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error {
 			LocalID: node.LocalID,
 			Node: models.AiKnowledgeNode{
 				ID:         uuid.New(),
+				TenantID:   tenantID,
 				ProjectKey: meta.ProjectKey,
 				NodeType:   node.NodeType,
 				Label:      node.Label,
@@ -115,6 +132,7 @@ func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error {
 			TargetLocalID: link.TargetLocalID,
 			Link: models.AiKnowledgeLink{
 				ID:           uuid.New(),
+				TenantID:     tenantID,
 				ProjectKey:   meta.ProjectKey,
 				Relationship: link.Relationship,
 				CreatedAt:    time.Now().UTC(),
@@ -155,12 +173,13 @@ func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error {
 
 // GetKnowledgeGraph GET /api/v1/ai/knowledge/graph
 func (h *AIKnowledgeHandler) GetKnowledgeGraph(c *fiber.Ctx) error {
-	rows, err := h.repo.ListAllNodes(c.Context())
+	tenantID := optionalTenantID(c)
+	rows, err := h.repo.ListAllNodes(c.Context(), tenantID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudo cargar el grafo de conocimiento"})
 	}
 
-	links, err := h.repo.ListAllLinks(c.Context())
+	links, err := h.repo.ListAllLinks(c.Context(), tenantID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudieron cargar las relaciones"})
 	}
@@ -188,12 +207,30 @@ func (h *AIKnowledgeHandler) GetKnowledgeGraph(c *fiber.Ctx) error {
 	return c.JSON(dto.KnowledgeGraphResponse{Nodes: nodes, Links: graphLinks})
 }
 
+// optionalTenantID retorna nil para identidades globales (SUPER_ADMIN). Auth
+// ya valida cualquier tenant_id presente antes de guardarlo en Locals.
+func optionalTenantID(c *fiber.Ctx) *uuid.UUID {
+	tidRaw, _ := c.Locals(httpmw.LocalsTenantID).(string)
+	tid, err := uuid.Parse(strings.TrimSpace(tidRaw))
+	if err != nil {
+		return nil
+	}
+	return &tid
+}
+
 type AITelemetryHandler struct {
 	telemetry *services.TelemetryService
 }
 
 func NewAITelemetryHandler(telemetry *services.TelemetryService) *AITelemetryHandler {
 	return &AITelemetryHandler{telemetry: telemetry}
+}
+
+func (h *AITelemetryHandler) log(userID uuid.UUID, role, action string) {
+	if h.telemetry == nil {
+		return
+	}
+	h.telemetry.LogAsync(userID, role, action)
 }
 
 // LogTelemetry POST /api/v1/ai/telemetry/log
@@ -214,7 +251,7 @@ func (h *AITelemetryHandler) LogTelemetry(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid user"})
 	}
 
-	h.telemetry.LogAsync(userID, role, req.Action)
+	h.log(userID, role, req.Action)
 	return c.JSON(fiber.Map{"ok": true})
 }
 

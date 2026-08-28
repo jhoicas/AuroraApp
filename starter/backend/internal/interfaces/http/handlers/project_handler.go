@@ -46,9 +46,37 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 			req.CodeBPIN = &bpin
 		}
 	}
+	if req.ProgramCode != nil {
+		code := strings.TrimSpace(*req.ProgramCode)
+		if code == "" {
+			req.ProgramCode = nil
+		} else {
+			req.ProgramCode = &code
+		}
+	}
+	if req.ProductCode != nil {
+		code := strings.TrimSpace(*req.ProductCode)
+		if code == "" {
+			req.ProductCode = nil
+		} else {
+			req.ProductCode = &code
+		}
+	}
 
 	if err := dto.Validate(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var sectorID *uuid.UUID
+	if req.SectorID != nil {
+		sid := strings.TrimSpace(*req.SectorID)
+		if sid != "" {
+			parsed, parseErr := uuid.Parse(sid)
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid sector_id"})
+			}
+			sectorID = &parsed
+		}
 	}
 
 	now := time.Now().UTC()
@@ -60,6 +88,9 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		Description: req.Description,
 		CodeBPIN:    req.CodeBPIN,
 		Sector:      req.Sector,
+		SectorID:    sectorID,
+		ProgramCode: req.ProgramCode,
+		ProductCode: req.ProductCode,
 		Status:      constants.ProjectStatusInFormulation,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -192,7 +223,7 @@ func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
 }
 
 func toProjectResponse(p models.Project) dto.ProjectResponse {
-	return dto.ProjectResponse{
+	resp := dto.ProjectResponse{
 		ID:                 p.ID.String(),
 		TenantID:           p.TenantID.String(),
 		CreatorID:          p.CreatorID.String(),
@@ -200,10 +231,17 @@ func toProjectResponse(p models.Project) dto.ProjectResponse {
 		Description:        p.Description,
 		CodeBPIN:           p.CodeBPIN,
 		Sector:             p.Sector,
+		ProgramCode:        p.ProgramCode,
+		ProductCode:        p.ProductCode,
 		ProblemDescription: p.ProblemDescription,
 		GeneralObjective:   p.GeneralObjective,
 		Status:             p.Status,
 		CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),
 	}
+	if p.SectorID != nil {
+		s := p.SectorID.String()
+		resp.SectorID = &s
+	}
+	return resp
 }

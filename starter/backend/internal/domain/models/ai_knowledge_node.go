@@ -25,12 +25,13 @@ func (AiKnowledgeNode) TableName() string {
 
 // AiKnowledgeLink relación semántica entre nodos del grafo MGA.
 type AiKnowledgeLink struct {
-	ID           uuid.UUID `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	ProjectKey   string    `gorm:"column:project_key;type:varchar(255);not null;index" json:"project_key"`
-	SourceNodeID uuid.UUID `gorm:"column:source_node_id;type:uuid;not null;index" json:"source_node_id"`
-	TargetNodeID uuid.UUID `gorm:"column:target_node_id;type:uuid;not null;index" json:"target_node_id"`
-	Relationship string    `gorm:"column:relationship;type:varchar(80);not null;index" json:"relationship"`
-	CreatedAt    time.Time `gorm:"column:created_at;not null" json:"created_at"`
+	ID           uuid.UUID  `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	TenantID     *uuid.UUID `gorm:"column:tenant_id;type:uuid;index" json:"tenant_id,omitempty"`
+	ProjectKey   string     `gorm:"column:project_key;type:varchar(255);not null;index" json:"project_key"`
+	SourceNodeID uuid.UUID  `gorm:"column:source_node_id;type:uuid;not null;index" json:"source_node_id"`
+	TargetNodeID uuid.UUID  `gorm:"column:target_node_id;type:uuid;not null;index" json:"target_node_id"`
+	Relationship string     `gorm:"column:relationship;type:varchar(80);not null;index" json:"relationship"`
+	CreatedAt    time.Time  `gorm:"column:created_at;not null" json:"created_at"`
 }
 
 func (AiKnowledgeLink) TableName() string {

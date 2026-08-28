@@ -1,0 +1,3776 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>project: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">aurora-backend/internal/application/project/evaluation_service.go (100.0%)</option>
+				
+				<option value="file1">aurora-backend/internal/interfaces/http/handlers/ai_audit_handler.go (100.0%)</option>
+				
+				<option value="file2">aurora-backend/internal/interfaces/http/handlers/ai_handler.go (0.0%)</option>
+				
+				<option value="file3">aurora-backend/internal/interfaces/http/handlers/ai_knowledge_handler.go (97.4%)</option>
+				
+				<option value="file4">aurora-backend/internal/interfaces/http/handlers/aurora_chat_handler.go (100.0%)</option>
+				
+				<option value="file5">aurora-backend/internal/interfaces/http/handlers/aurora_chat_parse.go (100.0%)</option>
+				
+				<option value="file6">aurora-backend/internal/interfaces/http/handlers/auth_handler.go (0.0%)</option>
+				
+				<option value="file7">aurora-backend/internal/interfaces/http/handlers/budget_handler.go (0.0%)</option>
+				
+				<option value="file8">aurora-backend/internal/interfaces/http/handlers/catalog_handler.go (0.0%)</option>
+				
+				<option value="file9">aurora-backend/internal/interfaces/http/handlers/ownership.go (100.0%)</option>
+				
+				<option value="file10">aurora-backend/internal/interfaces/http/handlers/project_evaluation_handler.go (100.0%)</option>
+				
+				<option value="file11">aurora-backend/internal/interfaces/http/handlers/project_handler.go (0.0%)</option>
+				
+				<option value="file12">aurora-backend/internal/interfaces/http/handlers/tenant_handler.go (0.0%)</option>
+				
+				<option value="file13">aurora-backend/internal/interfaces/http/middleware/auth.go (96.0%)</option>
+				
+				<option value="file14">aurora-backend/internal/interfaces/http/middleware/context.go (100.0%)</option>
+				
+				<option value="file15">aurora-backend/internal/interfaces/http/middleware/rate_limit.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package project
+
+import (
+        "context"
+        "encoding/json"
+        "math"
+        "time"
+
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/pkg/finance"
+
+        "github.com/google/uuid"
+)
+
+// EvaluationRepository persiste evaluaciones financieras (patrón Repository).
+type EvaluationRepository interface {
+        SaveBatch(ctx context.Context, rows []models.ProjectEvaluation) error
+        ListByProject(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.ProjectEvaluation, error)
+        ListLatestByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]models.ProjectEvaluation, error)
+}
+
+// AlternativeInput flujos de caja de una alternativa MGA.
+type AlternativeInput struct {
+        Name      string    `json:"name"`
+        CashFlows []float64 `json:"cash_flows"`
+}
+
+// EvaluateRequest entrada del caso de uso de evaluación financiera.
+type EvaluateRequest struct {
+        DiscountRate float64            `json:"discount_rate"`
+        Alternatives []AlternativeInput `json:"alternatives"`
+}
+
+// EvaluationResult salida calculada por el motor nativo Go.
+type EvaluationResult struct {
+        AlternativeName string    `json:"alternative_name"`
+        DiscountRate    float64   `json:"discount_rate"`
+        CashFlows       []float64 `json:"cash_flows"`
+        VPN             float64   `json:"vpn"`
+        TIR             *float64  `json:"tir,omitempty"`
+}
+
+// EvaluationService orquesta VPN/TIR sin depender de IA.
+type EvaluationService struct {
+        repo EvaluationRepository
+}
+
+func NewEvaluationService(repo EvaluationRepository) *EvaluationService <span class="cov8" title="1">{
+        return &amp;EvaluationService{repo: repo}
+}</span>
+
+func (s *EvaluationService) EvaluateAndPersist(
+        ctx context.Context,
+        projectID, tenantID uuid.UUID,
+        req EvaluateRequest,
+) ([]EvaluationResult, error) <span class="cov8" title="1">{
+        results := make([]EvaluationResult, 0, len(req.Alternatives))
+        rows := make([]models.ProjectEvaluation, 0, len(req.Alternatives))
+        now := time.Now().UTC()
+
+        for _, alt := range req.Alternatives </span><span class="cov8" title="1">{
+                vpn := finance.CalculateVPN(req.DiscountRate, alt.CashFlows)
+                tirRaw := finance.CalculateTIR(alt.CashFlows)
+
+                var tirPtr *float64
+                if !math.IsNaN(tirRaw) </span><span class="cov8" title="1">{
+                        t := tirRaw
+                        tirPtr = &amp;t
+                }</span>
+
+                <span class="cov8" title="1">flowsJSON, _ := json.Marshal(alt.CashFlows)
+                rows = append(rows, models.ProjectEvaluation{
+                        ID:              uuid.New(),
+                        ProjectID:       projectID,
+                        TenantID:        tenantID,
+                        AlternativeName: alt.Name,
+                        DiscountRate:    req.DiscountRate,
+                        CashFlows:       string(flowsJSON),
+                        VPN:             vpn,
+                        TIR:             tirPtr,
+                        CreatedAt:       now,
+                })
+
+                results = append(results, EvaluationResult{
+                        AlternativeName: alt.Name,
+                        DiscountRate:    req.DiscountRate,
+                        CashFlows:       alt.CashFlows,
+                        VPN:             vpn,
+                        TIR:             tirPtr,
+                })</span>
+        }
+
+        <span class="cov8" title="1">if err := s.repo.SaveBatch(ctx, rows); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return results, nil</span>
+}
+
+func (s *EvaluationService) ListByProject(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.ProjectEvaluation, error) <span class="cov8" title="1">{
+        return s.repo.ListByProject(ctx, projectID, tenantID)
+}</span>
+
+func (s *EvaluationService) ListLatestByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]models.ProjectEvaluation, error) <span class="cov8" title="1">{
+        return s.repo.ListLatestByTenant(ctx, tenantID, limit)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package handlers
+
+import (
+        "html"
+        "math"
+        "strconv"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/infrastructure/persistence/postgres"
+        "aurora-backend/internal/interfaces/http/dto"
+
+        "github.com/gofiber/fiber/v2"
+        "gorm.io/gorm"
+)
+
+type AIAuditHandler struct {
+        usageRepo UsageLogStore
+        chatRepo  ChatStore
+}
+
+func NewAIAuditHandler(db *gorm.DB) *AIAuditHandler <span class="cov8" title="1">{
+        return NewAIAuditHandlerWithDeps(
+                postgres.NewAiUsageLogRepository(db),
+                postgres.NewAiChatRepository(db),
+        )
+}</span>
+
+// NewAIAuditHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAIAuditHandlerWithDeps(usageRepo UsageLogStore, chatRepo ChatStore) *AIAuditHandler <span class="cov8" title="1">{
+        return &amp;AIAuditHandler{usageRepo: usageRepo, chatRepo: chatRepo}
+}</span>
+
+func (h *AIAuditHandler) ListUsageLogs(c *fiber.Ctx) error <span class="cov8" title="1">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+        if page &lt; 1 </span><span class="cov8" title="1">{
+                page = 1
+        }</span>
+        <span class="cov8" title="1">if pageSize &lt; 1 || pageSize &gt; 100 </span><span class="cov8" title="1">{
+                pageSize = 20
+        }</span>
+
+        <span class="cov8" title="1">rows, total, err := h.usageRepo.ListPaginated(c.Context(), page, pageSize)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "query failed"})
+        }</span>
+
+        <span class="cov8" title="1">data := make([]dto.AuditUsageLogItem, 0, len(rows))
+        for _, r := range rows </span><span class="cov8" title="1">{
+                data = append(data, dto.AuditUsageLogItem{
+                        ID:        r.ID.String(),
+                        UserID:    r.UserID.String(),
+                        Role:      sanitizeText(r.Role),
+                        Action:    sanitizeText(r.Action),
+                        CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+                })
+        }</span>
+
+        <span class="cov8" title="1">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov8" title="1">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(dto.PaginatedAuditResponse[dto.AuditUsageLogItem]{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+        })</span>
+}
+
+func (h *AIAuditHandler) ListChatMessages(c *fiber.Ctx) error <span class="cov8" title="1">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+
+        rows, total, err := h.chatRepo.ListPaginated(c.Context(), page, pageSize)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "query failed"})
+        }</span>
+
+        <span class="cov8" title="1">data := make([]dto.AuditChatMessageItem, 0, len(rows))
+        for _, r := range rows </span><span class="cov8" title="1">{
+                data = append(data, dto.AuditChatMessageItem{
+                        ID:           r.ID.String(),
+                        UserID:       r.UserID.String(),
+                        Role:         sanitizeText(r.Role),
+                        Content:      sanitizeText(r.Content),
+                        Model:        sanitizeText(r.Model),
+                        RouteContext: sanitizeText(r.RouteContext),
+                        CreatedAt:    r.CreatedAt.UTC().Format(time.RFC3339),
+                })
+        }</span>
+
+        <span class="cov8" title="1">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov8" title="1">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(dto.PaginatedAuditResponse[dto.AuditChatMessageItem]{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+        })</span>
+}
+
+func sanitizeText(s string) string <span class="cov8" title="1">{
+        s = strings.TrimSpace(s)
+        return html.EscapeString(s)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package handlers
+
+import (
+        "fmt"
+        "math"
+        "strconv"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/domain/constants"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/domain/services"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type AIHandler struct {
+        db        *gorm.DB
+        telemetry *services.TelemetryService
+}
+
+func NewAIHandler(db *gorm.DB, telemetry *services.TelemetryService) *AIHandler <span class="cov0" title="0">{
+        return &amp;AIHandler{db: db, telemetry: telemetry}
+}</span>
+
+func (h *AIHandler) Chat(c *fiber.Ctx) error <span class="cov0" title="0">{
+        userID, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var req dto.ChatRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+
+        <span class="cov0" title="0">req.Message = strings.TrimSpace(req.Message)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var projectID *uuid.UUID
+        var projectIDStr *string
+        if req.ProjectID != nil &amp;&amp; strings.TrimSpace(*req.ProjectID) != "" </span><span class="cov0" title="0">{
+                parsed, err := uuid.Parse(strings.TrimSpace(*req.ProjectID))
+                if err != nil </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project_id"})
+                }</span>
+
+                <span class="cov0" title="0">var count int64
+                if err := h.db.WithContext(c.Context()).
+                        Model(&amp;models.Project{}).
+                        Where("id = ? AND tenant_id = ?", parsed, tenantID).
+                        Count(&amp;count).Error; err != nil </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project"})
+                }</span>
+                <span class="cov0" title="0">if count == 0 </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+
+                <span class="cov0" title="0">projectID = &amp;parsed
+                s := parsed.String()
+                projectIDStr = &amp;s</span>
+        }
+
+        <span class="cov0" title="0">reply := mockAIReply(req.Message)
+        now := time.Now().UTC()
+
+        userLog := models.AILog{
+                ID:        uuid.New(),
+                TenantID:  tenantID,
+                UserID:    userID,
+                ProjectID: projectID,
+                Role:      constants.AIRoleUser,
+                Content:   req.Message,
+                Model:     "",
+                CreatedAt: now,
+        }
+        assistantLog := models.AILog{
+                ID:         uuid.New(),
+                TenantID:   tenantID,
+                UserID:     userID,
+                ProjectID:  projectID,
+                Role:       constants.AIRoleAssistant,
+                Content:    reply,
+                Model:      constants.AIMockModel,
+                TokensUsed: 0,
+                CreatedAt:  now.Add(time.Millisecond),
+        }
+
+        err = h.db.WithContext(c.Context()).Transaction(func(tx *gorm.DB) error </span><span class="cov0" title="0">{
+                if err := tx.Create(&amp;userLog).Error; err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return tx.Create(&amp;assistantLog).Error</span>
+        })
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to persist ai logs"})
+        }</span>
+
+        <span class="cov0" title="0">if h.telemetry != nil </span><span class="cov0" title="0">{
+                role, _ := c.Locals(httpmw.LocalsRole).(string)
+                h.telemetry.LogAsync(userID, role, models.TelemetryAskCopilot)
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.ChatResponse{
+                Reply:              reply,
+                Model:              constants.AIMockModel,
+                UserMessageID:      userLog.ID.String(),
+                AssistantMessageID: assistantLog.ID.String(),
+                ProjectID:          projectIDStr,
+        })</span>
+}
+
+func (h *AIHandler) History(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">projectID, err := uuid.Parse(c.Params("projectId"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">var count int64
+        if err := h.db.WithContext(c.Context()).
+                Model(&amp;models.Project{}).
+                Where("id = ? AND tenant_id = ?", projectID, tenantID).
+                Count(&amp;count).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project"})
+        }</span>
+        <span class="cov0" title="0">if count == 0 </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+        }</span>
+
+        <span class="cov0" title="0">page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "50"))
+        if page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+        <span class="cov0" title="0">if pageSize &lt; 1 || pageSize &gt; 100 </span><span class="cov0" title="0">{
+                pageSize = 50
+        }</span>
+        <span class="cov0" title="0">offset := (page - 1) * pageSize
+
+        q := h.db.WithContext(c.Context()).
+                Model(&amp;models.AILog{}).
+                Where("tenant_id = ? AND project_id = ?", tenantID, projectID)
+
+        var total int64
+        if err := q.Count(&amp;total).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to count messages"})
+        }</span>
+
+        <span class="cov0" title="0">var logs []models.AILog
+        if err := q.Order("created_at ASC").Limit(pageSize).Offset(offset).Find(&amp;logs).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load history"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.AIMessageResponse, 0, len(logs))
+        for _, l := range logs </span><span class="cov0" title="0">{
+                data = append(data, toAIMessageResponse(l))
+        }</span>
+
+        <span class="cov0" title="0">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov0" title="0">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedAIMessagesResponse{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+        })</span>
+}
+
+func mockAIReply(message string) string <span class="cov0" title="0">{
+        return fmt.Sprintf(
+                "[Aurora Mock] He recibido tu mensaje sobre formulación MGA: %q. "+
+                        "En la siguiente iteración conectaremos el modelo real para sugerir árbol de problemas, objetivos y productos del catálogo.",
+                message,
+        )
+}</span>
+
+func toAIMessageResponse(l models.AILog) dto.AIMessageResponse <span class="cov0" title="0">{
+        var projectID *string
+        if l.ProjectID != nil </span><span class="cov0" title="0">{
+                s := l.ProjectID.String()
+                projectID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.AIMessageResponse{
+                ID:        l.ID.String(),
+                Role:      l.Role,
+                Content:   l.Content,
+                Model:     l.Model,
+                ProjectID: projectID,
+                CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339),
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package handlers
+
+import (
+        "fmt"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/config"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/domain/services"
+        "aurora-backend/internal/infrastructure/persistence/postgres"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type AIKnowledgeHandler struct {
+        repo      KnowledgeStore
+        embedder  services.EmbeddingProvider
+        telemetry *services.TelemetryService
+}
+
+func NewAIKnowledgeHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AIKnowledgeHandler <span class="cov8" title="1">{
+        return NewAIKnowledgeHandlerWithDeps(
+                postgres.NewAiKnowledgeRepository(db),
+                services.NewEmbeddingProvider(cfg),
+                telemetry,
+        )
+}</span>
+
+// NewAIKnowledgeHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAIKnowledgeHandlerWithDeps(
+        repo KnowledgeStore,
+        embedder services.EmbeddingProvider,
+        telemetry *services.TelemetryService,
+) *AIKnowledgeHandler <span class="cov8" title="1">{
+        return &amp;AIKnowledgeHandler{
+                repo:      repo,
+                embedder:  embedder,
+                telemetry: telemetry,
+        }
+}</span>
+
+func (h *AIKnowledgeHandler) logTelemetry(c *fiber.Ctx, action string) <span class="cov8" title="1">{
+        if h.telemetry == nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+        <span class="cov8" title="1">userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
+        role, _ := c.Locals(httpmw.LocalsRole).(string)
+        userID, err := uuid.Parse(userIDStr)
+        if err != nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+        <span class="cov8" title="1">h.telemetry.LogAsync(userID, role, action)</span>
+}
+
+// IngestKnowledge POST /api/v1/ai/knowledge/ingest
+func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error <span class="cov8" title="1">{
+        file, err := c.FormFile("file")
+        if err != nil || file == nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "se requiere un archivo XML en el campo 'file'"})
+        }</span>
+
+        <span class="cov8" title="1">filename := strings.ToLower(file.Filename)
+        if !strings.HasSuffix(filename, ".xml") </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "solo se aceptan archivos .xml MGA"})
+        }</span>
+
+        <span class="cov8" title="1">opened, err := file.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudo leer el archivo"})
+        }</span>
+        <span class="cov8" title="1">defer opened.Close()
+
+        meta, graph, err := services.ParseMGAProjectXML(opened, file.Filename)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">projectMeta := map[string]string{
+                "project_key":  meta.ProjectKey,
+                "project_name": meta.ProjectName,
+                "sector":       meta.Sector,
+                "phase":        meta.Phase,
+                "source_file":  file.Filename,
+        }
+
+        batch := postgres.KnowledgeGraphBatch{
+                Nodes: make([]postgres.KnowledgeNodeInput, 0, len(graph.Nodes)),
+                Links: make([]postgres.KnowledgeLinkInput, 0, len(graph.Links)),
+        }
+        counts := map[string]int{}
+
+        for _, node := range graph.Nodes </span><span class="cov8" title="1">{
+                metaJSON, err := postgres.MergeMetadata(node.Metadata, projectMeta)
+                if err != nil </span><span class="cov0" title="0">{
+                        metaJSON = "{}"
+                }</span>
+
+                <span class="cov8" title="1">embedding, err := h.embedder.Embed(node.Content)
+                if err != nil </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "falló la generación de embeddings"})
+                }</span>
+
+                <span class="cov8" title="1">batch.Nodes = append(batch.Nodes, postgres.KnowledgeNodeInput{
+                        LocalID: node.LocalID,
+                        Node: models.AiKnowledgeNode{
+                                ID:         uuid.New(),
+                                ProjectKey: meta.ProjectKey,
+                                NodeType:   node.NodeType,
+                                Label:      node.Label,
+                                Content:    node.Content,
+                                Metadata:   metaJSON,
+                                CreatedAt:  time.Now().UTC(),
+                        },
+                        Embedding: embedding,
+                })
+                if node.NodeType != models.KnowledgeNodeProject </span><span class="cov8" title="1">{
+                        counts[node.NodeType]++
+                }</span>
+        }
+
+        <span class="cov8" title="1">for _, link := range graph.Links </span><span class="cov8" title="1">{
+                batch.Links = append(batch.Links, postgres.KnowledgeLinkInput{
+                        SourceLocalID: link.SourceLocalID,
+                        TargetLocalID: link.TargetLocalID,
+                        Link: models.AiKnowledgeLink{
+                                ID:           uuid.New(),
+                                ProjectKey:   meta.ProjectKey,
+                                Relationship: link.Relationship,
+                                CreatedAt:    time.Now().UTC(),
+                        },
+                })
+        }</span>
+
+        <span class="cov8" title="1">if err := h.repo.InsertGraph(c.Context(), batch); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudieron guardar los nodos de conocimiento"})
+        }</span>
+
+        <span class="cov8" title="1">h.logTelemetry(c, models.TelemetryIngestXML)
+
+        summary := dto.KnowledgeIngestSummary{
+                ProjectKey:        meta.ProjectKey,
+                ProjectName:       meta.ProjectName,
+                NodesCreated:      len(batch.Nodes),
+                LinksCreated:      len(batch.Links),
+                Alternatives:      counts[models.KnowledgeNodeAlternative],
+                Products:          counts[models.KnowledgeNodeProduct],
+                Activities:        counts[models.KnowledgeNodeActivity],
+                Causes:            counts[models.KnowledgeNodeCause],
+                Effects:           counts[models.KnowledgeNodeEffect],
+                CentralProblem:    counts[models.KnowledgeNodeCentralProblem] &gt; 0,
+                SpecificObjective: counts[models.KnowledgeNodeSpecificObjective] &gt; 0,
+                Message: fmt.Sprintf(
+                        "Se aprendieron %d alternativas, %d productos y %d actividades del proyecto %s (%d relaciones)",
+                        counts[models.KnowledgeNodeAlternative],
+                        counts[models.KnowledgeNodeProduct],
+                        counts[models.KnowledgeNodeActivity],
+                        meta.ProjectName,
+                        len(batch.Links),
+                ),
+        }
+
+        return c.Status(fiber.StatusCreated).JSON(summary)</span>
+}
+
+// GetKnowledgeGraph GET /api/v1/ai/knowledge/graph
+func (h *AIKnowledgeHandler) GetKnowledgeGraph(c *fiber.Ctx) error <span class="cov8" title="1">{
+        rows, err := h.repo.ListAllNodes(c.Context())
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudo cargar el grafo de conocimiento"})
+        }</span>
+
+        <span class="cov8" title="1">links, err := h.repo.ListAllLinks(c.Context())
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudieron cargar las relaciones"})
+        }</span>
+
+        <span class="cov8" title="1">nodes := make([]dto.KnowledgeGraphNode, 0, len(rows))
+        for _, row := range rows </span><span class="cov8" title="1">{
+                nodes = append(nodes, dto.KnowledgeGraphNode{
+                        ID:      row.ID.String(),
+                        Label:   row.Label,
+                        Type:    row.NodeType,
+                        Group:   row.ProjectKey,
+                        Content: truncate(row.Content, 500),
+                })
+        }</span>
+
+        <span class="cov8" title="1">graphLinks := make([]dto.KnowledgeGraphLink, 0, len(links))
+        for _, l := range links </span><span class="cov8" title="1">{
+                graphLinks = append(graphLinks, dto.KnowledgeGraphLink{
+                        Source:       l.SourceNodeID.String(),
+                        Target:       l.TargetNodeID.String(),
+                        Relationship: l.Relationship,
+                })
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(dto.KnowledgeGraphResponse{Nodes: nodes, Links: graphLinks})</span>
+}
+
+type AITelemetryHandler struct {
+        telemetry *services.TelemetryService
+}
+
+func NewAITelemetryHandler(telemetry *services.TelemetryService) *AITelemetryHandler <span class="cov8" title="1">{
+        return &amp;AITelemetryHandler{telemetry: telemetry}
+}</span>
+
+func (h *AITelemetryHandler) log(userID uuid.UUID, role, action string) <span class="cov8" title="1">{
+        if h.telemetry == nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+        <span class="cov8" title="1">h.telemetry.LogAsync(userID, role, action)</span>
+}
+
+// LogTelemetry POST /api/v1/ai/telemetry/log
+func (h *AITelemetryHandler) LogTelemetry(c *fiber.Ctx) error <span class="cov8" title="1">{
+        var req dto.TelemetryLogRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov8" title="1">req.Action = strings.TrimSpace(req.Action)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
+        role, _ := c.Locals(httpmw.LocalsRole).(string)
+        userID, err := uuid.Parse(userIDStr)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid user"})
+        }</span>
+
+        <span class="cov8" title="1">h.log(userID, role, req.Action)
+        return c.JSON(fiber.Map{"ok": true})</span>
+}
+
+func truncate(s string, max int) string <span class="cov8" title="1">{
+        s = strings.TrimSpace(s)
+        if len(s) &lt;= max </span><span class="cov8" title="1">{
+                return s
+        }</span>
+        <span class="cov8" title="1">return s[:max] + "…"</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "aurora-backend/internal/config"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/domain/services"
+        "aurora-backend/internal/infrastructure/llm"
+        "aurora-backend/internal/infrastructure/persistence/postgres"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type AuroraChatHandler struct {
+        repo      KnowledgeStore
+        chatRepo  ChatStore
+        embedder  services.EmbeddingProvider
+        anthropic LLMClient
+        telemetry *services.TelemetryService
+}
+
+func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AuroraChatHandler <span class="cov8" title="1">{
+        return NewAuroraChatHandlerWithDeps(
+                postgres.NewAiKnowledgeRepository(db),
+                postgres.NewAiChatRepository(db),
+                services.NewEmbeddingProvider(cfg),
+                llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
+                telemetry,
+        )
+}</span>
+
+// NewAuroraChatHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewAuroraChatHandlerWithDeps(
+        repo KnowledgeStore,
+        chatRepo ChatStore,
+        embedder services.EmbeddingProvider,
+        anthropic LLMClient,
+        telemetry *services.TelemetryService,
+) *AuroraChatHandler <span class="cov8" title="1">{
+        return &amp;AuroraChatHandler{
+                repo:      repo,
+                chatRepo:  chatRepo,
+                embedder:  embedder,
+                anthropic: anthropic,
+                telemetry: telemetry,
+        }
+}</span>
+
+// Chat POST /api/v1/ai/aurora/chat — Anthropic + RAG + persistencia transaccional.
+func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error <span class="cov8" title="1">{
+        userIDStr, _ := c.Locals(httpmw.LocalsUserID).(string)
+        role, _ := c.Locals(httpmw.LocalsRole).(string)
+        userID, err := uuid.Parse(userIDStr)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid user"})
+        }</span>
+
+        <span class="cov8" title="1">var req dto.AuroraChatRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov8" title="1">req.Message = strings.TrimSpace(req.Message)
+        req.RouteContext = strings.TrimSpace(req.RouteContext)
+        req.SessionID = strings.TrimSpace(req.SessionID)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">sessionID := req.SessionID
+        if sessionID == "" </span><span class="cov8" title="1">{
+                sessionID = uuid.New().String()
+        }</span>
+
+        <span class="cov8" title="1">var tenantID *uuid.UUID
+        if tidRaw, _ := c.Locals(httpmw.LocalsTenantID).(string); tidRaw != "" </span><span class="cov8" title="1">{
+                if tid, err := uuid.Parse(tidRaw); err == nil </span><span class="cov8" title="1">{
+                        tenantID = &amp;tid
+                }</span>
+        }
+
+        <span class="cov8" title="1">ragContext := h.buildRAGContext(c, req.Message)
+        system := buildAuroraSystemPrompt(req.RouteContext, ragContext)
+
+        raw, err := h.anthropic.Chat(system, []llm.Message{
+                {Role: "user", Content: req.Message},
+        })
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+                        "error": fmt.Sprintf("no se pudo contactar a Aurora (Anthropic): %v", err),
+                })
+        }</span>
+
+        <span class="cov8" title="1">reply, cards := parseAuroraResponse(raw)
+        cardsJSON, _ := json.Marshal(cards)
+
+        userMsg := postgres.NewChatMessage(
+                userID, tenantID, sessionID,
+                models.ChatRoleUser, req.Message, "", "[]", req.RouteContext,
+        )
+        assistantMsg := postgres.NewChatMessage(
+                userID, tenantID, sessionID,
+                models.ChatRoleAssistant, reply, h.anthropic.Model(), string(cardsJSON), req.RouteContext,
+        )
+
+        if err := h.chatRepo.SavePair(c.Context(), postgres.ChatMessagePair{
+                User:      userMsg,
+                Assistant: assistantMsg,
+        }); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to persist chat history"})
+        }</span>
+
+        <span class="cov8" title="1">if h.telemetry != nil </span><span class="cov8" title="1">{
+                h.telemetry.LogAsync(userID, role, models.TelemetryAskCopilot)
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(dto.AuroraChatResponse{
+                Reply:       reply,
+                ActionCards: cards,
+                Model:       h.anthropic.Model(),
+                SessionID:   sessionID,
+                UserMsgID:   userMsg.ID.String(),
+                AssistantID: assistantMsg.ID.String(),
+        })</span>
+}
+
+func (h *AuroraChatHandler) buildRAGContext(c *fiber.Ctx, query string) string <span class="cov8" title="1">{
+        vec, err := h.embedder.Embed(query)
+        if err != nil </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+        <span class="cov8" title="1">nodes, err := h.repo.SearchSimilar(c.Context(), vec, 6)
+        if err != nil || len(nodes) == 0 </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+        <span class="cov8" title="1">var b strings.Builder
+        for i, n := range nodes </span><span class="cov8" title="1">{
+                excerpt := n.Content
+                if len(excerpt) &gt; 400 </span><span class="cov8" title="1">{
+                        excerpt = excerpt[:400] + "…"
+                }</span>
+                <span class="cov8" title="1">fmt.Fprintf(&amp;b, "%d) [%s] %s: %s\n", i+1, n.NodeType, n.Label, excerpt)</span>
+        }
+        <span class="cov8" title="1">return b.String()</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "regexp"
+        "strings"
+
+        "aurora-backend/internal/interfaces/http/dto"
+)
+
+const auroraSystemPrompt = `Eres Aurora, una experta en la Metodología General Ajustada (MGA) de Colombia.
+Guías a formuladores de proyectos de inversión pública de forma sencilla, empática y precisa.
+Responde siempre en español.
+
+Cuando el usuario necesite un código de catálogo (ODS, producto DNP, sector, programa, EDT, entregable o actividad),
+incluye al final de tu respuesta un bloque JSON EXACTO con este formato (sin markdown extra):
+
+` + "```aurora-actions\n" + `{"action_cards":[{"catalog":"ods","code":"1.1","label":"Fin de la pobreza","description":"Breve explicación"}]}
+` + "```" + `
+
+Valores válidos para "catalog": ods, products, sectors, programs, edt, deliverables, activities.
+Si no hay sugerencias de catálogo, omite el bloque aurora-actions.
+Nunca menciones OpenAI. Solo Anthropic Claude alimenta este asistente.`
+
+var auroraActionsBlock = regexp.MustCompile("(?s)```aurora-actions\\s*(\\{.*?\\})\\s*```")
+var jsonActionCards = regexp.MustCompile(`(?s)"action_cards"\s*:\s*\[`)
+
+func buildAuroraSystemPrompt(routeContext, ragContext string) string <span class="cov8" title="1">{
+        var b strings.Builder
+        b.WriteString(auroraSystemPrompt)
+        b.WriteString("\n\n")
+        if routeContext = strings.TrimSpace(routeContext); routeContext != "" </span><span class="cov8" title="1">{
+                b.WriteString("Contexto de navegación: ")
+                b.WriteString(describeRoute(routeContext))
+                b.WriteString("\n")
+        }</span>
+        <span class="cov8" title="1">if ragContext = strings.TrimSpace(ragContext); ragContext != "" </span><span class="cov8" title="1">{
+                b.WriteString("\nConocimiento MGA indexado (RAG):\n")
+                b.WriteString(ragContext)
+        }</span>
+        <span class="cov8" title="1">return b.String()</span>
+}
+
+func describeRoute(route string) string <span class="cov8" title="1">{
+        r := strings.ToLower(route)
+        switch </span>{
+        case strings.Contains(r, "/catalogs/ods"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo de ODS."</span>
+        case strings.Contains(r, "/catalogs/products"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo de Productos DNP."</span>
+        case strings.Contains(r, "/catalogs/sectors"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo de Sectores."</span>
+        case strings.Contains(r, "/catalogs/programs"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo de Programas."</span>
+        case strings.Contains(r, "/catalogs/edt"), strings.Contains(r, "/catalogs/indicators"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo EDT."</span>
+        case strings.Contains(r, "/catalogs/deliverables"), strings.Contains(r, "/catalogs/funding"):<span class="cov8" title="1">
+                return "El usuario está en el Catálogo de Entregables."</span>
+        case strings.Contains(r, "/catalogs/activities"):<span class="cov8" title="1">
+                return "El usuario está en la Lista de Actividades."</span>
+        case strings.Contains(r, "/admin/ai"):<span class="cov8" title="1">
+                return "El usuario está en la Gestión IA / Knowledge Base MGA."</span>
+        case strings.Contains(r, "/admin/tenants"):<span class="cov8" title="1">
+                return "El usuario está en la Gestión de Tenants."</span>
+        default:<span class="cov8" title="1">
+                return "El usuario navega la plataforma AuroraApp (" + route + ")."</span>
+        }
+}
+
+func parseAuroraResponse(raw string) (reply string, cards []dto.ActionCard) <span class="cov8" title="1">{
+        raw = strings.TrimSpace(raw)
+        cards = []dto.ActionCard{}
+
+        if m := auroraActionsBlock.FindStringSubmatch(raw); len(m) == 2 </span><span class="cov8" title="1">{
+                reply = strings.TrimSpace(auroraActionsBlock.ReplaceAllString(raw, ""))
+                cards = extractActionCards(m[1])
+                return reply, cards
+        }</span>
+
+        <span class="cov8" title="1">if strings.HasPrefix(raw, "{") </span><span class="cov8" title="1">{
+                var envelope struct {
+                        Reply       string           `json:"reply"`
+                        ActionCards []dto.ActionCard `json:"action_cards"`
+                }
+                if err := json.Unmarshal([]byte(raw), &amp;envelope); err == nil </span><span class="cov8" title="1">{
+                        reply = strings.TrimSpace(envelope.Reply)
+                        if reply == "" </span><span class="cov8" title="1">{
+                                reply = raw
+                        }</span>
+                        <span class="cov8" title="1">return reply, envelope.ActionCards</span>
+                }
+        }
+
+        <span class="cov8" title="1">if jsonActionCards.MatchString(raw) </span><span class="cov8" title="1">{
+                start := strings.Index(raw, "{")
+                end := strings.LastIndex(raw, "}")
+                if start &gt;= 0 &amp;&amp; end &gt; start </span><span class="cov8" title="1">{
+                        fragment := raw[start : end+1]
+                        cards = extractActionCards(fragment)
+                        reply = strings.TrimSpace(raw[:start])
+                }</span>
+        }
+
+        <span class="cov8" title="1">if reply == "" </span><span class="cov8" title="1">{
+                reply = raw
+        }</span>
+        <span class="cov8" title="1">return reply, cards</span>
+}
+
+func extractActionCards(jsonFragment string) []dto.ActionCard <span class="cov8" title="1">{
+        var payload struct {
+                ActionCards []dto.ActionCard `json:"action_cards"`
+        }
+        if err := json.Unmarshal([]byte(jsonFragment), &amp;payload); err != nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">out := make([]dto.ActionCard, 0, len(payload.ActionCards))
+        for _, c := range payload.ActionCards </span><span class="cov8" title="1">{
+                c.Catalog = strings.ToLower(strings.TrimSpace(c.Catalog))
+                c.Code = strings.TrimSpace(c.Code)
+                c.Label = strings.TrimSpace(c.Label)
+                if c.Catalog != "" &amp;&amp; c.Code != "" </span><span class="cov8" title="1">{
+                        out = append(out, c)
+                }</span>
+        }
+        <span class="cov8" title="1">return out</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package handlers
+
+import (
+        "errors"
+        "net/mail"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/domain/constants"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/golang-jwt/jwt/v5"
+        "github.com/google/uuid"
+        "golang.org/x/crypto/bcrypt"
+        "gorm.io/gorm"
+)
+
+type AuthHandler struct {
+        db        *gorm.DB
+        jwtSecret string
+}
+
+func NewAuthHandler(db *gorm.DB, jwtSecret string) *AuthHandler <span class="cov0" title="0">{
+        return &amp;AuthHandler{db: db, jwtSecret: jwtSecret}
+}</span>
+
+func (h *AuthHandler) Login(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.LoginRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var user models.User
+        if err := h.db.WithContext(c.Context()).
+                Preload("Role").
+                Where("email = ? AND is_active = ?", req.Email, true).
+                First(&amp;user).Error; err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "credenciales inválidas"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to authenticate"})</span>
+        }
+
+        <span class="cov0" title="0">if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "credenciales inválidas"})
+        }</span>
+
+        <span class="cov0" title="0">claims := httpmw.Claims{
+                UserID:    user.ID.String(),
+                Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+                TokenType: "access",
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
+                        IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+                        Subject:   user.ID.String(),
+                },
+        }
+        if user.TenantID != nil </span><span class="cov0" title="0">{
+                tid := user.TenantID.String()
+                claims.TenantID = &amp;tid
+        }</span>
+
+        <span class="cov0" title="0">token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        signed, err := token.SignedString([]byte(h.jwtSecret))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue token"})
+        }</span>
+
+        <span class="cov0" title="0">refreshClaims := claims
+        refreshClaims.TokenType = "refresh"
+        refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
+                ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+                IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+                Subject:   user.ID.String(),
+        }
+        refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+        refreshSigned, err := refreshToken.SignedString([]byte(h.jwtSecret))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue refresh token"})
+        }</span>
+
+        <span class="cov0" title="0">var tenantID *string
+        if user.TenantID != nil </span><span class="cov0" title="0">{
+                s := user.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.LoginResponse{
+                Token:        signed,
+                RefreshToken: refreshSigned,
+                User: dto.LoginUserResponse{
+                        ID:       user.ID.String(),
+                        Email:    user.Email,
+                        FullName: user.FullName,
+                        Role:     strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+                        TenantID: tenantID,
+                },
+        })</span>
+}
+
+func (h *AuthHandler) Register(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.RegisterRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+
+        <span class="cov0" title="0">req.EntityName = strings.TrimSpace(req.EntityName)
+        req.NIT = strings.TrimSpace(req.NIT)
+        req.FullName = strings.TrimSpace(req.FullName)
+        req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        // Solo formato RFC de email; cualquier dominio (gmail, outlook, gov, etc.).
+        <span class="cov0" title="0">if _, err := mail.ParseAddress(req.Email); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "correo electrónico inválido"})
+        }</span>
+
+        <span class="cov0" title="0">ctx := c.Context()
+        db := h.db.WithContext(ctx)
+
+        var existingCount int64
+        if err := db.Unscoped().
+                Model(&amp;models.User{}).
+                Where("email = ?", req.Email).
+                Count(&amp;existingCount).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error": "no se pudo verificar disponibilidad del correo",
+                })
+        }</span>
+        <span class="cov0" title="0">if existingCount &gt; 0 </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "el correo ya está registrado"})
+        }</span>
+
+        <span class="cov0" title="0">var role models.Role
+        if err := db.Where("code = ?", constants.RoleTenantAdmin).First(&amp;role).Error; err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                                "error": "rol TENANT_ADMIN no configurado; ejecute el seed de roles",
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load role"})</span>
+        }
+
+        <span class="cov0" title="0">hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to hash password"})
+        }</span>
+
+        <span class="cov0" title="0">now := time.Now().UTC()
+        nit := req.NIT
+        tenant := models.Tenant{
+                ID:           uuid.New(),
+                Name:         req.EntityName,
+                NIT:          &amp;nit,
+                ContactEmail: req.Email,
+                Status:       constants.TenantStatusActive,
+                IsActive:     true,
+                CreatedAt:    now,
+                UpdatedAt:    now,
+        }
+        tenantID := tenant.ID
+        user := models.User{
+                ID:           uuid.New(),
+                TenantID:     &amp;tenantID,
+                RoleID:       role.ID,
+                Email:        req.Email,
+                PasswordHash: string(hash),
+                FullName:     req.FullName,
+                IsActive:     true,
+                CreatedAt:    now,
+                UpdatedAt:    now,
+        }
+
+        err = db.Transaction(func(tx *gorm.DB) error </span><span class="cov0" title="0">{
+                if err := tx.Create(&amp;tenant).Error; err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">if err := tx.Create(&amp;user).Error; err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        })
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                if isUniqueViolation(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+                                "error": "ya existe una entidad con ese NIT o el correo ya está en uso",
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to register institution"})</span>
+        }
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(dto.RegisterResponse{
+                Message:  "Institución registrada correctamente. Ya puede iniciar sesión.",
+                TenantID: tenant.ID.String(),
+                Email:    user.Email,
+        })</span>
+}
+
+func (h *AuthHandler) Refresh(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.RefreshTokenRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.RefreshToken = strings.TrimSpace(req.RefreshToken)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">claims, err := httpmw.ParseRefreshClaims(h.jwtSecret, req.RefreshToken)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+        }</span>
+
+        <span class="cov0" title="0">userID, err := uuid.Parse(claims.UserID)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+        }</span>
+
+        <span class="cov0" title="0">var user models.User
+        if err := h.db.WithContext(c.Context()).Preload("Role").Where("id = ? AND is_active = ?", userID, true).First(&amp;user).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "user not found"})
+        }</span>
+
+        <span class="cov0" title="0">accessClaims := httpmw.Claims{
+                UserID:    user.ID.String(),
+                Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+                TokenType: "access",
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
+                        IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+                        Subject:   user.ID.String(),
+                },
+        }
+        if user.TenantID != nil </span><span class="cov0" title="0">{
+                tid := user.TenantID.String()
+                accessClaims.TenantID = &amp;tid
+        }</span>
+
+        <span class="cov0" title="0">accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+        signed, err := accessToken.SignedString([]byte(h.jwtSecret))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue token"})
+        }</span>
+
+        <span class="cov0" title="0">refreshClaims := accessClaims
+        refreshClaims.TokenType = "refresh"
+        refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
+                ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+                IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+                Subject:   user.ID.String(),
+        }
+        refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+        refreshSigned, err := refreshToken.SignedString([]byte(h.jwtSecret))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to issue refresh token"})
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.RefreshTokenResponse{
+                Token:        signed,
+                RefreshToken: refreshSigned,
+        })</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package handlers
+
+import (
+        "strings"
+        "time"
+
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type BudgetHandler struct {
+        db *gorm.DB
+}
+
+func NewBudgetHandler(db *gorm.DB) *BudgetHandler <span class="cov0" title="0">{
+        return &amp;BudgetHandler{db: db}
+}</span>
+
+func (h *BudgetHandler) Create(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">projectID, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">if _, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID); err != nil </span><span class="cov0" title="0">{
+                if isNotFound(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project ownership"})</span>
+        }
+
+        <span class="cov0" title="0">var req dto.CreateBudgetItemRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Description = strings.TrimSpace(req.Description)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var productID *uuid.UUID
+        if req.ProductID != nil &amp;&amp; strings.TrimSpace(*req.ProductID) != "" </span><span class="cov0" title="0">{
+                parsed, err := uuid.Parse(strings.TrimSpace(*req.ProductID))
+                if err != nil </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid product_id"})
+                }</span>
+                <span class="cov0" title="0">var count int64
+                if err := h.db.WithContext(c.Context()).
+                        Model(&amp;models.Product{}).
+                        Where("id = ?", parsed).
+                        Count(&amp;count).Error; err != nil </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify product"})
+                }</span>
+                <span class="cov0" title="0">if count == 0 </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "product not found in DNP catalog"})
+                }</span>
+                <span class="cov0" title="0">productID = &amp;parsed</span>
+        }
+
+        <span class="cov0" title="0">now := time.Now().UTC()
+        item := models.BudgetItem{
+                ID:          uuid.New(),
+                TenantID:    tenantID,
+                ProjectID:   projectID,
+                ProductID:   productID,
+                Description: req.Description,
+                Amount:      req.Amount,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+
+        if err := h.db.WithContext(c.Context()).Create(&amp;item).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create budget item"})
+        }</span>
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toBudgetItemResponse(item))</span>
+}
+
+func (h *BudgetHandler) List(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">projectID, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">if _, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID); err != nil </span><span class="cov0" title="0">{
+                if isNotFound(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project ownership"})</span>
+        }
+
+        <span class="cov0" title="0">items := make([]models.BudgetItem, 0)
+        if err := h.db.WithContext(c.Context()).
+                Where("project_id = ? AND tenant_id = ?", projectID, tenantID).
+                Order("created_at ASC").
+                Find(&amp;items).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list budget items"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.BudgetItemResponse, 0, len(items))
+        for _, item := range items </span><span class="cov0" title="0">{
+                data = append(data, toBudgetItemResponse(item))
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(data)</span>
+}
+
+func (h *BudgetHandler) Delete(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">projectID, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">itemID, err := uuid.Parse(c.Params("itemId"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid budget item id"})
+        }</span>
+
+        <span class="cov0" title="0">if _, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID); err != nil </span><span class="cov0" title="0">{
+                if isNotFound(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project ownership"})</span>
+        }
+
+        <span class="cov0" title="0">result := h.db.WithContext(c.Context()).
+                Where("id = ? AND project_id = ? AND tenant_id = ?", itemID, projectID, tenantID).
+                Delete(&amp;models.BudgetItem{})
+
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete budget item"})
+        }</span>
+        <span class="cov0" title="0">if result.RowsAffected == 0 </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "budget item not found"})
+        }</span>
+
+        <span class="cov0" title="0">return c.SendStatus(fiber.StatusNoContent)</span>
+}
+
+func toBudgetItemResponse(item models.BudgetItem) dto.BudgetItemResponse <span class="cov0" title="0">{
+        var productID *string
+        if item.ProductID != nil </span><span class="cov0" title="0">{
+                s := item.ProductID.String()
+                productID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.BudgetItemResponse{
+                ID:          item.ID.String(),
+                TenantID:    item.TenantID.String(),
+                ProjectID:   item.ProjectID.String(),
+                ProductID:   productID,
+                Description: item.Description,
+                Amount:      item.Amount,
+                CreatedAt:   item.CreatedAt.UTC().Format(time.RFC3339),
+                UpdatedAt:   item.UpdatedAt.UTC().Format(time.RFC3339),
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package handlers
+
+import (
+        "errors"
+        "fmt"
+        "math"
+        "path/filepath"
+        "strconv"
+        "strings"
+
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/infrastructure/persistence/postgres"
+        "aurora-backend/internal/interfaces/http/dto"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type CatalogHandler struct {
+        db   *gorm.DB
+        repo *postgres.CatalogRepository
+}
+
+func NewCatalogHandler(db *gorm.DB) *CatalogHandler <span class="cov0" title="0">{
+        return &amp;CatalogHandler{
+                db:   db,
+                repo: postgres.NewCatalogRepository(db),
+        }
+}</span>
+
+func (h *CatalogHandler) ListSectors(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        // Compatibilidad con clientes que envían page_size
+        if limit == 10 </span><span class="cov0" title="0">{
+                if ps, err := strconv.Atoi(c.Query("page_size", "")); err == nil &amp;&amp; ps &gt; 0 </span><span class="cov0" title="0">{
+                        limit = ps
+                }</span>
+        }
+        <span class="cov0" title="0">search := strings.TrimSpace(c.Query("search"))
+        if search == "" </span><span class="cov0" title="0">{
+                search = strings.TrimSpace(c.Query("q"))
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.ListSectors(c.Context(), postgres.SectorListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to list sectors",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.SectorResponse, 0, len(result.Items))
+        for _, s := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toSectorResponse(s))
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedSectorsResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// CreateSector crea un sector individual (upsert por código).
+func (h *CatalogHandler) CreateSector(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.CreateSectorRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Code = strings.TrimSpace(req.Code)
+        req.Name = strings.TrimSpace(req.Name)
+        req.Application = strings.TrimSpace(req.Application)
+        req.Observations = strings.TrimSpace(req.Observations)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">sector := models.Sector{
+                Code:         req.Code,
+                Name:         req.Name,
+                Application:  req.Application,
+                Observations: req.Observations,
+        }
+        _, err := h.repo.UpsertSectorByCode(c.Context(), &amp;sector)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create sector"})
+        }</span>
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toSectorResponse(sector))</span>
+}
+
+// ImportSectors importa sectores desde XLSX o CSV (multipart field "file").
+func (h *CatalogHandler) ImportSectors(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var rows []postgres.SectorImportRow
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                rows, err = postgres.ParseSectorsFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                rows, err = postgres.ParseSectorsFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">inserted, updated, skipped := 0, 0, 0
+        for _, row := range rows </span><span class="cov0" title="0">{
+                sector := row.ToModel()
+                if sector.Code == "" || sector.Name == "" </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+                <span class="cov0" title="0">created, err := h.repo.UpsertSectorByCode(c.Context(), &amp;sector)
+                if err != nil </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+                <span class="cov0" title="0">if created </span><span class="cov0" title="0">{
+                        inserted++
+                }</span> else<span class="cov0" title="0"> {
+                        updated++
+                }</span>
+        }
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.SectorImportResponse{
+                Status:          "success",
+                Message:         "Importación de sectores procesada",
+                Inserted:        inserted,
+                Updated:         updated,
+                Skipped:         skipped,
+                TotalRowsParsed: len(rows),
+        })</span>
+}
+
+// CreateProgram crea un programa/subprograma individual (upsert por códigos).
+func (h *CatalogHandler) CreateProgram(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.CreateProgramRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.CodigoSector = strings.TrimSpace(req.CodigoSector)
+        req.NombreSector = strings.TrimSpace(req.NombreSector)
+        req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+        req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+        req.AmbitoAplicacion = strings.TrimSpace(req.AmbitoAplicacion)
+        req.CodigoSubprograma = strings.TrimSpace(req.CodigoSubprograma)
+        req.NombreSubprograma = strings.TrimSpace(req.NombreSubprograma)
+        req.Observaciones = strings.TrimSpace(req.Observaciones)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">sectorID, err := h.repo.FindSectorIDByCode(c.Context(), req.CodigoSector)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, postgres.ErrSectorNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                                "error": fmt.Sprintf(
+                                        "El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+                                        req.CodigoSector,
+                                ),
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error": "failed to resolve sector",
+                })</span>
+        }
+
+        <span class="cov0" title="0">nombreSector := req.NombreSector
+        if nombreSector == "" </span><span class="cov0" title="0">{
+                nombreSector = req.CodigoSector
+        }</span>
+
+        <span class="cov0" title="0">item := models.ProgramSubprogram{
+                SectorID:          sectorID,
+                CodigoSector:      req.CodigoSector,
+                NombreSector:      nombreSector,
+                CodigoPrograma:    req.CodigoPrograma,
+                NombrePrograma:    req.NombrePrograma,
+                AmbitoAplicacion:  req.AmbitoAplicacion,
+                CodigoSubprograma: req.CodigoSubprograma,
+                NombreSubprograma: req.NombreSubprograma,
+                Observaciones:     req.Observaciones,
+        }
+        if _, err := h.repo.UpsertProgramSubprogramByCode(c.Context(), &amp;item); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create program"})
+        }</span>
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toProgramSubprogramResponse(item))</span>
+}
+
+func (h *CatalogHandler) ListPrograms(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+        if search == "" </span><span class="cov0" title="0">{
+                search = strings.TrimSpace(c.Query("q"))
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.ListProgramsSubprograms(c.Context(), postgres.ProgramListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to list programs",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.ProgramSubprogramResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toProgramSubprogramResponse(item))
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedProgramsResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// ImportPrograms importa programas/subprogramas desde XLSX o CSV (multipart "file").
+func (h *CatalogHandler) ImportPrograms(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var rows []postgres.ProgramImportRow
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                rows, err = postgres.ParseProgramsFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                rows, err = postgres.ParseProgramsFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">inserted, updated, skipped := 0, 0, 0
+        for _, row := range rows </span><span class="cov0" title="0">{
+                if row.CodigoSector == "" || row.CodigoPrograma == "" || row.CodigoSubprograma == "" </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+                <span class="cov0" title="0">if row.NombrePrograma == "" || row.NombreSubprograma == "" </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">sectorID, err := h.repo.FindSectorIDByCode(c.Context(), row.CodigoSector)
+                if err != nil </span><span class="cov0" title="0">{
+                        if errors.Is(err, postgres.ErrSectorNotFound) </span><span class="cov0" title="0">{
+                                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                                        "error": fmt.Sprintf(
+                                                "El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+                                                strings.TrimSpace(row.CodigoSector),
+                                        ),
+                                })
+                        }</span>
+                        <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                                "error":   "failed to resolve sector during import",
+                                "details": err.Error(),
+                        })</span>
+                }
+                <span class="cov0" title="0">if sectorID == uuid.Nil </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                                "error": fmt.Sprintf(
+                                        "El sector con código %s no existe en la base de datos. Por favor, créelo primero",
+                                        strings.TrimSpace(row.CodigoSector),
+                                ),
+                        })
+                }</span>
+
+                <span class="cov0" title="0">item := models.ProgramSubprogram{
+                        SectorID:          sectorID,
+                        CodigoSector:      strings.TrimSpace(row.CodigoSector),
+                        NombreSector:      strings.TrimSpace(row.NombreSector),
+                        CodigoPrograma:    strings.TrimSpace(row.CodigoPrograma),
+                        NombrePrograma:    strings.TrimSpace(row.NombrePrograma),
+                        AmbitoAplicacion:  strings.TrimSpace(row.AmbitoAplicacion),
+                        CodigoSubprograma: strings.TrimSpace(row.CodigoSubprograma),
+                        NombreSubprograma: strings.TrimSpace(row.NombreSubprograma),
+                        Observaciones:     strings.TrimSpace(row.Observaciones),
+                }
+                if item.NombreSector == "" </span><span class="cov0" title="0">{
+                        item.NombreSector = row.CodigoSector
+                }</span>
+
+                <span class="cov0" title="0">created, err := h.repo.UpsertProgramSubprogramByCode(c.Context(), &amp;item)
+                if err != nil </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+                <span class="cov0" title="0">if created </span><span class="cov0" title="0">{
+                        inserted++
+                }</span> else<span class="cov0" title="0"> {
+                        updated++
+                }</span>
+        }
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.ProgramImportResponse{
+                Status:          "success",
+                Message:         "Importación de programas/subprogramas procesada",
+                Inserted:        inserted,
+                Updated:         updated,
+                Skipped:         skipped,
+                TotalRowsParsed: len(rows),
+        })</span>
+}
+
+func (h *CatalogHandler) ListProgramsBySector(c *fiber.Ctx) error <span class="cov0" title="0">{
+        sectorID, err := uuid.Parse(c.Params("sectorId"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid sector id"})
+        }</span>
+
+        <span class="cov0" title="0">var sectorCount int64
+        if err := h.db.WithContext(c.Context()).
+                Model(&amp;models.Sector{}).
+                Where("id = ?", sectorID).
+                Count(&amp;sectorCount).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify sector"})
+        }</span>
+        <span class="cov0" title="0">if sectorCount == 0 </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "sector not found"})
+        }</span>
+
+        <span class="cov0" title="0">var programs []models.Program
+        if err := h.db.WithContext(c.Context()).
+                Where("sector_id = ?", sectorID).
+                Order("codigo_programa ASC").
+                Find(&amp;programs).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list programs"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.ProgramResponse, 0, len(programs))
+        for _, p := range programs </span><span class="cov0" title="0">{
+                data = append(data, dto.ProgramResponse{
+                        ID:       p.ID.String(),
+                        SectorID: p.SectorID.String(),
+                        Code:     p.Code,
+                        Name:     p.Name,
+                })
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(data)</span>
+}
+
+func (h *CatalogHandler) ListCatalogProducts(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+        if search == "" </span><span class="cov0" title="0">{
+                search = strings.TrimSpace(c.Query("q"))
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.ListCatalogProducts(c.Context(), postgres.CatalogProductListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to list products",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.CatalogProductResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toCatalogProductResponse(item))
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedCatalogProductsResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// CreateProduct crea un producto del catálogo (upsert por codigo_producto + codigo_indicador).
+func (h *CatalogHandler) CreateProduct(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.CreateCatalogProductRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Sector = strings.TrimSpace(req.Sector)
+        req.NombreSector = strings.TrimSpace(req.NombreSector)
+        req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+        req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+        req.CodigoProducto = strings.TrimSpace(req.CodigoProducto)
+        req.Producto = strings.TrimSpace(req.Producto)
+        req.Descripcion = strings.TrimSpace(req.Descripcion)
+        req.MedidoATravesDe = strings.TrimSpace(req.MedidoATravesDe)
+        req.CodigoIndicadorProducto = strings.TrimSpace(req.CodigoIndicadorProducto)
+        req.IndicadorProducto = strings.TrimSpace(req.IndicadorProducto)
+        req.UnidadDeMedida = strings.TrimSpace(req.UnidadDeMedida)
+        req.ODS = strings.TrimSpace(req.ODS)
+        req.MetaODS = strings.TrimSpace(req.MetaODS)
+        req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
+        req.EDT = strings.TrimSpace(req.EDT)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">if _, err := h.repo.ProgramExistsByCode(c.Context(), req.CodigoPrograma); err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, postgres.ErrProgramNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                                "error": fmt.Sprintf(
+                                        "El programa con código %s no existe en la base de datos. Por favor, créelo primero",
+                                        req.CodigoPrograma,
+                                ),
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify program"})</span>
+        }
+
+        <span class="cov0" title="0">item := models.CatalogProduct{
+                Sector:                  req.Sector,
+                NombreSector:            req.NombreSector,
+                CodigoPrograma:          req.CodigoPrograma,
+                NombrePrograma:          req.NombrePrograma,
+                CodigoProducto:          req.CodigoProducto,
+                Producto:                req.Producto,
+                Descripcion:             req.Descripcion,
+                MedidoATravesDe:         req.MedidoATravesDe,
+                CodigoIndicadorProducto: req.CodigoIndicadorProducto,
+                IndicadorProducto:       req.IndicadorProducto,
+                UnidadDeMedida:          req.UnidadDeMedida,
+                IndicadorPrincipal:      req.IndicadorPrincipal,
+                EsNacional:              req.EsNacional,
+                EsTerritorial:           req.EsTerritorial,
+                ODS:                     req.ODS,
+                MetaODS:                 req.MetaODS,
+                TipologiaGeneralSUIFP:   req.TipologiaGeneralSUIFP,
+                TipologiaD:              req.TipologiaD,
+                TipologiaE:              req.TipologiaE,
+                TipologiaAPIIP:          req.TipologiaAPIIP,
+                TipologiaBPIIP:          req.TipologiaBPIIP,
+                TipologiaCPIIP:          req.TipologiaCPIIP,
+                TieneEDT:                req.TieneEDT,
+                EDT:                     req.EDT,
+        }
+        if _, err := h.repo.UpsertCatalogProductByCode(c.Context(), &amp;item); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create product"})
+        }</span>
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toCatalogProductResponse(item))</span>
+}
+
+// UpdateProduct actualiza un producto del catálogo por ID.
+func (h *CatalogHandler) UpdateProduct(c *fiber.Ctx) error <span class="cov0" title="0">{
+        id, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid product id"})
+        }</span>
+
+        <span class="cov0" title="0">var req dto.CreateCatalogProductRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Sector = strings.TrimSpace(req.Sector)
+        req.NombreSector = strings.TrimSpace(req.NombreSector)
+        req.CodigoPrograma = strings.TrimSpace(req.CodigoPrograma)
+        req.NombrePrograma = strings.TrimSpace(req.NombrePrograma)
+        req.CodigoProducto = strings.TrimSpace(req.CodigoProducto)
+        req.Producto = strings.TrimSpace(req.Producto)
+        req.Descripcion = strings.TrimSpace(req.Descripcion)
+        req.MedidoATravesDe = strings.TrimSpace(req.MedidoATravesDe)
+        req.CodigoIndicadorProducto = strings.TrimSpace(req.CodigoIndicadorProducto)
+        req.IndicadorProducto = strings.TrimSpace(req.IndicadorProducto)
+        req.UnidadDeMedida = strings.TrimSpace(req.UnidadDeMedida)
+        req.ODS = strings.TrimSpace(req.ODS)
+        req.MetaODS = strings.TrimSpace(req.MetaODS)
+        req.TipologiaGeneralSUIFP = strings.TrimSpace(req.TipologiaGeneralSUIFP)
+        req.EDT = strings.TrimSpace(req.EDT)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">if _, err := h.repo.ProgramExistsByCode(c.Context(), req.CodigoPrograma); err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, postgres.ErrProgramNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                                "error": fmt.Sprintf(
+                                        "El programa con código %s no existe en la base de datos. Por favor, créelo primero",
+                                        req.CodigoPrograma,
+                                ),
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify program"})</span>
+        }
+
+        <span class="cov0" title="0">item := models.CatalogProduct{
+                Sector:                  req.Sector,
+                NombreSector:            req.NombreSector,
+                CodigoPrograma:          req.CodigoPrograma,
+                NombrePrograma:          req.NombrePrograma,
+                CodigoProducto:          req.CodigoProducto,
+                Producto:                req.Producto,
+                Descripcion:             req.Descripcion,
+                MedidoATravesDe:         req.MedidoATravesDe,
+                CodigoIndicadorProducto: req.CodigoIndicadorProducto,
+                IndicadorProducto:       req.IndicadorProducto,
+                UnidadDeMedida:          req.UnidadDeMedida,
+                IndicadorPrincipal:      req.IndicadorPrincipal,
+                EsNacional:              req.EsNacional,
+                EsTerritorial:           req.EsTerritorial,
+                ODS:                     req.ODS,
+                MetaODS:                 req.MetaODS,
+                TipologiaGeneralSUIFP:   req.TipologiaGeneralSUIFP,
+                TipologiaD:              req.TipologiaD,
+                TipologiaE:              req.TipologiaE,
+                TipologiaAPIIP:          req.TipologiaAPIIP,
+                TipologiaBPIIP:          req.TipologiaBPIIP,
+                TipologiaCPIIP:          req.TipologiaCPIIP,
+                TieneEDT:                req.TieneEDT,
+                EDT:                     req.EDT,
+        }
+        if err := h.repo.UpdateCatalogProductByID(c.Context(), id, &amp;item); err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "product not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update product"})</span>
+        }
+        <span class="cov0" title="0">return c.JSON(toCatalogProductResponse(item))</span>
+}
+
+// DeleteProduct elimina un producto del catálogo por ID.
+func (h *CatalogHandler) DeleteProduct(c *fiber.Ctx) error <span class="cov0" title="0">{
+        id, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid product id"})
+        }</span>
+        <span class="cov0" title="0">if err := h.repo.DeleteCatalogProductByID(c.Context(), id); err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "product not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete product"})</span>
+        }
+        <span class="cov0" title="0">return c.SendStatus(fiber.StatusNoContent)</span>
+}
+
+// ImportProducts importa productos desde XLSX o CSV (multipart "file").
+func (h *CatalogHandler) ImportProducts(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var parsed *postgres.ProductParseResult
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                parsed, err = postgres.ParseProductsFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                parsed, err = postgres.ParseProductsFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">programCodes, err := h.repo.LoadProgramCodeSet(c.Context())
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to load programs for import validation",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">skipped := 0
+        importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+        for _, pe := range parsed.Errors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Row:            pe.Row,
+                        CodigoProducto: pe.CodigoProducto,
+                        Message:        pe.Message,
+                })
+        }</span>
+
+        <span class="cov0" title="0">toUpsert := make([]models.CatalogProduct, 0, len(parsed.Rows))
+        for _, row := range parsed.Rows </span><span class="cov0" title="0">{
+                rowNum := row.SourceRow
+                if rowNum &lt;= 0 </span><span class="cov0" title="0">{
+                        rowNum = 0
+                }</span>
+                <span class="cov0" title="0">codigoProducto := strings.TrimSpace(row.CodigoProducto)
+                nombreProducto := strings.TrimSpace(row.Producto)
+                if codigoProducto == "" || nombreProducto == "" </span><span class="cov0" title="0">{
+                        skipped++
+                        var msg string
+                        switch </span>{
+                        case codigoProducto == "" &amp;&amp; nombreProducto == "":<span class="cov0" title="0">
+                                msg = "Fila vacía: se requieren código y nombre de producto"</span>
+                        case codigoProducto == "":<span class="cov0" title="0">
+                                msg = "Falta código de producto"</span>
+                        default:<span class="cov0" title="0">
+                                msg = "Falta nombre de producto"</span>
+                        }
+                        <span class="cov0" title="0">importErrors = append(importErrors, dto.ImportRowError{
+                                Row:            rowNum,
+                                CodigoProducto: codigoProducto,
+                                Message:        msg,
+                        })
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">codigoPrograma := strings.TrimSpace(row.CodigoPrograma)
+                nombrePrograma := strings.TrimSpace(row.NombrePrograma)
+                if codigoPrograma == "" </span><span class="cov0" title="0">{
+                        skipped++
+                        importErrors = append(importErrors, dto.ImportRowError{
+                                Row:            rowNum,
+                                CodigoProducto: codigoProducto,
+                                Message:        "Falta código de programa (columna índice 2: Código del Programa)",
+                        })
+                        continue</span>
+                }
+                <span class="cov0" title="0">if len(codigoPrograma) &gt; 15 </span><span class="cov0" title="0">{
+                        skipped++
+                        importErrors = append(importErrors, dto.ImportRowError{
+                                Row:            rowNum,
+                                CodigoProducto: codigoProducto,
+                                Message:        "Estructura de columnas inválida o código mal formado",
+                        })
+                        continue</span>
+                }
+                <span class="cov0" title="0">if len(codigoProducto) &gt; 50 </span><span class="cov0" title="0">{
+                        skipped++
+                        importErrors = append(importErrors, dto.ImportRowError{
+                                Row:            rowNum,
+                                CodigoProducto: codigoProducto[:50] + "…",
+                                Message:        "Estructura de columnas inválida o código mal formado",
+                        })
+                        continue</span>
+                }
+                <span class="cov0" title="0">if _, ok := programCodes[codigoPrograma]; !ok </span><span class="cov0" title="0">{
+                        skipped++
+                        importErrors = append(importErrors, dto.ImportRowError{
+                                Row:            rowNum,
+                                CodigoProducto: codigoProducto,
+                                Message: fmt.Sprintf(
+                                        "El programa con código «%s» no existe en la base de datos. Por favor, créelo primero (nombre de programa leído: «%s»)",
+                                        codigoPrograma,
+                                        nombrePrograma,
+                                ),
+                        })
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">toUpsert = append(toUpsert, models.CatalogProduct{
+                        Sector:                  strings.TrimSpace(row.Sector),
+                        NombreSector:            strings.TrimSpace(row.NombreSector),
+                        CodigoPrograma:          codigoPrograma,
+                        NombrePrograma:          nombrePrograma,
+                        CodigoProducto:          codigoProducto,
+                        Producto:                nombreProducto,
+                        Descripcion:             strings.TrimSpace(row.Descripcion),
+                        MedidoATravesDe:         strings.TrimSpace(row.MedidoATravesDe),
+                        CodigoIndicadorProducto: strings.TrimSpace(row.CodigoIndicadorProducto),
+                        IndicadorProducto:       strings.TrimSpace(row.IndicadorProducto),
+                        UnidadDeMedida:          strings.TrimSpace(row.UnidadDeMedida),
+                        IndicadorPrincipal:      row.IndicadorPrincipal,
+                        EsNacional:              row.EsNacional,
+                        EsTerritorial:           row.EsTerritorial,
+                        ODS:                     strings.TrimSpace(row.ODS),
+                        MetaODS:                 strings.TrimSpace(row.MetaODS),
+                        TipologiaGeneralSUIFP:   strings.TrimSpace(row.TipologiaGeneralSUIFP),
+                        TipologiaD:              row.TipologiaD,
+                        TipologiaE:              row.TipologiaE,
+                        TipologiaAPIIP:          row.TipologiaAPIIP,
+                        TipologiaBPIIP:          row.TipologiaBPIIP,
+                        TipologiaCPIIP:          row.TipologiaCPIIP,
+                        TieneEDT:                row.TieneEDT,
+                        EDT:                     strings.TrimSpace(row.EDT),
+                })</span>
+        }
+
+        <span class="cov0" title="0">result, err := h.repo.BulkUpsertCatalogProducts(c.Context(), toUpsert)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to import products",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">for _, be := range result.BatchErrors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Message: be,
+                })
+        }</span>
+
+        <span class="cov0" title="0">msg := "Importación de productos procesada"
+        if len(importErrors) &gt; 0 </span><span class="cov0" title="0">{
+                msg = fmt.Sprintf(
+                        "Importación procesada con %d advertencias/errores de fila (válidas para upsert: %d)",
+                        len(importErrors),
+                        len(toUpsert),
+                )
+        }</span>
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.ProductImportResponse{
+                Status:          "success",
+                Message:         msg,
+                Inserted:        result.Inserted,
+                Updated:         result.Updated,
+                Skipped:         skipped,
+                TotalRowsParsed: parsed.TotalRows,
+                Errors:          importErrors,
+        })</span>
+}
+
+func (h *CatalogHandler) SearchProducts(c *fiber.Ctx) error <span class="cov0" title="0">{
+        q := strings.TrimSpace(c.Query("q"))
+
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+        if page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+        <span class="cov0" title="0">if pageSize &lt; 1 || pageSize &gt; 100 </span><span class="cov0" title="0">{
+                pageSize = 20
+        }</span>
+        <span class="cov0" title="0">offset := (page - 1) * pageSize
+
+        query := h.db.WithContext(c.Context()).Model(&amp;models.Product{})
+        if q != "" </span><span class="cov0" title="0">{
+                pattern := "%" + escapeILIKE(q) + "%"
+                query = query.Where(
+                        "(producto ILIKE ? ESCAPE '\\' OR codigo_producto ILIKE ? ESCAPE '\\')",
+                        pattern, pattern,
+                )
+        }</span>
+
+        <span class="cov0" title="0">var total int64
+        if err := query.Count(&amp;total).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to count products"})
+        }</span>
+
+        <span class="cov0" title="0">products := make([]models.Product, 0)
+        if err := query.Order("codigo_producto ASC").Limit(pageSize).Offset(offset).Find(&amp;products).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to search products"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.ProductResponse, 0, len(products))
+        for _, p := range products </span><span class="cov0" title="0">{
+                data = append(data, dto.ProductResponse{
+                        ID:        p.ID.String(),
+                        ProgramID: p.ProgramID.String(),
+                        Code:      p.Code,
+                        CodeBPIN:  p.CodeBPIN,
+                        Name:      p.Name,
+                })
+        }</span>
+
+        <span class="cov0" title="0">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov0" title="0">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedProductsResponse{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+                Query:      q,
+        })</span>
+}
+
+func toSectorResponse(s models.Sector) dto.SectorResponse <span class="cov0" title="0">{
+        return dto.SectorResponse{
+                ID:           s.ID.String(),
+                Code:         s.Code,
+                Name:         s.Name,
+                Application:  s.Application,
+                Observations: s.Observations,
+        }
+}</span>
+
+func toProgramSubprogramResponse(p models.ProgramSubprogram) dto.ProgramSubprogramResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if p.TenantID != nil </span><span class="cov0" title="0">{
+                s := p.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.ProgramSubprogramResponse{
+                ID:                p.ID.String(),
+                TenantID:          tenantID,
+                SectorID:          p.SectorID.String(),
+                CodigoSector:      p.CodigoSector,
+                NombreSector:      p.NombreSector,
+                CodigoPrograma:    p.CodigoPrograma,
+                NombrePrograma:    p.NombrePrograma,
+                AmbitoAplicacion:  p.AmbitoAplicacion,
+                CodigoSubprograma: p.CodigoSubprograma,
+                NombreSubprograma: p.NombreSubprograma,
+                Observaciones:     p.Observaciones,
+                CreatedAt:         p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+func toCatalogProductResponse(p models.CatalogProduct) dto.CatalogProductResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if p.TenantID != nil </span><span class="cov0" title="0">{
+                s := p.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.CatalogProductResponse{
+                ID:                      p.ID.String(),
+                TenantID:                tenantID,
+                Sector:                  p.Sector,
+                NombreSector:            p.NombreSector,
+                CodigoPrograma:          p.CodigoPrograma,
+                NombrePrograma:          p.NombrePrograma,
+                CodigoProducto:          p.CodigoProducto,
+                Producto:                p.Producto,
+                Descripcion:             p.Descripcion,
+                MedidoATravesDe:         p.MedidoATravesDe,
+                CodigoIndicadorProducto: p.CodigoIndicadorProducto,
+                IndicadorProducto:       p.IndicadorProducto,
+                UnidadDeMedida:          p.UnidadDeMedida,
+                IndicadorPrincipal:      p.IndicadorPrincipal,
+                EsNacional:              p.EsNacional,
+                EsTerritorial:           p.EsTerritorial,
+                ODS:                     p.ODS,
+                MetaODS:                 p.MetaODS,
+                TipologiaGeneralSUIFP:   p.TipologiaGeneralSUIFP,
+                TipologiaD:              p.TipologiaD,
+                TipologiaE:              p.TipologiaE,
+                TipologiaAPIIP:          p.TipologiaAPIIP,
+                TipologiaBPIIP:          p.TipologiaBPIIP,
+                TipologiaCPIIP:          p.TipologiaCPIIP,
+                TieneEDT:                p.TieneEDT,
+                EDT:                     p.EDT,
+                CreatedAt:               p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+func (h *CatalogHandler) ListCatalogEdt(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+        if search == "" </span><span class="cov0" title="0">{
+                search = strings.TrimSpace(c.Query("q"))
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.ListCatalogEdt(c.Context(), postgres.CatalogEdtListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to list edt",
+                        "details": err.Error(),
+                })
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.CatalogEdtResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toCatalogEdtResponse(item))
+        }</span>
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedCatalogEdtResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// ImportEdt importa el catálogo EDT desde XLSX o CSV (multipart "file").
+func (h *CatalogHandler) ImportEdt(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var parsed *postgres.EdtParseResult
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                parsed, err = postgres.ParseEdtFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                parsed, err = postgres.ParseEdtFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">skipped := 0
+        importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+        for _, pe := range parsed.Errors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Row:            pe.Row,
+                        CodigoProducto: pe.CodigoProducto,
+                        Message:        pe.Message,
+                })
+        }</span>
+
+        <span class="cov0" title="0">toUpsert := make([]models.CatalogEdt, 0, len(parsed.Rows))
+        for _, row := range parsed.Rows </span><span class="cov0" title="0">{
+                toUpsert = append(toUpsert, models.CatalogEdt{
+                        CodigoProductoEstandarizado: strings.TrimSpace(row.CodigoProductoEstandarizado),
+                        NombreProducto:              strings.TrimSpace(row.NombreProducto),
+                        CodigoEntregableL1:          strings.TrimSpace(row.CodigoEntregableL1),
+                        NombreEntregableL1:          strings.TrimSpace(row.NombreEntregableL1),
+                        CodigoEntregableL2:          strings.TrimSpace(row.CodigoEntregableL2),
+                        NombreEntregableL2:          strings.TrimSpace(row.NombreEntregableL2),
+                        CodigoEntregableL3:          strings.TrimSpace(row.CodigoEntregableL3),
+                        NombreEntregableL3:          strings.TrimSpace(row.NombreEntregableL3),
+                        CodigoActividad:             strings.TrimSpace(row.CodigoActividad),
+                        Actividad:                   strings.TrimSpace(row.Actividad),
+                        UnidadDeMedida:              strings.TrimSpace(row.UnidadDeMedida),
+                })
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.BulkUpsertCatalogEdt(c.Context(), toUpsert)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to import edt",
+                        "details": err.Error(),
+                })
+        }</span>
+        <span class="cov0" title="0">for _, be := range result.BatchErrors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{Message: be})
+        }</span>
+
+        <span class="cov0" title="0">msg := "Importación de catálogo EDT procesada"
+        if len(importErrors) &gt; 0 </span><span class="cov0" title="0">{
+                msg = fmt.Sprintf(
+                        "Importación EDT procesada con %d advertencias/errores de fila (válidas para upsert: %d)",
+                        len(importErrors),
+                        len(toUpsert),
+                )
+        }</span>
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.EdtImportResponse{
+                Status:          "success",
+                Message:         msg,
+                Inserted:        result.Inserted,
+                Updated:         result.Updated,
+                Skipped:         skipped,
+                TotalRowsParsed: parsed.TotalRows,
+                Errors:          importErrors,
+        })</span>
+}
+
+func toCatalogEdtResponse(e models.CatalogEdt) dto.CatalogEdtResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if e.TenantID != nil </span><span class="cov0" title="0">{
+                s := e.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.CatalogEdtResponse{
+                ID:                          e.ID.String(),
+                TenantID:                    tenantID,
+                CodigoProductoEstandarizado: e.CodigoProductoEstandarizado,
+                NombreProducto:              e.NombreProducto,
+                CodigoEntregableL1:          e.CodigoEntregableL1,
+                NombreEntregableL1:          e.NombreEntregableL1,
+                CodigoEntregableL2:          e.CodigoEntregableL2,
+                NombreEntregableL2:          e.NombreEntregableL2,
+                CodigoEntregableL3:          e.CodigoEntregableL3,
+                NombreEntregableL3:          e.NombreEntregableL3,
+                CodigoActividad:             e.CodigoActividad,
+                Actividad:                   e.Actividad,
+                UnidadDeMedida:              e.UnidadDeMedida,
+                CreatedAt:                   e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+// ListCatalogDeliverables GET /api/v1/catalog/deliverables
+func (h *CatalogHandler) ListCatalogDeliverables(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+
+        result, err := h.repo.ListCatalogDeliverables(c.Context(), postgres.CatalogDeliverableListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.CatalogDeliverableResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toCatalogDeliverableResponse(item))
+        }</span>
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedCatalogDeliverableResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// ImportDeliverables importa el catálogo de entregables desde XLSX o CSV.
+func (h *CatalogHandler) ImportDeliverables(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var parsed *postgres.DeliverableParseResult
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                parsed, err = postgres.ParseDeliverablesFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                parsed, err = postgres.ParseDeliverablesFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">skipped := 0
+        importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+        for _, pe := range parsed.Errors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Row:            pe.Row,
+                        CodigoProducto: pe.CodigoEntregable,
+                        Message:        pe.Message,
+                })
+        }</span>
+
+        <span class="cov0" title="0">toUpsert := make([]models.CatalogDeliverable, 0, len(parsed.Rows))
+        for _, row := range parsed.Rows </span><span class="cov0" title="0">{
+                toUpsert = append(toUpsert, models.CatalogDeliverable{
+                        CodigoEntregable:     strings.TrimSpace(row.CodigoEntregable),
+                        ListadoDeEntregables: strings.TrimSpace(row.ListadoDeEntregables),
+                })
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.BulkUpsertCatalogDeliverables(c.Context(), toUpsert)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to import deliverables",
+                        "details": err.Error(),
+                })
+        }</span>
+        <span class="cov0" title="0">for _, be := range result.BatchErrors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{Message: be})
+        }</span>
+
+        <span class="cov0" title="0">msg := "Importación de catálogo de entregables procesada"
+        if len(importErrors) &gt; 0 </span><span class="cov0" title="0">{
+                msg = fmt.Sprintf(
+                        "%s (%d advertencias/errores de fila)",
+                        msg, len(importErrors),
+                )
+        }</span>
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.DeliverableImportResponse{
+                Status:          "success",
+                Message:         msg,
+                Inserted:        result.Inserted,
+                Updated:         result.Updated,
+                Skipped:         skipped,
+                TotalRowsParsed: parsed.TotalRows,
+                Errors:          importErrors,
+        })</span>
+}
+
+func toCatalogDeliverableResponse(e models.CatalogDeliverable) dto.CatalogDeliverableResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if e.TenantID != nil </span><span class="cov0" title="0">{
+                s := e.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.CatalogDeliverableResponse{
+                ID:                   e.ID.String(),
+                TenantID:             tenantID,
+                CodigoEntregable:     e.CodigoEntregable,
+                ListadoDeEntregables: e.ListadoDeEntregables,
+                CreatedAt:            e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+// ListCatalogActivities GET /api/v1/catalog/activities
+func (h *CatalogHandler) ListCatalogActivities(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+
+        result, err := h.repo.ListCatalogActivities(c.Context(), postgres.CatalogActivityListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.CatalogActivityResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toCatalogActivityResponse(item))
+        }</span>
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedCatalogActivityResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// ImportActivities importa el catálogo de actividades desde XLSX o CSV.
+func (h *CatalogHandler) ImportActivities(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var parsed *postgres.ActivityParseResult
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                parsed, err = postgres.ParseActivitiesFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                parsed, err = postgres.ParseActivitiesFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">skipped := 0
+        importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+        for _, pe := range parsed.Errors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Row:            pe.Row,
+                        CodigoProducto: pe.CodigoActividad,
+                        Message:        pe.Message,
+                })
+        }</span>
+
+        <span class="cov0" title="0">toUpsert := make([]models.CatalogActivity, 0, len(parsed.Rows))
+        for _, row := range parsed.Rows </span><span class="cov0" title="0">{
+                toUpsert = append(toUpsert, models.CatalogActivity{
+                        CodigoActividad:      strings.TrimSpace(row.CodigoActividad),
+                        ListadoDeActividades: strings.TrimSpace(row.ListadoDeActividades),
+                        UnidadDeMedida:       strings.TrimSpace(row.UnidadDeMedida),
+                })
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.BulkUpsertCatalogActivities(c.Context(), toUpsert)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to import activities",
+                        "details": err.Error(),
+                })
+        }</span>
+        <span class="cov0" title="0">for _, be := range result.BatchErrors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{Message: be})
+        }</span>
+
+        <span class="cov0" title="0">msg := "Importación de catálogo de actividades procesada"
+        if len(importErrors) &gt; 0 </span><span class="cov0" title="0">{
+                msg = fmt.Sprintf(
+                        "%s (%d advertencias/errores de fila)",
+                        msg, len(importErrors),
+                )
+        }</span>
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.ActivityImportResponse{
+                Status:          "success",
+                Message:         msg,
+                Inserted:        result.Inserted,
+                Updated:         result.Updated,
+                Skipped:         skipped,
+                TotalRowsParsed: parsed.TotalRows,
+                Errors:          importErrors,
+        })</span>
+}
+
+func toCatalogActivityResponse(e models.CatalogActivity) dto.CatalogActivityResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if e.TenantID != nil </span><span class="cov0" title="0">{
+                s := e.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.CatalogActivityResponse{
+                ID:                   e.ID.String(),
+                TenantID:             tenantID,
+                CodigoActividad:      e.CodigoActividad,
+                ListadoDeActividades: e.ListadoDeActividades,
+                UnidadDeMedida:       e.UnidadDeMedida,
+                CreatedAt:            e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+// ListCatalogOds GET /api/v1/catalog/ods
+func (h *CatalogHandler) ListCatalogOds(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        limit, _ := strconv.Atoi(c.Query("limit", "10"))
+        search := strings.TrimSpace(c.Query("search"))
+
+        result, err := h.repo.ListCatalogOds(c.Context(), postgres.CatalogOdsListParams{
+                Page:   page,
+                Limit:  limit,
+                Search: search,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.CatalogOdsResponse, 0, len(result.Items))
+        for _, item := range result.Items </span><span class="cov0" title="0">{
+                data = append(data, toCatalogOdsResponse(item))
+        }</span>
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedCatalogOdsResponse{
+                Data: data,
+                Meta: dto.PaginationMeta{
+                        Total:    result.Total,
+                        Page:     result.Page,
+                        Limit:    result.Limit,
+                        LastPage: result.LastPage,
+                },
+        })</span>
+}
+
+// ImportOds importa el catálogo ODS desde XLSX o CSV.
+func (h *CatalogHandler) ImportOds(c *fiber.Ctx) error <span class="cov0" title="0">{
+        fileHeader, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field: file)"})
+        }</span>
+        <span class="cov0" title="0">src, err := fileHeader.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot open uploaded file"})
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+        var parsed *postgres.OdsParseResult
+        switch ext </span>{
+        case ".xlsx", ".xls":<span class="cov0" title="0">
+                parsed, err = postgres.ParseOdsFromXLSX(src)</span>
+        case ".csv":<span class="cov0" title="0">
+                parsed, err = postgres.ParseOdsFromCSV(src)</span>
+        default:<span class="cov0" title="0">
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                        "error": "unsupported file type; use .xlsx or .csv",
+                })</span>
+        }
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">skipped := 0
+        importErrors := make([]dto.ImportRowError, 0, len(parsed.Errors))
+        for _, pe := range parsed.Errors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{
+                        Row:            pe.Row,
+                        CodigoProducto: pe.CodObjetivoOds,
+                        Message:        pe.Message,
+                })
+        }</span>
+
+        <span class="cov0" title="0">toUpsert := make([]models.CatalogOds, 0, len(parsed.Rows))
+        for _, row := range parsed.Rows </span><span class="cov0" title="0">{
+                toUpsert = append(toUpsert, models.CatalogOds{
+                        CodObjetivoOds:         strings.TrimSpace(row.CodObjetivoOds),
+                        DescripcionObjetivoOds: strings.TrimSpace(row.DescripcionObjetivoOds),
+                        CodigoMetaOds:          strings.TrimSpace(row.CodigoMetaOds),
+                        DescripcionMetaOds:     strings.TrimSpace(row.DescripcionMetaOds),
+                })
+        }</span>
+
+        <span class="cov0" title="0">result, err := h.repo.BulkUpsertCatalogOds(c.Context(), toUpsert)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                        "error":   "failed to import ods",
+                        "details": err.Error(),
+                })
+        }</span>
+        <span class="cov0" title="0">for _, be := range result.BatchErrors </span><span class="cov0" title="0">{
+                skipped++
+                importErrors = append(importErrors, dto.ImportRowError{Message: be})
+        }</span>
+
+        <span class="cov0" title="0">msg := "Importación de catálogo ODS procesada"
+        if len(importErrors) &gt; 0 </span><span class="cov0" title="0">{
+                msg = fmt.Sprintf(
+                        "%s (%d advertencias/errores de fila)",
+                        msg, len(importErrors),
+                )
+        }</span>
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusOK).JSON(dto.OdsImportResponse{
+                Status:          "success",
+                Message:         msg,
+                Inserted:        result.Inserted,
+                Updated:         result.Updated,
+                Skipped:         skipped,
+                TotalRowsParsed: parsed.TotalRows,
+                Errors:          importErrors,
+        })</span>
+}
+
+func toCatalogOdsResponse(e models.CatalogOds) dto.CatalogOdsResponse <span class="cov0" title="0">{
+        var tenantID *string
+        if e.TenantID != nil </span><span class="cov0" title="0">{
+                s := e.TenantID.String()
+                tenantID = &amp;s
+        }</span>
+        <span class="cov0" title="0">return dto.CatalogOdsResponse{
+                ID:                     e.ID.String(),
+                TenantID:               tenantID,
+                CodObjetivoOds:         e.CodObjetivoOds,
+                DescripcionObjetivoOds: e.DescripcionObjetivoOds,
+                CodigoMetaOds:          e.CodigoMetaOds,
+                DescripcionMetaOds:     e.DescripcionMetaOds,
+                CreatedAt:              e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+        }</span>
+}
+
+func escapeILIKE(s string) string <span class="cov0" title="0">{
+        s = strings.ReplaceAll(s, `\`, `\\`)
+        s = strings.ReplaceAll(s, `%`, `\%`)
+        s = strings.ReplaceAll(s, `_`, `\_`)
+        return s
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package handlers
+
+import (
+        "context"
+        "errors"
+
+        "aurora-backend/internal/domain/models"
+
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+// loadOwnedProject verifica ownership: el proyecto debe pertenecer al tenant del JWT.
+func loadOwnedProject(db *gorm.DB, ctx context.Context, projectID, tenantID uuid.UUID) (*models.Project, error) <span class="cov8" title="1">{
+        var project models.Project
+        err := db.WithContext(ctx).
+                Where("id = ? AND tenant_id = ?", projectID, tenantID).
+                First(&amp;project).Error
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return &amp;project, nil</span>
+}
+
+func isNotFound(err error) bool <span class="cov8" title="1">{
+        return errors.Is(err, gorm.ErrRecordNotFound)
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "strconv"
+        "strings"
+
+        appproject "aurora-backend/internal/application/project"
+        "aurora-backend/internal/infrastructure/persistence/postgres"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type ProjectEvaluationHandler struct {
+        svc      *appproject.EvaluationService
+        projects ProjectFinder
+}
+
+func NewProjectEvaluationHandler(db *gorm.DB) *ProjectEvaluationHandler <span class="cov8" title="1">{
+        repo := postgres.NewProjectEvaluationRepository(db)
+        return NewProjectEvaluationHandlerWithDeps(
+                appproject.NewEvaluationService(repo),
+                postgres.NewProjectRepository(db),
+        )
+}</span>
+
+// NewProjectEvaluationHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewProjectEvaluationHandlerWithDeps(svc *appproject.EvaluationService, projects ProjectFinder) *ProjectEvaluationHandler <span class="cov8" title="1">{
+        return &amp;ProjectEvaluationHandler{svc: svc, projects: projects}
+}</span>
+
+// Evaluate POST /api/v1/projects/:id/evaluate
+func (h *ProjectEvaluationHandler) Evaluate(c *fiber.Ctx) error <span class="cov8" title="1">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">projectID, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov8" title="1">project, err := h.projects.FindOwned(c.Context(), projectID, tenantID)
+        if err != nil </span><span class="cov8" title="1">{
+                if isNotFound(err) </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov8" title="1">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load project"})</span>
+        }
+
+        <span class="cov8" title="1">var req dto.EvaluateProjectRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov8" title="1">if err := dto.Validate(&amp;req); err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">alts := make([]appproject.AlternativeInput, 0, len(req.Alternatives))
+        for _, a := range req.Alternatives </span><span class="cov8" title="1">{
+                alts = append(alts, appproject.AlternativeInput{
+                        Name:      strings.TrimSpace(a.Name),
+                        CashFlows: a.CashFlows,
+                })
+        }</span>
+
+        <span class="cov8" title="1">results, err := h.svc.EvaluateAndPersist(c.Context(), project.ID, tenantID, appproject.EvaluateRequest{
+                DiscountRate: req.DiscountRate,
+                Alternatives: alts,
+        })
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "evaluation failed"})
+        }</span>
+
+        <span class="cov8" title="1">out := make([]dto.EvaluationResultDTO, 0, len(results))
+        for _, r := range results </span><span class="cov8" title="1">{
+                out = append(out, dto.EvaluationResultDTO{
+                        AlternativeName: r.AlternativeName,
+                        DiscountRate:    r.DiscountRate,
+                        CashFlows:       r.CashFlows,
+                        VPN:             r.VPN,
+                        TIR:             r.TIR,
+                })
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(dto.EvaluateProjectResponse{
+                ProjectID:   project.ID.String(),
+                Evaluations: out,
+        })</span>
+}
+
+// ListEvaluations GET /api/v1/projects/:id/evaluations
+func (h *ProjectEvaluationHandler) ListEvaluations(c *fiber.Ctx) error <span class="cov8" title="1">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">projectID, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov8" title="1">rows, err := h.svc.ListByProject(c.Context(), projectID, tenantID)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load evaluations"})
+        }</span>
+
+        <span class="cov8" title="1">out := make([]dto.EvaluationResultDTO, 0, len(rows))
+        for _, row := range rows </span><span class="cov8" title="1">{
+                var flows []float64
+                _ = json.Unmarshal([]byte(row.CashFlows), &amp;flows)
+                out = append(out, dto.EvaluationResultDTO{
+                        AlternativeName: row.AlternativeName,
+                        DiscountRate:    row.DiscountRate,
+                        CashFlows:       flows,
+                        VPN:             row.VPN,
+                        TIR:             row.TIR,
+                })
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(fiber.Map{"data": out})</span>
+}
+
+// ListTenantEvaluations GET /api/v1/projects/evaluations/summary
+func (h *ProjectEvaluationHandler) ListTenantEvaluations(c *fiber.Ctx) error <span class="cov8" title="1">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">limit, _ := strconv.Atoi(c.Query("limit", "20"))
+        rows, err := h.svc.ListLatestByTenant(c.Context(), tenantID, limit)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load evaluations"})
+        }</span>
+
+        <span class="cov8" title="1">type summaryItem struct {
+                ProjectID       string   `json:"project_id"`
+                AlternativeName string   `json:"alternative_name"`
+                VPN             float64  `json:"vpn"`
+                TIR             *float64 `json:"tir,omitempty"`
+                CreatedAt       string   `json:"created_at"`
+        }
+
+        data := make([]summaryItem, 0, len(rows))
+        for _, row := range rows </span><span class="cov8" title="1">{
+                data = append(data, summaryItem{
+                        ProjectID:       row.ProjectID.String(),
+                        AlternativeName: row.AlternativeName,
+                        VPN:             row.VPN,
+                        TIR:             row.TIR,
+                        CreatedAt:       row.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+                })
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(fiber.Map{"data": data})</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package handlers
+
+import (
+        "math"
+        "strconv"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/domain/constants"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/interfaces/http/dto"
+        httpmw "aurora-backend/internal/interfaces/http/middleware"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type ProjectHandler struct {
+        db *gorm.DB
+}
+
+func NewProjectHandler(db *gorm.DB) *ProjectHandler <span class="cov0" title="0">{
+        return &amp;ProjectHandler{db: db}
+}</span>
+
+func (h *ProjectHandler) Create(c *fiber.Ctx) error <span class="cov0" title="0">{
+        userID, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var req dto.CreateProjectRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+
+        <span class="cov0" title="0">req.Name = strings.TrimSpace(req.Name)
+        req.Description = strings.TrimSpace(req.Description)
+        req.Sector = strings.TrimSpace(req.Sector)
+        if req.CodeBPIN != nil </span><span class="cov0" title="0">{
+                bpin := strings.TrimSpace(*req.CodeBPIN)
+                if bpin == "" </span><span class="cov0" title="0">{
+                        req.CodeBPIN = nil
+                }</span> else<span class="cov0" title="0"> {
+                        req.CodeBPIN = &amp;bpin
+                }</span>
+        }
+
+        <span class="cov0" title="0">if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">now := time.Now().UTC()
+        project := models.Project{
+                ID:          uuid.New(),
+                TenantID:    tenantID,
+                CreatorID:   userID,
+                Name:        req.Name,
+                Description: req.Description,
+                CodeBPIN:    req.CodeBPIN,
+                Sector:      req.Sector,
+                Status:      constants.ProjectStatusInFormulation,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+
+        if err := h.db.WithContext(c.Context()).Create(&amp;project).Error; err != nil </span><span class="cov0" title="0">{
+                if isUniqueViolation(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+                                "error": "project with same BPIN already exists for this tenant",
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create project"})</span>
+        }
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toProjectResponse(project))</span>
+}
+
+func (h *ProjectHandler) List(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+        if page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+        <span class="cov0" title="0">if pageSize &lt; 1 || pageSize &gt; 100 </span><span class="cov0" title="0">{
+                pageSize = 20
+        }</span>
+        <span class="cov0" title="0">offset := (page - 1) * pageSize
+
+        var total int64
+        q := h.db.WithContext(c.Context()).
+                Model(&amp;models.Project{}).
+                Where("tenant_id = ?", tenantID)
+
+        if err := q.Count(&amp;total).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to count projects"})
+        }</span>
+
+        <span class="cov0" title="0">var projects []models.Project
+        if err := q.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&amp;projects).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list projects"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.ProjectResponse, 0, len(projects))
+        for _, p := range projects </span><span class="cov0" title="0">{
+                data = append(data, toProjectResponse(p))
+        }</span>
+
+        <span class="cov0" title="0">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov0" title="0">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedProjectsResponse{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+        })</span>
+}
+
+func (h *ProjectHandler) GetByID(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">id, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">project, err := loadOwnedProject(h.db, c.Context(), id, tenantID)
+        if err != nil </span><span class="cov0" title="0">{
+                if isNotFound(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load project"})</span>
+        }
+
+        <span class="cov0" title="0">return c.JSON(toProjectResponse(*project))</span>
+}
+
+func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error <span class="cov0" title="0">{
+        _, tenantID, err := httpmw.IdentityFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">id, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+        }</span>
+
+        <span class="cov0" title="0">var req dto.UpdateProjectDetailsRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.ProblemDescription = strings.TrimSpace(req.ProblemDescription)
+        req.GeneralObjective = strings.TrimSpace(req.GeneralObjective)
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">project, err := loadOwnedProject(h.db, c.Context(), id, tenantID)
+        if err != nil </span><span class="cov0" title="0">{
+                if isNotFound(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load project"})</span>
+        }
+
+        <span class="cov0" title="0">project.ProblemDescription = req.ProblemDescription
+        project.GeneralObjective = req.GeneralObjective
+        project.UpdatedAt = time.Now().UTC()
+
+        if err := h.db.WithContext(c.Context()).
+                Model(project).
+                Select("ProblemDescription", "GeneralObjective", "UpdatedAt").
+                Updates(project).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update project details"})
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(toProjectResponse(*project))</span>
+}
+
+func toProjectResponse(p models.Project) dto.ProjectResponse <span class="cov0" title="0">{
+        return dto.ProjectResponse{
+                ID:                 p.ID.String(),
+                TenantID:           p.TenantID.String(),
+                CreatorID:          p.CreatorID.String(),
+                Name:               p.Name,
+                Description:        p.Description,
+                CodeBPIN:           p.CodeBPIN,
+                Sector:             p.Sector,
+                ProblemDescription: p.ProblemDescription,
+                GeneralObjective:   p.GeneralObjective,
+                Status:             p.Status,
+                CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
+                UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package handlers
+
+import (
+        "errors"
+        "math"
+        "strconv"
+        "strings"
+        "time"
+
+        "aurora-backend/internal/domain/constants"
+        "aurora-backend/internal/domain/models"
+        "aurora-backend/internal/interfaces/http/dto"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type TenantHandler struct {
+        db *gorm.DB
+}
+
+func NewTenantHandler(db *gorm.DB) *TenantHandler <span class="cov0" title="0">{
+        return &amp;TenantHandler{db: db}
+}</span>
+
+func (h *TenantHandler) Create(c *fiber.Ctx) error <span class="cov0" title="0">{
+        var req dto.CreateTenantRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+
+        <span class="cov0" title="0">req.Name = strings.TrimSpace(req.Name)
+        req.NIT = strings.TrimSpace(req.NIT)
+        req.ContactEmail = strings.TrimSpace(strings.ToLower(req.ContactEmail))
+        if req.Domain != nil </span><span class="cov0" title="0">{
+                d := strings.TrimSpace(strings.ToLower(*req.Domain))
+                req.Domain = &amp;d
+        }</span>
+
+        <span class="cov0" title="0">if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">nit := req.NIT
+        tenant := models.Tenant{
+                ID:           uuid.New(),
+                Name:         req.Name,
+                NIT:          &amp;nit,
+                Domain:       req.Domain,
+                ContactEmail: req.ContactEmail,
+                Status:       constants.TenantStatusActive,
+                IsActive:     true,
+                CreatedAt:    time.Now().UTC(),
+                UpdatedAt:    time.Now().UTC(),
+        }
+
+        if err := h.db.WithContext(c.Context()).Create(&amp;tenant).Error; err != nil </span><span class="cov0" title="0">{
+                if isUniqueViolation(err) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+                                "error": "tenant with same nit or domain already exists",
+                        })
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create tenant"})</span>
+        }
+
+        <span class="cov0" title="0">return c.Status(fiber.StatusCreated).JSON(toTenantResponse(tenant))</span>
+}
+
+func (h *TenantHandler) List(c *fiber.Ctx) error <span class="cov0" title="0">{
+        page, _ := strconv.Atoi(c.Query("page", "1"))
+        pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+        if page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+        <span class="cov0" title="0">if pageSize &lt; 1 || pageSize &gt; 100 </span><span class="cov0" title="0">{
+                pageSize = 20
+        }</span>
+        <span class="cov0" title="0">offset := (page - 1) * pageSize
+
+        var total int64
+        q := h.db.WithContext(c.Context()).Model(&amp;models.Tenant{})
+        if err := q.Count(&amp;total).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to count tenants"})
+        }</span>
+
+        <span class="cov0" title="0">var tenants []models.Tenant
+        if err := q.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&amp;tenants).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list tenants"})
+        }</span>
+
+        <span class="cov0" title="0">data := make([]dto.TenantResponse, 0, len(tenants))
+        for _, t := range tenants </span><span class="cov0" title="0">{
+                data = append(data, toTenantResponse(t))
+        }</span>
+
+        <span class="cov0" title="0">totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+        if totalPages == 0 </span><span class="cov0" title="0">{
+                totalPages = 1
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(dto.PaginatedTenantsResponse{
+                Data:       data,
+                Page:       page,
+                PageSize:   pageSize,
+                Total:      total,
+                TotalPages: totalPages,
+        })</span>
+}
+
+func (h *TenantHandler) UpdateStatus(c *fiber.Ctx) error <span class="cov0" title="0">{
+        id, err := uuid.Parse(c.Params("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid tenant id"})
+        }</span>
+
+        <span class="cov0" title="0">var req dto.UpdateTenantStatusRequest
+        if err := c.BodyParser(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+        }</span>
+        <span class="cov0" title="0">req.Status = strings.TrimSpace(strings.ToUpper(req.Status))
+        if err := dto.Validate(&amp;req); err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+        }</span>
+
+        <span class="cov0" title="0">var tenant models.Tenant
+        if err := h.db.WithContext(c.Context()).First(&amp;tenant, "id = ?", id).Error; err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "tenant not found"})
+                }</span>
+                <span class="cov0" title="0">return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load tenant"})</span>
+        }
+
+        <span class="cov0" title="0">tenant.Status = req.Status
+        tenant.IsActive = req.Status == constants.TenantStatusActive
+        tenant.UpdatedAt = time.Now().UTC()
+
+        if err := h.db.WithContext(c.Context()).
+                Model(&amp;tenant).
+                Select("Status", "IsActive", "UpdatedAt").
+                Updates(&amp;tenant).Error; err != nil </span><span class="cov0" title="0">{
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update tenant status"})
+        }</span>
+
+        <span class="cov0" title="0">return c.JSON(toTenantResponse(tenant))</span>
+}
+
+func toTenantResponse(t models.Tenant) dto.TenantResponse <span class="cov0" title="0">{
+        return dto.TenantResponse{
+                ID:           t.ID.String(),
+                Name:         t.Name,
+                NIT:          t.NIT,
+                Domain:       t.Domain,
+                ContactEmail: t.ContactEmail,
+                Status:       t.Status,
+                IsActive:     t.IsActive,
+                CreatedAt:    t.CreatedAt.UTC().Format(time.RFC3339),
+                UpdatedAt:    t.UpdatedAt.UTC().Format(time.RFC3339),
+        }
+}</span>
+
+func isUniqueViolation(err error) bool <span class="cov0" title="0">{
+        if err == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">msg := strings.ToLower(err.Error())
+        return strings.Contains(msg, "duplicate key") ||
+                strings.Contains(msg, "unique constraint") ||
+                strings.Contains(msg, "sqlstate 23505")</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package middleware
+
+import (
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/golang-jwt/jwt/v5"
+        "github.com/google/uuid"
+)
+
+const (
+        LocalsUserID   = "user_id"
+        LocalsRole     = "role"
+        LocalsTenantID = "tenant_id"
+        tokenTypeClaim = "token_type"
+)
+
+type Claims struct {
+        UserID    string  `json:"user_id"`
+        Role      string  `json:"role"`
+        TenantID  *string `json:"tenant_id,omitempty"`
+        TokenType string  `json:"token_type,omitempty"` // access | refresh
+        jwt.RegisteredClaims
+}
+
+func RequireAuth(jwtSecret string) fiber.Handler <span class="cov8" title="1">{
+        return func(c *fiber.Ctx) error </span><span class="cov8" title="1">{
+                header := c.Get("Authorization")
+                if header == "" || !strings.HasPrefix(header, "Bearer ") </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "missing or invalid authorization header",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">tokenStr := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+                if tokenStr == "" || len(tokenStr) &gt; 8192 </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "invalid token format",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">claims := &amp;Claims{}
+                token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) </span><span class="cov8" title="1">{
+                        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("unexpected signing method")
+                        }</span>
+                        <span class="cov8" title="1">return []byte(jwtSecret), nil</span>
+                }, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+                <span class="cov8" title="1">if err != nil || !token.Valid </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "invalid or expired token",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">if claims.TokenType == "refresh" </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "refresh token cannot be used for API access",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">if _, err := uuid.Parse(claims.UserID); err != nil </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "invalid token claims",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">role := strings.ToUpper(strings.TrimSpace(claims.Role))
+                if role == "" </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "invalid token role",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">if claims.TenantID != nil &amp;&amp; strings.TrimSpace(*claims.TenantID) != "" </span><span class="cov8" title="1">{
+                        if _, err := uuid.Parse(*claims.TenantID); err != nil </span><span class="cov8" title="1">{
+                                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                        "error": "invalid tenant in token",
+                                })
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if claims.ExpiresAt != nil &amp;&amp; claims.ExpiresAt.Time.Before(time.Now().UTC()) </span><span class="cov0" title="0">{
+                        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                                "error": "token expired",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">c.Locals(LocalsUserID, claims.UserID)
+                c.Locals(LocalsRole, role)
+                if claims.TenantID != nil </span><span class="cov8" title="1">{
+                        c.Locals(LocalsTenantID, strings.TrimSpace(*claims.TenantID))
+                }</span>
+
+                <span class="cov8" title="1">return c.Next()</span>
+        }
+}
+
+func RequireRole(roles ...string) fiber.Handler <span class="cov8" title="1">{
+        allowed := make(map[string]struct{}, len(roles))
+        for _, r := range roles </span><span class="cov8" title="1">{
+                allowed[strings.ToUpper(strings.TrimSpace(r))] = struct{}{}
+        }</span>
+
+        <span class="cov8" title="1">return func(c *fiber.Ctx) error </span><span class="cov8" title="1">{
+                role, _ := c.Locals(LocalsRole).(string)
+                role = strings.ToUpper(strings.TrimSpace(role))
+                if role == "" </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+                                "error": "forbidden",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">if _, ok := allowed[role]; !ok </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+                                "error": "insufficient role",
+                        })
+                }</span>
+
+                <span class="cov8" title="1">return c.Next()</span>
+        }
+}
+
+// ParseRefreshClaims valida un refresh token sin exigir access token.
+func ParseRefreshClaims(jwtSecret, tokenStr string) (*Claims, error) <span class="cov8" title="1">{
+        claims := &amp;Claims{}
+        token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) </span><span class="cov8" title="1">{
+                return []byte(jwtSecret), nil
+        }</span>, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+        <span class="cov8" title="1">if err != nil || !token.Valid </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid refresh token")
+        }</span>
+        <span class="cov8" title="1">if claims.TokenType != "refresh" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("not a refresh token")
+        }</span>
+        <span class="cov8" title="1">return claims, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package middleware
+
+import (
+        "fmt"
+
+        "github.com/gofiber/fiber/v2"
+        "github.com/google/uuid"
+)
+
+// IdentityFromContext extrae userID y tenantID del JWT (Locals).
+// Jamás usar valores del body para aislamiento multi-tenant.
+func IdentityFromContext(c *fiber.Ctx) (userID, tenantID uuid.UUID, err error) <span class="cov8" title="1">{
+        uidRaw, _ := c.Locals(LocalsUserID).(string)
+        tidRaw, _ := c.Locals(LocalsTenantID).(string)
+
+        userID, err = uuid.Parse(uidRaw)
+        if err != nil </span><span class="cov8" title="1">{
+                return uuid.Nil, uuid.Nil, fmt.Errorf("missing or invalid user identity")
+        }</span>
+
+        <span class="cov8" title="1">tenantID, err = uuid.Parse(tidRaw)
+        if err != nil </span><span class="cov8" title="1">{
+                return uuid.Nil, uuid.Nil, fmt.Errorf("missing or invalid tenant identity")
+        }</span>
+
+        <span class="cov8" title="1">return userID, tenantID, nil</span>
+}
+
+// RequireTenant exige que el JWT incluya tenant_id (usuarios de entidad).
+func RequireTenant() fiber.Handler <span class="cov8" title="1">{
+        return func(c *fiber.Ctx) error </span><span class="cov8" title="1">{
+                tidRaw, _ := c.Locals(LocalsTenantID).(string)
+                if _, err := uuid.Parse(tidRaw); err != nil </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+                                "error": "tenant context required",
+                        })
+                }</span>
+                <span class="cov8" title="1">return c.Next()</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package middleware
+
+import (
+        "fmt"
+        "sync"
+        "time"
+
+        "github.com/gofiber/fiber/v2"
+        "golang.org/x/time/rate"
+)
+
+// RateLimitPerUser limita peticiones por usuario JWT (fallback: IP).
+func RateLimitPerUser(perMinute int) fiber.Handler <span class="cov8" title="1">{
+        if perMinute &lt; 1 </span><span class="cov8" title="1">{
+                perMinute = 10
+        }</span>
+
+        <span class="cov8" title="1">var (
+                mu       sync.Mutex
+                limiters = make(map[string]*rate.Limiter)
+        )
+
+        getLimiter := func(key string) *rate.Limiter </span><span class="cov8" title="1">{
+                mu.Lock()
+                defer mu.Unlock()
+
+                if lim, ok := limiters[key]; ok </span><span class="cov8" title="1">{
+                        return lim
+                }</span>
+                <span class="cov8" title="1">lim := rate.NewLimiter(rate.Every(time.Minute/time.Duration(perMinute)), perMinute)
+                limiters[key] = lim
+                return lim</span>
+        }
+
+        <span class="cov8" title="1">return func(c *fiber.Ctx) error </span><span class="cov8" title="1">{
+                key, _ := c.Locals(LocalsUserID).(string)
+                if key == "" </span><span class="cov8" title="1">{
+                        key = c.IP()
+                }</span>
+
+                <span class="cov8" title="1">if !getLimiter(key).Allow() </span><span class="cov8" title="1">{
+                        return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+                                "error": fmt.Sprintf("rate limit exceeded: max %d requests per minute", perMinute),
+                        })
+                }</span>
+                <span class="cov8" title="1">return c.Next()</span>
+        }
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -17,6 +17,9 @@ type Project struct {
 	Name               string         `gorm:"column:name;type:text;not null" json:"name"`
 	Description        string         `gorm:"column:description;type:text" json:"description,omitempty"`
 	Sector             string         `gorm:"column:sector;type:varchar(255);index" json:"sector,omitempty"`
+	SectorID           *uuid.UUID     `gorm:"column:sector_id;type:uuid;index" json:"sector_id,omitempty"`
+	ProgramCode        *string        `gorm:"column:program_code;type:varchar(50);index" json:"program_code,omitempty"`
+	ProductCode        *string        `gorm:"column:product_code;type:varchar(50);index" json:"product_code,omitempty"`
 	ProblemDescription string         `gorm:"column:problem_description;type:text" json:"problem_description,omitempty"`
 	GeneralObjective   string         `gorm:"column:general_objective;type:text" json:"general_objective,omitempty"`
 	Status             string         `gorm:"column:status;type:varchar(50);not null;default:'DRAFT';index" json:"status"`

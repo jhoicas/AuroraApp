@@ -1,1 +1,4 @@
 .env
+*.env
+# Binario compilado por Playwright globalSetup (FASE 6 E2E)
+/bin/

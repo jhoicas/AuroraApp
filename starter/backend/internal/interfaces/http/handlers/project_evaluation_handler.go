@@ -16,16 +16,21 @@ import (
 )
 
 type ProjectEvaluationHandler struct {
-	svc *appproject.EvaluationService
-	db  *gorm.DB
+	svc      *appproject.EvaluationService
+	projects ProjectFinder
 }
 
 func NewProjectEvaluationHandler(db *gorm.DB) *ProjectEvaluationHandler {
 	repo := postgres.NewProjectEvaluationRepository(db)
-	return &ProjectEvaluationHandler{
-		svc: appproject.NewEvaluationService(repo),
-		db:  db,
-	}
+	return NewProjectEvaluationHandlerWithDeps(
+		appproject.NewEvaluationService(repo),
+		postgres.NewProjectRepository(db),
+	)
+}
+
+// NewProjectEvaluationHandlerWithDeps inyección explícita de dependencias (tests / DI).
+func NewProjectEvaluationHandlerWithDeps(svc *appproject.EvaluationService, projects ProjectFinder) *ProjectEvaluationHandler {
+	return &ProjectEvaluationHandler{svc: svc, projects: projects}
 }
 
 // Evaluate POST /api/v1/projects/:id/evaluate
@@ -40,7 +45,7 @@ func (h *ProjectEvaluationHandler) Evaluate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
 	}
 
-	project, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID)
+	project, err := h.projects.FindOwned(c.Context(), projectID, tenantID)
 	if err != nil {
 		if isNotFound(err) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})

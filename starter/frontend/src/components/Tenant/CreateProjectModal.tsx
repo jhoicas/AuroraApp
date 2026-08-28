@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import { api } from '../../lib/api';
 import { useProjectStore } from '../../store/projectStore';
 
@@ -114,10 +115,13 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div>
-            <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre <span className="text-red-500">*</span>
-            </label>
+          <AIAssistedField
+            label="Nombre"
+            htmlFor="project-name"
+            required
+            guidance="Use un nombre corto y descriptivo del bien o servicio público (qué se entrega y dónde). Evite jerga interna; debe ser comprensible para veeduría ciudadana y trazabilidad BPIN."
+            askPrompt="¿Cómo debería nombrar un proyecto de inversión pública según el manual de procedimientos del DNP? Dame 3 ejemplos de buenos nombres."
+          >
             <input
               id="project-name"
               required
@@ -127,12 +131,15 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
               className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600"
               placeholder="Mejoramiento de vías rurales"
             />
-          </div>
+          </AIAssistedField>
 
-          <div>
-            <label htmlFor="project-sector" className="block text-sm font-medium text-gray-700 mb-1">
-              Sector <span className="text-red-500">*</span>
-            </label>
+          <AIAssistedField
+            label="Sector"
+            htmlFor="project-sector"
+            required
+            guidance="El sector define la clasificación programática DNP. Debe coincidir con el catálogo oficial (salud, educación, agua, etc.) para encadenar programa y producto."
+            askPrompt="¿Cómo elijo el sector correcto del catálogo DNP para mi proyecto de inversión? Explica el criterio de clasificación programática."
+          >
             <select
               id="project-sector"
               required
@@ -147,25 +154,29 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
                 </option>
               ))}
             </select>
-          </div>
+          </AIAssistedField>
 
-          <div>
-            <label htmlFor="project-bpin" className="block text-sm font-medium text-gray-700 mb-1">
-              Código BPIN <span className="text-gray-400 font-normal">(opcional)</span>
-            </label>
+          <AIAssistedField
+            label="Código BPIN"
+            htmlFor="project-bpin"
+            guidance="El BPIN identifica el proyecto en el Banco de Programas y Proyectos. Si aún no lo tiene, déjelo vacío y regístrelo cuando la entidad lo asigne."
+            askPrompt="¿Qué es el código BPIN y cuándo debo registrarlo en la formulación de un proyecto MGA?"
+          >
             <input
               id="project-bpin"
               value={codeBpin}
               onChange={(e) => setCodeBpin(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-              placeholder="2024000123456"
+              placeholder="2024000123456 (opcional)"
             />
-          </div>
+          </AIAssistedField>
 
-          <div>
-            <label htmlFor="project-desc" className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción
-            </label>
+          <AIAssistedField
+            label="Descripción"
+            htmlFor="project-desc"
+            guidance="Resuma en pocas líneas el alcance del proyecto: qué se construye o implementa, para quién y en qué territorio. No sustituye el problema central ni el objetivo general."
+            askPrompt="¿Cómo redacto una descripción breve y clara de un proyecto de inversión pública para el MGA?"
+          >
             <textarea
               id="project-desc"
               rows={3}
@@ -174,7 +185,7 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
               className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none"
               placeholder="Breve descripción del proyecto de inversión"
             />
-          </div>
+          </AIAssistedField>
 
           {formError && (
             <div

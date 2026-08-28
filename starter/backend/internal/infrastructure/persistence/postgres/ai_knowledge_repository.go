@@ -103,32 +103,57 @@ func (r *AiKnowledgeRepository) InsertGraph(ctx context.Context, batch Knowledge
 	})
 }
 
-func (r *AiKnowledgeRepository) ListAllNodes(ctx context.Context) ([]models.AiKnowledgeNode, error) {
+func (r *AiKnowledgeRepository) ListAllNodes(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeNode, error) {
 	var rows []models.AiKnowledgeNode
-	err := r.db.WithContext(ctx).Order("created_at ASC").Find(&rows).Error
+	query := knowledgeTenantScope(r.db.WithContext(ctx), tenantID)
+	err := query.Order("created_at ASC").Find(&rows).Error
 	return rows, err
 }
 
-func (r *AiKnowledgeRepository) ListAllLinks(ctx context.Context) ([]models.AiKnowledgeLink, error) {
+func (r *AiKnowledgeRepository) ListAllLinks(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeLink, error) {
 	var rows []models.AiKnowledgeLink
-	err := r.db.WithContext(ctx).Order("created_at ASC").Find(&rows).Error
+	query := knowledgeTenantScope(r.db.WithContext(ctx), tenantID)
+	err := query.Order("created_at ASC").Find(&rows).Error
 	return rows, err
 }
 
-func (r *AiKnowledgeRepository) SearchSimilar(ctx context.Context, embedding []float32, limit int) ([]models.AiKnowledgeNode, error) {
+func (r *AiKnowledgeRepository) SearchSimilar(ctx context.Context, tenantID *uuid.UUID, embedding []float32, limit int) ([]models.AiKnowledgeNode, error) {
 	if limit <= 0 {
 		limit = 5
 	}
 	vec := formatVector(embedding)
 	var rows []models.AiKnowledgeNode
-	err := r.db.WithContext(ctx).Raw(`
+	query := `
 		SELECT id, tenant_id, project_key, node_type, label, content, metadata, created_at
 		FROM ai_knowledge_nodes
-		WHERE embedding IS NOT NULL
+		WHERE embedding IS NOT NULL AND tenant_id IS NULL
 		ORDER BY embedding <=> ?::vector
 		LIMIT ?
-	`, vec, limit).Scan(&rows).Error
+	`
+	args := []any{vec, limit}
+	if tenantID != nil {
+		query = `
+			SELECT id, tenant_id, project_key, node_type, label, content, metadata, created_at
+			FROM ai_knowledge_nodes
+			WHERE embedding IS NOT NULL
+			  AND (tenant_id = ? OR tenant_id IS NULL)
+			ORDER BY embedding <=> ?::vector
+			LIMIT ?
+		`
+		args = []any{*tenantID, vec, limit}
+	}
+	err := r.db.WithContext(ctx).Raw(query, args...).Scan(&rows).Error
 	return rows, err
+}
+
+// knowledgeTenantScope aplica aislamiento híbrido:
+// - tenant: conocimiento privado propio + conocimiento global;
+// - identidad global (tenant nil): únicamente conocimiento global.
+func knowledgeTenantScope(db *gorm.DB, tenantID *uuid.UUID) *gorm.DB {
+	if tenantID == nil {
+		return db.Where("tenant_id IS NULL")
+	}
+	return db.Where("(tenant_id = ? OR tenant_id IS NULL)", *tenantID)
 }
 
 func formatVector(v []float32) string {

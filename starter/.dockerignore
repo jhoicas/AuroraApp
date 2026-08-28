@@ -26,6 +26,10 @@ frontend/.vite
 frontend/*.log
 frontend/.oxlintrc.json
 frontend/package-lock.json
+frontend/e2e/
+frontend/playwright.config.ts
+frontend/playwright-report/
+frontend/test-results/
 
 # Docker / compose local overrides
 docker-compose.override.yml

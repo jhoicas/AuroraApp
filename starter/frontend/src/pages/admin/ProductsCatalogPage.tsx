@@ -322,11 +322,12 @@ export default function ProductsCatalogPage() {
           >
             <span className="material-symbols-outlined text-[#6f7979]">search</span>
             <input
-              type="text"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
+              aria-label="Buscar productos"
               placeholder="Buscar por producto, programa, sector o indicador..."
               className="w-full bg-transparent border-none outline-none focus:ring-0 text-lg text-[#121c2c] placeholder:text-[#6f7979]"
             />

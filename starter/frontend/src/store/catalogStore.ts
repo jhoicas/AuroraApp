@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
 
+/** Límite alto para cargar listados completos en wizard tenant (sectores/productos). */
+export const CATALOG_FULL_LIST_LIMIT = 5000;
+
 export type CatalogSector = {
   id: string;
   code: string;

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SearchableCombobox, {
+  type ComboboxOption,
+} from '../../components/Catalog/SearchableCombobox';
 import {
+  CATALOG_FULL_LIST_LIMIT,
   useCatalogStore,
   type CatalogProgram,
   type CatalogSector,
@@ -8,7 +12,7 @@ import {
 } from '../../store/catalogStore';
 import { useProjectStore } from '../../store/projectStore';
 
-const selectClass =
+const inputClass =
   'w-full h-12 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-[#006162] focus:ring-4 focus:ring-[#006162]/10 transition-all disabled:bg-gray-50 disabled:text-gray-400';
 
 /**
@@ -41,7 +45,7 @@ export default function CatalogPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    void fetchSectors({ page: 1, limit: 100 });
+    void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
   }, [fetchSectors]);
 
   useEffect(() => {
@@ -61,7 +65,11 @@ export default function CatalogPage() {
       return;
     }
     setProductCode('');
-    void fetchCatalogProducts({ page: 1, limit: 100, search: programCode });
+    void fetchCatalogProducts({
+      page: 1,
+      limit: CATALOG_FULL_LIST_LIMIT,
+      search: programCode,
+    });
   }, [programCode, fetchCatalogProducts]);
 
   const selectedSector: CatalogSector | undefined = useMemo(
@@ -91,6 +99,37 @@ export default function CatalogPage() {
   const selectedProduct: Product | undefined = useMemo(
     () => filteredProducts.find((p) => p.codigo_del_producto === productCode),
     [filteredProducts, productCode],
+  );
+
+  const sectorOptions: ComboboxOption[] = useMemo(
+    () =>
+      sectors.map((sector) => ({
+        value: sector.id,
+        code: sector.code,
+        label: sector.name,
+      })),
+    [sectors],
+  );
+
+  const programOptions: ComboboxOption[] = useMemo(
+    () =>
+      sectorPrograms.map((program) => ({
+        value: program.code,
+        code: program.code,
+        label: program.name,
+      })),
+    [sectorPrograms],
+  );
+
+  const productOptions: ComboboxOption[] = useMemo(
+    () =>
+      filteredProducts.map((product) => ({
+        value: product.codigo_del_producto,
+        code: product.codigo_del_producto,
+        label: product.producto,
+        hint: product.descripcion,
+      })),
+    [filteredProducts],
   );
 
   const loadingCascade = isLoading || isLoadingProducts;
@@ -171,73 +210,63 @@ export default function CatalogPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Wizard de clasificación</h3>
-                <p className="text-sm text-gray-500">Seleccione en cascada para formular un proyecto</p>
+                <p className="text-sm text-gray-500">
+                  Busque por código (ej. 11, 17) o por nombre (ej. RELACIONES, AGRICULTURA)
+                </p>
               </div>
             </div>
 
             <div className="grid gap-5">
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-gray-700">1. Seleccionar Sector</span>
-                <select
-                  className={selectClass}
-                  value={sectorId}
-                  onChange={(e) => setSectorId(e.target.value)}
-                  disabled={loadingCascade && sectors.length === 0}
-                >
-                  <option value="">— Elija un sector DNP —</option>
-                  {sectors.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.code} — {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SearchableCombobox
+                label="1. Seleccionar Sector"
+                placeholder="Buscar sector por código o nombre…"
+                options={sectorOptions}
+                value={sectorId}
+                onChange={setSectorId}
+                disabled={loadingCascade && sectors.length === 0}
+                loading={isLoading && sectors.length === 0}
+                emptyMessage="No hay sectores cargados en el catálogo maestro."
+              />
 
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-gray-700">2. Seleccionar Programa</span>
-                <select
-                  className={selectClass}
-                  value={programCode}
-                  onChange={(e) => setProgramCode(e.target.value)}
-                  disabled={!sectorId || isLoading}
-                >
-                  <option value="">
-                    {!sectorId ? '— Primero elija un sector —' : '— Elija un programa —'}
-                  </option>
-                  {sectorPrograms.map((p) => (
-                    <option key={p.id} value={p.code}>
-                      {p.code} — {p.name}
-                    </option>
-                  ))}
-                </select>
-                {sectorId && !isLoading && sectorPrograms.length === 0 && (
-                  <p className="text-xs text-amber-700">Este sector no tiene programas cargados.</p>
-                )}
-              </label>
+              <SearchableCombobox
+                label="2. Seleccionar Programa"
+                placeholder={
+                  sectorId ? 'Buscar programa por código o nombre…' : 'Primero elija un sector'
+                }
+                options={programOptions}
+                value={programCode}
+                onChange={setProgramCode}
+                disabled={!sectorId}
+                loading={Boolean(sectorId) && isLoading}
+                emptyMessage={
+                  sectorId ? 'Este sector no tiene programas cargados.' : 'Seleccione un sector primero.'
+                }
+              />
+              {sectorId && !isLoading && sectorPrograms.length === 0 && (
+                <p className="-mt-3 text-xs text-amber-700">Este sector no tiene programas cargados.</p>
+              )}
 
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-gray-700">3. Seleccionar Producto</span>
-                <select
-                  className={selectClass}
-                  value={productCode}
-                  onChange={(e) => setProductCode(e.target.value)}
-                  disabled={!programCode || isLoadingProducts}
-                >
-                  <option value="">
-                    {!programCode ? '— Primero elija un programa —' : '— Elija un producto —'}
-                  </option>
-                  {filteredProducts.map((p) => (
-                    <option key={p.id} value={p.codigo_del_producto}>
-                      {p.codigo_del_producto} — {p.producto}
-                    </option>
-                  ))}
-                </select>
-                {programCode && !isLoadingProducts && filteredProducts.length === 0 && (
-                  <p className="text-xs text-amber-700">
-                    No hay productos asociados a este programa en el catálogo maestro.
-                  </p>
-                )}
-              </label>
+              <SearchableCombobox
+                label="3. Seleccionar Producto"
+                placeholder={
+                  programCode ? 'Buscar producto por código o nombre…' : 'Primero elija un programa'
+                }
+                options={productOptions}
+                value={productCode}
+                onChange={setProductCode}
+                disabled={!programCode}
+                loading={Boolean(programCode) && isLoadingProducts}
+                emptyMessage={
+                  programCode
+                    ? 'No hay productos asociados a este programa en el catálogo maestro.'
+                    : 'Seleccione un programa primero.'
+                }
+              />
+              {programCode && !isLoadingProducts && filteredProducts.length === 0 && (
+                <p className="-mt-3 text-xs text-amber-700">
+                  No hay productos asociados a este programa en el catálogo maestro.
+                </p>
+              )}
             </div>
 
             {selectedProduct && (
@@ -327,7 +356,7 @@ export default function CatalogPage() {
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  className={selectClass}
+                  className={inputClass}
                   placeholder="Ej. Construcción de acueducto rural…"
                   autoFocus
                   required

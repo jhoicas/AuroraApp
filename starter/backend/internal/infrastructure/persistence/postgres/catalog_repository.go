@@ -46,7 +46,8 @@ func NewCatalogRepository(db *gorm.DB) *CatalogRepository {
 	return &CatalogRepository{db: db}
 }
 
-// ListSectors lista sectores con búsqueda ILIKE y paginación (limit 5|10|20).
+// ListSectors lista sectores con búsqueda ILIKE y paginación.
+// Límites admin: 5|10|20. Límites amplios (hasta 5000) para listados completos en wizard tenant.
 func (r *CatalogRepository) ListSectors(ctx context.Context, p SectorListParams) (*SectorListResult, error) {
 	page := p.Page
 	if page < 1 {
@@ -1518,8 +1519,17 @@ func normalizeCatalogLimit(limit int) int {
 	switch limit {
 	case 5, 10, 20:
 		return limit
-	default:
+	case 0:
 		return 10
+	default:
+		const maxCatalogLimit = 5000
+		if limit > maxCatalogLimit {
+			return maxCatalogLimit
+		}
+		if limit < 0 {
+			return 10
+		}
+		return limit
 	}
 }
 

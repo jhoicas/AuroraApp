@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { useAuroraCopilotStore } from '../../store/auroraCopilotStore';
+import { validateInfinitiveObjective } from '../../lib/mgaObjectiveValidation';
 
 type AIAssistedFieldProps = {
   label: string;
@@ -9,8 +10,14 @@ type AIAssistedFieldProps = {
   guidance: string;
   /** Prompt inyectado al abrir Aurora Asistente. */
   askPrompt: string;
+  /** Valor actual para validación normativa en pantalla. */
+  validationValue?: string;
+  /** Regla de validación MGA aplicada bajo el campo. */
+  validationRule?: 'infinitive-verb';
   children: ReactNode;
   className?: string;
+  /** Estilo compacto para tablas Modo MGA. */
+  compact?: boolean;
 };
 
 /**
@@ -22,8 +29,11 @@ export default function AIAssistedField({
   required = false,
   guidance,
   askPrompt,
+  validationValue = '',
+  validationRule,
   children,
   className = '',
+  compact = false,
 }: AIAssistedFieldProps) {
   const tipId = useId();
   const [open, setOpen] = useState(false);
@@ -42,10 +52,16 @@ export default function AIAssistedField({
     closeTimer.current = setTimeout(() => setOpen(false), 180);
   };
 
+  const validationMessage =
+    validationRule === 'infinitive-verb' ? validateInfinitiveObjective(validationValue) : null;
+
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
+      <div className={`flex items-center gap-1.5 ${compact ? 'mb-0.5' : 'mb-1'}`}>
+        <label
+          htmlFor={htmlFor}
+          className={`block font-medium text-gray-700 ${compact ? 'text-xs' : 'text-sm'}`}
+        >
           {label}
           {required && <span className="text-red-500"> *</span>}
         </label>
@@ -108,6 +124,11 @@ export default function AIAssistedField({
         </div>
       </div>
       {children}
+      {validationMessage && (
+        <p role="alert" className="mt-1 text-xs text-amber-700 font-medium">
+          {validationMessage}
+        </p>
+      )}
     </div>
   );
 }

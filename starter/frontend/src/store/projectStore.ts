@@ -93,6 +93,8 @@ type ProjectState = {
   createProject: (data: CreateProjectPayload) => Promise<Project>;
   fetchProjectById: (id: string) => Promise<Project>;
   updateProjectDetails: (id: string, data: UpdateProjectDetailsPayload) => Promise<Project>;
+  /** Actualiza el borrador local sin persistir en API (Modo MGA). */
+  patchCurrentProject: (partial: Partial<Project>) => void;
   fetchBudget: (projectId: string) => Promise<void>;
   addBudgetItem: (projectId: string, data: CreateBudgetItemPayload) => Promise<BudgetItem>;
   deleteBudgetItem: (projectId: string, itemId: string) => Promise<void>;
@@ -205,6 +207,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ isSaving: false, error: message });
       throw new Error(message);
     }
+  },
+
+  patchCurrentProject: (partial) => {
+    set((state) => {
+      if (!state.currentProject) return state;
+      const updated = { ...state.currentProject, ...partial };
+      return {
+        currentProject: updated,
+        projects: state.projects.map((p) => (p.id === updated.id ? updated : p)),
+      };
+    });
   },
 
   fetchBudget: async (projectId) => {

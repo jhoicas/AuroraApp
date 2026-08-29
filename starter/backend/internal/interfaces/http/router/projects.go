@@ -12,6 +12,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	ph := handlers.NewProjectHandler(db)
 	bh := handlers.NewBudgetHandler(db)
 	eh := handlers.NewProjectEvaluationHandler(db)
+	mh := handlers.NewMgaHandler(db)
 
 	projects := app.Group("/api/v1/projects",
 		httpmw.RequireAuth(jwtSecret),
@@ -29,4 +30,16 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	projects.Post("/:id/budget", bh.Create)
 	projects.Get("/:id/budget", bh.List)
 	projects.Delete("/:id/budget/:itemId", bh.Delete)
+
+	// Formulación MGA (causas, objetivos específicos, indicadores)
+	projects.Get("/:id/mga/formulation", mh.GetFormulation)
+	projects.Get("/:id/mga/causes", mh.ListCauses)
+	projects.Post("/:id/mga/causes", mh.CreateCause)
+	projects.Put("/:id/mga/causes/:causeId", mh.UpdateCause)
+	projects.Delete("/:id/mga/causes/:causeId", mh.DeleteCause)
+	projects.Put("/:id/mga/objectives/:objId", mh.UpdateObjective)
+	projects.Get("/:id/mga/indicators", mh.ListIndicators)
+	projects.Post("/:id/mga/indicators", mh.CreateIndicator)
+	projects.Put("/:id/mga/indicators/:indicatorId", mh.UpdateIndicator)
+	projects.Delete("/:id/mga/indicators/:indicatorId", mh.DeleteIndicator)
 }

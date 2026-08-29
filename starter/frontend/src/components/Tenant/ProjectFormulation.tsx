@@ -1,12 +1,14 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
+import MgaModeToggle from './MGA/MgaModeToggle';
+import ObjetivosTab from './MGA/ObjetivosTab';
 import { useProjectStore, type Project } from '../../store/projectStore';
 
 type ProjectFormulationProps = {
   project: Project;
 };
 
-export default function ProjectFormulation({ project }: ProjectFormulationProps) {
+function ModernFormulation({ project }: ProjectFormulationProps) {
   const updateProjectDetails = useProjectStore((s) => s.updateProjectDetails);
   const isSaving = useProjectStore((s) => s.isSaving);
 
@@ -64,6 +66,8 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
         htmlFor="general_objective"
         guidance="El objetivo general expresa el cambio esperado en la población o territorio. Formúlelo como un resultado alcanzable (infinitivo o enunciado afirmativo), coherente con el problema central y medible a través de indicadores."
         askPrompt={`¿Cómo debería redactar el objetivo general del proyecto "${project.name}"? Propón una redacción alineada al manual de procedimientos de inversión pública del DNP.`}
+        validationRule="infinitive-verb"
+        validationValue={generalObjective}
       >
         <textarea
           id="general_objective"
@@ -97,5 +101,28 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
         </button>
       </div>
     </form>
+  );
+}
+
+export default function ProjectFormulation({ project }: ProjectFormulationProps) {
+  const currentProject = useProjectStore((s) => s.currentProject) ?? project;
+  const [isMgaMode, setIsMgaMode] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
+        <div>
+          <p className="text-sm font-semibold text-gray-800">Formulación del proyecto</p>
+          <p className="text-xs text-gray-500">
+            {isMgaMode
+              ? 'Interfaz clásica MGA (DNP)'
+              : 'Interfaz moderna AuroraApp'}
+          </p>
+        </div>
+        <MgaModeToggle enabled={isMgaMode} onChange={setIsMgaMode} />
+      </div>
+
+      {isMgaMode ? <ObjetivosTab project={currentProject} /> : <ModernFormulation project={currentProject} />}
+    </div>
   );
 }

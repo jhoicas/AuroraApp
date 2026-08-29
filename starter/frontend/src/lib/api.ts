@@ -92,3 +92,30 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// --- Formulación MGA (causas, objetivos específicos, indicadores) ---
+export {
+  fetchMgaFormulation,
+  listMgaCauses,
+  createMgaCause,
+  updateMgaCause,
+  deleteMgaCause,
+  updateMgaObjective,
+  listMgaIndicators,
+  createMgaIndicator,
+  updateMgaIndicator,
+  deleteMgaIndicator,
+} from './mgaApi';
+
+export type {
+  MgaCauseType,
+  MgaSpecificObjective,
+  MgaCause,
+  MgaIndicator,
+  MgaFormulation,
+  CreateMgaCausePayload,
+  UpdateMgaCausePayload,
+  UpdateMgaObjectivePayload,
+  CreateMgaIndicatorPayload,
+  UpdateMgaIndicatorPayload,
+} from './mgaApi';

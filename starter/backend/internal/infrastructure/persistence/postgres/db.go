@@ -79,6 +79,15 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.ProjectEvaluation{}); err != nil {
 		log.Printf("automigrate ProjectEvaluation: %v", err)
 	}
+	if err := db.AutoMigrate(&models.MgaCause{}); err != nil {
+		log.Printf("automigrate MgaCause: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaSpecificObjective{}); err != nil {
+		log.Printf("automigrate MgaSpecificObjective: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaIndicator{}); err != nil {
+		log.Printf("automigrate MgaIndicator: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -95,6 +104,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureAiUsageLogsSchema(db)
 	ensureAiChatMessagesSchema(db)
 	ensureProjectEvaluationsSchema(db)
+	ensureMgaSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -839,6 +849,67 @@ func ensureProjectEvaluationsSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_project_evaluations_tenant ON project_evaluations (tenant_id)`,
 	}
 	execSchemaStatements(db, "ensure project_evaluations schema", statements)
+}
+
+func ensureMgaSchema(db *gorm.DB) {
+	createCausesSQL := `CREATE TABLE IF NOT EXISTS mga_causes (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			parent_id UUID,
+			cause_type VARCHAR(50) NOT NULL,
+			description TEXT NOT NULL,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createCausesSQL).Error; err != nil {
+		log.Printf("ensure mga_causes schema: %v", err)
+	}
+
+	createObjectivesSQL := `CREATE TABLE IF NOT EXISTS mga_specific_objectives (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			cause_id UUID NOT NULL,
+			description TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createObjectivesSQL).Error; err != nil {
+		log.Printf("ensure mga_specific_objectives schema: %v", err)
+	}
+
+	createIndicatorsSQL := `CREATE TABLE IF NOT EXISTS mga_indicators (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			specific_objective_id UUID,
+			name TEXT NOT NULL,
+			unit VARCHAR(255) NOT NULL,
+			target NUMERIC(18,2) NOT NULL,
+			source_type VARCHAR(100) NOT NULL,
+			verification_source TEXT NOT NULL,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createIndicatorsSQL).Error; err != nil {
+		log.Printf("ensure mga_indicators schema: %v", err)
+	}
+
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_mga_causes_tenant ON mga_causes (tenant_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_causes_project ON mga_causes (project_id)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_mga_specific_objectives_cause ON mga_specific_objectives (cause_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_specific_objectives_tenant ON mga_specific_objectives (tenant_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_indicators_project ON mga_indicators (project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_indicators_tenant ON mga_indicators (tenant_id)`,
+	}
+	execSchemaStatements(db, "ensure mga schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

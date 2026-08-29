@@ -26,5 +26,8 @@ func AllModels() []any {
 		&AiChatMessage{},
 		&ProjectEvaluation{},
 		&BudgetItem{},
+		&MgaCause{},
+		&MgaSpecificObjective{},
+		&MgaIndicator{},
 	}
 }

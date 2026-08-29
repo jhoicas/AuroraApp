@@ -79,6 +79,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.ProjectEvaluation{}); err != nil {
 		log.Printf("automigrate ProjectEvaluation: %v", err)
 	}
+	if err := db.AutoMigrate(&models.BudgetItem{}); err != nil {
+		log.Printf("automigrate BudgetItem: %v", err)
+	}
 	if err := db.AutoMigrate(&models.MgaCause{}); err != nil {
 		log.Printf("automigrate MgaCause: %v", err)
 	}
@@ -104,6 +107,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureAiUsageLogsSchema(db)
 	ensureAiChatMessagesSchema(db)
 	ensureProjectEvaluationsSchema(db)
+	ensureBudgetItemsSchema(db)
 	ensureMgaSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
@@ -117,6 +121,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	}
 	if !db.Migrator().HasTable(&models.CatalogOds{}) {
 		return nil, fmt.Errorf(`relation "catalogo_ods" was not created; check DATABASE_URL / DDL permissions`)
+	}
+	if !db.Migrator().HasTable(&models.BudgetItem{}) {
+		return nil, fmt.Errorf(`relation "budget_items" was not created; check DATABASE_URL / DDL permissions`)
 	}
 
 	if err := EnsureSystemRoles(db); err != nil {
@@ -849,6 +856,39 @@ func ensureProjectEvaluationsSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_project_evaluations_tenant ON project_evaluations (tenant_id)`,
 	}
 	execSchemaStatements(db, "ensure project_evaluations schema", statements)
+}
+
+func ensureBudgetItemsSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS budget_items (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			product_id UUID,
+			description TEXT NOT NULL,
+			amount NUMERIC(18,2) NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		log.Printf("ensure budget_items schema: %v", err)
+	}
+
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_budget_items_tenant ON budget_items (tenant_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_budget_items_project ON budget_items (project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_budget_items_product ON budget_items (product_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_budget_items_deleted_at ON budget_items (deleted_at)`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS product_id UUID`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS description TEXT`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS amount NUMERIC(18,2)`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+	}
+	execSchemaStatements(db, "ensure budget_items schema", statements)
 }
 
 func ensureMgaSchema(db *gorm.DB) {

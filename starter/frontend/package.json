@@ -20,6 +20,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "^2.110.5",
     "@types/react-window": "^1.8.8",
     "autoprefixer": "^10.5.3",

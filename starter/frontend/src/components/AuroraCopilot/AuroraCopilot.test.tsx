@@ -42,11 +42,11 @@ describe('Aurora Asistente (FloatingAssistant)', () => {
   it('muestra el botón flotante cuando está cerrado y abre el panel al hacer clic', async () => {
     const { user } = renderWithProviders(<AuroraCopilot />);
 
-    await user.click(screen.getByRole('button', { name: 'Abrir Aurora Asistente' }));
+    await user.click(screen.getByRole('button', { name: 'Abrir Aurora Asistente MGA' }));
 
-    expect(await screen.findByRole('dialog', { name: 'Aurora Asistente' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Aurora · Asistente MGA' })).toBeInTheDocument();
     expect(screen.getByText(EMPTY_HINT)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Aurora Asistente' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Aurora · Asistente MGA' })).toBeInTheDocument();
   });
 
   it('envía el mensaje escrito, limpia el input y muestra "Aurora está escribiendo…"', async () => {
@@ -222,9 +222,9 @@ describe('Aurora Asistente (FloatingAssistant)', () => {
     await user.click(screen.getByRole('button', { name: 'Cerrar panel de Aurora' }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Aurora Asistente' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Aurora · Asistente MGA' })).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Abrir Aurora Asistente' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir Aurora Asistente MGA' })).toBeInTheDocument();
   });
 
   it('renderiza Markdown en respuestas del asistente', async () => {

@@ -8,6 +8,7 @@ import {
   type ActionCardPayload,
 } from '../../store/auroraCopilotStore';
 import { useCatalogStore } from '../../store/catalogStore';
+import type { Project } from '../../store/projectStore';
 
 type AssistantChatPanelProps = {
   /** `floating`: drawer lateral. `embedded`: panel fijo (split /tenant/ai). */
@@ -17,7 +18,37 @@ type AssistantChatPanelProps = {
   className?: string;
   /** Callback al montar el input (p. ej. focus tras clic en nodo). */
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Proyecto activo (detalle de formulación) para contexto de la IA. */
+  project?: Project;
 };
+
+const PROJECT_EMPTY_HINT =
+  'Pregunta sobre el árbol de problemas, objetivos, productos DNP o la estructura MGA de este proyecto.';
+
+const GENERAL_EMPTY_HINT =
+  'Pregúntame sobre formulación MGA, clasificación programática o el conocimiento del grafo.';
+
+function buildRouteContext(pathname: string, project?: Project): string {
+  if (!project) return pathname;
+
+  const segments = [
+    pathname,
+    `proyecto_id=${project.id}`,
+    `proyecto="${project.name}"`,
+  ];
+
+  if (project.sector?.trim()) {
+    segments.push(`sector="${project.sector.trim()}"`);
+  }
+  if (project.problem_description?.trim()) {
+    segments.push(`problema="${project.problem_description.trim().slice(0, 300)}"`);
+  }
+  if (project.general_objective?.trim()) {
+    segments.push(`objetivo_general="${project.general_objective.trim().slice(0, 300)}"`);
+  }
+
+  return segments.join(' | ');
+}
 
 /**
  * Panel de chat de Aurora Asistente (contenido compartido por FloatingAssistant
@@ -28,6 +59,7 @@ export default function AssistantChatPanel({
   showClose = false,
   className = '',
   inputRef,
+  project,
 }: AssistantChatPanelProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -59,8 +91,8 @@ export default function AssistantChatPanel({
   const handleSend = useCallback(async () => {
     const text = draftInput.trim();
     if (!text || isTyping) return;
-    await sendMessage(text, pathname);
-  }, [draftInput, isTyping, pathname, sendMessage]);
+    await sendMessage(text, buildRouteContext(pathname, project));
+  }, [draftInput, isTyping, pathname, project, sendMessage]);
 
   const handleApply = useCallback(
     (card: ActionCardPayload) => {
@@ -82,15 +114,32 @@ export default function AssistantChatPanel({
 
   const headerTone =
     variant === 'floating'
-      ? 'bg-[#006162] text-white'
+      ? 'bg-[#006162] text-white border-b border-[#004f50]'
       : 'bg-white border-b border-gray-200 text-gray-900';
+
+  const emptyHint = project ? PROJECT_EMPTY_HINT : GENERAL_EMPTY_HINT;
+  const inputPlaceholder = project ? 'Escribe tu consulta MGA…' : 'Pregunta a Aurora…';
 
   return (
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
-      <header className={`px-4 py-3.5 shrink-0 ${headerTone}`}>
+      <header className={`px-4 py-3 shrink-0 ${headerTone}`}>
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-bold text-lg tracking-tight">Aurora Asistente</h2>
-          <div className="flex items-center gap-0.5">
+          {variant === 'floating' ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="material-symbols-outlined shrink-0">smart_toy</span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold leading-tight">Aurora · Asistente MGA</h2>
+                <p className="text-xs text-white/80 truncate">
+                  {project
+                    ? `Ayuda en formulación · ${project.name}`
+                    : 'Ayuda en formulación de proyectos'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <h2 className="font-bold text-lg tracking-tight">Aurora Asistente</h2>
+          )}
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -123,7 +172,7 @@ export default function AssistantChatPanel({
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto bg-[#f7faf9] px-3 py-4 space-y-3">
         {messages.length === 0 && !isTyping && (
           <p className="text-center text-sm text-gray-500 px-6 py-10 leading-relaxed">
-            Pregúntame sobre formulación MGA, clasificación programática o el conocimiento del grafo.
+            {emptyHint}
           </p>
         )}
 
@@ -183,7 +232,7 @@ export default function AssistantChatPanel({
                 void handleSend();
               }
             }}
-            placeholder="Pregunta a Aurora…"
+            placeholder={inputPlaceholder}
             disabled={isTyping}
             aria-label="Mensaje para Aurora Asistente"
             className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#006162]/40 focus:border-[#006162]"

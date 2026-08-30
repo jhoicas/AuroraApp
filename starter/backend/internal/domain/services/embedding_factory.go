@@ -26,6 +26,12 @@ func NewEmbeddingProvider(cfg *config.Config) EmbeddingProvider {
 	case "ollama":
 		log.Printf("embeddings: Ollama (%s @ %s)", cfg.EmbeddingModel, cfg.OllamaBaseURL)
 		return NewOllamaEmbeddingProvider(cfg.OllamaBaseURL, cfg.EmbeddingModel)
+	case "gemini":
+		if cfg.GeminiApiKey != "" {
+			log.Println("embeddings: Gemini (text-embedding-004, 384 dims)")
+			return NewGeminiEmbeddingProvider(cfg.GeminiApiKey)
+		}
+		log.Println("embeddings: GEMINI_API_KEY missing, falling back to mock")
 	}
 
 	log.Printf("embeddings: mock provider (%d dims)", DefaultEmbeddingDimensions)

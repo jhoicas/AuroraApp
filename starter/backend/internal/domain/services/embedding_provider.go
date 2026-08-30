@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -187,12 +188,99 @@ func (p *OllamaEmbeddingProvider) Embed(text string) ([]float32, error) {
 		out[i] = float32(v)
 	}
 	// Truncar o rellenar a 384 para consistencia con pgvector
-	if len(out) > DefaultEmbeddingDimensions {
-		out = out[:DefaultEmbeddingDimensions]
-	} else if len(out) < DefaultEmbeddingDimensions {
-		padded := make([]float32, DefaultEmbeddingDimensions)
-		copy(padded, out)
-		out = padded
+	return adjustEmbeddingDims(out), nil
+}
+
+const (
+	geminiEmbeddingModel = "text-embedding-004"
+	geminiEmbedBaseURL   = "https://generativelanguage.googleapis.com/v1beta/models"
+)
+
+// GeminiEmbeddingProvider usa la API de Google Embeddings (text-embedding-004).
+type GeminiEmbeddingProvider struct {
+	apiKey string
+	model  string
+	client *http.Client
+}
+
+func NewGeminiEmbeddingProvider(apiKey string) *GeminiEmbeddingProvider {
+	return &GeminiEmbeddingProvider{
+		apiKey: strings.TrimSpace(apiKey),
+		model:  geminiEmbeddingModel,
+		client: &http.Client{Timeout: 45 * time.Second},
 	}
-	return out, nil
+}
+
+func (p *GeminiEmbeddingProvider) Dimensions() int {
+	return DefaultEmbeddingDimensions
+}
+
+func (p *GeminiEmbeddingProvider) Embed(text string) ([]float32, error) {
+	if p.apiKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY not configured")
+	}
+
+	reqBody := map[string]any{
+		"content": map[string]any{
+			"parts": []map[string]string{{"text": text}},
+		},
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/%s:embedContent?key=%s", geminiEmbedBaseURL, p.model, p.apiKey)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("gemini embedding error (%d): %s", resp.StatusCode, string(raw))
+	}
+
+	var parsed struct {
+		Embedding *struct {
+			Values []float64 `json:"values"`
+		} `json:"embedding"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, err
+	}
+	if parsed.Error != nil {
+		return nil, fmt.Errorf("gemini embedding: %s", parsed.Error.Message)
+	}
+	if parsed.Embedding == nil || len(parsed.Embedding.Values) == 0 {
+		return nil, fmt.Errorf("empty embedding from gemini")
+	}
+
+	out := make([]float32, len(parsed.Embedding.Values))
+	for i, v := range parsed.Embedding.Values {
+		out[i] = float32(v)
+	}
+	return adjustEmbeddingDims(out), nil
+}
+
+func adjustEmbeddingDims(vec []float32) []float32 {
+	if len(vec) > DefaultEmbeddingDimensions {
+		return vec[:DefaultEmbeddingDimensions]
+	}
+	if len(vec) < DefaultEmbeddingDimensions {
+		padded := make([]float32, DefaultEmbeddingDimensions)
+		copy(padded, vec)
+		return padded
+	}
+	return vec
 }

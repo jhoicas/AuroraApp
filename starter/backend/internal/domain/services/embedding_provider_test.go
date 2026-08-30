@@ -32,6 +32,12 @@ func TestNewEmbeddingProvider_TableDriven(t *testing.T) {
 			cfg:  &config.Config{EmbeddingProvider: "ollama", OllamaBaseURL: "http://localhost:11434", EmbeddingModel: "nomic"},
 			want: "ollama",
 		},
+		{name: "gemini sin key → mock", cfg: &config.Config{EmbeddingProvider: "gemini"}, want: "mock"},
+		{
+			name: "gemini con key",
+			cfg:  &config.Config{EmbeddingProvider: "gemini", GeminiApiKey: "gem_x"},
+			want: "gemini",
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -49,6 +55,9 @@ func TestNewEmbeddingProvider_TableDriven(t *testing.T) {
 				assert.True(t, ok)
 			case "ollama":
 				_, ok := p.(*OllamaEmbeddingProvider)
+				assert.True(t, ok)
+			case "gemini":
+				_, ok := p.(*GeminiEmbeddingProvider)
 				assert.True(t, ok)
 			}
 		})
@@ -178,6 +187,78 @@ func TestHuggingFaceEmbed_WrongDims(t *testing.T) {
 	_, err := p.Embed("x")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected embedding dims")
+}
+
+func TestGeminiEmbed_PadAndTruncate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("truncate 768 dims", func(t *testing.T) {
+		long := make([]float64, 768)
+		for i := range long {
+			long[i] = float64(i)
+		}
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Contains(t, r.URL.Path, "text-embedding-004:embedContent")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"embedding": map[string]any{"values": long},
+			})
+		}))
+		defer srv.Close()
+
+		p := NewGeminiEmbeddingProvider("test-key")
+		p.client = &http.Client{Transport: rewriteHost(srv.URL)}
+		vec, err := p.Embed("hola")
+		require.NoError(t, err)
+		assert.Len(t, vec, DefaultEmbeddingDimensions)
+		assert.Equal(t, float32(0), vec[0])
+		assert.Equal(t, float32(383), vec[383])
+	})
+
+	t.Run("pad short", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"embedding": map[string]any{"values": []float64{1, 2, 3}},
+			})
+		}))
+		defer srv.Close()
+
+		p := NewGeminiEmbeddingProvider("test-key")
+		p.client = &http.Client{Transport: rewriteHost(srv.URL)}
+		vec, err := p.Embed("hola")
+		require.NoError(t, err)
+		assert.Len(t, vec, DefaultEmbeddingDimensions)
+		assert.Equal(t, float32(1), vec[0])
+	})
+
+	t.Run("missing api key", func(t *testing.T) {
+		p := NewGeminiEmbeddingProvider("")
+		_, err := p.Embed("x")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "GEMINI_API_KEY")
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "quota", http.StatusTooManyRequests)
+		}))
+		defer srv.Close()
+		p := NewGeminiEmbeddingProvider("test-key")
+		p.client = &http.Client{Transport: rewriteHost(srv.URL)}
+		_, err := p.Embed("x")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "gemini embedding")
+	})
+
+	t.Run("bad json", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`not-json`))
+		}))
+		defer srv.Close()
+		p := NewGeminiEmbeddingProvider("test-key")
+		p.client = &http.Client{Transport: rewriteHost(srv.URL)}
+		_, err := p.Embed("x")
+		require.Error(t, err)
+	})
 }
 
 func TestOllamaEmbed_PadAndTruncate(t *testing.T) {

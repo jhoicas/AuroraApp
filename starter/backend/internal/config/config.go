@@ -9,16 +9,18 @@ import (
 )
 
 type Config struct {
-	Port              string
-	DatabaseURL       string
-	JWTSecret         string
-	CORSOrigins       string
-	AnthropicApiKey   string
-	AnthropicModel    string
-	HuggingFaceApiKey string
-	EmbeddingProvider string // huggingface | ollama | mock
-	EmbeddingModel    string
-	OllamaBaseURL     string
+	Port                   string
+	DatabaseURL            string
+	JWTSecret              string
+	CORSOrigins            string
+	AnthropicApiKey        string
+	AnthropicModel         string
+	AnthropicModelFast     string
+	AnthropicModelPowerful string
+	HuggingFaceApiKey      string
+	EmbeddingProvider      string // huggingface | ollama | mock
+	EmbeddingModel         string
+	OllamaBaseURL          string
 }
 
 // LoadConfig carga variables desde .env (si existe) y el entorno del proceso.
@@ -46,6 +48,16 @@ func LoadConfig() *Config {
 	anthropicModel := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL"))
 	if anthropicModel == "" {
 		anthropicModel = "claude-haiku-4-5-20251001"
+	}
+
+	anthropicModelFast := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL_FAST"))
+	if anthropicModelFast == "" {
+		anthropicModelFast = anthropicModel
+	}
+
+	anthropicModelPowerful := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL_POWERFUL"))
+	if anthropicModelPowerful == "" {
+		anthropicModelPowerful = "claude-sonnet-4-20250514"
 	}
 
 	embeddingProvider := strings.ToLower(strings.TrimSpace(os.Getenv("EMBEDDING_PROVIDER")))
@@ -80,15 +92,17 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		Port:              port,
-		DatabaseURL:       databaseURL,
-		JWTSecret:         jwtSecret,
-		CORSOrigins:       corsOrigins,
-		AnthropicApiKey:   strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
-		AnthropicModel:    anthropicModel,
-		HuggingFaceApiKey: strings.TrimSpace(os.Getenv("HUGGINGFACE_API_KEY")),
-		EmbeddingProvider: embeddingProvider,
-		EmbeddingModel:    embeddingModel,
-		OllamaBaseURL:     ollamaURL,
+		Port:                   port,
+		DatabaseURL:            databaseURL,
+		JWTSecret:              jwtSecret,
+		CORSOrigins:            corsOrigins,
+		AnthropicApiKey:        strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
+		AnthropicModel:         anthropicModel,
+		AnthropicModelFast:     anthropicModelFast,
+		AnthropicModelPowerful: anthropicModelPowerful,
+		HuggingFaceApiKey:      strings.TrimSpace(os.Getenv("HUGGINGFACE_API_KEY")),
+		EmbeddingProvider:      embeddingProvider,
+		EmbeddingModel:         embeddingModel,
+		OllamaBaseURL:          ollamaURL,
 	}
 }

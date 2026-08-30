@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import BudgetManager from '../../components/Tenant/BudgetManager';
 import ProjectFormulation from '../../components/Tenant/ProjectFormulation';
 import ProjectSummary from '../../components/Tenant/ProjectSummary';
+import FormulationAuditPanel from '../../components/Tenant/MGA/FormulationAuditPanel';
 import {
   buildOfficialMgaReportData,
   downloadOfficialMgaReport,
@@ -30,6 +31,7 @@ export default function ProjectDetailPage() {
   const [tab, setTab] = useState<Tab>('formulation');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -117,6 +119,17 @@ export default function ProjectDetailPage() {
               <p className="text-sm text-gray-500 mt-1">{currentProject.sector}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTab('formulation');
+                  setAuditModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded border border-[#006162] bg-[#006162] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#004d4e]"
+              >
+                <span className="material-symbols-outlined text-base">fact_check</span>
+                Validar y Enviar
+              </button>
               <button
                 type="button"
                 onClick={() => void handleExportPdf()}
@@ -228,6 +241,34 @@ export default function ProjectDetailPage() {
           <ProjectSummary />
         </div>
       </div>
+
+      {auditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="audit-modal-title"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl"
+          >
+            <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+              <h2 id="audit-modal-title" className="text-lg font-semibold text-gray-800">
+                Auditoría previa de formulación
+              </h2>
+              <button
+                type="button"
+                onClick={() => setAuditModalOpen(false)}
+                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                aria-label="Cerrar"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+            <div className="p-4">
+              <FormulationAuditPanel projectId={currentProject.id} compact />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

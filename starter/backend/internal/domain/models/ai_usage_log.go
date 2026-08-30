@@ -12,6 +12,8 @@ type AiUsageLog struct {
 	UserID    uuid.UUID `gorm:"column:user_id;type:uuid;not null;index" json:"user_id"`
 	Role      string    `gorm:"column:role;type:varchar(50);not null;index" json:"role"`
 	Action    string    `gorm:"column:action;type:varchar(80);not null;index" json:"action"`
+	Intent    string    `gorm:"column:intent;type:varchar(40)" json:"intent,omitempty"`
+	Model     string    `gorm:"column:model;type:varchar(100)" json:"model,omitempty"`
 	CreatedAt time.Time `gorm:"column:created_at;not null;index" json:"created_at"`
 }
 

@@ -9,6 +9,7 @@ import PoblacionTab from './PoblacionTab';
 import ObjetivosTab from './ObjetivosTab';
 import AlternativasTab from './AlternativasTab';
 import CadenaValorTab from './CadenaValorTab';
+import FormulationAuditPanel from './FormulationAuditPanel';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
 
 type MgaTabId =
@@ -159,6 +160,10 @@ export default function MgaFormulationShell({ project }: MgaFormulationShellProp
         {activeTab === 'objetivos' && <ObjetivosTab project={project} skipInitialFetch />}
         {activeTab === 'cadena-valor' && <CadenaValorTab project={project} />}
         {activeTab === 'alternativas' && <AlternativasTab project={project} />}
+      </div>
+
+      <div className="pt-4 border-t border-gray-200">
+        <FormulationAuditPanel projectId={project.id} />
       </div>
     </div>
   );

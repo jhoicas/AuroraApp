@@ -13,6 +13,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"aurora-backend/internal/config"
 )
 
 type identity struct {
@@ -23,6 +25,14 @@ type identity struct {
 
 func validIdentity() identity {
 	return identity{userID: uuid.NewString(), role: "SUPER_ADMIN", tenantID: uuid.NewString()}
+}
+
+func testChatCfg() *config.Config {
+	return &config.Config{
+		AnthropicModelFast:     "fast-model",
+		AnthropicModelPowerful: "powerful-model",
+		AnthropicModel:         "fast-model",
+	}
 }
 
 // injectIdentity simula el middleware RequireAuth poblando Locals desde el JWT.

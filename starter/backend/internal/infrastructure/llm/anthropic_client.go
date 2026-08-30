@@ -53,12 +53,20 @@ type chatResponse struct {
 
 // Chat envía mensajes a la API Messages de Anthropic (sin OpenAI).
 func (c *AnthropicClient) Chat(systemPrompt string, messages []Message) (string, error) {
+	return c.ChatWithModel(systemPrompt, messages, c.model)
+}
+
+// ChatWithModel envía mensajes usando el modelo indicado (vacío = modelo por defecto del cliente).
+func (c *AnthropicClient) ChatWithModel(systemPrompt string, messages []Message, model string) (string, error) {
+	if model == "" {
+		model = c.model
+	}
 	if c.apiKey == "" {
 		return "", fmt.Errorf("ANTHROPIC_API_KEY not configured")
 	}
 
 	payload := chatRequest{
-		Model:     c.model,
+		Model:     model,
 		MaxTokens: 1200,
 		System:    systemPrompt,
 		Messages:  messages,

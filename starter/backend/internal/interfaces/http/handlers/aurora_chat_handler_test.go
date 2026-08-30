@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/interfaces/http/dto"
 
 	"github.com/google/uuid"
@@ -33,7 +35,7 @@ func TestAuroraChat_Success_PersistsPairAndReturnsCards(t *testing.T) {
 		reply: "Te recomiendo el ODS 6.1.\n\n```aurora-actions\n{\"action_cards\":[{\"catalog\":\"ods\",\"code\":\"6.1\",\"label\":\"Agua limpia\"}]}\n```",
 	}
 
-	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil)
+	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -54,7 +56,7 @@ func TestAuroraChat_Success_PersistsPairAndReturnsCards(t *testing.T) {
 	assert.NotEmpty(t, body.SessionID)
 	assert.NotEmpty(t, body.UserMsgID)
 	assert.NotEmpty(t, body.AssistantID)
-	assert.Equal(t, "claude-haiku-4-5-20251001", body.Model)
+	assert.Equal(t, "fast-model", body.Model)
 
 	// RAG debe haberse consultado e inyectado en el system prompt.
 	assert.Equal(t, 1, knowledge.SearchCalls())
@@ -72,7 +74,7 @@ func TestAuroraChat_Success_PersistsPairAndReturnsCards(t *testing.T) {
 func TestAuroraChat_ReusesProvidedSessionID(t *testing.T) {
 	id := validIdentity()
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil)
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -183,7 +185,7 @@ func TestAuroraChat_ErrorTable(t *testing.T) {
 				deps.llm = &mockLLM{reply: "ok"}
 			}
 
-			h := NewAuroraChatHandlerWithDeps(deps.knowledge, deps.chat, deps.embedder, deps.llm, nil)
+			h := NewAuroraChatHandlerWithDeps(deps.knowledge, deps.chat, deps.embedder, deps.llm, nil, testChatCfg())
 			app := newTestApp()
 			app.Post("/chat", injectIdentity(tt.id), h.Chat)
 
@@ -226,7 +228,7 @@ func TestAuroraChat_RAGDegradesGracefully(t *testing.T) {
 			}
 			llmMock := &mockLLM{reply: "Respuesta sin contexto"}
 
-			h := NewAuroraChatHandlerWithDeps(deps.knowledge, &mockChatStore{}, deps.embedder, llmMock, nil)
+			h := NewAuroraChatHandlerWithDeps(deps.knowledge, &mockChatStore{}, deps.embedder, llmMock, nil, testChatCfg())
 			app := newTestApp()
 			app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -245,7 +247,7 @@ func TestAuroraChat_RAGTruncatesLongContent(t *testing.T) {
 		},
 	}
 	llmMock := &mockLLM{reply: "ok"}
-	h := NewAuroraChatHandlerWithDeps(knowledge, &mockChatStore{}, &mockEmbedder{}, llmMock, nil)
+	h := NewAuroraChatHandlerWithDeps(knowledge, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -262,7 +264,7 @@ func TestAuroraChat_WithoutTenantStillWorks(t *testing.T) {
 	// SUPER_ADMIN no tiene tenant_id: el handler debe funcionar igualmente.
 	id := identity{userID: uuid.NewString(), role: "SUPER_ADMIN"}
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil)
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -276,7 +278,7 @@ func TestAuroraChat_WithoutTenantStillWorks(t *testing.T) {
 func TestAuroraChat_InvalidTenantInLocalsIsIgnored(t *testing.T) {
 	id := identity{userID: uuid.NewString(), role: "TENANT", tenantID: "no-es-uuid"}
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil)
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -284,4 +286,55 @@ func TestAuroraChat_InvalidTenantInLocalsIsIgnored(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Len(t, chat.SavedPairs(), 1)
 	assert.Nil(t, chat.SavedPairs()[0].User.TenantID)
+}
+
+func TestAuroraChat_IntentRouting(t *testing.T) {
+	cfg := testChatCfg()
+	llmMock := &mockLLM{reply: "ok"}
+
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, cfg)
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message": "¿Qué es la viabilidad?",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "fast-model", llmMock.LastModel())
+
+	llmMock2 := &mockLLM{reply: "ok"}
+	h2 := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock2, nil, cfg)
+	app2 := newTestApp()
+	app2.Post("/chat", injectIdentity(validIdentity()), h2.Chat)
+
+	resp2 := doJSON(t, app2, http.MethodPost, "/chat", map[string]any{
+		"message": "Ayúdame a redactar el objetivo general",
+	})
+	require.Equal(t, http.StatusOK, resp2.StatusCode)
+	assert.Equal(t, "powerful-model", llmMock2.LastModel())
+}
+
+func TestAuroraChat_LogsCopilotTelemetry(t *testing.T) {
+	repo := newCaptureUsageRepo()
+	telemetry := services.NewTelemetryServiceWithRepo(repo, 8)
+	defer telemetry.Close()
+
+	llmMock := &mockLLM{reply: "ok"}
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, telemetry, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message": "Ayúdame a redactar el objetivo",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	select {
+	case entry := <-repo.entries:
+		assert.Equal(t, models.TelemetryAskCopilot, entry.Action)
+		assert.Equal(t, "INTENT_MGA_GENERATE", entry.Intent)
+		assert.Equal(t, "powerful-model", entry.Model)
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected telemetry entry")
+	}
 }

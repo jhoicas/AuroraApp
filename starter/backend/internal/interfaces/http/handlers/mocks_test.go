@@ -177,17 +177,23 @@ type mockLLM struct {
 	reply        string
 	err          error
 	model        string
+	lastModel    string
 	lastSystem   string
 	lastMessages []llm.Message
 	calls        int
 }
 
 func (m *mockLLM) Chat(systemPrompt string, messages []llm.Message) (string, error) {
+	return m.ChatWithModel(systemPrompt, messages, m.Model())
+}
+
+func (m *mockLLM) ChatWithModel(systemPrompt string, messages []llm.Message, model string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls++
 	m.lastSystem = systemPrompt
 	m.lastMessages = messages
+	m.lastModel = model
 	if m.err != nil {
 		return "", m.err
 	}
@@ -211,6 +217,12 @@ func (m *mockLLM) Calls() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.calls
+}
+
+func (m *mockLLM) LastModel() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastModel
 }
 
 // ---------------------------------------------------------------------------

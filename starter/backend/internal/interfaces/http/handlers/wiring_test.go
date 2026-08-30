@@ -30,11 +30,13 @@ func newSQLiteDB(t *testing.T) *gorm.DB {
 
 func testConfig() *config.Config {
 	return &config.Config{
-		JWTSecret:         "test-secret",
-		AnthropicApiKey:   "sk-test",
-		AnthropicModel:    "claude-haiku-4-5-20251001",
-		EmbeddingProvider: "mock",
-		EmbeddingModel:    "all-MiniLM-L6-v2",
+		JWTSecret:              "test-secret",
+		AnthropicApiKey:        "sk-test",
+		AnthropicModel:         "claude-haiku-4-5-20251001",
+		AnthropicModelFast:     "claude-haiku-4-5-20251001",
+		AnthropicModelPowerful: "claude-sonnet-4-20250514",
+		EmbeddingProvider:      "mock",
+		EmbeddingModel:         "all-MiniLM-L6-v2",
 	}
 }
 
@@ -88,7 +90,7 @@ func TestAuroraChat_EmitsTelemetry(t *testing.T) {
 	telemetry := services.NewTelemetryServiceWithRepo(repo, 8)
 	defer telemetry.Close()
 
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, &mockLLM{reply: "ok"}, telemetry)
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, &mockLLM{reply: "ok"}, telemetry, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 

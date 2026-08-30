@@ -14,6 +14,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	eh := handlers.NewProjectEvaluationHandler(db)
 	mh := handlers.NewMgaHandler(db)
 	peh := handlers.NewProjectEdtHandler(db)
+	fah := handlers.NewFormulationAuditHandler(db)
 
 	projects := app.Group("/api/v1/projects",
 		httpmw.RequireAuth(jwtSecret),
@@ -27,6 +28,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	projects.Patch("/:id/details", ph.UpdateDetails)
 	projects.Post("/:id/evaluate", eh.Evaluate)
 	projects.Get("/:id/evaluations", eh.ListEvaluations)
+	projects.Get("/:id/audit", fah.GetAuditReport)
 
 	projects.Post("/:id/budget", bh.Create)
 	projects.Get("/:id/budget", bh.List)

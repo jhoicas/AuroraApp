@@ -65,13 +65,29 @@ func (s *TelemetryService) Close() {
 
 // LogAsync encola un evento de telemetría sin bloquear al caller.
 func (s *TelemetryService) LogAsync(userID uuid.UUID, role, action string) {
-	entry := models.AiUsageLog{
+	s.enqueue(models.AiUsageLog{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Role:      role,
 		Action:    action,
 		CreatedAt: time.Now().UTC(),
-	}
+	})
+}
+
+// LogCopilotAsync registra uso del copiloto con intención y modelo para trazabilidad de costos.
+func (s *TelemetryService) LogCopilotAsync(userID uuid.UUID, role, intent, model string) {
+	s.enqueue(models.AiUsageLog{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Role:      role,
+		Action:    models.TelemetryAskCopilot,
+		Intent:    intent,
+		Model:     model,
+		CreatedAt: time.Now().UTC(),
+	})
+}
+
+func (s *TelemetryService) enqueue(entry models.AiUsageLog) {
 	select {
 	case s.ch <- entry:
 	default:

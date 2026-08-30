@@ -19,6 +19,24 @@ func NewMgaRepository(db *gorm.DB) *MgaRepository {
 	return &MgaRepository{db: db}
 }
 
+func (r *MgaRepository) CountCauses(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaCause{}).
+		Where("project_id = ? AND tenant_id = ?", projectID, tenantID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *MgaRepository) CountSpecificObjectives(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaSpecificObjective{}).
+		Where("project_id = ? AND tenant_id = ?", projectID, tenantID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *MgaRepository) ListCauses(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.MgaCause, error) {
 	causes := make([]models.MgaCause, 0)
 	err := r.db.WithContext(ctx).

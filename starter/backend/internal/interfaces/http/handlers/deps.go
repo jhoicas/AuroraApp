@@ -37,5 +37,6 @@ type ProjectFinder interface {
 // LLMClient abstrae el proveedor de lenguaje (exclusivamente Anthropic en producción).
 type LLMClient interface {
 	Chat(systemPrompt string, messages []llm.Message) (string, error)
+	ChatWithModel(systemPrompt string, messages []llm.Message, model string) (string, error)
 	Model() string
 }

@@ -173,3 +173,7 @@ export type {
   CreateActivityPayload,
   UpdateActivityPayload,
 } from './projectEdtApi';
+
+// --- Auditoría de formulación (Fase 4) ---
+export { getProjectAudit } from './formulationAuditApi';
+export type { AuditResult } from './formulationAuditApi';

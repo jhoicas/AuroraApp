@@ -30,6 +30,8 @@ func TestNewTelemetryService_SQLiteIntegration(t *testing.T) {
 			user_id TEXT NOT NULL,
 			role TEXT NOT NULL,
 			action TEXT NOT NULL,
+			intent TEXT,
+			model TEXT,
 			created_at DATETIME NOT NULL
 		)
 	`).Error)

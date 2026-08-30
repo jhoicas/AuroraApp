@@ -829,6 +829,8 @@ func ensureAiUsageLogsSchema(db *gorm.DB) {
 		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS user_id UUID`,
 		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS role VARCHAR(50)`,
 		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS action VARCHAR(80)`,
+		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS intent VARCHAR(40)`,
+		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS model VARCHAR(100)`,
 		`ALTER TABLE IF EXISTS ai_usage_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user ON ai_usage_logs (user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_role ON ai_usage_logs (role)`,

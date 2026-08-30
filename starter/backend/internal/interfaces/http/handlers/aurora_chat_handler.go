@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	appai "aurora-backend/internal/application/ai"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/domain/services"
@@ -24,6 +25,7 @@ type AuroraChatHandler struct {
 	embedder  services.EmbeddingProvider
 	anthropic LLMClient
 	telemetry *services.TelemetryService
+	cfg       *config.Config
 }
 
 func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AuroraChatHandler {
@@ -33,6 +35,7 @@ func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.T
 		services.NewEmbeddingProvider(cfg),
 		llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
 		telemetry,
+		cfg,
 	)
 }
 
@@ -43,6 +46,7 @@ func NewAuroraChatHandlerWithDeps(
 	embedder services.EmbeddingProvider,
 	anthropic LLMClient,
 	telemetry *services.TelemetryService,
+	cfg *config.Config,
 ) *AuroraChatHandler {
 	return &AuroraChatHandler{
 		repo:      repo,
@@ -50,6 +54,7 @@ func NewAuroraChatHandlerWithDeps(
 		embedder:  embedder,
 		anthropic: anthropic,
 		telemetry: telemetry,
+		cfg:       cfg,
 	}
 }
 
@@ -83,9 +88,12 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	ragContext := h.buildRAGContext(c, tenantID, req.Message)
 	system := buildAuroraSystemPrompt(req.RouteContext, ragContext)
 
-	raw, err := h.anthropic.Chat(system, []llm.Message{
+	intent := appai.ClassifyIntent(req.Message)
+	selectedModel := appai.ResolveModel(intent, h.cfg)
+
+	raw, err := h.anthropic.ChatWithModel(system, []llm.Message{
 		{Role: "user", Content: req.Message},
-	})
+	}, selectedModel)
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error": fmt.Sprintf("no se pudo contactar a Aurora (Anthropic): %v", err),
@@ -101,7 +109,7 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	)
 	assistantMsg := postgres.NewChatMessage(
 		userID, tenantID, sessionID,
-		models.ChatRoleAssistant, reply, h.anthropic.Model(), string(cardsJSON), req.RouteContext,
+		models.ChatRoleAssistant, reply, selectedModel, string(cardsJSON), req.RouteContext,
 	)
 
 	if err := h.chatRepo.SavePair(c.Context(), postgres.ChatMessagePair{
@@ -112,13 +120,13 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	}
 
 	if h.telemetry != nil {
-		h.telemetry.LogAsync(userID, role, models.TelemetryAskCopilot)
+		h.telemetry.LogCopilotAsync(userID, role, intent, selectedModel)
 	}
 
 	return c.JSON(dto.AuroraChatResponse{
 		Reply:       reply,
 		ActionCards: cards,
-		Model:       h.anthropic.Model(),
+		Model:       selectedModel,
 		SessionID:   sessionID,
 		UserMsgID:   userMsg.ID.String(),
 		AssistantID: assistantMsg.ID.String(),

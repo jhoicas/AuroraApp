@@ -3,13 +3,131 @@ import { ClipboardCheck, Loader2 } from 'lucide-react';
 import { useFormulationAuditStore } from '../../../store/formulationAuditStore';
 import MgaAlert from './MgaAlert';
 
+export type MgaAuditTabId =
+  | 'identificacion'
+  | 'participantes'
+  | 'poblacion'
+  | 'objetivos'
+  | 'cadena-valor'
+  | 'alternativas';
+
+const TAB_LABELS: Record<MgaAuditTabId, string> = {
+  identificacion: 'Identificación',
+  participantes: 'Participantes',
+  poblacion: 'Población',
+  objetivos: 'Objetivos',
+  'cadena-valor': 'Cadena de Valor',
+  alternativas: 'Alternativas',
+};
+
+function normalizeAuditMessage(message: string): string {
+  return message
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Determina la pestaña MGA donde el usuario debe corregir un hallazgo de auditoría. */
+export function getTabForAuditIssue(message: string): { tabId: MgaAuditTabId; label: string } {
+  const m = normalizeAuditMessage(message);
+
+  if (
+    m.includes('objetivo general') ||
+    m.includes('objetivo especifico') ||
+    m.includes('indicador')
+  ) {
+    return { tabId: 'objetivos', label: TAB_LABELS.objetivos };
+  }
+  if (
+    m.includes('cadena de valor') ||
+    /\bedt\b/.test(m) ||
+    m.includes('entregable') ||
+    m.includes('actividad')
+  ) {
+    return { tabId: 'cadena-valor', label: TAB_LABELS['cadena-valor'] };
+  }
+  if (m.includes('alternativa')) {
+    return { tabId: 'alternativas', label: TAB_LABELS.alternativas };
+  }
+  if (m.includes('participante') || /\bactor\b/.test(m)) {
+    return { tabId: 'participantes', label: TAB_LABELS.participantes };
+  }
+  if (
+    m.includes('poblacion') ||
+    m.includes('poblacion afectada') ||
+    m.includes('demografia') ||
+    /\bobjetivo\b/.test(m)
+  ) {
+    return { tabId: 'poblacion', label: TAB_LABELS.poblacion };
+  }
+  if (
+    m.includes('problema central') ||
+    m.includes('problema') ||
+    m.includes('causa') ||
+    m.includes('efecto')
+  ) {
+    return { tabId: 'identificacion', label: TAB_LABELS.identificacion };
+  }
+
+  return { tabId: 'identificacion', label: TAB_LABELS.identificacion };
+}
+
 type FormulationAuditPanelProps = {
   projectId: string;
   /** Variante compacta para modal del encabezado del proyecto */
   compact?: boolean;
+  onNavigateToTab?: (tabId: MgaAuditTabId) => void;
 };
 
-export default function FormulationAuditPanel({ projectId, compact = false }: FormulationAuditPanelProps) {
+type AuditIssueRowProps = {
+  message: string;
+  variant: 'blocker' | 'warning';
+  onNavigateToTab?: (tabId: MgaAuditTabId) => void;
+};
+
+function AuditIssueRow({ message, variant, onNavigateToTab }: AuditIssueRowProps) {
+  const target = getTabForAuditIssue(message);
+  const isBlocker = variant === 'blocker';
+
+  return (
+    <li
+      className={`flex items-start justify-between gap-3 rounded-md px-2 py-1.5 -mx-2 ${
+        isBlocker ? 'hover:bg-red-100/60' : 'hover:bg-amber-100/60'
+      }`}
+    >
+      <div
+        className={`flex items-start gap-2 text-sm min-w-0 ${
+          isBlocker ? 'text-red-800' : 'text-amber-900'
+        }`}
+      >
+        <span className="shrink-0" aria-hidden>
+          {isBlocker ? '❌' : '⚠️'}
+        </span>
+        <span>{message}</span>
+      </div>
+      {onNavigateToTab && (
+        <button
+          type="button"
+          onClick={() => onNavigateToTab(target.tabId)}
+          className={`shrink-0 text-xs font-medium whitespace-nowrap rounded px-2 py-1 transition-colors ${
+            isBlocker
+              ? 'text-[#c0392b] hover:bg-red-100 hover:text-red-900'
+              : 'text-amber-800 hover:bg-amber-100 hover:text-amber-950'
+          }`}
+          title={`Ir a ${target.label}`}
+        >
+          Ir a corregir ↗
+        </button>
+      )}
+    </li>
+  );
+}
+
+export default function FormulationAuditPanel({
+  projectId,
+  compact = false,
+  onNavigateToTab,
+}: FormulationAuditPanelProps) {
   const auditResult = useFormulationAuditStore((s) => s.auditResult);
   const isAuditing = useFormulationAuditStore((s) => s.isAuditing);
   const error = useFormulationAuditStore((s) => s.error);
@@ -110,17 +228,14 @@ export default function FormulationAuditPanel({ projectId, compact = false }: Fo
               <h4 className="text-sm font-semibold text-red-800 mb-2">
                 Hallazgos críticos ({auditResult.blockers.length})
               </h4>
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {auditResult.blockers.map((blocker) => (
-                  <li
+                  <AuditIssueRow
                     key={blocker}
-                    className="flex items-start gap-2 text-sm text-red-800"
-                  >
-                    <span className="shrink-0" aria-hidden>
-                      ❌
-                    </span>
-                    <span>{blocker}</span>
-                  </li>
+                    message={blocker}
+                    variant="blocker"
+                    onNavigateToTab={onNavigateToTab}
+                  />
                 ))}
               </ul>
             </div>
@@ -131,17 +246,14 @@ export default function FormulationAuditPanel({ projectId, compact = false }: Fo
               <h4 className="text-sm font-semibold text-amber-900 mb-2">
                 Advertencias ({auditResult.warnings.length})
               </h4>
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {auditResult.warnings.map((warning) => (
-                  <li
+                  <AuditIssueRow
                     key={warning}
-                    className="flex items-start gap-2 text-sm text-amber-900"
-                  >
-                    <span className="shrink-0" aria-hidden>
-                      ⚠️
-                    </span>
-                    <span>{warning}</span>
-                  </li>
+                    message={warning}
+                    variant="warning"
+                    onNavigateToTab={onNavigateToTab}
+                  />
                 ))}
               </ul>
             </div>

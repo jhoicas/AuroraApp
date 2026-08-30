@@ -2,10 +2,14 @@ import { type FormEvent, useEffect, useState } from 'react';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import MgaModeToggle from './MGA/MgaModeToggle';
 import MgaFormulationShell from './MGA/MgaFormulationShell';
+import type { MgaAuditTabId } from './MGA/FormulationAuditPanel';
 import { useProjectStore, type Project } from '../../store/projectStore';
 
 type ProjectFormulationProps = {
   project: Project;
+  pendingMgaTab?: MgaAuditTabId | null;
+  onPendingMgaTabConsumed?: () => void;
+  formulationAnchorRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function ModernFormulation({ project }: ProjectFormulationProps) {
@@ -104,12 +108,23 @@ function ModernFormulation({ project }: ProjectFormulationProps) {
   );
 }
 
-export default function ProjectFormulation({ project }: ProjectFormulationProps) {
+export default function ProjectFormulation({
+  project,
+  pendingMgaTab,
+  onPendingMgaTabConsumed,
+  formulationAnchorRef,
+}: ProjectFormulationProps) {
   const currentProject = useProjectStore((s) => s.currentProject) ?? project;
   const [isMgaMode, setIsMgaMode] = useState(false);
 
+  useEffect(() => {
+    if (pendingMgaTab) {
+      setIsMgaMode(true);
+    }
+  }, [pendingMgaTab]);
+
   return (
-    <div className="space-y-4">
+    <div ref={formulationAnchorRef} className="space-y-4 scroll-mt-6">
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
         <div>
           <p className="text-sm font-semibold text-gray-800">Formulación del proyecto</p>
@@ -123,7 +138,11 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
       </div>
 
       {isMgaMode ? (
-        <MgaFormulationShell project={currentProject} />
+        <MgaFormulationShell
+          project={currentProject}
+          pendingTab={pendingMgaTab}
+          onPendingTabConsumed={onPendingMgaTabConsumed}
+        />
       ) : (
         <ModernFormulation project={currentProject} />
       )}

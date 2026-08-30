@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import BudgetManager from '../../components/Tenant/BudgetManager';
 import ProjectFormulation from '../../components/Tenant/ProjectFormulation';
 import ProjectSummary from '../../components/Tenant/ProjectSummary';
-import FormulationAuditPanel from '../../components/Tenant/MGA/FormulationAuditPanel';
+import FormulationAuditPanel, {
+  type MgaAuditTabId,
+} from '../../components/Tenant/MGA/FormulationAuditPanel';
 import {
   buildOfficialMgaReportData,
   downloadOfficialMgaReport,
@@ -32,6 +34,17 @@ export default function ProjectDetailPage() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [pendingMgaTab, setPendingMgaTab] = useState<MgaAuditTabId | null>(null);
+  const formulationAnchorRef = useRef<HTMLDivElement>(null);
+
+  const handleAuditNavigateToTab = useCallback((tabId: MgaAuditTabId) => {
+    setTab('formulation');
+    setPendingMgaTab(tabId);
+    setAuditModalOpen(false);
+    window.requestAnimationFrame(() => {
+      formulationAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -232,7 +245,12 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className={tab === 'formulation' ? 'block print:hidden' : 'hidden'}>
-          <ProjectFormulation project={currentProject} />
+          <ProjectFormulation
+            project={currentProject}
+            pendingMgaTab={pendingMgaTab}
+            onPendingMgaTabConsumed={() => setPendingMgaTab(null)}
+            formulationAnchorRef={formulationAnchorRef}
+          />
         </div>
         <div className={tab === 'budget' ? 'block print:hidden' : 'hidden'}>
           <BudgetManager projectId={currentProject.id} />
@@ -264,7 +282,11 @@ export default function ProjectDetailPage() {
               </button>
             </div>
             <div className="p-4">
-              <FormulationAuditPanel projectId={currentProject.id} compact />
+              <FormulationAuditPanel
+                projectId={currentProject.id}
+                compact
+                onNavigateToTab={handleAuditNavigateToTab}
+              />
             </div>
           </div>
         </div>

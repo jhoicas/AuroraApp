@@ -9,16 +9,10 @@ import PoblacionTab from './PoblacionTab';
 import ObjetivosTab from './ObjetivosTab';
 import AlternativasTab from './AlternativasTab';
 import CadenaValorTab from './CadenaValorTab';
-import FormulationAuditPanel from './FormulationAuditPanel';
+import FormulationAuditPanel, { type MgaAuditTabId } from './FormulationAuditPanel';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
 
-type MgaTabId =
-  | 'identificacion'
-  | 'participantes'
-  | 'poblacion'
-  | 'objetivos'
-  | 'cadena-valor'
-  | 'alternativas';
+type MgaTabId = MgaAuditTabId;
 
 const TABS: { id: MgaTabId; label: string }[] = [
   { id: 'identificacion', label: 'Identificación' },
@@ -31,9 +25,16 @@ const TABS: { id: MgaTabId; label: string }[] = [
 
 type MgaFormulationShellProps = {
   project: Project;
+  /** Pestaña solicitada desde fuera (p. ej. modal de auditoría del header). */
+  pendingTab?: MgaTabId | null;
+  onPendingTabConsumed?: () => void;
 };
 
-export default function MgaFormulationShell({ project }: MgaFormulationShellProps) {
+export default function MgaFormulationShell({
+  project,
+  pendingTab,
+  onPendingTabConsumed,
+}: MgaFormulationShellProps) {
   const [activeTab, setActiveTab] = useState<MgaTabId>('identificacion');
   const [localError, setLocalError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -53,6 +54,12 @@ export default function MgaFormulationShell({ project }: MgaFormulationShellProp
 
   const problemDescription = project.problem_description ?? '';
   const generalObjective = project.general_objective ?? '';
+
+  useEffect(() => {
+    if (!pendingTab) return;
+    setActiveTab(pendingTab);
+    onPendingTabConsumed?.();
+  }, [onPendingTabConsumed, pendingTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +170,10 @@ export default function MgaFormulationShell({ project }: MgaFormulationShellProp
       </div>
 
       <div className="pt-4 border-t border-gray-200">
-        <FormulationAuditPanel projectId={project.id} />
+        <FormulationAuditPanel
+          projectId={project.id}
+          onNavigateToTab={(tabId) => setActiveTab(tabId)}
+        />
       </div>
     </div>
   );

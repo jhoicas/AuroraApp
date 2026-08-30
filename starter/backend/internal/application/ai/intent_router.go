@@ -58,5 +58,5 @@ func defaultFastModel() string {
 }
 
 func defaultPowerfulModel() string {
-	return "claude-sonnet-4-20250514"
+	return defaultFastModel()
 }

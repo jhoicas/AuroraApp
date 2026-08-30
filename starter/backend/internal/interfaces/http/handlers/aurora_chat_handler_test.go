@@ -356,13 +356,13 @@ func TestAuroraChat_FallbackToGemini(t *testing.T) {
 	var body dto.AuroraChatResponse
 	decodeBody(t, resp, &body)
 	assert.Equal(t, "Respuesta de contingencia", body.Reply)
-	assert.Equal(t, "gemini_fallback:gemini-2.0-flash", body.Model)
+	assert.Equal(t, "gemini_fallback:gemini-1.5-flash", body.Model)
 	assert.Equal(t, 1, anthropic.Calls())
 	assert.Equal(t, 1, gemini.Calls())
 
 	pairs := chat.SavedPairs()
 	require.Len(t, pairs, 1)
-	assert.Equal(t, "gemini_fallback:gemini-2.0-flash", pairs[0].Assistant.Model)
+	assert.Equal(t, "gemini_fallback:gemini-1.5-flash", pairs[0].Assistant.Model)
 }
 
 func TestAuroraChat_BothProvidersFail(t *testing.T) {
@@ -401,7 +401,7 @@ func TestAuroraChat_FallbackLogsGeminiTelemetry(t *testing.T) {
 
 	select {
 	case entry := <-repo.entries:
-		assert.Equal(t, "gemini_fallback:gemini-2.0-flash", entry.Model)
+		assert.Equal(t, "gemini_fallback:gemini-1.5-flash", entry.Model)
 	case <-time.After(2 * time.Second):
 		t.Fatal("expected telemetry entry")
 	}

@@ -59,12 +59,12 @@ func LoadConfig() *Config {
 
 	anthropicModelPowerful := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL_POWERFUL"))
 	if anthropicModelPowerful == "" {
-		anthropicModelPowerful = "claude-sonnet-4-20250514"
+		anthropicModelPowerful = anthropicModel
 	}
 
 	geminiModel := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
 	if geminiModel == "" {
-		geminiModel = "gemini-2.0-flash"
+		geminiModel = "gemini-1.5-flash"
 	}
 
 	embeddingProvider := strings.ToLower(strings.TrimSpace(os.Getenv("EMBEDDING_PROVIDER")))

@@ -16,7 +16,7 @@ type AssistantChatPanelProps = {
   showClose?: boolean;
   className?: string;
   /** Callback al montar el input (p. ej. focus tras clic en nodo). */
-  inputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   /** Proyecto activo (detalle de formulación) para contexto de la IA. */
   project?: Project;
 };
@@ -63,7 +63,7 @@ export default function AssistantChatPanel({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const localInputRef = useRef<HTMLInputElement>(null);
+  const localInputRef = useRef<HTMLTextAreaElement>(null);
   const resolvedInputRef = inputRef ?? localInputRef;
 
   const {
@@ -227,10 +227,10 @@ export default function AssistantChatPanel({
       )}
 
       <footer className="p-3 border-t border-gray-100 shrink-0 bg-white">
-        <div className="flex gap-2">
-          <input
+        <div className="flex gap-2 items-end">
+          <textarea
             ref={resolvedInputRef}
-            type="text"
+            rows={2}
             value={draftInput}
             onChange={(e) => setDraftInput(e.target.value)}
             onKeyDown={(e) => {
@@ -242,13 +242,13 @@ export default function AssistantChatPanel({
             placeholder={inputPlaceholder}
             disabled={isTyping}
             aria-label="Mensaje para Aurora Asistente"
-            className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#006162]/40 focus:border-[#006162]"
+            className="flex-1 min-h-[60px] max-h-[200px] resize-none overflow-y-auto px-3 py-2.5 rounded-xl border border-gray-200 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#006162]/40 focus:border-[#006162] disabled:opacity-60 disabled:cursor-not-allowed"
           />
           {isTyping ? (
             <button
               type="button"
               onClick={cancelGeneration}
-              className="h-11 px-3 border border-red-200 rounded-xl text-red-600 text-sm font-medium"
+              className="shrink-0 h-11 px-3 border border-red-200 rounded-xl text-red-600 text-sm font-medium"
             >
               Detener
             </button>
@@ -257,7 +257,7 @@ export default function AssistantChatPanel({
               type="button"
               onClick={() => void handleSend()}
               disabled={!draftInput.trim()}
-              className="h-11 px-4 rounded-xl bg-[#006162] text-white text-sm font-semibold disabled:opacity-50"
+              className="shrink-0 h-11 px-4 rounded-xl bg-[#006162] text-white text-sm font-semibold disabled:opacity-50"
             >
               Enviar
             </button>

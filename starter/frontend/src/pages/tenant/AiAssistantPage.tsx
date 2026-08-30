@@ -12,7 +12,7 @@ import { nodeTypeLabels } from '../../store/aiKnowledgeStore';
  * cuando path === /tenant/ai, pero el chat embebido comparte el mismo store.
  */
 export default function AiAssistantPage() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const appendToDraft = useAuroraCopilotStore((s) => s.appendToDraft);
 
   const handleNodeSelect = useCallback(

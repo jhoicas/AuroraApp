@@ -35,7 +35,7 @@ func TestAuroraChat_Success_PersistsPairAndReturnsCards(t *testing.T) {
 		reply: "Te recomiendo el ODS 6.1.\n\n```aurora-actions\n{\"action_cards\":[{\"catalog\":\"ods\",\"code\":\"6.1\",\"label\":\"Agua limpia\"}]}\n```",
 	}
 
-	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -74,7 +74,7 @@ func TestAuroraChat_Success_PersistsPairAndReturnsCards(t *testing.T) {
 func TestAuroraChat_ReusesProvidedSessionID(t *testing.T) {
 	id := validIdentity()
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -143,20 +143,20 @@ func TestAuroraChat_ErrorTable(t *testing.T) {
 			wantErrPart: "RouteContext",
 		},
 		{
-			name:        "Anthropic no disponible → 502",
+			name:        "Anthropic no disponible sin Gemini → 502",
 			id:          validIdentity(),
 			body:        map[string]any{"message": "hola"},
 			deps:        auroraDeps{llm: &mockLLM{err: errors.New("connection refused")}},
 			wantStatus:  http.StatusBadGateway,
-			wantErrPart: "Anthropic",
+			wantErrPart: "proveedores IA",
 		},
 		{
-			name:        "respuesta truncada/vacía de Anthropic → 502",
+			name:        "respuesta vacía de Anthropic sin Gemini → 502",
 			id:          validIdentity(),
 			body:        map[string]any{"message": "hola"},
 			deps:        auroraDeps{llm: &mockLLM{err: errors.New("empty response from anthropic")}},
 			wantStatus:  http.StatusBadGateway,
-			wantErrPart: "Anthropic",
+			wantErrPart: "proveedores IA",
 		},
 		{
 			name:        "fallo de BD al persistir historial → 500",
@@ -185,7 +185,7 @@ func TestAuroraChat_ErrorTable(t *testing.T) {
 				deps.llm = &mockLLM{reply: "ok"}
 			}
 
-			h := NewAuroraChatHandlerWithDeps(deps.knowledge, deps.chat, deps.embedder, deps.llm, nil, testChatCfg())
+			h := NewAuroraChatHandlerWithDeps(deps.knowledge, deps.chat, deps.embedder, deps.llm, nil, nil, testChatCfg())
 			app := newTestApp()
 			app.Post("/chat", injectIdentity(tt.id), h.Chat)
 
@@ -228,7 +228,7 @@ func TestAuroraChat_RAGDegradesGracefully(t *testing.T) {
 			}
 			llmMock := &mockLLM{reply: "Respuesta sin contexto"}
 
-			h := NewAuroraChatHandlerWithDeps(deps.knowledge, &mockChatStore{}, deps.embedder, llmMock, nil, testChatCfg())
+			h := NewAuroraChatHandlerWithDeps(deps.knowledge, &mockChatStore{}, deps.embedder, llmMock, nil, nil, testChatCfg())
 			app := newTestApp()
 			app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -247,7 +247,7 @@ func TestAuroraChat_RAGTruncatesLongContent(t *testing.T) {
 		},
 	}
 	llmMock := &mockLLM{reply: "ok"}
-	h := NewAuroraChatHandlerWithDeps(knowledge, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(knowledge, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -264,7 +264,7 @@ func TestAuroraChat_WithoutTenantStillWorks(t *testing.T) {
 	// SUPER_ADMIN no tiene tenant_id: el handler debe funcionar igualmente.
 	id := identity{userID: uuid.NewString(), role: "SUPER_ADMIN"}
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -278,7 +278,7 @@ func TestAuroraChat_WithoutTenantStillWorks(t *testing.T) {
 func TestAuroraChat_InvalidTenantInLocalsIsIgnored(t *testing.T) {
 	id := identity{userID: uuid.NewString(), role: "TENANT", tenantID: "no-es-uuid"}
 	chat := &mockChatStore{}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, nil, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(id), h.Chat)
 
@@ -292,7 +292,7 @@ func TestAuroraChat_IntentRouting(t *testing.T) {
 	cfg := testChatCfg()
 	llmMock := &mockLLM{reply: "ok"}
 
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, cfg)
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, nil, cfg)
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -303,7 +303,7 @@ func TestAuroraChat_IntentRouting(t *testing.T) {
 	assert.Equal(t, "fast-model", llmMock.LastModel())
 
 	llmMock2 := &mockLLM{reply: "ok"}
-	h2 := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock2, nil, cfg)
+	h2 := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock2, nil, nil, cfg)
 	app2 := newTestApp()
 	app2.Post("/chat", injectIdentity(validIdentity()), h2.Chat)
 
@@ -320,7 +320,7 @@ func TestAuroraChat_LogsCopilotTelemetry(t *testing.T) {
 	defer telemetry.Close()
 
 	llmMock := &mockLLM{reply: "ok"}
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, telemetry, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, telemetry, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 
@@ -334,6 +334,74 @@ func TestAuroraChat_LogsCopilotTelemetry(t *testing.T) {
 		assert.Equal(t, models.TelemetryAskCopilot, entry.Action)
 		assert.Equal(t, "INTENT_MGA_GENERATE", entry.Intent)
 		assert.Equal(t, "powerful-model", entry.Model)
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected telemetry entry")
+	}
+}
+
+func TestAuroraChat_FallbackToGemini(t *testing.T) {
+	anthropic := &mockLLM{err: errors.New("429 rate limit")}
+	gemini := &mockLLM{reply: "Respuesta de contingencia"}
+	chat := &mockChatStore{}
+
+	h := NewAuroraChatHandlerWithDeps(
+		&mockKnowledgeStore{}, chat, &mockEmbedder{}, anthropic, gemini, nil, testChatCfg(),
+	)
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{"message": "hola"})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body dto.AuroraChatResponse
+	decodeBody(t, resp, &body)
+	assert.Equal(t, "Respuesta de contingencia", body.Reply)
+	assert.Equal(t, "gemini_fallback:gemini-2.0-flash", body.Model)
+	assert.Equal(t, 1, anthropic.Calls())
+	assert.Equal(t, 1, gemini.Calls())
+
+	pairs := chat.SavedPairs()
+	require.Len(t, pairs, 1)
+	assert.Equal(t, "gemini_fallback:gemini-2.0-flash", pairs[0].Assistant.Model)
+}
+
+func TestAuroraChat_BothProvidersFail(t *testing.T) {
+	anthropic := &mockLLM{err: errors.New("anthropic down")}
+	gemini := &mockLLM{err: errors.New("gemini down")}
+
+	h := NewAuroraChatHandlerWithDeps(
+		&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, anthropic, gemini, nil, testChatCfg(),
+	)
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{"message": "hola"})
+	payload := requireErrorJSON(t, resp, http.StatusBadGateway)
+	assert.Contains(t, payload.Error, "proveedores IA")
+	assert.Contains(t, payload.Error, "anthropic down")
+	assert.Contains(t, payload.Error, "gemini down")
+}
+
+func TestAuroraChat_FallbackLogsGeminiTelemetry(t *testing.T) {
+	repo := newCaptureUsageRepo()
+	telemetry := services.NewTelemetryServiceWithRepo(repo, 8)
+	defer telemetry.Close()
+
+	anthropic := &mockLLM{err: errors.New("500 server error")}
+	gemini := &mockLLM{reply: "ok"}
+
+	h := NewAuroraChatHandlerWithDeps(
+		&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, anthropic, gemini, telemetry, testChatCfg(),
+	)
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{"message": "hola"})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	select {
+	case entry := <-repo.entries:
+		assert.Equal(t, "gemini_fallback:gemini-2.0-flash", entry.Model)
 	case <-time.After(2 * time.Second):
 		t.Fatal("expected telemetry entry")
 	}

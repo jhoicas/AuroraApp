@@ -17,6 +17,8 @@ type Config struct {
 	AnthropicModel         string
 	AnthropicModelFast     string
 	AnthropicModelPowerful string
+	GeminiApiKey           string
+	GeminiModel            string
 	HuggingFaceApiKey      string
 	EmbeddingProvider      string // huggingface | ollama | mock
 	EmbeddingModel         string
@@ -60,6 +62,11 @@ func LoadConfig() *Config {
 		anthropicModelPowerful = "claude-sonnet-4-20250514"
 	}
 
+	geminiModel := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
+	if geminiModel == "" {
+		geminiModel = "gemini-2.0-flash"
+	}
+
 	embeddingProvider := strings.ToLower(strings.TrimSpace(os.Getenv("EMBEDDING_PROVIDER")))
 	if embeddingProvider == "" {
 		if strings.TrimSpace(os.Getenv("HUGGINGFACE_API_KEY")) != "" {
@@ -100,6 +107,8 @@ func LoadConfig() *Config {
 		AnthropicModel:         anthropicModel,
 		AnthropicModelFast:     anthropicModelFast,
 		AnthropicModelPowerful: anthropicModelPowerful,
+		GeminiApiKey:           strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
+		GeminiModel:            geminiModel,
 		HuggingFaceApiKey:      strings.TrimSpace(os.Getenv("HUGGINGFACE_API_KEY")),
 		EmbeddingProvider:      embeddingProvider,
 		EmbeddingModel:         embeddingModel,

@@ -90,7 +90,7 @@ func TestAuroraChat_EmitsTelemetry(t *testing.T) {
 	telemetry := services.NewTelemetryServiceWithRepo(repo, 8)
 	defer telemetry.Close()
 
-	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, &mockLLM{reply: "ok"}, telemetry, testChatCfg())
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, &mockLLM{reply: "ok"}, nil, telemetry, testChatCfg())
 	app := newTestApp()
 	app.Post("/chat", injectIdentity(validIdentity()), h.Chat)
 

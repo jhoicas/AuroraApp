@@ -34,7 +34,7 @@ type ProjectFinder interface {
 	FindOwned(ctx context.Context, projectID, tenantID uuid.UUID) (*models.Project, error)
 }
 
-// LLMClient abstrae el proveedor de lenguaje (exclusivamente Anthropic en producción).
+// LLMClient abstrae proveedores de lenguaje (Anthropic primario, Gemini contingencia).
 type LLMClient interface {
 	Chat(systemPrompt string, messages []llm.Message) (string, error)
 	ChatWithModel(systemPrompt string, messages []llm.Message, model string) (string, error)

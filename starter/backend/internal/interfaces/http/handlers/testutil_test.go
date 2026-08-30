@@ -32,6 +32,7 @@ func testChatCfg() *config.Config {
 		AnthropicModelFast:     "fast-model",
 		AnthropicModelPowerful: "powerful-model",
 		AnthropicModel:         "fast-model",
+		GeminiModel:            "gemini-2.0-flash",
 	}
 }
 

@@ -37,11 +37,13 @@ type TelemetryLogRequest struct {
 }
 
 type AuditUsageLogItem struct {
-	ID        string `json:"id"`
-	UserID    string `json:"user_id"`
-	Role      string `json:"role"`
-	Action    string `json:"action"`
-	CreatedAt string `json:"created_at"`
+	ID         string `json:"id"`
+	UserID     string `json:"user_id"`
+	Role       string `json:"role,omitempty"`
+	Action     string `json:"action"`
+	TenantName string `json:"tenant_name"`
+	UserEmail  string `json:"user_email"`
+	CreatedAt  string `json:"created_at"`
 }
 
 type AuditChatMessageItem struct {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 
 	"github.com/gofiber/fiber/v2"
@@ -32,12 +33,13 @@ func newAuditApp(usage *mockUsageStore, chat *mockChatStore) *fiber.App {
 func TestListUsageLogs(t *testing.T) {
 	t.Run("éxito con paginación y sanitización XSS", func(t *testing.T) {
 		usage := &mockUsageStore{
-			rows: []models.AiUsageLog{
+			rows: []postgres.AiUsageLogAuditRow{
 				{
 					ID:        uuid.New(),
 					UserID:    uuid.New(),
 					Role:      "SUPER_ADMIN",
 					Action:    `<script>alert("xss")</script>`,
+					UserEmail: "admin@aurora.test",
 					CreatedAt: time.Now().UTC(),
 				},
 			},
@@ -59,6 +61,8 @@ func TestListUsageLogs(t *testing.T) {
 
 		assert.NotContains(t, body.Data[0].Action, "<script>", "el contenido debe sanitizarse (XSS)")
 		assert.Contains(t, body.Data[0].Action, "&lt;script&gt;")
+		assert.Equal(t, "Sistema", body.Data[0].TenantName)
+		assert.Equal(t, "admin@aurora.test", body.Data[0].UserEmail)
 		assert.Equal(t, 2, usage.lastPage)
 		assert.Equal(t, 20, usage.lastSize)
 	})
@@ -163,4 +167,12 @@ func TestSanitizeText(t *testing.T) {
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, sanitizeText(tt.in))
 	}
+}
+
+func TestAuditTenantNameAndEmail(t *testing.T) {
+	assert.Equal(t, "Acme Corp", auditTenantName("Acme Corp", "TENANT"))
+	assert.Equal(t, "Sistema", auditTenantName("", "SUPER_ADMIN"))
+	assert.Equal(t, "N/A", auditTenantName("", "TENANT"))
+	assert.Equal(t, "user@test.com", auditUserEmail("user@test.com"))
+	assert.Equal(t, "N/A", auditUserEmail(""))
 }

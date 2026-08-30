@@ -4,8 +4,10 @@ import { api } from '../../lib/api';
 type AuditUsageLogItem = {
   id: string;
   user_id: string;
-  role: string;
+  role?: string;
   action: string;
+  tenant_name: string;
+  user_email: string;
   created_at: string;
 };
 
@@ -139,7 +141,7 @@ export default function AiAuditPanel() {
             <thead className="bg-gray-50 sticky top-0">
               <tr className="text-left text-xs uppercase text-gray-500">
                 <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Rol</th>
+                <th className="px-3 py-2">Tenant</th>
                 <th className="px-3 py-2">Acción</th>
                 <th className="px-3 py-2">Usuario</th>
               </tr>
@@ -148,9 +150,11 @@ export default function AiAuditPanel() {
               {usageLogs.map((row) => (
                 <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600">{formatDate(row.created_at)}</td>
-                  <td className="px-3 py-2">{row.role}</td>
+                  <td className="px-3 py-2">{row.tenant_name || 'N/A'}</td>
                   <td className="px-3 py-2 font-mono text-xs">{row.action}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500 truncate max-w-[120px]">{row.user_id}</td>
+                  <td className="px-3 py-2 text-xs text-gray-700 truncate max-w-[220px]" title={row.user_email}>
+                    {row.user_email || 'N/A'}
+                  </td>
                 </tr>
               ))}
             </tbody>

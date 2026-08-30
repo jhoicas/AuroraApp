@@ -124,14 +124,14 @@ func (m *mockChatStore) SavedPairs() []postgres.ChatMessagePair {
 // ---------------------------------------------------------------------------
 
 type mockUsageStore struct {
-	rows     []models.AiUsageLog
+	rows     []postgres.AiUsageLogAuditRow
 	total    int64
 	err      error
 	lastPage int
 	lastSize int
 }
 
-func (m *mockUsageStore) ListPaginated(_ context.Context, page, pageSize int) ([]models.AiUsageLog, int64, error) {
+func (m *mockUsageStore) ListPaginated(_ context.Context, page, pageSize int) ([]postgres.AiUsageLogAuditRow, int64, error) {
 	m.lastPage, m.lastSize = page, pageSize
 	if m.err != nil {
 		return nil, 0, m.err

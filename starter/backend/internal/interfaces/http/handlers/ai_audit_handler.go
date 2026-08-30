@@ -49,11 +49,13 @@ func (h *AIAuditHandler) ListUsageLogs(c *fiber.Ctx) error {
 	data := make([]dto.AuditUsageLogItem, 0, len(rows))
 	for _, r := range rows {
 		data = append(data, dto.AuditUsageLogItem{
-			ID:        r.ID.String(),
-			UserID:    r.UserID.String(),
-			Role:      sanitizeText(r.Role),
-			Action:    sanitizeText(r.Action),
-			CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+			ID:         r.ID.String(),
+			UserID:     r.UserID.String(),
+			Role:       sanitizeText(r.Role),
+			Action:     sanitizeText(r.Action),
+			TenantName: auditTenantName(r.TenantName, r.Role),
+			UserEmail:  auditUserEmail(r.UserEmail),
+			CreatedAt:  r.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -110,4 +112,23 @@ func (h *AIAuditHandler) ListChatMessages(c *fiber.Ctx) error {
 func sanitizeText(s string) string {
 	s = strings.TrimSpace(s)
 	return html.EscapeString(s)
+}
+
+func auditTenantName(tenantName, role string) string {
+	tenantName = strings.TrimSpace(tenantName)
+	if tenantName != "" {
+		return sanitizeText(tenantName)
+	}
+	if strings.EqualFold(strings.TrimSpace(role), "SUPER_ADMIN") {
+		return "Sistema"
+	}
+	return "N/A"
+}
+
+func auditUserEmail(email string) string {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return "N/A"
+	}
+	return sanitizeText(email)
 }

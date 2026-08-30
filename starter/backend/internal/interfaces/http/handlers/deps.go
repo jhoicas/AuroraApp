@@ -26,7 +26,7 @@ type ChatStore interface {
 
 // UsageLogStore abstrae la lectura paginada de telemetría para auditoría.
 type UsageLogStore interface {
-	ListPaginated(ctx context.Context, page, pageSize int) ([]models.AiUsageLog, int64, error)
+	ListPaginated(ctx context.Context, page, pageSize int) ([]postgres.AiUsageLogAuditRow, int64, error)
 }
 
 // ProjectFinder resuelve ownership multi-tenant de proyectos.

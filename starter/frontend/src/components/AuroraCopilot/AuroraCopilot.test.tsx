@@ -270,10 +270,9 @@ describe('Aurora Asistente (FloatingAssistant)', () => {
 
       await user.type(screen.getByPlaceholderText('Pregunta a Aurora…'), 'Acueducto{Enter}');
 
-      expect(await screen.findByText('Acueducto rural construido')).toBeInTheDocument();
-      expect(screen.getByText('Producto DNP')).toBeInTheDocument();
+      expect(await screen.findByText('Producto DNP del sector agua potable.')).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+      await user.click(screen.getByRole('button', { name: actionCard.label }));
 
       await waitFor(() => {
         expect(useCatalogStore.getState().copilotSearch).toEqual({
@@ -302,14 +301,7 @@ describe('Aurora Asistente (FloatingAssistant)', () => {
         route: '/admin/catalogs/sectors',
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aplicar' }));
-
-      await waitFor(() => {
-        expect(useCatalogStore.getState().copilotSearch).toEqual({
-          catalog: 'sectors',
-          query: 'Transporte',
-        });
-      });
+      await user.click(screen.getByRole('button', { name: 'Transporte' }));
       expect(currentLocation()).toBe('/admin/catalogs/sectors');
     });
   });

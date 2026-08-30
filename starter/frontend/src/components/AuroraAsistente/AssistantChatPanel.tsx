@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ActionCard from '../AuroraCopilot/ActionCard';
 import AssistantMarkdown from './AssistantMarkdown';
 import {
-  COPILOT_CATALOG_ROUTES,
   useAuroraCopilotStore,
   type ActionCardPayload,
 } from '../../store/auroraCopilotStore';
-import { useCatalogStore } from '../../store/catalogStore';
+import { dispatchActionCard } from '../../lib/auroraActionDispatcher';
 import type { Project } from '../../store/projectStore';
 
 type AssistantChatPanelProps = {
@@ -79,7 +78,7 @@ export default function AssistantChatPanel({
     clearChat,
     setDraftInput,
   } = useAuroraCopilotStore();
-  const applyCopilotSearch = useCatalogStore((s) => s.applyCopilotSearch);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -95,21 +94,20 @@ export default function AssistantChatPanel({
   }, [draftInput, isTyping, pathname, project, sendMessage]);
 
   const handleApply = useCallback(
-    (card: ActionCardPayload) => {
-      if (pathname.startsWith('/tenant')) {
-        navigate('/tenant/catalog');
-      } else {
-        const route = COPILOT_CATALOG_ROUTES[card.catalog];
-        if (route && pathname !== route) {
-          navigate(route);
-        }
+    async (card: ActionCardPayload) => {
+      if (!project?.id && card.type !== 'catalog_search' && !card.catalog) {
+        throw new Error('Abre un proyecto para aplicar esta sugerencia MGA');
       }
-      applyCopilotSearch(card.catalog, card.code || card.label);
-      if (variant === 'floating') {
-        close();
-      }
+      await dispatchActionCard(card, project?.id ?? '', {
+        navigate,
+        pathname,
+        variant,
+        onCloseAssistant: close,
+      });
+      setToast('¡Aplicado correctamente!');
+      window.setTimeout(() => setToast(null), 3500);
     },
-    [applyCopilotSearch, close, navigate, pathname, variant],
+    [close, navigate, pathname, project?.id, variant],
   );
 
   const headerTone =
@@ -193,8 +191,8 @@ export default function AssistantChatPanel({
               ) : (
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               )}
-              {msg.actionCards?.map((card) => (
-                <div key={`${card.catalog}-${card.code}`} className="mt-2">
+              {msg.actionCards?.map((card, index) => (
+                <div key={`${card.type ?? card.catalog ?? 'card'}-${card.code ?? index}`} className="mt-2">
                   <ActionCard card={card} onApply={handleApply} />
                 </div>
               ))}
@@ -206,6 +204,15 @@ export default function AssistantChatPanel({
           <p className="text-center text-xs text-gray-500 py-1">Aurora está escribiendo…</p>
         )}
       </div>
+
+      {toast && (
+        <div
+          role="status"
+          className="px-4 py-2 bg-teal-50 border-t border-teal-200 text-xs text-[#006162] font-medium"
+        >
+          {toast}
+        </div>
+      )}
 
       {error && (
         <div

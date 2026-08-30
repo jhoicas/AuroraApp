@@ -12,18 +12,34 @@ const auroraSystemPrompt = `Eres Aurora, una experta en la Metodología General 
 Guías a formuladores de proyectos de inversión pública de forma sencilla, empática y precisa.
 Responde siempre en español.
 
-Cuando el usuario necesite un código de catálogo (ODS, producto DNP, sector, programa, EDT, entregable o actividad),
-incluye al final de tu respuesta un bloque JSON EXACTO con este formato (sin markdown extra):
+Cuando sugieras correcciones gramaticales, redacciones de objetivos/causas/efectos o códigos de catálogo,
+incluye al final un bloque JSON EXACTO con este formato (sin markdown extra):
 
-` + "```aurora-actions\n" + `{"action_cards":[{"catalog":"ods","code":"1.1","label":"Fin de la pobreza","description":"Breve explicación"}]}
+` + "```aurora-actions\n" + `{"action_cards":[{"type":"mga_apply","label":"✨ Aplicar este objetivo","payload":{"field":"general_objective","value":"Mejorar la cobertura de acueducto rural en el municipio"}}]}
 ` + "```" + `
 
-Valores válidos para "catalog": ods, products, sectors, programs, edt, deliverables, activities.
-Si no hay sugerencias de catálogo, omite el bloque aurora-actions.
+Tipos de tarjeta ("type"):
+- "mga_apply": aplica texto sugerido a un campo MGA. payload.field puede ser:
+  general_objective, problem_description, specific_objective (requiere payload.relation_id),
+  effect_description (requiere payload.effect_id).
+  payload.value es el texto final sugerido.
+- "catalog_search": busca en catálogo DNP. Requiere catalog y code.
+  Valores válidos para catalog: ods, products, sectors, programs, edt, deliverables, activities.
+- "navigate": abre una ruta. payload.path con la URL interna (ej. /tenant/catalog).
+
+Ejemplo catálogo:
+{"action_cards":[{"type":"catalog_search","catalog":"ods","code":"6.1","label":"✨ Ver ODS 6.1","description":"Agua limpia"}]}
+
+Si no hay acciones sugeridas, omite el bloque aurora-actions.
 Nunca menciones OpenAI. Solo Anthropic Claude alimenta este asistente.`
 
 var auroraActionsBlock = regexp.MustCompile("(?s)```aurora-actions\\s*(\\{.*?\\})\\s*```")
 var jsonActionCards = regexp.MustCompile(`(?s)"action_cards"\s*:\s*\[`)
+
+var validCatalogTypes = map[string]struct{}{
+	"ods": {}, "products": {}, "sectors": {}, "programs": {},
+	"edt": {}, "deliverables": {}, "activities": {},
+}
 
 func buildAuroraSystemPrompt(routeContext, ragContext string) string {
 	var b strings.Builder
@@ -87,7 +103,7 @@ func parseAuroraResponse(raw string) (reply string, cards []dto.ActionCard) {
 			if reply == "" {
 				reply = raw
 			}
-			return reply, envelope.ActionCards
+			return reply, validateActionCards(envelope.ActionCards)
 		}
 	}
 
@@ -114,14 +130,70 @@ func extractActionCards(jsonFragment string) []dto.ActionCard {
 	if err := json.Unmarshal([]byte(jsonFragment), &payload); err != nil {
 		return nil
 	}
-	out := make([]dto.ActionCard, 0, len(payload.ActionCards))
-	for _, c := range payload.ActionCards {
-		c.Catalog = strings.ToLower(strings.TrimSpace(c.Catalog))
-		c.Code = strings.TrimSpace(c.Code)
-		c.Label = strings.TrimSpace(c.Label)
-		if c.Catalog != "" && c.Code != "" {
-			out = append(out, c)
+	return validateActionCards(payload.ActionCards)
+}
+
+func validateActionCards(cards []dto.ActionCard) []dto.ActionCard {
+	out := make([]dto.ActionCard, 0, len(cards))
+	for _, c := range cards {
+		if normalized, ok := normalizeActionCard(c); ok {
+			out = append(out, normalized)
 		}
 	}
 	return out
+}
+
+func normalizeActionCard(c dto.ActionCard) (dto.ActionCard, bool) {
+	c.Type = strings.ToLower(strings.TrimSpace(c.Type))
+	c.Catalog = strings.ToLower(strings.TrimSpace(c.Catalog))
+	c.Code = strings.TrimSpace(c.Code)
+	c.Label = strings.TrimSpace(c.Label)
+	c.Description = strings.TrimSpace(c.Description)
+
+	if c.Type == "" {
+		if c.Catalog != "" && c.Code != "" && c.Label != "" {
+			c.Type = "catalog_search"
+		} else {
+			return c, false
+		}
+	}
+
+	switch c.Type {
+	case "mga_apply":
+		if c.Label == "" || c.Payload == nil {
+			return c, false
+		}
+		field, _ := c.Payload["field"].(string)
+		value, _ := c.Payload["value"].(string)
+		if strings.TrimSpace(field) == "" || strings.TrimSpace(value) == "" {
+			return c, false
+		}
+		c.Payload["field"] = strings.TrimSpace(field)
+		c.Payload["value"] = strings.TrimSpace(value)
+		return c, true
+
+	case "catalog_search":
+		if c.Label == "" || c.Catalog == "" || c.Code == "" {
+			return c, false
+		}
+		if _, ok := validCatalogTypes[c.Catalog]; !ok {
+			return c, false
+		}
+		return c, true
+
+	case "navigate":
+		if c.Label == "" {
+			return c, false
+		}
+		if c.Payload == nil {
+			c.Payload = map[string]interface{}{}
+		}
+		if path, ok := c.Payload["path"].(string); ok {
+			c.Payload["path"] = strings.TrimSpace(path)
+		}
+		return c, true
+
+	default:
+		return c, false
+	}
 }

@@ -4,11 +4,15 @@ import { useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCatalogStore, type CopilotCatalogTarget } from './catalogStore';
 
+export type ActionCardType = 'mga_apply' | 'catalog_search' | 'navigate';
+
 export type ActionCardPayload = {
-  catalog: CopilotCatalogTarget;
-  code: string;
+  type?: ActionCardType;
+  catalog?: CopilotCatalogTarget;
+  code?: string;
   label: string;
   description?: string;
+  payload?: Record<string, unknown>;
 };
 
 export type CopilotMessage = {
@@ -20,7 +24,14 @@ export type CopilotMessage = {
 
 type AuroraChatResponse = {
   reply: string;
-  action_cards: ActionCardPayload[];
+  action_cards: Array<{
+    type?: ActionCardType;
+    catalog?: string;
+    code?: string;
+    label: string;
+    description?: string;
+    payload?: Record<string, unknown>;
+  }>;
   model: string;
   session_id: string;
   user_message_id: string;
@@ -155,12 +166,16 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
         id: data.assistant_message_id || `assistant-${Date.now()}`,
         role: 'assistant',
         content: data.reply,
-        actionCards: (data.action_cards ?? []).map((c) => ({
-          catalog: c.catalog as CopilotCatalogTarget,
-          code: c.code,
-          label: c.label,
-          description: c.description,
-        })),
+        actionCards: (data.action_cards ?? [])
+          .filter((c) => c.label?.trim())
+          .map((c) => ({
+            type: c.type,
+            catalog: c.catalog as CopilotCatalogTarget | undefined,
+            code: c.code ?? '',
+            label: c.label,
+            description: c.description,
+            payload: c.payload,
+          })),
       };
 
       set({

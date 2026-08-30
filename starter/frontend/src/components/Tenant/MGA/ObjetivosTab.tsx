@@ -14,9 +14,11 @@ import {
 
 type ObjetivosTabProps = {
   project: Project;
+  /** Cuando el shell padre ya cargó la formulación, evita un segundo fetch. */
+  skipInitialFetch?: boolean;
 };
 
-export default function ObjetivosTab({ project }: ObjetivosTabProps) {
+export default function ObjetivosTab({ project, skipInitialFetch = false }: ObjetivosTabProps) {
   const [acc1, setAcc1] = useState(true);
   const [acc2, setAcc2] = useState(true);
   const [editingIds, setEditingIds] = useState<Record<string, boolean>>({});
@@ -45,6 +47,11 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
   const { causeRelations, generalIndicators } = formulation;
 
   useEffect(() => {
+    if (skipInitialFetch) {
+      setIsInitializing(false);
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
@@ -79,6 +86,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     problemDescription,
     project.id,
     seedDefaultFormulation,
+    skipInitialFetch,
   ]);
 
   const toggleEditing = useCallback(

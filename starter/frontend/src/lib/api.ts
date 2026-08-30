@@ -93,15 +93,25 @@ api.interceptors.response.use(
   },
 );
 
-// --- Formulación MGA (causas, objetivos específicos, indicadores) ---
+// --- Formulación MGA ---
 export {
   fetchMgaFormulation,
-  listMgaCauses,
   createMgaCause,
   updateMgaCause,
   deleteMgaCause,
   updateMgaObjective,
-  listMgaIndicators,
+  createMgaEffect,
+  updateMgaEffect,
+  deleteMgaEffect,
+  createMgaParticipant,
+  updateMgaParticipant,
+  deleteMgaParticipant,
+  createMgaPopulation,
+  updateMgaPopulation,
+  deleteMgaPopulation,
+  createMgaAlternative,
+  updateMgaAlternative,
+  deleteMgaAlternative,
   createMgaIndicator,
   updateMgaIndicator,
   deleteMgaIndicator,
@@ -109,13 +119,57 @@ export {
 
 export type {
   MgaCauseType,
+  MgaEffectType,
+  MgaPopulationType,
   MgaSpecificObjective,
   MgaCause,
+  MgaEffect,
+  MgaParticipant,
+  MgaPopulation,
+  MgaAlternative,
   MgaIndicator,
+  FullMgaFormulation,
   MgaFormulation,
   CreateMgaCausePayload,
   UpdateMgaCausePayload,
   UpdateMgaObjectivePayload,
+  CreateMgaEffectPayload,
+  UpdateMgaEffectPayload,
+  CreateMgaParticipantPayload,
+  UpdateMgaParticipantPayload,
+  CreateMgaPopulationPayload,
+  UpdateMgaPopulationPayload,
+  CreateMgaAlternativePayload,
+  UpdateMgaAlternativePayload,
   CreateMgaIndicatorPayload,
   UpdateMgaIndicatorPayload,
 } from './mgaApi';
+
+// --- Cadena de valor EDT (Tipología A) ---
+export {
+  linkCatalogProduct,
+  getEdtChain,
+  createEdtNode,
+  updateEdtNode,
+  deleteEdtNode,
+  createDeliverable,
+  updateDeliverable,
+  deleteDeliverable,
+  createActivity,
+  updateActivity,
+  deleteActivity,
+} from './projectEdtApi';
+
+export type {
+  ProjectCatalogLink,
+  ProjectEdtNode,
+  ProjectDeliverable,
+  ProjectActivity,
+  EdtChainResponse,
+  CreateEdtNodePayload,
+  UpdateEdtNodePayload,
+  CreateDeliverablePayload,
+  UpdateDeliverablePayload,
+  CreateActivityPayload,
+  UpdateActivityPayload,
+} from './projectEdtApi';

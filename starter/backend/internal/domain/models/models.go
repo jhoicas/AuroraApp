@@ -27,7 +27,15 @@ func AllModels() []any {
 		&ProjectEvaluation{},
 		&BudgetItem{},
 		&MgaCause{},
+		&MgaEffect{},
 		&MgaSpecificObjective{},
 		&MgaIndicator{},
+		&MgaParticipant{},
+		&MgaPopulation{},
+		&MgaAlternative{},
+		&ProjectCatalogLink{},
+		&ProjectEdtNode{},
+		&ProjectDeliverable{},
+		&ProjectActivity{},
 	}
 }

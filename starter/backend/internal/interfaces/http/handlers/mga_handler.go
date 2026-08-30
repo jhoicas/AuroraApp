@@ -24,47 +24,7 @@ func NewMgaHandler(db *gorm.DB) *MgaHandler {
 }
 
 func (h *MgaHandler) GetFormulation(c *fiber.Ctx) error {
-	_, tenantID, err := httpmw.IdentityFromContext(c)
-	if err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	projectID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
-	}
-
-	if _, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID); err != nil {
-		if isNotFound(err) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to verify project ownership"})
-	}
-
-	causes, err := h.repo.ListCauses(c.Context(), projectID, tenantID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list mga causes"})
-	}
-
-	indicators, err := h.repo.ListIndicators(c.Context(), projectID, tenantID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list mga indicators"})
-	}
-
-	causeResponses := make([]dto.MgaCauseResponse, 0, len(causes))
-	for _, cause := range causes {
-		causeResponses = append(causeResponses, toMgaCauseResponse(cause))
-	}
-
-	indicatorResponses := make([]dto.MgaIndicatorResponse, 0, len(indicators))
-	for _, indicator := range indicators {
-		indicatorResponses = append(indicatorResponses, toMgaIndicatorResponse(indicator))
-	}
-
-	return c.JSON(dto.MgaFormulationResponse{
-		Causes:     causeResponses,
-		Indicators: indicatorResponses,
-	})
+	return h.GetFullFormulation(c)
 }
 
 func (h *MgaHandler) ListCauses(c *fiber.Ctx) error {

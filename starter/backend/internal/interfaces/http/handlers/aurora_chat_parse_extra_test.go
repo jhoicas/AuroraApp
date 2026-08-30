@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"aurora-backend/internal/interfaces/http/dto"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -139,6 +141,22 @@ func TestParseAuroraResponse_NormalizesCardFields(t *testing.T) {
 	assert.Equal(t, "ods", cards[0].Catalog)
 	assert.Equal(t, "2.1", cards[0].Code)
 	assert.Equal(t, "Hambre cero", cards[0].Label)
+}
+
+func TestValidateActionCards_MgaApply(t *testing.T) {
+	raw := "Texto.\n\n```aurora-actions\n{\"action_cards\":[{\"type\":\"mga_apply\",\"label\":\"✨ Aplicar objetivo\",\"payload\":{\"field\":\"general_objective\",\"value\":\"Mejorar el acceso al agua\"}}]}\n```"
+	_, cards := parseAuroraResponse(raw)
+	require.Len(t, cards, 1)
+	assert.Equal(t, "mga_apply", cards[0].Type)
+	assert.Equal(t, "general_objective", cards[0].Payload["field"])
+}
+
+func TestValidateActionCards_RejectsInvalidMgaApply(t *testing.T) {
+	cards := validateActionCards([]dto.ActionCard{{
+		Type:  "mga_apply",
+		Label: "Sin payload",
+	}})
+	assert.Empty(t, cards)
 }
 
 func TestExtractActionCards_InvalidJSONReturnsNil(t *testing.T) {

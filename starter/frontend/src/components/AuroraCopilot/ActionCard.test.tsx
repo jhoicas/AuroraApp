@@ -16,7 +16,7 @@ describe('ActionCard', () => {
     render(<ActionCard card={card} onApply={vi.fn()} />);
 
     expect(screen.getByText('ODS')).toBeInTheDocument();
-    expect(screen.getByText('Agua limpia y saneamiento')).toBeInTheDocument();
+    expect(screen.getAllByText('Agua limpia y saneamiento').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Código: 6.1')).toBeInTheDocument();
     expect(
       screen.getByText('Meta ODS aplicable a proyectos de acueducto rural.'),
@@ -33,15 +33,26 @@ describe('ActionCard', () => {
     expect(screen.getByText('Código: 6.1')).toBeInTheDocument();
   });
 
-  it('al hacer clic en "Aplicar" entrega la tarjeta completa al handler', async () => {
+  it('al hacer clic en el botón de la tarjeta entrega la tarjeta completa al handler', async () => {
     const user = userEvent.setup();
     const onApply = vi.fn();
 
     render(<ActionCard card={card} onApply={onApply} />);
-    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+    await user.click(screen.getByRole('button', { name: card.label }));
 
     expect(onApply).toHaveBeenCalledTimes(1);
     expect(onApply).toHaveBeenCalledWith(card);
+  });
+
+  it('deshabilita el botón tras aplicar con éxito', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn().mockResolvedValue(undefined);
+
+    render(<ActionCard card={card} onApply={onApply} />);
+    const button = screen.getByRole('button', { name: card.label });
+    await user.click(button);
+
+    expect(screen.getByRole('button', { name: '✓ Aplicado' })).toBeDisabled();
   });
 
   it.each([

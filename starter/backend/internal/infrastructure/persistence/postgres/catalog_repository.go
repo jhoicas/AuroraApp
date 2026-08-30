@@ -340,6 +340,24 @@ func (r *CatalogRepository) ListCatalogProducts(ctx context.Context, p CatalogPr
 	}, nil
 }
 
+// ListByProductCode devuelve todas las filas de catalogo_productos para un codigo_producto.
+// Implementa project.CatalogProductQuerier para TipologiaService.
+func (r *CatalogRepository) ListByProductCode(ctx context.Context, productCode string) ([]models.CatalogProduct, error) {
+	code := strings.TrimSpace(productCode)
+	if code == "" {
+		return nil, fmt.Errorf("product code is required")
+	}
+
+	items := make([]models.CatalogProduct, 0)
+	if err := r.db.WithContext(ctx).
+		Where("codigo_producto = ?", code).
+		Order("indicador_principal DESC, codigo_indicador_producto ASC").
+		Find(&items).Error; err != nil {
+		return nil, fmt.Errorf("list catalog products by code: %w", err)
+	}
+	return items, nil
+}
+
 // UpsertCatalogProductByCode inserta/actualiza por (codigo_producto, codigo_indicador_producto).
 func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item *models.CatalogProduct) (created bool, err error) {
 	now := time.Now().UTC()

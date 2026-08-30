@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import MgaModeToggle from './MGA/MgaModeToggle';
-import ObjetivosTab from './MGA/ObjetivosTab';
+import MgaFormulationShell from './MGA/MgaFormulationShell';
 import { useProjectStore, type Project } from '../../store/projectStore';
 
 type ProjectFormulationProps = {
@@ -122,7 +122,11 @@ export default function ProjectFormulation({ project }: ProjectFormulationProps)
         <MgaModeToggle enabled={isMgaMode} onChange={setIsMgaMode} />
       </div>
 
-      {isMgaMode ? <ObjetivosTab project={currentProject} /> : <ModernFormulation project={currentProject} />}
+      {isMgaMode ? (
+        <MgaFormulationShell project={currentProject} />
+      ) : (
+        <ModernFormulation project={currentProject} />
+      )}
     </div>
   );
 }

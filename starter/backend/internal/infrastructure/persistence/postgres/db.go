@@ -91,6 +91,30 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.MgaIndicator{}); err != nil {
 		log.Printf("automigrate MgaIndicator: %v", err)
 	}
+	if err := db.AutoMigrate(&models.MgaEffect{}); err != nil {
+		log.Printf("automigrate MgaEffect: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaParticipant{}); err != nil {
+		log.Printf("automigrate MgaParticipant: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaPopulation{}); err != nil {
+		log.Printf("automigrate MgaPopulation: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaAlternative{}); err != nil {
+		log.Printf("automigrate MgaAlternative: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ProjectCatalogLink{}); err != nil {
+		log.Printf("automigrate ProjectCatalogLink: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ProjectEdtNode{}); err != nil {
+		log.Printf("automigrate ProjectEdtNode: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ProjectDeliverable{}); err != nil {
+		log.Printf("automigrate ProjectDeliverable: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ProjectActivity{}); err != nil {
+		log.Printf("automigrate ProjectActivity: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -109,6 +133,8 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureProjectEvaluationsSchema(db)
 	ensureBudgetItemsSchema(db)
 	ensureMgaSchema(db)
+	ensureMgaExtendedSchema(db)
+	ensureProjectEdtSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -950,6 +976,256 @@ func ensureMgaSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_mga_indicators_tenant ON mga_indicators (tenant_id)`,
 	}
 	execSchemaStatements(db, "ensure mga schema", statements)
+}
+
+func ensureMgaExtendedSchema(db *gorm.DB) {
+	createEffectsSQL := `CREATE TABLE IF NOT EXISTS mga_effects (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			parent_id UUID,
+			effect_type VARCHAR(50) NOT NULL,
+			description TEXT NOT NULL,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createEffectsSQL).Error; err != nil {
+		log.Printf("ensure mga_effects schema: %v", err)
+	}
+
+	createParticipantsSQL := `CREATE TABLE IF NOT EXISTS mga_participants (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			actor TEXT NOT NULL,
+			entity TEXT NOT NULL,
+			position VARCHAR(100) NOT NULL,
+			interests TEXT NOT NULL,
+			contribution TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createParticipantsSQL).Error; err != nil {
+		log.Printf("ensure mga_participants schema: %v", err)
+	}
+
+	createPopulationsSQL := `CREATE TABLE IF NOT EXISTS mga_populations (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			population_type VARCHAR(50) NOT NULL,
+			total_number INTEGER NOT NULL DEFAULT 0,
+			source TEXT NOT NULL,
+			locations JSONB NOT NULL DEFAULT '[]',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createPopulationsSQL).Error; err != nil {
+		log.Printf("ensure mga_populations schema: %v", err)
+	}
+
+	createAlternativesSQL := `CREATE TABLE IF NOT EXISTS mga_alternatives (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			description TEXT NOT NULL,
+			evaluate_profitability BOOLEAN NOT NULL DEFAULT FALSE,
+			evaluate_cost BOOLEAN NOT NULL DEFAULT FALSE,
+			proceeds_to_preparation BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createAlternativesSQL).Error; err != nil {
+		log.Printf("ensure mga_alternatives schema: %v", err)
+	}
+
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_mga_effects_tenant_project ON mga_effects (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_effects_parent ON mga_effects (parent_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_effects_deleted_at ON mga_effects (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_participants_tenant_project ON mga_participants (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_participants_deleted_at ON mga_participants (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_populations_tenant_project ON mga_populations (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_populations_deleted_at ON mga_populations (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_alternatives_tenant_project ON mga_alternatives (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_alternatives_deleted_at ON mga_alternatives (deleted_at)`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS parent_id UUID`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS effect_type VARCHAR(50)`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS description TEXT`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS actor TEXT`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS entity TEXT`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS position VARCHAR(100)`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS interests TEXT`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS contribution TEXT`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS population_type VARCHAR(50)`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS total_number INTEGER DEFAULT 0`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS source TEXT`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS locations JSONB DEFAULT '[]'`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS description TEXT`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS evaluate_profitability BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS evaluate_cost BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS proceeds_to_preparation BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+	}
+	execSchemaStatements(db, "ensure mga extended schema", statements)
+}
+
+func ensureProjectEdtSchema(db *gorm.DB) {
+	if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS pgcrypto`).Error; err != nil {
+		log.Printf("ensure project edt schema: pgcrypto: %v", err)
+	}
+
+	createCatalogLinksSQL := `CREATE TABLE IF NOT EXISTS project_catalog_links (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			product_id UUID NOT NULL,
+			product_code VARCHAR(50) NOT NULL,
+			tipologia VARCHAR(10) NOT NULL DEFAULT '',
+			requires_edt BOOLEAN NOT NULL DEFAULT FALSE,
+			sector_code VARCHAR(50) NOT NULL DEFAULT '',
+			program_code VARCHAR(50) NOT NULL DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createCatalogLinksSQL).Error; err != nil {
+		log.Printf("ensure project_catalog_links schema: %v", err)
+	}
+
+	createEdtNodesSQL := `CREATE TABLE IF NOT EXISTS project_edt_nodes (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			catalog_edt_id UUID,
+			code VARCHAR(100) NOT NULL,
+			level INTEGER NOT NULL DEFAULT 1,
+			name TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createEdtNodesSQL).Error; err != nil {
+		log.Printf("ensure project_edt_nodes schema: %v", err)
+	}
+
+	createDeliverablesSQL := `CREATE TABLE IF NOT EXISTS project_deliverables (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			project_edt_node_id UUID NOT NULL,
+			catalog_deliverable_id UUID,
+			code VARCHAR(100) NOT NULL,
+			name TEXT NOT NULL,
+			amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createDeliverablesSQL).Error; err != nil {
+		log.Printf("ensure project_deliverables schema: %v", err)
+	}
+
+	createActivitiesSQL := `CREATE TABLE IF NOT EXISTS project_activities (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			project_deliverable_id UUID NOT NULL,
+			catalog_activity_id UUID,
+			code VARCHAR(100) NOT NULL,
+			name TEXT NOT NULL,
+			quantity NUMERIC(18,4) NOT NULL DEFAULT 0,
+			unit_cost NUMERIC(18,2) NOT NULL DEFAULT 0,
+			total_cost NUMERIC(18,2) NOT NULL DEFAULT 0,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createActivitiesSQL).Error; err != nil {
+		log.Printf("ensure project_activities schema: %v", err)
+	}
+
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_project_catalog_links_tenant_project ON project_catalog_links (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_catalog_links_deleted_at ON project_catalog_links (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_edt_nodes_tenant_project ON project_edt_nodes (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_edt_nodes_deleted_at ON project_edt_nodes (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_edt_nodes_catalog_edt ON project_edt_nodes (catalog_edt_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_deliverables_tenant_project ON project_deliverables (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_deliverables_edt_node ON project_deliverables (project_edt_node_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_deliverables_deleted_at ON project_deliverables (deleted_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_activities_tenant_project ON project_activities (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_activities_deliverable ON project_activities (project_deliverable_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_activities_deleted_at ON project_activities (deleted_at)`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS product_id UUID`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS product_code VARCHAR(50)`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS tipologia VARCHAR(10) DEFAULT ''`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS requires_edt BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS sector_code VARCHAR(50) DEFAULT ''`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS program_code VARCHAR(50) DEFAULT ''`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_catalog_links ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS catalog_edt_id UUID`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS code VARCHAR(100)`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS name TEXT`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_edt_nodes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS project_edt_node_id UUID`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS catalog_deliverable_id UUID`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS code VARCHAR(100)`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS name TEXT`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS amount NUMERIC(18,2) DEFAULT 0`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_deliverables ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS project_id UUID`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS project_deliverable_id UUID`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS catalog_activity_id UUID`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS code VARCHAR(100)`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS name TEXT`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS quantity NUMERIC(18,4) DEFAULT 0`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(18,2) DEFAULT 0`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS total_cost NUMERIC(18,2) DEFAULT 0`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+	}
+	execSchemaStatements(db, "ensure project edt schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

@@ -14,7 +14,7 @@ type ActionCard struct {
 
 type AuroraChatRequest struct {
 	Message      string `json:"message" validate:"required,min=1,max=8000"`
-	RouteContext string `json:"route_context" validate:"omitempty,max=500"`
+	RouteContext string `json:"route_context" validate:"omitempty,max=4000"`
 	SessionID    string `json:"session_id" validate:"omitempty,max=64"`
 }
 

@@ -136,9 +136,9 @@ func TestAuroraChat_ErrorTable(t *testing.T) {
 			wantErrPart: "Message",
 		},
 		{
-			name:        "route_context excede 500 caracteres",
+			name:        "route_context excede 4000 caracteres",
 			id:          validIdentity(),
-			body:        map[string]any{"message": "hola", "route_context": strings.Repeat("r", 501)},
+			body:        map[string]any{"message": "hola", "route_context": strings.Repeat("r", 4001)},
 			wantStatus:  http.StatusBadRequest,
 			wantErrPart: "RouteContext",
 		},

@@ -16,7 +16,7 @@ type AiChatMessage struct {
 	Content      string     `gorm:"column:content;type:text;not null" json:"content"`
 	Model        string     `gorm:"column:model;type:varchar(100)" json:"model,omitempty"`
 	ActionCards  string     `gorm:"column:action_cards;type:jsonb;default:'[]'" json:"action_cards"`
-	RouteContext string     `gorm:"column:route_context;type:varchar(500)" json:"route_context,omitempty"`
+	RouteContext string     `gorm:"column:route_context;type:varchar(4000)" json:"route_context,omitempty"`
 	CreatedAt    time.Time  `gorm:"column:created_at;not null;index" json:"created_at"`
 }
 

@@ -862,13 +862,14 @@ func ensureAiChatMessagesSchema(db *gorm.DB) {
 			content TEXT NOT NULL,
 			model VARCHAR(100),
 			action_cards JSONB DEFAULT '[]',
-			route_context VARCHAR(500),
+			route_context VARCHAR(4000),
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`
 	if err := db.Exec(createSQL).Error; err != nil {
 		log.Printf("ensure ai_chat_messages schema: %v", err)
 	}
 	statements := []string{
+		`ALTER TABLE IF EXISTS ai_chat_messages ALTER COLUMN route_context TYPE VARCHAR(4000)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user ON ai_chat_messages (user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session ON ai_chat_messages (session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_created ON ai_chat_messages (created_at DESC)`,

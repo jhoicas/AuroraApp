@@ -455,7 +455,8 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 			codigo_actividad VARCHAR(100) NOT NULL DEFAULT '',
 			actividad TEXT,
 			unidad_de_medida TEXT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ
 		)`
 	if err := db.Exec(createSQL).Error; err != nil {
 		// Fallback sin DEFAULT de extensión (pooler / permisos restringidos).
@@ -473,7 +474,8 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 			codigo_actividad VARCHAR(100) NOT NULL DEFAULT '',
 			actividad TEXT,
 			unidad_de_medida TEXT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ
 		)`
 		if err2 := db.Exec(fallback).Error; err2 != nil {
 			log.Printf("ensure catalogo_edt schema: CREATE TABLE failed: %v (fallback: %v)", err, err2)
@@ -496,10 +498,19 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS actividad TEXT`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS unidad_de_medida TEXT`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
 		`UPDATE catalogo_edt SET codigo_actividad = '' WHERE codigo_actividad IS NULL`,
+		`UPDATE catalogo_edt SET codigo_entregable_l1 = '' WHERE codigo_entregable_l1 IS NULL`,
+		`UPDATE catalogo_edt SET codigo_entregable_l2 = '' WHERE codigo_entregable_l2 IS NULL`,
+		`UPDATE catalogo_edt SET codigo_entregable_l3 = '' WHERE codigo_entregable_l3 IS NULL`,
 		`ALTER TABLE IF EXISTS catalogo_edt ALTER COLUMN codigo_actividad SET DEFAULT ''`,
 		`DO $$ BEGIN
 			ALTER TABLE catalogo_edt ALTER COLUMN codigo_actividad SET NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l1 SET DEFAULT '';
+			ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l2 SET DEFAULT '';
+			ALTER TABLE catalogo_edt ALTER COLUMN codigo_entregable_l3 SET DEFAULT '';
 		EXCEPTION WHEN others THEN NULL; END $$`,
 		`DO $$ BEGIN
 			ALTER TABLE catalogo_edt ALTER COLUMN nombre_producto TYPE TEXT;
@@ -520,8 +531,9 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 				USING trim(COALESCE(codigo_actividad::text, ''));
 		EXCEPTION WHEN others THEN NULL; END $$`,
 		`DROP INDEX IF EXISTS idx_edt_producto_actividad`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_edt_prod_act
-			ON catalogo_edt (codigo_producto_estandarizado, codigo_actividad)`,
+		`DROP INDEX IF EXISTS idx_edt_prod_act`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_edt_composite
+			ON catalogo_edt (codigo_producto_estandarizado, codigo_entregable_l1, codigo_entregable_l2, codigo_entregable_l3, codigo_actividad)`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_edt_producto
 			ON catalogo_edt (codigo_producto_estandarizado)`,
 	}

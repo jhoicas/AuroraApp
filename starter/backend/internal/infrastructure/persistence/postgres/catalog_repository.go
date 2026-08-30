@@ -702,11 +702,31 @@ type CatalogEdtListResult struct {
 const catalogEdtBatchSize = 500
 
 var catalogEdtUpsertColumns = []string{
-	"tenant_id", "nombre_producto",
-	"codigo_entregable_l1", "nombre_entregable_l1",
-	"codigo_entregable_l2", "nombre_entregable_l2",
-	"codigo_entregable_l3", "nombre_entregable_l3",
-	"actividad", "unidad_de_medida",
+	"nombre_producto",
+	"nombre_entregable_l1",
+	"nombre_entregable_l2",
+	"nombre_entregable_l3",
+	"actividad",
+	"unidad_de_medida",
+	"updated_at",
+}
+
+func normalizeCatalogEdtItem(it *models.CatalogEdt) {
+	it.CodigoProductoEstandarizado = strings.TrimSpace(it.CodigoProductoEstandarizado)
+	it.CodigoEntregableL1 = strings.TrimSpace(it.CodigoEntregableL1)
+	it.CodigoEntregableL2 = strings.TrimSpace(it.CodigoEntregableL2)
+	it.CodigoEntregableL3 = strings.TrimSpace(it.CodigoEntregableL3)
+	it.CodigoActividad = strings.TrimSpace(it.CodigoActividad)
+}
+
+func catalogEdtBusinessKey(it models.CatalogEdt) string {
+	return models.EdtCompositeKey(
+		it.CodigoProductoEstandarizado,
+		it.CodigoEntregableL1,
+		it.CodigoEntregableL2,
+		it.CodigoEntregableL3,
+		it.CodigoActividad,
+	)
 }
 
 // EdtBulkUpsertResult contadores de importación masiva EDT.
@@ -762,7 +782,7 @@ func (r *CatalogRepository) ListCatalogEdt(ctx context.Context, p CatalogEdtList
 	}, nil
 }
 
-// ExistingEdtCompositeKeys carga llaves producto_actividad ya existentes.
+// ExistingEdtCompositeKeys carga llaves de negocio EDT ya existentes (5 códigos).
 func (r *CatalogRepository) ExistingEdtCompositeKeys(ctx context.Context, productCodes []string) (map[string]struct{}, error) {
 	set := make(map[string]struct{})
 	if len(productCodes) == 0 {
@@ -790,22 +810,32 @@ func (r *CatalogRepository) ExistingEdtCompositeKeys(ctx context.Context, produc
 		}
 		var rows []struct {
 			CodigoProductoEstandarizado string `gorm:"column:codigo_producto_estandarizado"`
+			CodigoEntregableL1          string `gorm:"column:codigo_entregable_l1"`
+			CodigoEntregableL2          string `gorm:"column:codigo_entregable_l2"`
+			CodigoEntregableL3          string `gorm:"column:codigo_entregable_l3"`
 			CodigoActividad             string `gorm:"column:codigo_actividad"`
 		}
 		if err := r.db.WithContext(ctx).Model(&models.CatalogEdt{}).
-			Select("codigo_producto_estandarizado, codigo_actividad").
+			Select(`codigo_producto_estandarizado, codigo_entregable_l1, codigo_entregable_l2,
+				codigo_entregable_l3, codigo_actividad`).
 			Where("codigo_producto_estandarizado IN ?", uniq[i:end]).
 			Find(&rows).Error; err != nil {
 			return nil, fmt.Errorf("existing edt keys: %w", err)
 		}
 		for _, row := range rows {
-			set[models.EdtCompositeKey(row.CodigoProductoEstandarizado, row.CodigoActividad)] = struct{}{}
+			set[models.EdtCompositeKey(
+				row.CodigoProductoEstandarizado,
+				row.CodigoEntregableL1,
+				row.CodigoEntregableL2,
+				row.CodigoEntregableL3,
+				row.CodigoActividad,
+			)] = struct{}{}
 		}
 	}
 	return set, nil
 }
 
-// BulkUpsertCatalogEdt upsert por (codigo_producto_estandarizado, codigo_actividad) en lotes de 500.
+// BulkUpsertCatalogEdt upsert por llave compuesta de 5 códigos en lotes de 500.
 func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []models.CatalogEdt) (*EdtBulkUpsertResult, error) {
 	if len(items) == 0 {
 		return &EdtBulkUpsertResult{}, nil
@@ -815,12 +845,11 @@ func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []mo
 	order := make([]string, 0, len(items))
 	productCodes := make([]string, 0, len(items))
 	for _, it := range items {
-		it.CodigoProductoEstandarizado = strings.TrimSpace(it.CodigoProductoEstandarizado)
-		it.CodigoActividad = strings.TrimSpace(it.CodigoActividad)
+		normalizeCatalogEdtItem(&it)
 		if it.CodigoProductoEstandarizado == "" {
 			continue
 		}
-		key := models.EdtCompositeKey(it.CodigoProductoEstandarizado, it.CodigoActividad)
+		key := catalogEdtBusinessKey(it)
 		if _, seen := byKey[key]; !seen {
 			order = append(order, key)
 			productCodes = append(productCodes, it.CodigoProductoEstandarizado)
@@ -839,6 +868,7 @@ func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []mo
 		if it.CreatedAt.IsZero() {
 			it.CreatedAt = now
 		}
+		it.UpdatedAt = now
 		deduped = append(deduped, it)
 		keys = append(keys, key)
 	}
@@ -849,11 +879,12 @@ func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []mo
 	}
 
 	result := &EdtBulkUpsertResult{BatchErrors: make([]string, 0)}
-	// Equivale a: ON CONFLICT (codigo_producto_estandarizado, codigo_actividad) DO UPDATE SET ...
-	// La PK `id` no participa en el conflicto; se conserva el registro existente.
 	conflict := clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "codigo_producto_estandarizado"},
+			{Name: "codigo_entregable_l1"},
+			{Name: "codigo_entregable_l2"},
+			{Name: "codigo_entregable_l3"},
 			{Name: "codigo_actividad"},
 		},
 		DoUpdates: clause.AssignmentColumns(catalogEdtUpsertColumns),
@@ -868,10 +899,11 @@ func (r *CatalogRepository) BulkUpsertCatalogEdt(ctx context.Context, items []mo
 		if err := r.db.WithContext(ctx).Clauses(conflict).Create(&batch).Error; err != nil {
 			for _, item := range batch {
 				one := item
+				one.UpdatedAt = now
 				if errOne := r.db.WithContext(ctx).Clauses(conflict).Create(&one).Error; errOne != nil {
 					result.BatchErrors = append(result.BatchErrors, fmt.Sprintf(
 						"clave %s: %v",
-						models.EdtCompositeKey(one.CodigoProductoEstandarizado, one.CodigoActividad),
+						catalogEdtBusinessKey(one),
 						errOne,
 					))
 				}

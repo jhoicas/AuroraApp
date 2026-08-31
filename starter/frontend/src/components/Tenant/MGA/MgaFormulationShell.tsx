@@ -1,27 +1,15 @@
 import { useEffect, useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
+import { normalizeRole } from '../../../lib/roles';
 import MgaAlert from './MgaAlert';
-import IdentificacionTab from './IdentificacionTab';
-import ParticipantesTab from './ParticipantesTab';
-import PoblacionTab from './PoblacionTab';
-import ObjetivosTab from './ObjetivosTab';
-import AlternativasTab from './AlternativasTab';
-import CadenaValorTab from './CadenaValorTab';
 import FormulationAuditPanel, { type MgaAuditTabId } from './FormulationAuditPanel';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
+import MGALayout, { type MgaLayoutTabId } from './MGALayout';
 
 type MgaTabId = MgaAuditTabId;
-
-const TABS: { id: MgaTabId; label: string }[] = [
-  { id: 'identificacion', label: 'Identificación' },
-  { id: 'participantes', label: 'Participantes' },
-  { id: 'poblacion', label: 'Población' },
-  { id: 'objetivos', label: 'Objetivos' },
-  { id: 'cadena-valor', label: 'Cadena de Valor' },
-  { id: 'alternativas', label: 'Alternativas' },
-];
 
 type MgaFormulationShellProps = {
   project: Project;
@@ -30,12 +18,35 @@ type MgaFormulationShellProps = {
   onPendingTabConsumed?: () => void;
 };
 
+function formatRoleLabel(role: string | undefined): string {
+  const normalized = normalizeRole(role);
+  switch (normalized) {
+    case 'SUPER_ADMIN':
+      return 'Super administrador';
+    case 'TENANT_ADMIN':
+      return 'Administrador';
+    case 'FORMULADOR':
+      return 'Formulador';
+    case 'EVALUADOR':
+      return 'Evaluador';
+    case 'ANALISTA':
+      return 'Analista';
+    case 'VIEWER':
+      return 'Consulta';
+    default:
+      return normalized || 'Formulador';
+  }
+}
+
 export default function MgaFormulationShell({
   project,
   pendingTab,
   onPendingTabConsumed,
 }: MgaFormulationShellProps) {
-  const [activeTab, setActiveTab] = useState<MgaTabId>('identificacion');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<MgaLayoutTabId>('identificacion');
   const [localError, setLocalError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -107,74 +118,54 @@ export default function MgaFormulationShell({
 
   if (isBusy && !ready) {
     return (
-      <div className="bg-white p-6 border rounded-lg text-sm text-gray-500">
+      <div className="rounded-lg border bg-white p-6 text-sm text-gray-500">
         Cargando formulación MGA…
       </div>
     );
   }
 
+  const handleChangeSubTab = (tab: MgaLayoutTabId) => {
+    setActiveTab(tab);
+  };
+
+  const handleNavigateToAuditTab = (tabId: MgaTabId) => {
+    setActiveTab(tabId);
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-2">
-        <h2 className="text-lg font-normal text-[#2980b9] flex items-center gap-2 mr-auto">
-          Formulación MGA
-          <HelpCircle className="w-4 h-4 text-[#3498db]" aria-hidden />
-        </h2>
-        {isSavingAny && (
-          <span className="text-xs text-gray-500 animate-pulse">Guardando cambios…</span>
-        )}
-      </div>
-
-      {displayError && (
-        <MgaAlert
-          message={displayError}
-          onDismiss={() => {
-            setLocalError(null);
-            clearMgaError();
-            clearEdtError();
-          }}
-        />
-      )}
-
-      <nav
-        className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-lg"
-        aria-label="Secciones de formulación MGA"
-      >
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive
-                  ? 'bg-[#2980b9] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-white hover:text-[#2980b9]'
-              }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="min-h-[320px]">
-        {activeTab === 'identificacion' && <IdentificacionTab project={project} />}
-        {activeTab === 'participantes' && <ParticipantesTab project={project} />}
-        {activeTab === 'poblacion' && <PoblacionTab project={project} />}
-        {activeTab === 'objetivos' && <ObjetivosTab project={project} skipInitialFetch />}
-        {activeTab === 'cadena-valor' && <CadenaValorTab project={project} />}
-        {activeTab === 'alternativas' && <AlternativasTab project={project} />}
-      </div>
-
-      <div className="pt-4 border-t border-gray-200">
+    <MGALayout
+      project={project}
+      projectTitle={project.name}
+      activeTab={activeTab}
+      onChangeSubTab={handleChangeSubTab}
+      userName={user?.full_name || user?.email || 'Usuario'}
+      userRole={formatRoleLabel(user?.role)}
+      onNavigateHome={() => navigate('/tenant/projects')}
+      headerSlot={
+        (displayError || isSavingAny) ? (
+          <div className="space-y-2 border-b border-outline-variant/40 bg-white px-4 py-3 sm:px-6">
+            {displayError && (
+              <MgaAlert
+                message={displayError}
+                onDismiss={() => {
+                  setLocalError(null);
+                  clearMgaError();
+                  clearEdtError();
+                }}
+              />
+            )}
+            {isSavingAny && (
+              <p className="text-xs text-gray-500 animate-pulse">Guardando cambios…</p>
+            )}
+          </div>
+        ) : undefined
+      }
+      footerSlot={
         <FormulationAuditPanel
           projectId={project.id}
-          onNavigateToTab={(tabId) => setActiveTab(tabId)}
+          onNavigateToTab={handleNavigateToAuditTab}
         />
-      </div>
-    </div>
+      }
+    />
   );
 }

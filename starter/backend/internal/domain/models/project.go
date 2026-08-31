@@ -22,6 +22,8 @@ type Project struct {
 	ProductCode        *string        `gorm:"column:product_code;type:varchar(50);index" json:"product_code,omitempty"`
 	ProblemDescription string         `gorm:"column:problem_description;type:text" json:"problem_description,omitempty"`
 	GeneralObjective   string         `gorm:"column:general_objective;type:text" json:"general_objective,omitempty"`
+	SituacionExistente string         `gorm:"column:situacion_existente;type:text" json:"situacion_existente,omitempty"`
+	MagnitudProblema   string         `gorm:"column:magnitud_problema;type:text" json:"magnitud_problema,omitempty"`
 	Status             string         `gorm:"column:status;type:varchar(50);not null;default:'DRAFT';index" json:"status"`
 	CreatedAt          time.Time      `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt          time.Time      `gorm:"column:updated_at;not null" json:"updated_at"`

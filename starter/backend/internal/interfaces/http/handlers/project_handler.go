@@ -8,6 +8,7 @@ import (
 
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -196,6 +197,8 @@ func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
 	}
 	req.ProblemDescription = strings.TrimSpace(req.ProblemDescription)
 	req.GeneralObjective = strings.TrimSpace(req.GeneralObjective)
+	req.SituacionExistente = strings.TrimSpace(req.SituacionExistente)
+	req.MagnitudProblema = strings.TrimSpace(req.MagnitudProblema)
 	if err := dto.Validate(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -210,12 +213,12 @@ func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
 
 	project.ProblemDescription = req.ProblemDescription
 	project.GeneralObjective = req.GeneralObjective
+	project.SituacionExistente = req.SituacionExistente
+	project.MagnitudProblema = req.MagnitudProblema
 	project.UpdatedAt = time.Now().UTC()
 
-	if err := h.db.WithContext(c.Context()).
-		Model(project).
-		Select("ProblemDescription", "GeneralObjective", "UpdatedAt").
-		Updates(project).Error; err != nil {
+	repo := postgres.NewProjectRepository(h.db)
+	if err := repo.UpdateProjectDetails(c.Context(), project); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update project details"})
 	}
 
@@ -235,6 +238,8 @@ func toProjectResponse(p models.Project) dto.ProjectResponse {
 		ProductCode:        p.ProductCode,
 		ProblemDescription: p.ProblemDescription,
 		GeneralObjective:   p.GeneralObjective,
+		SituacionExistente: p.SituacionExistente,
+		MagnitudProblema:   p.MagnitudProblema,
 		Status:             p.Status,
 		CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),

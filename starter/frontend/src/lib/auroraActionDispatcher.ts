@@ -70,6 +70,8 @@ async function dispatchMgaApply(card: ActionCardPayload, projectId: string): Pro
       await projectStore.updateProjectDetails(projectId, {
         problem_description: project.problem_description ?? '',
         general_objective: value,
+        situacion_existente: project.situacion_existente ?? '',
+        magnitud_problema: project.magnitud_problema ?? '',
       });
       return;
     }
@@ -78,6 +80,8 @@ async function dispatchMgaApply(card: ActionCardPayload, projectId: string): Pro
       await projectStore.updateProjectDetails(projectId, {
         problem_description: value,
         general_objective: project.general_objective ?? '',
+        situacion_existente: project.situacion_existente ?? '',
+        magnitud_problema: project.magnitud_problema ?? '',
       });
       return;
     }

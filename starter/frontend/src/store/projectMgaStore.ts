@@ -46,6 +46,7 @@ export type EffectType = 'Efecto directo' | 'Efecto indirecto';
 export type CauseObjectiveRelation = {
   id: string;
   objectiveId?: string;
+  parentId?: string | null;
   causeType: CauseType;
   causeDescription: string;
   specificObjective: string;
@@ -150,6 +151,7 @@ function mapCauseToRelation(cause: MgaCause): CauseObjectiveRelation {
   return {
     id: cause.id,
     objectiveId: cause.specific_objective?.id,
+    parentId: cause.parent_id ?? null,
     causeType: causeTypeFromApi(cause.cause_type),
     causeDescription: cause.description,
     specificObjective: cause.specific_objective?.description ?? '',

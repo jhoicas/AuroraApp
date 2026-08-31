@@ -29,3 +29,17 @@ func (r *ProjectRepository) FindOwned(ctx context.Context, projectID, tenantID u
 	}
 	return &project, nil
 }
+
+// UpdateProjectDetails persiste los campos de formulación MGA del proyecto.
+func (r *ProjectRepository) UpdateProjectDetails(ctx context.Context, project *models.Project) error {
+	return r.db.WithContext(ctx).
+		Model(project).
+		Select(
+			"ProblemDescription",
+			"GeneralObjective",
+			"SituacionExistente",
+			"MagnitudProblema",
+			"UpdatedAt",
+		).
+		Updates(project).Error
+}

@@ -149,6 +149,8 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
       await updateProjectDetails(project.id, {
         problem_description: problemDescription,
         general_objective: generalObjective,
+        situacion_existente: project.situacion_existente ?? '',
+        magnitud_problema: project.magnitud_problema ?? '',
       });
       setMessage('Objetivos guardados correctamente.');
     } catch (err) {

@@ -15,6 +15,8 @@ export type Project = {
   product_code?: string | null;
   problem_description?: string;
   general_objective?: string;
+  situacion_existente?: string;
+  magnitud_problema?: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -44,6 +46,8 @@ export type CreateProjectPayload = {
 export type UpdateProjectDetailsPayload = {
   problem_description: string;
   general_objective: string;
+  situacion_existente: string;
+  magnitud_problema: string;
 };
 
 export type CreateBudgetItemPayload = {
@@ -195,6 +199,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { data } = await api.patch<Project>(`/projects/${id}/details`, {
         problem_description: payload.problem_description.trim(),
         general_objective: payload.general_objective.trim(),
+        situacion_existente: payload.situacion_existente.trim(),
+        magnitud_problema: payload.magnitud_problema.trim(),
       });
       set((state) => ({
         currentProject: data,

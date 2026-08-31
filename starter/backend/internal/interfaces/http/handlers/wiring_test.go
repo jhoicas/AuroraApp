@@ -159,6 +159,8 @@ func TestLoadOwnedProject_TenantIsolation(t *testing.T) {
 			sector TEXT,
 			problem_description TEXT,
 			general_objective TEXT,
+			situacion_existente TEXT,
+			magnitud_problema TEXT,
 			status TEXT NOT NULL DEFAULT 'DRAFT',
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,

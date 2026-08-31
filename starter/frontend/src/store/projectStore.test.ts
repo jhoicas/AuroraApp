@@ -205,10 +205,17 @@ describe('projectStore — updateProjectDetails', () => {
       await store().updateProjectDetails('proj-1', {
         problem_description: '  Problema  ',
         general_objective: '  Objetivo  ',
+        situacion_existente: '  Situación  ',
+        magnitud_problema: '  Magnitud  ',
       });
     });
 
-    expect(body).toEqual({ problem_description: 'Problema', general_objective: 'Objetivo' });
+    expect(body).toEqual({
+      problem_description: 'Problema',
+      general_objective: 'Objetivo',
+      situacion_existente: 'Situación',
+      magnitud_problema: 'Magnitud',
+    });
     expect(store().currentProject?.problem_description).toBe('Problema');
     expect(store().projects[0].general_objective).toBe('Objetivo');
     expect(store().projects[1].id).toBe('otro');
@@ -228,6 +235,8 @@ describe('projectStore — updateProjectDetails', () => {
       pending = store().updateProjectDetails('proj-1', {
         problem_description: 'p',
         general_objective: 'o',
+        situacion_existente: '',
+        magnitud_problema: '',
       });
     });
 
@@ -244,7 +253,12 @@ describe('projectStore — updateProjectDetails', () => {
     server.use(http.patch(apiUrl('/projects/proj-1/details'), () => errorResponse(400, 'texto inválido')));
 
     await expect(
-      store().updateProjectDetails('proj-1', { problem_description: 'p', general_objective: 'o' }),
+      store().updateProjectDetails('proj-1', {
+        problem_description: 'p',
+        general_objective: 'o',
+        situacion_existente: '',
+        magnitud_problema: '',
+      }),
     ).rejects.toThrow('texto inválido');
     expect(store().isSaving).toBe(false);
     expect(store().error).toBe('texto inválido');

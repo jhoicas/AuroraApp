@@ -18,6 +18,8 @@ type CreateProjectRequest struct {
 type UpdateProjectDetailsRequest struct {
 	ProblemDescription string `json:"problem_description" validate:"omitempty,max=10000"`
 	GeneralObjective   string `json:"general_objective" validate:"omitempty,max=10000"`
+	SituacionExistente string `json:"situacion_existente" validate:"omitempty,max=10000"`
+	MagnitudProblema   string `json:"magnitud_problema" validate:"omitempty,max=10000"`
 }
 
 // ProjectResponse representación de salida.
@@ -34,6 +36,8 @@ type ProjectResponse struct {
 	ProductCode        *string `json:"product_code,omitempty"`
 	ProblemDescription string  `json:"problem_description,omitempty"`
 	GeneralObjective   string  `json:"general_objective,omitempty"`
+	SituacionExistente string  `json:"situacion_existente,omitempty"`
+	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
 	Status             string  `json:"status"`
 	CreatedAt          string  `json:"created_at"`
 	UpdatedAt          string  `json:"updated_at"`

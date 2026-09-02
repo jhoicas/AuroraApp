@@ -37,6 +37,24 @@ func (r *MgaRepository) CountSpecificObjectives(ctx context.Context, projectID, 
 	return count, err
 }
 
+func (r *MgaRepository) CountDirectCauses(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaCause{}).
+		Where("project_id = ? AND tenant_id = ? AND cause_type = ? AND parent_id IS NULL", projectID, tenantID, "directa").
+		Count(&count).Error
+	return count, err
+}
+
+func (r *MgaRepository) CountDirectEffects(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaEffect{}).
+		Where("project_id = ? AND tenant_id = ? AND effect_type = ? AND parent_id IS NULL", projectID, tenantID, "directo").
+		Count(&count).Error
+	return count, err
+}
+
 func (r *MgaRepository) ListCauses(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.MgaCause, error) {
 	causes := make([]models.MgaCause, 0)
 	err := r.db.WithContext(ctx).

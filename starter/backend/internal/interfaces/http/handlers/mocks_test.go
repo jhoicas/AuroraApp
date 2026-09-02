@@ -22,16 +22,17 @@ var errSimulatedDB = errors.New("simulated database failure")
 type mockKnowledgeStore struct {
 	mu sync.Mutex
 
-	insertErr  error
-	nodesErr   error
-	linksErr   error
-	searchErr  error
-	nodes      []models.AiKnowledgeNode
-	links      []models.AiKnowledgeLink
-	similar    []models.AiKnowledgeNode
-	lastBatch  postgres.KnowledgeGraphBatch
-	insertCall int
-	searchCall int
+	insertErr         error
+	nodesErr          error
+	linksErr          error
+	searchErr         error
+	nodes             []models.AiKnowledgeNode
+	links             []models.AiKnowledgeLink
+	similar           []models.AiKnowledgeNode
+	lastBatch         postgres.KnowledgeGraphBatch
+	insertCall        int
+	searchCall        int
+	searchByTypesCall int
 }
 
 func (m *mockKnowledgeStore) InsertGraph(_ context.Context, batch postgres.KnowledgeGraphBatch) error {
@@ -57,6 +58,35 @@ func (m *mockKnowledgeStore) SearchSimilar(_ context.Context, _ *uuid.UUID, _ []
 	return m.similar, m.searchErr
 }
 
+func (m *mockKnowledgeStore) SearchSimilarByNodeTypes(_ context.Context, _ []float32, limit int, nodeTypes []string) ([]models.AiKnowledgeNode, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.searchByTypesCall++
+	if m.searchErr != nil {
+		return nil, m.searchErr
+	}
+	if limit <= 0 || len(m.similar) == 0 || len(nodeTypes) == 0 {
+		return nil, nil
+	}
+	typeSet := make(map[string]struct{}, len(nodeTypes))
+	for _, t := range nodeTypes {
+		typeSet[t] = struct{}{}
+	}
+	filtered := make([]models.AiKnowledgeNode, 0, len(m.similar))
+	for _, n := range m.similar {
+		if _, ok := typeSet[n.NodeType]; ok {
+			filtered = append(filtered, n)
+		}
+	}
+	if limit > len(filtered) {
+		limit = len(filtered)
+	}
+	if limit == 0 {
+		return nil, nil
+	}
+	return filtered[:limit], nil
+}
+
 func (m *mockKnowledgeStore) InsertCalls() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -67,6 +97,12 @@ func (m *mockKnowledgeStore) SearchCalls() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.searchCall
+}
+
+func (m *mockKnowledgeStore) SearchByTypesCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.searchByTypesCall
 }
 
 func (m *mockKnowledgeStore) LastBatch() postgres.KnowledgeGraphBatch {

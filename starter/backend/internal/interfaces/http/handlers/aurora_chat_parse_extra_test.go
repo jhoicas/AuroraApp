@@ -159,6 +159,32 @@ func TestValidateActionCards_RejectsInvalidMgaApply(t *testing.T) {
 	assert.Empty(t, cards)
 }
 
+func TestValidateActionCards_MgaApplyAddCauseAndEffect(t *testing.T) {
+	raw := "ok\n\n```aurora-actions\n{\"action_cards\":[" +
+		`{"type":"mga_apply","label":"Causa","payload":{"field":"add_cause","value":"Falta de mantenimiento","cause_type":"directa"}},` +
+		`{"type":"mga_apply","label":"Efecto","payload":{"field":"add_effect","value":"Contaminación","effect_type":"directo"}}` +
+		"]}\n```"
+	_, cards := parseAuroraResponse(raw)
+	require.Len(t, cards, 2)
+	assert.Equal(t, "add_cause", cards[0].Payload["field"])
+	assert.Equal(t, "directa", cards[0].Payload["cause_type"])
+	assert.Equal(t, "add_effect", cards[1].Payload["field"])
+	assert.Equal(t, "directo", cards[1].Payload["effect_type"])
+}
+
+func TestValidateActionCards_RejectsInvalidAddCauseType(t *testing.T) {
+	cards := validateActionCards([]dto.ActionCard{{
+		Type:  "mga_apply",
+		Label: "Causa",
+		Payload: map[string]interface{}{
+			"field":      "add_cause",
+			"value":      "Texto",
+			"cause_type": "invalida",
+		},
+	}})
+	assert.Empty(t, cards)
+}
+
 func TestExtractActionCards_InvalidJSONReturnsNil(t *testing.T) {
 	assert.Nil(t, extractActionCards("{no json}"))
 	assert.Empty(t, extractActionCards(`{"action_cards":[]}`))

@@ -16,6 +16,7 @@ type KnowledgeStore interface {
 	ListAllNodes(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeNode, error)
 	ListAllLinks(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeLink, error)
 	SearchSimilar(ctx context.Context, tenantID *uuid.UUID, embedding []float32, limit int) ([]models.AiKnowledgeNode, error)
+	SearchSimilarByNodeTypes(ctx context.Context, embedding []float32, limit int, nodeTypes []string) ([]models.AiKnowledgeNode, error)
 }
 
 // ChatStore abstrae la persistencia transaccional del historial de Aurora.

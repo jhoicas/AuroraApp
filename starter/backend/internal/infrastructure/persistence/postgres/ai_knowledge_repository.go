@@ -146,6 +146,33 @@ func (r *AiKnowledgeRepository) SearchSimilar(ctx context.Context, tenantID *uui
 	return rows, err
 }
 
+// SearchSimilarByNodeTypes restringe la búsqueda vectorial a tipos de nodo del grafo global (tenant_id IS NULL).
+func (r *AiKnowledgeRepository) SearchSimilarByNodeTypes(
+	ctx context.Context,
+	embedding []float32,
+	limit int,
+	nodeTypes []string,
+) ([]models.AiKnowledgeNode, error) {
+	if len(embedding) == 0 || len(nodeTypes) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 5
+	}
+	vec := formatVector(embedding)
+	var rows []models.AiKnowledgeNode
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT id, tenant_id, project_key, node_type, label, content, metadata, created_at
+		FROM ai_knowledge_nodes
+		WHERE embedding IS NOT NULL
+		  AND tenant_id IS NULL
+		  AND node_type IN ?
+		ORDER BY embedding <=> ?::vector
+		LIMIT ?
+	`, nodeTypes, vec, limit).Scan(&rows).Error
+	return rows, err
+}
+
 // knowledgeTenantScope aplica aislamiento híbrido:
 // - tenant: conocimiento privado propio + conocimiento global;
 // - identidad global (tenant nil): únicamente conocimiento global.

@@ -101,6 +101,37 @@ async function dispatchMgaApply(card: ActionCardPayload, projectId: string): Pro
       await mgaStore.editEffect(projectId, effectId, { description: value });
       return;
     }
+    case 'add_cause': {
+      const causeType = payloadString(card.payload, 'cause_type') as 'directa' | 'indirecta';
+      if (causeType !== 'directa' && causeType !== 'indirecta') {
+        throw new Error('cause_type inválido en la tarjeta de acción');
+      }
+      const parentId = payloadString(card.payload, 'parent_id');
+      const formulation = mgaStore.getFormulation(projectId);
+      await mgaStore.addCause(projectId, {
+        cause_type: causeType,
+        description: value,
+        sort_order: formulation.causeRelations.length,
+        ...(parentId ? { parent_id: parentId } : {}),
+        specific_objective: 'Redacte el objetivo específico asociado.',
+      });
+      return;
+    }
+    case 'add_effect': {
+      const effectType = payloadString(card.payload, 'effect_type') as 'directo' | 'indirecto';
+      if (effectType !== 'directo' && effectType !== 'indirecto') {
+        throw new Error('effect_type inválido en la tarjeta de acción');
+      }
+      const parentId = payloadString(card.payload, 'parent_id');
+      const formulation = mgaStore.getFormulation(projectId);
+      await mgaStore.addEffect(projectId, {
+        effect_type: effectType,
+        description: value,
+        sort_order: formulation.effects.length,
+        ...(parentId ? { parent_id: parentId } : {}),
+      });
+      return;
+    }
     default:
       throw new Error(`Campo MGA no soportado: ${field}`);
   }

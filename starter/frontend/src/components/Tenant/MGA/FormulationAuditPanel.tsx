@@ -61,6 +61,13 @@ export function getTabForAuditIssue(message: string): { tabId: MgaAuditTabId; la
     return { tabId: 'poblacion', label: TAB_LABELS.poblacion };
   }
   if (
+    m.includes('situacion existente') ||
+    m.includes('magnitud') ||
+    m.includes('arbol de problemas')
+  ) {
+    return { tabId: 'identificacion', label: TAB_LABELS.identificacion };
+  }
+  if (
     m.includes('problema central') ||
     m.includes('problema') ||
     m.includes('causa') ||

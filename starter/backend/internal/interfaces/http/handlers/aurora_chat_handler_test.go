@@ -406,3 +406,56 @@ func TestAuroraChat_FallbackLogsGeminiTelemetry(t *testing.T) {
 		t.Fatal("expected telemetry entry")
 	}
 }
+
+func TestAuroraChat_MgaCausesEffects_EmptyRAG_ShortCircuitsLLM(t *testing.T) {
+	id := validIdentity()
+	knowledge := &mockKnowledgeStore{similar: nil}
+	chat := &mockChatStore{}
+	llmMock := &mockLLM{reply: "no debería llamarse"}
+
+	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Sugiere causas y efectos",
+		"route_context": "mga:identificacion:causas-efectos",
+		"project_context": map[string]any{
+			"problem_description": "Falta de agua potable",
+			"situacion_existente": strings.Repeat("Contexto. ", 20),
+			"magnitud_problema":   strings.Repeat("Magnitud. ", 20),
+		},
+	})
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var body dto.AuroraChatResponse
+	decodeBody(t, resp, &body)
+	assert.Contains(t, body.Reply, "No hay datos históricos suficientes")
+	assert.Equal(t, 0, llmMock.Calls())
+	assert.Equal(t, 1, knowledge.SearchByTypesCalls())
+}
+
+func TestAuroraChat_MgaCausesEffects_WithRAG_CallsLLM(t *testing.T) {
+	id := validIdentity()
+	knowledge := &mockKnowledgeStore{
+		similar: []models.AiKnowledgeNode{
+			{ID: uuid.New(), NodeType: models.KnowledgeNodeCause, Label: "Causa histórica", Content: "Deforestación en cuenca"},
+		},
+	}
+	llmMock := &mockLLM{
+		reply: "Sugerencia basada en KG.\n\n```aurora-actions\n{\"action_cards\":[{\"type\":\"mga_apply\",\"label\":\"Aplicar causa\",\"payload\":{\"field\":\"add_cause\",\"value\":\"Deforestación en cuenca\",\"cause_type\":\"directa\"}}]}\n```",
+	}
+
+	h := NewAuroraChatHandlerWithDeps(knowledge, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Sugiere causas",
+		"route_context": "mga:identificacion:causas-efectos",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 1, llmMock.Calls())
+	assert.Contains(t, llmMock.LastSystemPrompt(), "REGLA ABSOLUTA")
+	assert.Contains(t, llmMock.LastSystemPrompt(), "Deforestación")
+}

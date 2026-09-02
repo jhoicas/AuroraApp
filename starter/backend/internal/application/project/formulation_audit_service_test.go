@@ -26,9 +26,11 @@ func (m *mockProjectReader) FindOwned(_ context.Context, _, _ uuid.UUID) (*model
 }
 
 type mockMgaCounter struct {
-	causes     int64
-	objectives int64
-	err        error
+	causes        int64
+	directCauses  *int64
+	directEffects *int64
+	objectives    int64
+	err           error
 }
 
 func (m *mockMgaCounter) CountCauses(_ context.Context, _, _ uuid.UUID) (int64, error) {
@@ -36,6 +38,26 @@ func (m *mockMgaCounter) CountCauses(_ context.Context, _, _ uuid.UUID) (int64, 
 		return 0, m.err
 	}
 	return m.causes, nil
+}
+
+func (m *mockMgaCounter) CountDirectCauses(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
+	if m.directCauses != nil {
+		return *m.directCauses, nil
+	}
+	return m.causes, nil
+}
+
+func (m *mockMgaCounter) CountDirectEffects(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
+	if m.directEffects != nil {
+		return *m.directEffects, nil
+	}
+	return 1, nil
 }
 
 func (m *mockMgaCounter) CountSpecificObjectives(_ context.Context, _, _ uuid.UUID) (int64, error) {
@@ -49,6 +71,8 @@ func completeProject() *models.Project {
 	return &models.Project{
 		ProblemDescription: "Falta de acceso a agua potable.",
 		GeneralObjective:   "Mejorar el acceso al servicio de acueducto.",
+		SituacionExistente: strings.Repeat("Contexto territorial y social del problema. ", 4),
+		MagnitudProblema:   strings.Repeat("Indicadores de magnitud y línea base verificable. ", 4),
 	}
 }
 
@@ -110,13 +134,37 @@ func TestFormulationAuditService_Blockers(t *testing.T) {
 			obj:      0,
 			contains: "objetivo específico",
 		},
+		{
+			name: "short situacion existente",
+			project: &models.Project{
+				ProblemDescription: "Problema.",
+				GeneralObjective:   "Objetivo.",
+				SituacionExistente: "Corto.",
+				MagnitudProblema:   strings.Repeat("x", 101),
+			},
+			causes:   1,
+			obj:      1,
+			contains: "situación existente",
+		},
+		{
+			name:     "no direct effect",
+			project:  completeProject(),
+			causes:   1,
+			obj:      1,
+			contains: "efecto directo",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			counter := &mockMgaCounter{causes: tc.causes, objectives: tc.obj}
+			if tc.contains == "efecto directo" {
+				zero := int64(0)
+				counter.directEffects = &zero
+			}
 			svc := appproject.NewFormulationAuditService(
 				&mockProjectReader{project: tc.project},
-				&mockMgaCounter{causes: tc.causes, objectives: tc.obj},
+				counter,
 			)
 			result, err := svc.AuditProject(context.Background(), uuid.New(), uuid.New())
 			if err != nil {

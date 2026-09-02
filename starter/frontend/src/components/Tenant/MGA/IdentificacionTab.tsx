@@ -1,8 +1,14 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type CauseObjectiveRelation } from '../../../store/projectMgaStore';
+import { useAuroraCopilotStore } from '../../../store/auroraCopilotStore';
+import {
+  buildMgaCausesEffectsPrompt,
+  MGA_CAUSES_EFFECTS_ROUTE,
+  type MgaCausesEffectsFocus,
+} from '../../../lib/mgaAuroraAssist';
 import type { MgaEffect } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
 import {
@@ -73,6 +79,28 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const editEffect = useProjectMgaStore((s) => s.editEffect);
   const removeEffect = useProjectMgaStore((s) => s.removeEffect);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
+  const sendMessage = useAuroraCopilotStore((s) => s.sendMessage);
+  const isAuroraTyping = useAuroraCopilotStore((s) => s.isTyping);
+
+  const projectContext = useMemo(
+    () => ({
+      problem_description: problemDescription,
+      situacion_existente: situacionExistente,
+      magnitud_problema: magnitudProblema,
+    }),
+    [problemDescription, situacionExistente, magnitudProblema],
+  );
+
+  const suggestWithAurora = useCallback(
+    (focus: MgaCausesEffectsFocus, parentId?: string) => {
+      void sendMessage(
+        buildMgaCausesEffectsPrompt(focus, project.name, parentId),
+        MGA_CAUSES_EFFECTS_ROUTE,
+        projectContext,
+      );
+    },
+    [sendMessage, project.name, projectContext],
+  );
 
   const { causeRelations, effects } = getFormulation(project.id);
 
@@ -329,10 +357,20 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     renderChild: (item: T) => ReactNode,
     onAddIndirect: (parentId: string) => void,
     emptyMessage: string,
+    auroraFocus: MgaCausesEffectsFocus,
   ) => (
     <div className="flex min-h-[280px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 font-semibold text-gray-800">
-        {title}
+      <div className="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
+        <span className="font-semibold text-gray-800">{title}</span>
+        <button
+          type="button"
+          disabled={isAuroraTyping}
+          onClick={() => suggestWithAurora(auroraFocus)}
+          className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-white px-2 py-1 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+        >
+          <Sparkles className="h-3.5 w-3.5" aria-hidden />
+          Sugerir con Aurora
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto p-5">
         {groups.length === 0 ? (
@@ -351,15 +389,27 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 <div className="w-1/2">{renderParent(group.parent, index)}</div>
                 <div className="w-1/2 space-y-3 border-l-2 border-dashed border-gray-200 pl-4">
                   {group.children.map((child) => renderChild(child))}
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={() => onAddIndirect(group.parent.id)}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden />
-                    {indirectLabel}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => onAddIndirect(group.parent.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      {indirectLabel}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isAuroraTyping}
+                      onClick={() => suggestWithAurora(auroraFocus, group.parent.id)}
+                      title="Sugerir indirectos con Aurora"
+                      className="inline-flex items-center gap-1 rounded-lg border border-primary/30 px-2 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                      Aurora
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -438,6 +488,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             (item) => renderEffectCard(item, 'Efecto Indirecto', true),
             (parentId) => void handleAddIndirectEffect(parentId),
             'No hay efectos registrados. Use [+] Efecto directo desde el problema central.',
+            'effects',
           )}
 
           {renderTreePanel(
@@ -448,6 +499,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             (item) => renderCauseCard(item, 'Causa Indirecta', true),
             (parentId) => void handleAddIndirectCause(parentId),
             'No hay causas registradas. Use [+] Causa directa desde el problema central.',
+            'causes',
           )}
         </div>
       </div>

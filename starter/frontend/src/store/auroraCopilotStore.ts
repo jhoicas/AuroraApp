@@ -38,6 +38,12 @@ type AuroraChatResponse = {
   assistant_message_id: string;
 };
 
+export type MgaProjectContext = {
+  problem_description?: string;
+  situacion_existente?: string;
+  magnitud_problema?: string;
+};
+
 type AuroraCopilotState = {
   isOpen: boolean;
   messages: CopilotMessage[];
@@ -50,7 +56,7 @@ type AuroraCopilotState = {
   toggleOpen: () => void;
   open: () => void;
   close: () => void;
-  sendMessage: (message: string, routeContext: string) => Promise<void>;
+  sendMessage: (message: string, routeContext: string, projectContext?: MgaProjectContext) => Promise<void>;
   cancelGeneration: () => void;
   clearError: () => void;
   /** Reinicia el chat: aborta generación en curso, limpia historial y session_id. */
@@ -129,7 +135,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     set({ isTyping: false, abortController: null });
   },
 
-  sendMessage: async (message, routeContext) => {
+  sendMessage: async (message, routeContext, projectContext) => {
     const trimmed = message.trim();
     if (!trimmed) return;
 
@@ -148,6 +154,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       error: null,
       abortController: controller,
       draftInput: '',
+      isOpen: true,
     });
 
     try {
@@ -158,6 +165,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
           message: trimmed,
           route_context: routeContext,
           ...(sessionId ? { session_id: sessionId } : {}),
+          ...(projectContext ? { project_context: projectContext } : {}),
         },
         { signal: controller.signal },
       );

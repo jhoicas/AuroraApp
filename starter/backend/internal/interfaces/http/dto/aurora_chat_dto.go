@@ -12,10 +12,18 @@ type ActionCard struct {
 	Payload     map[string]interface{} `json:"payload,omitempty"`
 }
 
+// AuroraChatProjectContext campos MGA de identificación usados para RAG en causas/efectos.
+type AuroraChatProjectContext struct {
+	ProblemDescription string `json:"problem_description" validate:"omitempty,max=8000"`
+	SituacionExistente string `json:"situacion_existente" validate:"omitempty,max=8000"`
+	MagnitudProblema   string `json:"magnitud_problema" validate:"omitempty,max=8000"`
+}
+
 type AuroraChatRequest struct {
-	Message      string `json:"message" validate:"required,min=1,max=8000"`
-	RouteContext string `json:"route_context" validate:"omitempty,max=4000"`
-	SessionID    string `json:"session_id" validate:"omitempty,max=64"`
+	Message        string                    `json:"message" validate:"required,min=1,max=8000"`
+	RouteContext   string                    `json:"route_context" validate:"omitempty,max=4000"`
+	SessionID      string                    `json:"session_id" validate:"omitempty,max=64"`
+	ProjectContext *AuroraChatProjectContext `json:"project_context,omitempty"`
 }
 
 type AuroraChatResponse struct {

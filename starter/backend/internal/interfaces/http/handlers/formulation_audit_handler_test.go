@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	appproject "aurora-backend/internal/application/project"
@@ -29,12 +30,28 @@ func (m *auditProjectReader) FindOwned(_ context.Context, _, _ uuid.UUID) (*mode
 }
 
 type auditMgaCounter struct {
-	causes     int64
-	objectives int64
+	causes        int64
+	directCauses  *int64
+	directEffects *int64
+	objectives    int64
 }
 
 func (m *auditMgaCounter) CountCauses(_ context.Context, _, _ uuid.UUID) (int64, error) {
 	return m.causes, nil
+}
+
+func (m *auditMgaCounter) CountDirectCauses(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	if m.directCauses != nil {
+		return *m.directCauses, nil
+	}
+	return m.causes, nil
+}
+
+func (m *auditMgaCounter) CountDirectEffects(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	if m.directEffects != nil {
+		return *m.directEffects, nil
+	}
+	return 1, nil
 }
 
 func (m *auditMgaCounter) CountSpecificObjectives(_ context.Context, _, _ uuid.UUID) (int64, error) {
@@ -53,6 +70,8 @@ func TestGetAuditReport_Passed(t *testing.T) {
 		&auditProjectReader{project: &models.Project{
 			ProblemDescription: "Problema",
 			GeneralObjective:   "Objetivo",
+			SituacionExistente: strings.Repeat("Situación territorial detallada. ", 5),
+			MagnitudProblema:   strings.Repeat("Magnitud e indicadores de referencia. ", 5),
 		}},
 		&auditMgaCounter{causes: 1, objectives: 1},
 	)

@@ -76,6 +76,8 @@ func describeRoute(route string) string {
 		return "El usuario está en la Lista de Actividades."
 	case strings.Contains(r, "/admin/ai"):
 		return "El usuario está en la Gestión IA / Knowledge Base MGA."
+	case strings.Contains(r, "mga:identificacion:causas-efectos"):
+		return "El usuario está en Identificación MGA — Causas y Efectos del árbol de problemas."
 	case strings.Contains(r, "/admin/tenants"):
 		return "El usuario está en la Gestión de Tenants."
 	default:
@@ -165,12 +167,52 @@ func normalizeActionCard(c dto.ActionCard) (dto.ActionCard, bool) {
 		}
 		field, _ := c.Payload["field"].(string)
 		value, _ := c.Payload["value"].(string)
-		if strings.TrimSpace(field) == "" || strings.TrimSpace(value) == "" {
+		field = strings.TrimSpace(field)
+		value = strings.TrimSpace(value)
+		if field == "" {
 			return c, false
 		}
-		c.Payload["field"] = strings.TrimSpace(field)
-		c.Payload["value"] = strings.TrimSpace(value)
-		return c, true
+		switch field {
+		case "add_cause":
+			if value == "" {
+				return c, false
+			}
+			causeType, _ := c.Payload["cause_type"].(string)
+			causeType = strings.ToLower(strings.TrimSpace(causeType))
+			if causeType != "directa" && causeType != "indirecta" {
+				return c, false
+			}
+			c.Payload["field"] = field
+			c.Payload["value"] = value
+			c.Payload["cause_type"] = causeType
+			if parentID, ok := c.Payload["parent_id"].(string); ok {
+				c.Payload["parent_id"] = strings.TrimSpace(parentID)
+			}
+			return c, true
+		case "add_effect":
+			if value == "" {
+				return c, false
+			}
+			effectType, _ := c.Payload["effect_type"].(string)
+			effectType = strings.ToLower(strings.TrimSpace(effectType))
+			if effectType != "directo" && effectType != "indirecto" {
+				return c, false
+			}
+			c.Payload["field"] = field
+			c.Payload["value"] = value
+			c.Payload["effect_type"] = effectType
+			if parentID, ok := c.Payload["parent_id"].(string); ok {
+				c.Payload["parent_id"] = strings.TrimSpace(parentID)
+			}
+			return c, true
+		default:
+			if value == "" {
+				return c, false
+			}
+			c.Payload["field"] = field
+			c.Payload["value"] = value
+			return c, true
+		}
 
 	case "catalog_search":
 		if c.Label == "" || c.Catalog == "" || c.Code == "" {

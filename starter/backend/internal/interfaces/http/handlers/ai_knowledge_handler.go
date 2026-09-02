@@ -82,6 +82,19 @@ func (h *AIKnowledgeHandler) IngestKnowledge(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	exists, err := h.repo.ExistsByProjectKey(c.Context(), meta.ProjectKey)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no se pudo verificar duplicados en la base de conocimiento"})
+	}
+	if exists {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": fmt.Sprintf(
+				"El proyecto con BPIN/Clave '%s' ya existe en la base de conocimiento y no puede ser duplicado.",
+				meta.ProjectKey,
+			),
+		})
+	}
+
 	projectMeta := map[string]string{
 		"project_key":  meta.ProjectKey,
 		"project_name": meta.ProjectName,

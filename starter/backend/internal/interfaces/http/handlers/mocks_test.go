@@ -22,19 +22,22 @@ var errSimulatedDB = errors.New("simulated database failure")
 type mockKnowledgeStore struct {
 	mu sync.Mutex
 
-	insertErr          error
-	nodesErr           error
-	linksErr           error
-	searchErr          error
-	nodes              []models.AiKnowledgeNode
-	links              []models.AiKnowledgeLink
-	similar            []models.AiKnowledgeNode
-	filteredSimilar    []models.AiKnowledgeNode
-	lastBatch          postgres.KnowledgeGraphBatch
-	insertCall         int
-	searchCall         int
-	searchByTypesCall  int
-	searchFilteredCall int
+	insertErr           error
+	nodesErr            error
+	linksErr            error
+	searchErr           error
+	nodes               []models.AiKnowledgeNode
+	links               []models.AiKnowledgeLink
+	similar             []models.AiKnowledgeNode
+	filteredSimilar     []models.AiKnowledgeNode
+	lastBatch           postgres.KnowledgeGraphBatch
+	insertCall          int
+	searchCall          int
+	searchByTypesCall   int
+	searchFilteredCall  int
+	existsByKeyCall     int
+	existsByKeyErr      error
+	existingProjectKeys map[string]bool
 }
 
 func (m *mockKnowledgeStore) InsertGraph(_ context.Context, batch postgres.KnowledgeGraphBatch) error {
@@ -43,6 +46,30 @@ func (m *mockKnowledgeStore) InsertGraph(_ context.Context, batch postgres.Knowl
 	m.insertCall++
 	m.lastBatch = batch
 	return m.insertErr
+}
+
+func (m *mockKnowledgeStore) ExistsByProjectKey(_ context.Context, projectKey string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.existsByKeyCall++
+	if m.existsByKeyErr != nil {
+		return false, m.existsByKeyErr
+	}
+	if m.existingProjectKeys != nil {
+		return m.existingProjectKeys[projectKey], nil
+	}
+	for _, n := range m.nodes {
+		if n.ProjectKey == projectKey {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (m *mockKnowledgeStore) ExistsByProjectKeyCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.existsByKeyCall
 }
 
 func (m *mockKnowledgeStore) ListAllNodes(context.Context, *uuid.UUID) ([]models.AiKnowledgeNode, error) {

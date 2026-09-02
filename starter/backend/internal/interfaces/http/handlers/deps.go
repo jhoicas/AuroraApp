@@ -13,6 +13,7 @@ import (
 // KnowledgeStore abstrae el repositorio de la Knowledge Base MGA (pgvector).
 type KnowledgeStore interface {
 	InsertGraph(ctx context.Context, batch postgres.KnowledgeGraphBatch) error
+	ExistsByProjectKey(ctx context.Context, projectKey string) (bool, error)
 	ListAllNodes(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeNode, error)
 	ListAllLinks(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeLink, error)
 	SearchSimilar(ctx context.Context, tenantID *uuid.UUID, embedding []float32, limit int) ([]models.AiKnowledgeNode, error)

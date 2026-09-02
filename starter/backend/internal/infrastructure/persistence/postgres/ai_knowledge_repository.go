@@ -132,6 +132,24 @@ func (r *AiKnowledgeRepository) ListAllLinks(ctx context.Context, tenantID *uuid
 	return rows, err
 }
 
+// ExistsByProjectKey indica si ya hay nodos indexados para la clave de proyecto (BPIN o slug).
+func (r *AiKnowledgeRepository) ExistsByProjectKey(ctx context.Context, projectKey string) (bool, error) {
+	projectKey = strings.TrimSpace(projectKey)
+	if projectKey == "" {
+		return false, nil
+	}
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.AiKnowledgeNode{}).
+		Where("project_key = ?", projectKey).
+		Limit(1).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *AiKnowledgeRepository) SearchSimilar(ctx context.Context, tenantID *uuid.UUID, embedding []float32, limit int) ([]models.AiKnowledgeNode, error) {
 	if limit <= 0 {
 		limit = 5

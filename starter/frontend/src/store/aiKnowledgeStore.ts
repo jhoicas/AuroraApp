@@ -56,6 +56,22 @@ function extractError(err: unknown, fallback: string): string {
   return fallback;
 }
 
+export const DUPLICATE_INGEST_ERROR =
+  'Error: Este proyecto ya ha sido procesado e ingresado al Knowledge Graph anteriormente.';
+
+function extractIngestError(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    const apiError = (err.response?.data as { error?: string } | undefined)?.error;
+    const status = err.response?.status;
+    if (status === 409 || (apiError && apiError.toLowerCase().includes('ya existe'))) {
+      return DUPLICATE_INGEST_ERROR;
+    }
+    return apiError || fallback;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export const useAiKnowledgeStore = create<AiKnowledgeState>((set, get) => ({
   graph: null,
   lastIngest: null,
@@ -97,7 +113,7 @@ export const useAiKnowledgeStore = create<AiKnowledgeState>((set, get) => ({
       await get().fetchGraph();
       return data;
     } catch (err: unknown) {
-      const message = extractError(err, 'Error al ingerir el XML MGA');
+      const message = extractIngestError(err, 'Error al ingerir el XML MGA');
       set({ ingesting: false, error: message });
       throw new Error(message);
     }

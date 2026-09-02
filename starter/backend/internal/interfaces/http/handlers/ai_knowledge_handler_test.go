@@ -97,6 +97,21 @@ func TestIngestKnowledge_Success(t *testing.T) {
 	assert.NotEmpty(t, batch.Nodes[0].Node.Metadata)
 	require.NotNil(t, batch.Nodes[0].Node.TenantID)
 	assert.Equal(t, uuid.MustParse(id.tenantID), *batch.Nodes[0].Node.TenantID)
+	assert.Equal(t, 1, repo.ExistsByProjectKeyCalls())
+}
+
+func TestIngestKnowledge_DuplicateProjectKey_Returns409(t *testing.T) {
+	id := validIdentity()
+	app, repo := newKnowledgeApp(&mockKnowledgeStore{
+		existingProjectKeys: map[string]bool{"acueducto": true},
+	}, nil, id)
+
+	resp := uploadXML(t, app, "file", "acueducto.xml", validMGAXML)
+	payload := requireErrorJSON(t, resp, http.StatusConflict)
+	assert.Contains(t, payload.Error, "ya existe en la base de conocimiento")
+	assert.Contains(t, payload.Error, "acueducto")
+	assert.Equal(t, 1, repo.ExistsByProjectKeyCalls())
+	assert.Equal(t, 0, repo.InsertCalls())
 }
 
 func TestIngestKnowledge_GlobalSuperAdminStoresNullTenant(t *testing.T) {

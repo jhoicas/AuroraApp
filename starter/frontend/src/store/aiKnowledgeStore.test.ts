@@ -199,6 +199,22 @@ describe('aiKnowledgeStore — ingestXml', () => {
 
     await expect(store().ingestXml(xmlFile())).rejects.toThrow('Error al ingerir el XML MGA');
   });
+
+  it('muestra mensaje amigable ante duplicado (409)', async () => {
+    server.use(
+      http.post(apiUrl('/ai/knowledge/ingest'), () =>
+        errorResponse(409, "El proyecto con BPIN/Clave 'acueducto-test' ya existe en la base de conocimiento y no puede ser duplicado."),
+      ),
+    );
+
+    await expect(store().ingestXml(xmlFile())).rejects.toThrow(
+      'Error: Este proyecto ya ha sido procesado e ingresado al Knowledge Graph anteriormente.',
+    );
+    expect(store().error).toBe(
+      'Error: Este proyecto ya ha sido procesado e ingresado al Knowledge Graph anteriormente.',
+    );
+    expect(store().ingesting).toBe(false);
+  });
 });
 
 describe('aiKnowledgeStore — telemetría y limpieza', () => {

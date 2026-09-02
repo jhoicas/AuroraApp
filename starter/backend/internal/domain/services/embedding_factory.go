@@ -28,7 +28,7 @@ func NewEmbeddingProvider(cfg *config.Config) EmbeddingProvider {
 		return NewOllamaEmbeddingProvider(cfg.OllamaBaseURL, cfg.EmbeddingModel)
 	case "gemini":
 		if cfg.GeminiApiKey != "" {
-			log.Println("embeddings: Gemini (text-embedding-004, 384 dims)")
+			log.Println("embeddings: Gemini (GEMINI_EMBEDDING_MODEL, 384 dims)")
 			return NewGeminiEmbeddingProvider(cfg.GeminiApiKey)
 		}
 		log.Println("embeddings: GEMINI_API_KEY missing, falling back to mock")

@@ -190,15 +190,26 @@ func TestHuggingFaceEmbed_WrongDims(t *testing.T) {
 }
 
 func TestGeminiEmbed_PadAndTruncate(t *testing.T) {
-	t.Parallel()
+	t.Run("default model from env fallback", func(t *testing.T) {
+		t.Setenv("GEMINI_EMBEDDING_MODEL", "")
+		p := NewGeminiEmbeddingProvider("test-key")
+		assert.Equal(t, "gemini-embedding-2", p.model)
+	})
+
+	t.Run("custom model from GEMINI_EMBEDDING_MODEL", func(t *testing.T) {
+		t.Setenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+		p := NewGeminiEmbeddingProvider("test-key")
+		assert.Equal(t, "text-embedding-004", p.model)
+	})
 
 	t.Run("truncate 768 dims", func(t *testing.T) {
+		t.Setenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2")
 		long := make([]float64, 768)
 		for i := range long {
 			long[i] = float64(i)
 		}
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Contains(t, r.URL.Path, "text-embedding-004:embedContent")
+			assert.Contains(t, r.URL.Path, "gemini-embedding-2:embedContent")
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"embedding": map[string]any{"values": long},
 			})

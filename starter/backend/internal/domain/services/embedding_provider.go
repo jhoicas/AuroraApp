@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -191,12 +192,9 @@ func (p *OllamaEmbeddingProvider) Embed(text string) ([]float32, error) {
 	return adjustEmbeddingDims(out), nil
 }
 
-const (
-	geminiEmbeddingModel = "text-embedding-004"
-	geminiEmbedBaseURL   = "https://generativelanguage.googleapis.com/v1beta/models"
-)
+const geminiEmbedBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
-// GeminiEmbeddingProvider usa la API de Google Embeddings (text-embedding-004).
+// GeminiEmbeddingProvider usa la API de Google Embeddings (modelo configurable vía GEMINI_EMBEDDING_MODEL).
 type GeminiEmbeddingProvider struct {
 	apiKey string
 	model  string
@@ -204,9 +202,13 @@ type GeminiEmbeddingProvider struct {
 }
 
 func NewGeminiEmbeddingProvider(apiKey string) *GeminiEmbeddingProvider {
+	model := strings.TrimSpace(os.Getenv("GEMINI_EMBEDDING_MODEL"))
+	if model == "" {
+		model = "gemini-embedding-2"
+	}
 	return &GeminiEmbeddingProvider{
 		apiKey: strings.TrimSpace(apiKey),
-		model:  geminiEmbeddingModel,
+		model:  model,
 		client: &http.Client{Timeout: 45 * time.Second},
 	}
 }

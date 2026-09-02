@@ -15,8 +15,12 @@ export default function TenantLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  /** En /tenant/ai el chat ya está embebido; ocultamos el FAB. */
-  const hideFloatingFab = pathname === '/tenant/ai' || pathname.startsWith('/tenant/ai/');
+  const isImmersiveAssistant = pathname === '/tenant/projects/create-assistant';
+  /** En /tenant/ai y creación asistida el chat ya está embebido; ocultamos el FAB. */
+  const hideFloatingFab =
+    pathname === '/tenant/ai' ||
+    pathname.startsWith('/tenant/ai/') ||
+    isImmersiveAssistant;
 
   return (
     <div className="flex h-screen bg-gray-50 print:block print:h-auto print:bg-white">
@@ -58,12 +62,14 @@ export default function TenantLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto print:overflow-visible print:w-full print:m-0 print:p-0">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center print:hidden sticky top-0 z-30">
-          <h2 className="text-lg font-semibold text-gray-800">Espacio de trabajo</h2>
-          <div className="text-sm text-gray-600">{user?.full_name || user?.email}</div>
-        </header>
-        <div className="p-6 print:p-0 print:m-0 print:w-full">
+      <main className={`flex-1 overflow-y-auto print:overflow-visible print:w-full print:m-0 print:p-0 ${isImmersiveAssistant ? 'overflow-hidden' : ''}`}>
+        {!isImmersiveAssistant && (
+          <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center print:hidden sticky top-0 z-30">
+            <h2 className="text-lg font-semibold text-gray-800">Espacio de trabajo</h2>
+            <div className="text-sm text-gray-600">{user?.full_name || user?.email}</div>
+          </header>
+        )}
+        <div className={isImmersiveAssistant ? 'h-full' : 'p-6 print:p-0 print:m-0 print:w-full'}>
           <ErrorBoundary key={pathname} fallbackTitle="Error en el espacio de trabajo">
             <Outlet />
           </ErrorBoundary>

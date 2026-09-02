@@ -61,6 +61,8 @@ export type MGALayoutProps = {
   headerSlot?: ReactNode;
   /** Panel de auditoría u otros bloques bajo el área de trabajo. */
   footerSlot?: ReactNode;
+  /** Acciones en el banner del proyecto (p. ej. exportar PDF). */
+  bannerActions?: ReactNode;
 };
 
 function CheckBadge({ className = '' }: { className?: string }) {
@@ -117,6 +119,7 @@ export default function MGALayout({
   onNavigateHome,
   headerSlot,
   footerSlot,
+  bannerActions,
 }: MGALayoutProps) {
   const activeMainStage: MgaMainStageId = 'identificacion';
 
@@ -197,7 +200,8 @@ export default function MGALayout({
             {resolvedTitle}
           </p>
 
-          <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {bannerActions}
             <button
               type="button"
               onClick={onEditTitle}

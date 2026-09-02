@@ -41,3 +41,17 @@ func TestResolveModel_NilConfig(t *testing.T) {
 	assert.NotEmpty(t, ai.ResolveModel(ai.IntentFAQ, nil))
 	assert.NotEmpty(t, ai.ResolveModel(ai.IntentMGAGenerate, nil))
 }
+
+func TestResolveIntent_ProjectCreationRoute(t *testing.T) {
+	assert.Equal(t, ai.IntentProjectCreationInterview, ai.ResolveIntent(ai.RouteContextMgaProjectCreation, "hola"))
+	assert.Equal(t, ai.IntentProjectCreationInterview, ai.ResolveIntent(ai.RouteContextMgaProjectCreation, "Ayúdame a redactar el objetivo"))
+	assert.Equal(t, ai.IntentFAQ, ai.ResolveIntent("/admin/catalogs/ods", "¿Qué es el MGA?"))
+}
+
+func TestResolveModel_ProjectCreationInterview(t *testing.T) {
+	cfg := &config.Config{
+		AnthropicModelFast:     "fast-model",
+		AnthropicModelPowerful: "powerful-model",
+	}
+	assert.Equal(t, "powerful-model", ai.ResolveModel(ai.IntentProjectCreationInterview, cfg))
+}

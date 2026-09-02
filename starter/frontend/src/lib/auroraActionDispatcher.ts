@@ -1,6 +1,7 @@
 import {
   COPILOT_CATALOG_ROUTES,
   type ActionCardPayload,
+  type CreationContext,
 } from '../store/auroraCopilotStore';
 import { useCatalogStore } from '../store/catalogStore';
 import { useProjectStore } from '../store/projectStore';
@@ -11,11 +12,20 @@ export type DispatchActionOptions = {
   pathname?: string;
   variant?: 'floating' | 'embedded';
   onCloseAssistant?: () => void;
+  creationContext?: CreationContext | null;
 };
 
 function payloadString(payload: Record<string, unknown> | undefined, key: string): string {
   const raw = payload?.[key];
   return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function payloadStringSlice(payload: Record<string, unknown> | undefined, key: string): string[] {
+  const raw = payload?.[key];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean);
 }
 
 function resolveCardType(card: ActionCardPayload): string {
@@ -32,6 +42,10 @@ export async function dispatchActionCard(
   const type = resolveCardType(card);
 
   switch (type) {
+    case 'mga_generate_project':
+      await dispatchMgaGenerateProject(card, options);
+      return;
+
     case 'mga_apply':
       await dispatchMgaApply(card, projectId);
       return;
@@ -47,6 +61,80 @@ export async function dispatchActionCard(
     default:
       throw new Error('Tipo de tarjeta de acción no soportado');
   }
+}
+
+async function dispatchMgaGenerateProject(
+  card: ActionCardPayload,
+  options: DispatchActionOptions,
+): Promise<void> {
+  const payload = card.payload;
+  if (!payload) {
+    throw new Error('La tarjeta de generación no incluye datos del proyecto');
+  }
+
+  const name = payloadString(payload, 'name');
+  const problemDescription = payloadString(payload, 'problem_description');
+  const generalObjective = payloadString(payload, 'general_objective');
+  const causes = payloadStringSlice(payload, 'causes');
+  const effects = payloadStringSlice(payload, 'effects');
+
+  if (!name || !problemDescription || !generalObjective) {
+    throw new Error('Faltan campos obligatorios en la propuesta de proyecto');
+  }
+  if (causes.length < 2 || effects.length < 2) {
+    throw new Error('Se requieren al menos 2 causas y 2 efectos directos');
+  }
+
+  const ctx = options.creationContext;
+  const sector =
+    payloadString(payload, 'sector') ||
+    ctx?.sectorName?.trim() ||
+    ctx?.sectorCode?.trim() ||
+    'Sin sector';
+
+  const projectStore = useProjectStore.getState();
+  const mgaStore = useProjectMgaStore.getState();
+
+  const project = await projectStore.createProject({
+    name,
+    sector,
+    description: problemDescription,
+    ...(ctx?.sectorId ? { sector_id: ctx.sectorId } : {}),
+    ...(ctx?.programCodes?.[0] ? { program_code: ctx.programCodes[0] } : {}),
+    ...(payloadString(payload, 'product_code') || ctx?.productCodes?.[0]
+      ? { product_code: payloadString(payload, 'product_code') || ctx?.productCodes?.[0] }
+      : {}),
+  });
+
+  await projectStore.updateProjectDetails(project.id, {
+    problem_description: problemDescription,
+    general_objective: generalObjective,
+    situacion_existente: '',
+    magnitud_problema: '',
+  });
+
+  for (let i = 0; i < causes.length; i++) {
+    await mgaStore.addCause(project.id, {
+      cause_type: 'directa',
+      description: causes[i],
+      sort_order: i,
+      specific_objective: 'Redacte el objetivo específico asociado.',
+    });
+  }
+
+  for (let i = 0; i < effects.length; i++) {
+    await mgaStore.addEffect(project.id, {
+      effect_type: 'directo',
+      description: effects[i],
+      sort_order: i,
+    });
+  }
+
+  if (!options.navigate) {
+    throw new Error('No hay navegador disponible para abrir el proyecto creado');
+  }
+
+  options.navigate(`/tenant/projects/${project.id}/formulation`);
 }
 
 async function dispatchMgaApply(card: ActionCardPayload, projectId: string): Promise<void> {
@@ -82,6 +170,26 @@ async function dispatchMgaApply(card: ActionCardPayload, projectId: string): Pro
         general_objective: project.general_objective ?? '',
         situacion_existente: project.situacion_existente ?? '',
         magnitud_problema: project.magnitud_problema ?? '',
+      });
+      return;
+    }
+    case 'situacion_existente': {
+      projectStore.patchCurrentProject({ situacion_existente: value });
+      await projectStore.updateProjectDetails(projectId, {
+        problem_description: project.problem_description ?? '',
+        general_objective: project.general_objective ?? '',
+        situacion_existente: value,
+        magnitud_problema: project.magnitud_problema ?? '',
+      });
+      return;
+    }
+    case 'magnitud_problema': {
+      projectStore.patchCurrentProject({ magnitud_problema: value });
+      await projectStore.updateProjectDetails(projectId, {
+        problem_description: project.problem_description ?? '',
+        general_objective: project.general_objective ?? '',
+        situacion_existente: project.situacion_existente ?? '',
+        magnitud_problema: value,
       });
       return;
     }

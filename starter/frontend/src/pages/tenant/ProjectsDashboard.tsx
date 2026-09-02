@@ -90,7 +90,7 @@ export default function ProjectsDashboard() {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
             Bienvenido{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}
@@ -99,14 +99,24 @@ export default function ProjectsDashboard() {
             Gestione y formule sus proyectos de inversión pública con cumplimiento normativo MGA.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="h-14 px-8 bg-[#006162] hover:bg-[#004f50] text-white rounded-lg font-semibold text-lg inline-flex items-center justify-center gap-2 shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined">add_circle</span>
-          Crear nuevo proyecto
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate('/tenant/projects/create-assistant')}
+            className="h-14 px-6 bg-white border-2 border-[#006162] text-[#006162] hover:bg-teal-50 rounded-lg font-semibold text-base inline-flex items-center justify-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined">auto_awesome</span>
+            Crear con Asistente IA
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="h-14 px-8 bg-[#006162] hover:bg-[#004f50] text-white rounded-lg font-semibold text-lg inline-flex items-center justify-center gap-2 shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined">add_circle</span>
+            Crear nuevo proyecto
+          </button>
+        </div>
       </div>
 
       {error && (

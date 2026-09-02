@@ -185,6 +185,45 @@ func TestValidateActionCards_RejectsInvalidAddCauseType(t *testing.T) {
 	assert.Empty(t, cards)
 }
 
+func TestValidateActionCards_MgaGenerateProject_Valid(t *testing.T) {
+	raw := "ok\n\n```aurora-actions\n{\"action_cards\":[{\"type\":\"mga_generate_project\",\"label\":\"Generar\",\"payload\":{\"name\":\"Acueducto rural\",\"problem_description\":\"Falta de agua\",\"general_objective\":\"Mejorar acceso\",\"causes\":[\"Causa 1\",\"Causa 2\"],\"effects\":[\"Efecto 1\",\"Efecto 2\"]}}]}\n```"
+	_, cards := parseAuroraResponse(raw)
+	require.Len(t, cards, 1)
+	assert.Equal(t, "mga_generate_project", cards[0].Type)
+	assert.Equal(t, "Acueducto rural", cards[0].Payload["name"])
+	assert.Len(t, cards[0].Payload["causes"], 2)
+	assert.Len(t, cards[0].Payload["effects"], 2)
+}
+
+func TestValidateActionCards_MgaGenerateProject_RejectsInsufficientCauses(t *testing.T) {
+	cards := validateActionCards([]dto.ActionCard{{
+		Type:  "mga_generate_project",
+		Label: "Generar",
+		Payload: map[string]interface{}{
+			"name":                "Proyecto",
+			"problem_description": "Problema",
+			"general_objective":   "Objetivo",
+			"causes":              []interface{}{"Solo una"},
+			"effects":             []interface{}{"E1", "E2"},
+		},
+	}})
+	assert.Empty(t, cards)
+}
+
+func TestValidateActionCards_MgaGenerateProject_RejectsMissingName(t *testing.T) {
+	cards := validateActionCards([]dto.ActionCard{{
+		Type:  "mga_generate_project",
+		Label: "Generar",
+		Payload: map[string]interface{}{
+			"problem_description": "Problema",
+			"general_objective":   "Objetivo",
+			"causes":              []interface{}{"C1", "C2"},
+			"effects":             []interface{}{"E1", "E2"},
+		},
+	}})
+	assert.Empty(t, cards)
+}
+
 func TestExtractActionCards_InvalidJSONReturnsNil(t *testing.T) {
 	assert.Nil(t, extractActionCards("{no json}"))
 	assert.Empty(t, extractActionCards(`{"action_cards":[]}`))

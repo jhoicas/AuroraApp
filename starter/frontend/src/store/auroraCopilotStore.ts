@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCatalogStore, type CopilotCatalogTarget } from './catalogStore';
 
-export type ActionCardType = 'mga_apply' | 'catalog_search' | 'navigate';
+export type ActionCardType = 'mga_apply' | 'mga_generate_project' | 'catalog_search' | 'navigate';
 
 export type ActionCardPayload = {
   type?: ActionCardType;
@@ -21,6 +21,19 @@ export type CopilotMessage = {
   content: string;
   actionCards?: ActionCardPayload[];
 };
+
+export type CreationContext = {
+  ideaSummary: string;
+  sectorCode?: string;
+  sectorName?: string;
+  sectorId?: string;
+  productCodes?: string[];
+  programCodes?: string[];
+  odsCodes?: string[];
+};
+
+/** Ruta backend para la entrevista de creación asistida de proyecto MGA. */
+export const ROUTE_PROJECT_CREATION = 'mga:project-creation';
 
 type AuroraChatResponse = {
   reply: string;
@@ -50,6 +63,9 @@ type AuroraCopilotState = {
   isTyping: boolean;
   error: string | null;
   sessionId: string | null;
+  interviewSessionId: string | null;
+  interviewStarted: boolean;
+  interviewCreationContext: CreationContext | null;
   abortController: AbortController | null;
   /** Texto pendiente de enviar (grafo, tooltips, FloatingAssistant). */
   draftInput: string;
@@ -57,6 +73,8 @@ type AuroraCopilotState = {
   open: () => void;
   close: () => void;
   sendMessage: (message: string, routeContext: string, projectContext?: MgaProjectContext) => Promise<void>;
+  startInterview: (context: CreationContext) => Promise<void>;
+  endInterview: () => void;
   cancelGeneration: () => void;
   clearError: () => void;
   /** Reinicia el chat: aborta generación en curso, limpia historial y session_id. */
@@ -77,12 +95,33 @@ function extractError(err: unknown, fallback: string): string {
   return fallback;
 }
 
+function mapCreationContextToApi(ctx: CreationContext) {
+  return {
+    idea_summary: ctx.ideaSummary,
+    ...(ctx.sectorCode ? { sector_code: ctx.sectorCode } : {}),
+    ...(ctx.sectorName ? { sector_name: ctx.sectorName } : {}),
+    ...(ctx.productCodes?.length ? { product_codes: ctx.productCodes } : {}),
+    ...(ctx.programCodes?.length ? { program_codes: ctx.programCodes } : {}),
+    ...(ctx.odsCodes?.length ? { ods_codes: ctx.odsCodes } : {}),
+  };
+}
+
+function generateSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   isOpen: false,
   messages: [],
   isTyping: false,
   error: null,
   sessionId: null,
+  interviewSessionId: null,
+  interviewStarted: false,
+  interviewCreationContext: null,
   abortController: null,
   draftInput: '',
 
@@ -112,6 +151,24 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     });
   },
 
+  endInterview: () => {
+    const controller = get().abortController;
+    if (controller) {
+      controller.abort();
+    }
+    set({
+      interviewSessionId: null,
+      interviewStarted: false,
+      interviewCreationContext: null,
+      messages: [],
+      isTyping: false,
+      error: null,
+      sessionId: null,
+      abortController: null,
+      draftInput: '',
+    });
+  },
+
   clearChat: () => {
     const controller = get().abortController;
     if (controller) {
@@ -122,6 +179,9 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       isTyping: false,
       error: null,
       sessionId: null,
+      interviewSessionId: null,
+      interviewStarted: false,
+      interviewCreationContext: null,
       abortController: null,
       draftInput: '',
     });
@@ -133,6 +193,28 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       controller.abort();
     }
     set({ isTyping: false, abortController: null });
+  },
+
+  startInterview: async (context) => {
+    const idea = context.ideaSummary.trim();
+    if (!idea) return;
+
+    get().abortController?.abort();
+
+    const sessionId = generateSessionId();
+    set({
+      interviewSessionId: sessionId,
+      interviewStarted: true,
+      interviewCreationContext: context,
+      messages: [],
+      sessionId: null,
+      error: null,
+      draftInput: '',
+      isOpen: false,
+    });
+
+    const opener = `¡Hola Aurora! Quiero formular este proyecto: ${idea}`;
+    await get().sendMessage(opener, ROUTE_PROJECT_CREATION);
   },
 
   sendMessage: async (message, routeContext, projectContext) => {
@@ -154,11 +236,15 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       error: null,
       abortController: controller,
       draftInput: '',
-      isOpen: true,
+      ...(routeContext === ROUTE_PROJECT_CREATION ? {} : { isOpen: true }),
     });
 
     try {
-      const sessionId = get().sessionId;
+      const interviewSessionId = get().interviewSessionId;
+      const sessionId = interviewSessionId ?? get().sessionId;
+      const creationContext =
+        routeContext === ROUTE_PROJECT_CREATION ? get().interviewCreationContext : null;
+
       const { data } = await api.post<AuroraChatResponse>(
         '/ai/aurora/chat',
         {
@@ -166,6 +252,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
           route_context: routeContext,
           ...(sessionId ? { session_id: sessionId } : {}),
           ...(projectContext ? { project_context: projectContext } : {}),
+          ...(creationContext ? { creation_context: mapCreationContextToApi(creationContext) } : {}),
         },
         { signal: controller.signal },
       );
@@ -186,11 +273,15 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
           })),
       };
 
+      const resolvedSession = data.session_id || sessionId || null;
+
       set({
         messages: [...get().messages, assistantMsg],
         isTyping: false,
-        sessionId: data.session_id,
         abortController: null,
+        ...(interviewSessionId
+          ? { interviewSessionId: resolvedSession }
+          : { sessionId: resolvedSession }),
       });
     } catch (err) {
       if (isAxiosError(err) && err.code === 'ERR_CANCELED') {

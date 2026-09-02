@@ -31,6 +31,21 @@ type KnowledgeGraphBatch struct {
 	Links []KnowledgeLinkInput
 }
 
+// KnowledgeSearchFilters filtros opcionales para búsqueda RAG global en creación de proyectos.
+type KnowledgeSearchFilters struct {
+	SectorCode   string
+	SectorName   string
+	ProductCodes []string
+}
+
+// HasFilters indica si hay al menos un filtro de sector o producto.
+func (f KnowledgeSearchFilters) HasFilters() bool {
+	if strings.TrimSpace(f.SectorCode) != "" || strings.TrimSpace(f.SectorName) != "" {
+		return true
+	}
+	return len(f.ProductCodes) > 0
+}
+
 type AiKnowledgeRepository struct {
 	db *gorm.DB
 }
@@ -170,6 +185,92 @@ func (r *AiKnowledgeRepository) SearchSimilarByNodeTypes(
 		ORDER BY embedding <=> ?::vector
 		LIMIT ?
 	`, nodeTypes, vec, limit).Scan(&rows).Error
+	return rows, err
+}
+
+// SearchSimilarGlobal restringe la búsqueda vectorial al grafo global (tenant_id IS NULL).
+func (r *AiKnowledgeRepository) SearchSimilarGlobal(
+	ctx context.Context,
+	embedding []float32,
+	limit int,
+) ([]models.AiKnowledgeNode, error) {
+	if len(embedding) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 8
+	}
+	vec := formatVector(embedding)
+	var rows []models.AiKnowledgeNode
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT id, tenant_id, project_key, node_type, label, content, metadata, created_at
+		FROM ai_knowledge_nodes
+		WHERE embedding IS NOT NULL
+		  AND tenant_id IS NULL
+		ORDER BY embedding <=> ?::vector
+		LIMIT ?
+	`, vec, limit).Scan(&rows).Error
+	return rows, err
+}
+
+// SearchSimilarGlobalFiltered restringe la búsqueda global por sector y/o productos en metadata.
+func (r *AiKnowledgeRepository) SearchSimilarGlobalFiltered(
+	ctx context.Context,
+	embedding []float32,
+	limit int,
+	filters KnowledgeSearchFilters,
+) ([]models.AiKnowledgeNode, error) {
+	if len(embedding) == 0 || !filters.HasFilters() {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 8
+	}
+
+	vec := formatVector(embedding)
+	var conditions []string
+	var args []any
+
+	sectorTerms := make([]string, 0, 2)
+	if t := strings.TrimSpace(filters.SectorName); t != "" {
+		sectorTerms = append(sectorTerms, t)
+	}
+	if t := strings.TrimSpace(filters.SectorCode); t != "" {
+		sectorTerms = append(sectorTerms, t)
+	}
+	for _, term := range sectorTerms {
+		pattern := "%" + term + "%"
+		conditions = append(conditions, `(metadata->>'sector' ILIKE ? OR content ILIKE ? OR project_key ILIKE ?)`)
+		args = append(args, pattern, pattern, pattern)
+	}
+
+	for _, code := range filters.ProductCodes {
+		if t := strings.TrimSpace(code); t != "" {
+			pattern := "%" + t + "%"
+			conditions = append(conditions, `(metadata->>'product' ILIKE ? OR content ILIKE ? OR project_key ILIKE ?)`)
+			args = append(args, pattern, pattern, pattern)
+		}
+	}
+
+	if len(conditions) == 0 {
+		return nil, nil
+	}
+
+	filterClause := strings.Join(conditions, " OR ")
+	query := fmt.Sprintf(`
+		SELECT id, tenant_id, project_key, node_type, label, content, metadata, created_at
+		FROM ai_knowledge_nodes
+		WHERE embedding IS NOT NULL
+		  AND tenant_id IS NULL
+		  AND (%s)
+		ORDER BY embedding <=> ?::vector
+		LIMIT ?
+	`, filterClause)
+
+	args = append(args, vec, limit)
+
+	var rows []models.AiKnowledgeNode
+	err := r.db.WithContext(ctx).Raw(query, args...).Scan(&rows).Error
 	return rows, err
 }
 

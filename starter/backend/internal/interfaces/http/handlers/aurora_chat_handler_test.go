@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	appai "aurora-backend/internal/application/ai"
 	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/interfaces/http/dto"
@@ -458,4 +459,136 @@ func TestAuroraChat_MgaCausesEffects_WithRAG_CallsLLM(t *testing.T) {
 	assert.Equal(t, 1, llmMock.Calls())
 	assert.Contains(t, llmMock.LastSystemPrompt(), "REGLA ABSOLUTA")
 	assert.Contains(t, llmMock.LastSystemPrompt(), "Deforestación")
+}
+
+func TestAuroraChat_ProjectCreation_WithRAG_CallsLLM(t *testing.T) {
+	id := validIdentity()
+	knowledge := &mockKnowledgeStore{
+		similar: []models.AiKnowledgeNode{
+			{ID: uuid.New(), NodeType: models.KnowledgeNodeProject, Label: "Proyecto histórico", Content: "Acueducto comunitario"},
+		},
+	}
+	chat := &mockChatStore{}
+	llmMock := &mockLLM{reply: "¿Cuál es el problema central que desea abordar?"}
+
+	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Quiero iniciar un proyecto de agua",
+		"route_context": "mga:project-creation",
+		"creation_context": map[string]any{
+			"idea_summary": "Acueducto rural",
+			"sector_name":  "Agua potable",
+		},
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 1, llmMock.Calls())
+	assert.Equal(t, "powerful-model", llmMock.LastModel())
+	assert.Contains(t, llmMock.LastSystemPrompt(), "GUÍA CON KNOWLEDGE GRAPH")
+	assert.Contains(t, llmMock.LastSystemPrompt(), "Acueducto comunitario")
+	assert.Equal(t, 1, chat.ListSessionCalls())
+}
+
+func TestAuroraChat_ProjectCreation_EmptyRAG_DegradedModeStillCallsLLM(t *testing.T) {
+	id := validIdentity()
+	knowledge := &mockKnowledgeStore{similar: nil}
+	chat := &mockChatStore{}
+	llmMock := &mockLLM{reply: "Cuénteme sobre el problema que desea resolver."}
+
+	h := NewAuroraChatHandlerWithDeps(knowledge, chat, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Hola, quiero crear un proyecto",
+		"route_context": "mga:project-creation",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body dto.AuroraChatResponse
+	decodeBody(t, resp, &body)
+	assert.Equal(t, "Cuénteme sobre el problema que desea resolver.", body.Reply)
+	assert.Equal(t, 1, llmMock.Calls())
+	assert.Contains(t, llmMock.LastSystemPrompt(), appai.ProjectCreationDegradedRAGNote)
+	assert.Contains(t, llmMock.LastSystemPrompt(), "MODO DEGRADADO")
+	assert.NotContains(t, llmMock.LastSystemPrompt(), "Contexto del Knowledge Graph")
+}
+
+func TestAuroraChat_ProjectCreation_LoadsSessionHistory(t *testing.T) {
+	id := validIdentity()
+	sessionID := "session-entrevista-001"
+	chat := &mockChatStore{
+		sessionMessages: []models.AiChatMessage{
+			{Role: models.ChatRoleUser, Content: "Quiero un proyecto de agua"},
+			{Role: models.ChatRoleAssistant, Content: "¿En qué municipio?"},
+		},
+	}
+	llmMock := &mockLLM{reply: "Entendido, ¿cuál es el problema central?"}
+
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, chat, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "En el municipio de Tunja",
+		"route_context": "mga:project-creation",
+		"session_id":    sessionID,
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 1, chat.ListSessionCalls())
+
+	msgs := llmMock.LastMessages()
+	require.Len(t, msgs, 3)
+	assert.Equal(t, models.ChatRoleUser, msgs[0].Role)
+	assert.Equal(t, "Quiero un proyecto de agua", msgs[0].Content)
+	assert.Equal(t, models.ChatRoleAssistant, msgs[1].Role)
+	assert.Equal(t, "¿En qué municipio?", msgs[1].Content)
+	assert.Equal(t, models.ChatRoleUser, msgs[2].Role)
+	assert.Equal(t, "En el municipio de Tunja", msgs[2].Content)
+}
+
+func TestAuroraChat_ProjectCreation_ParseMgaGenerateProject(t *testing.T) {
+	id := validIdentity()
+	llmMock := &mockLLM{
+		reply: "Proyecto listo.\n\n```aurora-actions\n{\"action_cards\":[{\"type\":\"mga_generate_project\",\"label\":\"Generar\",\"payload\":{\"name\":\"Acueducto\",\"problem_description\":\"Falta de agua\",\"general_objective\":\"Mejorar acceso\",\"causes\":[\"Causa A\",\"Causa B\"],\"effects\":[\"Efecto A\",\"Efecto B\"]}}]}\n```",
+	}
+
+	h := NewAuroraChatHandlerWithDeps(&mockKnowledgeStore{}, &mockChatStore{}, &mockEmbedder{}, llmMock, nil, nil, testChatCfg())
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Genera el proyecto",
+		"route_context": "mga:project-creation",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body dto.AuroraChatResponse
+	decodeBody(t, resp, &body)
+	require.Len(t, body.ActionCards, 1)
+	assert.Equal(t, "mga_generate_project", body.ActionCards[0].Type)
+	assert.Equal(t, "Acueducto", body.ActionCards[0].Payload["name"])
+}
+
+func TestAuroraChat_ProjectCreation_EmbeddingError_ShortCircuits(t *testing.T) {
+	id := validIdentity()
+	llmMock := &mockLLM{reply: "no debería llamarse"}
+
+	h := NewAuroraChatHandlerWithDeps(
+		&mockKnowledgeStore{}, &mockChatStore{},
+		&mockEmbedder{err: errors.New("embedding down")},
+		llmMock, nil, nil, testChatCfg(),
+	)
+	app := newTestApp()
+	app.Post("/chat", injectIdentity(id), h.Chat)
+
+	resp := doJSON(t, app, http.MethodPost, "/chat", map[string]any{
+		"message":       "Hola",
+		"route_context": "mga:project-creation",
+	})
+	payload := requireErrorJSON(t, resp, http.StatusBadGateway)
+	assert.Contains(t, payload.Error, "embedding")
+	assert.Equal(t, 0, llmMock.Calls())
 }

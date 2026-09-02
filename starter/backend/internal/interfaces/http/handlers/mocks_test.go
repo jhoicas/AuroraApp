@@ -22,17 +22,19 @@ var errSimulatedDB = errors.New("simulated database failure")
 type mockKnowledgeStore struct {
 	mu sync.Mutex
 
-	insertErr         error
-	nodesErr          error
-	linksErr          error
-	searchErr         error
-	nodes             []models.AiKnowledgeNode
-	links             []models.AiKnowledgeLink
-	similar           []models.AiKnowledgeNode
-	lastBatch         postgres.KnowledgeGraphBatch
-	insertCall        int
-	searchCall        int
-	searchByTypesCall int
+	insertErr          error
+	nodesErr           error
+	linksErr           error
+	searchErr          error
+	nodes              []models.AiKnowledgeNode
+	links              []models.AiKnowledgeLink
+	similar            []models.AiKnowledgeNode
+	filteredSimilar    []models.AiKnowledgeNode
+	lastBatch          postgres.KnowledgeGraphBatch
+	insertCall         int
+	searchCall         int
+	searchByTypesCall  int
+	searchFilteredCall int
 }
 
 func (m *mockKnowledgeStore) InsertGraph(_ context.Context, batch postgres.KnowledgeGraphBatch) error {
@@ -87,6 +89,42 @@ func (m *mockKnowledgeStore) SearchSimilarByNodeTypes(_ context.Context, _ []flo
 	return filtered[:limit], nil
 }
 
+func (m *mockKnowledgeStore) SearchSimilarGlobal(_ context.Context, _ []float32, limit int) ([]models.AiKnowledgeNode, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.searchByTypesCall++
+	if m.searchErr != nil {
+		return nil, m.searchErr
+	}
+	if limit <= 0 || len(m.similar) == 0 {
+		return nil, nil
+	}
+	if limit > len(m.similar) {
+		limit = len(m.similar)
+	}
+	return m.similar[:limit], nil
+}
+
+func (m *mockKnowledgeStore) SearchSimilarGlobalFiltered(_ context.Context, _ []float32, limit int, _ postgres.KnowledgeSearchFilters) ([]models.AiKnowledgeNode, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.searchFilteredCall++
+	if m.searchErr != nil {
+		return nil, m.searchErr
+	}
+	src := m.filteredSimilar
+	if len(src) == 0 {
+		src = m.similar
+	}
+	if limit <= 0 || len(src) == 0 {
+		return nil, nil
+	}
+	if limit > len(src) {
+		limit = len(src)
+	}
+	return src[:limit], nil
+}
+
 func (m *mockKnowledgeStore) InsertCalls() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -105,6 +143,12 @@ func (m *mockKnowledgeStore) SearchByTypesCalls() int {
 	return m.searchByTypesCall
 }
 
+func (m *mockKnowledgeStore) SearchFilteredCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.searchFilteredCall
+}
+
 func (m *mockKnowledgeStore) LastBatch() postgres.KnowledgeGraphBatch {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -118,13 +162,15 @@ func (m *mockKnowledgeStore) LastBatch() postgres.KnowledgeGraphBatch {
 type mockChatStore struct {
 	mu sync.Mutex
 
-	saveErr  error
-	listErr  error
-	messages []models.AiChatMessage
-	total    int64
-	saved    []postgres.ChatMessagePair
-	lastPage int
-	lastSize int
+	saveErr         error
+	listErr         error
+	messages        []models.AiChatMessage
+	sessionMessages []models.AiChatMessage
+	total           int64
+	saved           []postgres.ChatMessagePair
+	lastPage        int
+	lastSize        int
+	listSessionCall int
 }
 
 func (m *mockChatStore) SavePair(_ context.Context, pair postgres.ChatMessagePair) error {
@@ -145,6 +191,22 @@ func (m *mockChatStore) ListPaginated(_ context.Context, page, pageSize int) ([]
 		return nil, 0, m.listErr
 	}
 	return m.messages, m.total, nil
+}
+
+func (m *mockChatStore) ListBySession(_ context.Context, _ uuid.UUID, _ string, _ int) ([]models.AiChatMessage, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.listSessionCall++
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
+	return m.sessionMessages, nil
+}
+
+func (m *mockChatStore) ListSessionCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.listSessionCall
 }
 
 func (m *mockChatStore) SavedPairs() []postgres.ChatMessagePair {
@@ -259,6 +321,14 @@ func (m *mockLLM) LastModel() string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.lastModel
+}
+
+func (m *mockLLM) LastMessages() []llm.Message {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]llm.Message, len(m.lastMessages))
+	copy(out, m.lastMessages)
+	return out
 }
 
 // ---------------------------------------------------------------------------

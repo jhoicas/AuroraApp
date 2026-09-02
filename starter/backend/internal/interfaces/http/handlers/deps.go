@@ -17,12 +17,15 @@ type KnowledgeStore interface {
 	ListAllLinks(ctx context.Context, tenantID *uuid.UUID) ([]models.AiKnowledgeLink, error)
 	SearchSimilar(ctx context.Context, tenantID *uuid.UUID, embedding []float32, limit int) ([]models.AiKnowledgeNode, error)
 	SearchSimilarByNodeTypes(ctx context.Context, embedding []float32, limit int, nodeTypes []string) ([]models.AiKnowledgeNode, error)
+	SearchSimilarGlobal(ctx context.Context, embedding []float32, limit int) ([]models.AiKnowledgeNode, error)
+	SearchSimilarGlobalFiltered(ctx context.Context, embedding []float32, limit int, filters postgres.KnowledgeSearchFilters) ([]models.AiKnowledgeNode, error)
 }
 
 // ChatStore abstrae la persistencia transaccional del historial de Aurora.
 type ChatStore interface {
 	SavePair(ctx context.Context, pair postgres.ChatMessagePair) error
 	ListPaginated(ctx context.Context, page, pageSize int) ([]models.AiChatMessage, int64, error)
+	ListBySession(ctx context.Context, userID uuid.UUID, sessionID string, limit int) ([]models.AiChatMessage, error)
 }
 
 // UsageLogStore abstrae la lectura paginada de telemetría para auditoría.

@@ -8,12 +8,38 @@ import (
 // RouteContextMgaCausesEffects identifica la asistencia Aurora en Causas y Efectos (Modo MGA).
 const RouteContextMgaCausesEffects = "mga:identificacion:causas-efectos"
 
+// RouteContextMgaSituacionExistente identifica asistencia para situación existente.
+const RouteContextMgaSituacionExistente = "mga:identificacion:situacion-existente"
+
+// RouteContextMgaMagnitudProblema identifica asistencia para magnitud del problema.
+const RouteContextMgaMagnitudProblema = "mga:identificacion:magnitud-problema"
+
+// MgaIdentificationEmptyRAGMessage respuesta fija cuando el KG global no aporta contexto.
+const MgaIdentificationEmptyRAGMessage = "No hay datos históricos suficientes en el Knowledge Graph para sugerir redacción de este campo."
+
 // MgaCausesEffectsEmptyRAGMessage respuesta fija cuando no hay nodos cause/effect en el KG global.
 const MgaCausesEffectsEmptyRAGMessage = "No hay datos históricos suficientes en el Knowledge Graph para sugerir causas o efectos."
 
 // IsMgaCausesEffectsRoute indica si el contexto de ruta corresponde a causas/efectos MGA.
 func IsMgaCausesEffectsRoute(routeContext string) bool {
 	return strings.TrimSpace(routeContext) == RouteContextMgaCausesEffects
+}
+
+// IsMgaSituacionExistenteRoute indica asistencia para situación existente.
+func IsMgaSituacionExistenteRoute(routeContext string) bool {
+	return strings.TrimSpace(routeContext) == RouteContextMgaSituacionExistente
+}
+
+// IsMgaMagnitudProblemaRoute indica asistencia para magnitud del problema.
+func IsMgaMagnitudProblemaRoute(routeContext string) bool {
+	return strings.TrimSpace(routeContext) == RouteContextMgaMagnitudProblema
+}
+
+// IsMgaIdentificationKgRoute agrupa rutas MGA de identificación con RAG estricto del KG global.
+func IsMgaIdentificationKgRoute(routeContext string) bool {
+	return IsMgaCausesEffectsRoute(routeContext) ||
+		IsMgaSituacionExistenteRoute(routeContext) ||
+		IsMgaMagnitudProblemaRoute(routeContext)
 }
 
 // BuildMgaCausesEffectsRAGQuery concatena los campos de identificación para el embedding RAG.
@@ -83,4 +109,63 @@ Valores permitidos:
 - parent_id: UUID string o vacío para nodos directos
 
 Responde en español.`, MgaCausesEffectsEmptyRAGMessage, rag)
+}
+
+// BuildMgaSituacionExistenteSystemPrompt genera prompt estricto para situación existente.
+func BuildMgaSituacionExistenteSystemPrompt(ragContext string) string {
+	return buildMgaIdentificationFieldPrompt(
+		"Descripción de la situación existente",
+		"situacion_existente",
+		ragContext,
+	)
+}
+
+// BuildMgaMagnitudProblemaSystemPrompt genera prompt estricto para magnitud del problema.
+func BuildMgaMagnitudProblemaSystemPrompt(ragContext string) string {
+	return buildMgaIdentificationFieldPrompt(
+		"Magnitud actual del problema e indicadores de referencia",
+		"magnitud_problema",
+		ragContext,
+	)
+}
+
+func buildMgaIdentificationFieldPrompt(fieldLabel, fieldKey, ragContext string) string {
+	rag := strings.TrimSpace(ragContext)
+	if rag == "" {
+		rag = "(vacío — no sugieras nada)"
+	}
+
+	return fmt.Sprintf(`Eres Aurora, asistente de formulación MGA en Identificación del problema.
+
+REGLA ABSOLUTA: Toda sugerencia DEBE basarse ÚNICA Y EXCLUSIVAMENTE en el Knowledge Graph global provisto abajo.
+- PROHIBIDO inventar ejemplos o métricas que no estén respaldadas por el RAG.
+- Si el contexto RAG está vacío, responde exactamente: "%s" y NO generes bloque aurora-actions ni JSON.
+
+Campo objetivo: %s
+
+Contexto del Knowledge Graph (proyectos históricos indexados):
+%s
+
+Instrucciones de salida:
+1. Redacta una propuesta estructurada basada solo en el RAG.
+2. Incluye una action card mga_apply para aplicar el texto sugerido.
+
+Formato de action card:
+`+"```aurora-actions"+`
+{
+  "action_cards": [
+    {
+      "type": "mga_apply",
+      "label": "✨ Aplicar redacción sugerida",
+      "description": "Texto breve",
+      "payload": {
+        "field": "%s",
+        "value": "Texto sugerido basado en el RAG"
+      }
+    }
+  ]
+}
+`+"```"+`
+
+Responde en español.`, MgaIdentificationEmptyRAGMessage, fieldLabel, rag, fieldKey)
 }

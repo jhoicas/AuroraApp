@@ -56,6 +56,11 @@ func (r *AiChatRepository) ListPaginated(ctx context.Context, page, pageSize int
 }
 
 func (r *AiChatRepository) ListByUser(ctx context.Context, userID uuid.UUID, sessionID string, limit int) ([]models.AiChatMessage, error) {
+	return r.ListBySession(ctx, userID, sessionID, limit)
+}
+
+// ListBySession devuelve el historial de chat de un usuario en una sesión, ordenado cronológicamente.
+func (r *AiChatRepository) ListBySession(ctx context.Context, userID uuid.UUID, sessionID string, limit int) ([]models.AiChatMessage, error) {
 	if limit <= 0 {
 		limit = 50
 	}

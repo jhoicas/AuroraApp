@@ -6,6 +6,7 @@ import type { Project } from '../../../store/projectStore';
 import { normalizeRole } from '../../../lib/roles';
 import MgaAlert from './MgaAlert';
 import FormulationAuditPanel, { type MgaAuditTabId } from './FormulationAuditPanel';
+import MgaPdfExportButton from './MgaPdfExportButton';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
 import MGALayout, { type MgaLayoutTabId } from './MGALayout';
 
@@ -141,6 +142,14 @@ export default function MgaFormulationShell({
       userName={user?.full_name || user?.email || 'Usuario'}
       userRole={formatRoleLabel(user?.role)}
       onNavigateHome={() => navigate('/tenant/projects')}
+      bannerActions={
+        <MgaPdfExportButton
+          project={project}
+          formuladorLabel={user?.full_name || user?.email || 'Usuario'}
+          formuladorType={formatRoleLabel(user?.role)}
+          variant="outline"
+        />
+      }
       headerSlot={
         (displayError || isSavingAny) ? (
           <div className="space-y-2 border-b border-outline-variant/40 bg-white px-4 py-3 sm:px-6">

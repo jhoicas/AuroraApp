@@ -23,7 +23,7 @@ export default function FloatingAssistant() {
           onClick={toggleOpen}
           aria-label="Abrir Aurora Asistente MGA"
           title="Aurora · Asistente MGA"
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#006162] hover:bg-[#004f50] text-white shadow-lg shadow-teal-900/20 flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162]"
+          className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-[#006162] hover:bg-[#004f50] text-white shadow-lg shadow-teal-900/20 flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162]"
         >
           <span className="material-symbols-outlined text-2xl">auto_awesome</span>
         </button>
@@ -31,7 +31,7 @@ export default function FloatingAssistant() {
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex justify-end"
+          className="fixed inset-0 z-[100] flex justify-end"
           role="dialog"
           aria-label="Aurora · Asistente MGA"
         >

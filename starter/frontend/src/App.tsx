@@ -16,6 +16,7 @@ import DeliverablesCatalogPage from './pages/admin/DeliverablesCatalogPage';
 import ActivitiesCatalogPage from './pages/admin/ActivitiesCatalogPage';
 import OdsCatalogPage from './pages/admin/OdsCatalogPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
+import ProjectCreationAssistant from './pages/tenant/ProjectCreationAssistant';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
 import CatalogPage from './pages/tenant/CatalogPage';
 import AiAssistantPage from './pages/tenant/AiAssistantPage';
@@ -78,6 +79,8 @@ function App() {
             <Route path="/tenant" element={<TenantLayout />}>
               <Route index element={<Navigate to="projects" replace />} />
               <Route path="projects" element={<ProjectsDashboard />} />
+              <Route path="projects/create-assistant" element={<ProjectCreationAssistant />} />
+              <Route path="projects/:id/formulation" element={<ProjectDetailPage />} />
               <Route path="projects/:id" element={<ProjectDetailPage />} />
               <Route path="formulation" element={<Navigate to="/tenant/projects" replace />} />
               <Route path="catalog" element={<CatalogPage />} />

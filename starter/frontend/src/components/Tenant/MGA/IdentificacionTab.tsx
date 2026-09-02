@@ -6,7 +6,11 @@ import { useProjectMgaStore, type CauseObjectiveRelation } from '../../../store/
 import { useAuroraCopilotStore } from '../../../store/auroraCopilotStore';
 import {
   buildMgaCausesEffectsPrompt,
+  buildMgaMagnitudProblemaPrompt,
+  buildMgaSituacionExistentePrompt,
   MGA_CAUSES_EFFECTS_ROUTE,
+  MGA_MAGNITUD_PROBLEMA_ROUTE,
+  MGA_SITUACION_EXISTENTE_ROUTE,
   type MgaCausesEffectsFocus,
 } from '../../../lib/mgaAuroraAssist';
 import type { MgaEffect } from '../../../lib/mgaApi';
@@ -25,6 +29,29 @@ type EditTarget =
   | { kind: 'effect'; id: string; draft: string }
   | { kind: 'cause'; id: string; draft: string }
   | null;
+
+function AuroraAssistButton({
+  label,
+  onClick,
+  compact = false,
+}: {
+  label: string;
+  onClick: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-md border border-primary/30 bg-white font-medium text-primary hover:bg-primary/5 ${
+        compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1 text-xs'
+      }`}
+    >
+      <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {label}
+    </button>
+  );
+}
 
 function NodeActions({
   onEdit,
@@ -80,7 +107,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const removeEffect = useProjectMgaStore((s) => s.removeEffect);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
   const sendMessage = useAuroraCopilotStore((s) => s.sendMessage);
-  const isAuroraTyping = useAuroraCopilotStore((s) => s.isTyping);
+  const openCopilot = useAuroraCopilotStore((s) => s.open);
+  const clearCopilotError = useAuroraCopilotStore((s) => s.clearError);
 
   const projectContext = useMemo(
     () => ({
@@ -91,16 +119,38 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     [problemDescription, situacionExistente, magnitudProblema],
   );
 
+  const requestAuroraAssist = useCallback(
+    (prompt: string, routeContext: string) => {
+      clearCopilotError();
+      openCopilot();
+      void sendMessage(prompt, routeContext, projectContext);
+    },
+    [clearCopilotError, openCopilot, sendMessage, projectContext],
+  );
+
   const suggestWithAurora = useCallback(
     (focus: MgaCausesEffectsFocus, parentId?: string) => {
-      void sendMessage(
+      requestAuroraAssist(
         buildMgaCausesEffectsPrompt(focus, project.name, parentId),
         MGA_CAUSES_EFFECTS_ROUTE,
-        projectContext,
       );
     },
-    [sendMessage, project.name, projectContext],
+    [requestAuroraAssist, project.name],
   );
+
+  const suggestSituacionWithAurora = useCallback(() => {
+    requestAuroraAssist(
+      buildMgaSituacionExistentePrompt(problemDescription),
+      MGA_SITUACION_EXISTENTE_ROUTE,
+    );
+  }, [requestAuroraAssist, problemDescription]);
+
+  const suggestMagnitudWithAurora = useCallback(() => {
+    requestAuroraAssist(
+      buildMgaMagnitudProblemaPrompt(problemDescription),
+      MGA_MAGNITUD_PROBLEMA_ROUTE,
+    );
+  }, [requestAuroraAssist, problemDescription]);
 
   const { causeRelations, effects } = getFormulation(project.id);
 
@@ -362,15 +412,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     <div className="flex min-h-[280px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
         <span className="font-semibold text-gray-800">{title}</span>
-        <button
-          type="button"
-          disabled={isAuroraTyping}
-          onClick={() => suggestWithAurora(auroraFocus)}
-          className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-white px-2 py-1 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-        >
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          Sugerir con Aurora
-        </button>
+        <AuroraAssistButton label="Sugerir con Aurora" onClick={() => suggestWithAurora(auroraFocus)} />
       </div>
       <div className="flex-1 overflow-y-auto p-5">
         {groups.length === 0 ? (
@@ -399,16 +441,11 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                       <Plus className="h-4 w-4" aria-hidden />
                       {indirectLabel}
                     </button>
-                    <button
-                      type="button"
-                      disabled={isAuroraTyping}
+                    <AuroraAssistButton
+                      label="Aurora"
+                      compact
                       onClick={() => suggestWithAurora(auroraFocus, group.parent.id)}
-                      title="Sugerir indirectos con Aurora"
-                      className="inline-flex items-center gap-1 rounded-lg border border-primary/30 px-2 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                      Aurora
-                    </button>
+                    />
                   </div>
                 </div>
               </div>
@@ -507,12 +544,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       {/* Campos inferiores — ancho completo */}
       <div className="space-y-6">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <label
-            htmlFor={`mga-situation-${project.id}`}
-            className="mb-4 block font-semibold text-gray-800"
-          >
-            Descripción de la situación existente con respecto al problema
-          </label>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <label
+              htmlFor={`mga-situation-${project.id}`}
+              className="font-semibold text-gray-800"
+            >
+              Descripción de la situación existente con respecto al problema
+            </label>
+            <AuroraAssistButton label="Redactar con Aurora" onClick={suggestSituacionWithAurora} />
+          </div>
           <textarea
             id={`mga-situation-${project.id}`}
             value={situacionExistente}
@@ -524,12 +564,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <label
-            htmlFor={`mga-magnitude-${project.id}`}
-            className="mb-4 block font-semibold text-gray-800"
-          >
-            Magnitud actual del problema e indicadores de referencia
-          </label>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <label
+              htmlFor={`mga-magnitude-${project.id}`}
+              className="font-semibold text-gray-800"
+            >
+              Magnitud actual del problema e indicadores de referencia
+            </label>
+            <AuroraAssistButton label="Redactar con Aurora" onClick={suggestMagnitudWithAurora} />
+          </div>
           <textarea
             id={`mga-magnitude-${project.id}`}
             value={magnitudProblema}

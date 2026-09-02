@@ -1,23 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import BudgetManager from '../../components/Tenant/BudgetManager';
 import ProjectFormulation from '../../components/Tenant/ProjectFormulation';
 import ProjectSummary from '../../components/Tenant/ProjectSummary';
 import FormulationAuditPanel, {
   type MgaAuditTabId,
 } from '../../components/Tenant/MGA/FormulationAuditPanel';
-import {
-  buildOfficialMgaReportData,
-  downloadOfficialMgaReport,
-} from '../../components/Tenant/MGA/exportOfficialMgaReport';
+import MgaPdfExportButton from '../../components/Tenant/MGA/MgaPdfExportButton';
 import { useAuth } from '../../context/AuthContext';
-import { useProjectMgaStore } from '../../store/projectMgaStore';
 import { useProjectStore } from '../../store/projectStore';
 
 type Tab = 'formulation' | 'budget' | 'summary';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const currentProject = useProjectStore((s) => s.currentProject);
   const isLoading = useProjectStore((s) => s.isLoading);
   const error = useProjectStore((s) => s.error);
@@ -26,16 +23,18 @@ export default function ProjectDetailPage() {
   const clearCurrentProject = useProjectStore((s) => s.clearCurrentProject);
   const clearError = useProjectStore((s) => s.clearError);
 
-  const getFormulation = useProjectMgaStore((s) => s.getFormulation);
-  const fetchFormulation = useProjectMgaStore((s) => s.fetchFormulation);
   const { user } = useAuth();
 
   const [tab, setTab] = useState<Tab>('formulation');
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [pendingMgaTab, setPendingMgaTab] = useState<MgaAuditTabId | null>(null);
   const formulationAnchorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (location.pathname.endsWith('/formulation')) {
+      setTab('formulation');
+    }
+  }, [location.pathname]);
 
   const handleAuditNavigateToTab = useCallback((tabId: MgaAuditTabId) => {
     setTab('formulation');
@@ -50,42 +49,8 @@ export default function ProjectDetailPage() {
     if (!id) return;
     void fetchProjectById(id);
     void fetchBudget(id);
-    void fetchFormulation(id);
     return () => clearCurrentProject();
-  }, [id, fetchProjectById, fetchBudget, fetchFormulation, clearCurrentProject]);
-
-  const handleExportPdf = useCallback(async () => {
-    if (!currentProject || isExportingPdf) return;
-
-    setIsExportingPdf(true);
-    setExportError(null);
-
-    try {
-      let formulation = getFormulation(currentProject.id);
-      if (formulation.causeRelations.length === 0 && formulation.generalIndicators.length === 0) {
-        formulation = await fetchFormulation(currentProject.id);
-      }
-
-      const reportData = buildOfficialMgaReportData({
-        projectName: currentProject.name,
-        bpin: currentProject.code_bpin,
-        sector: currentProject.sector,
-        tenantName: user?.full_name?.trim() || 'Entidad territorial',
-        problemDescription: currentProject.problem_description,
-        generalObjective: currentProject.general_objective,
-        causeRelations: formulation.causeRelations,
-        generalIndicators: formulation.generalIndicators,
-      });
-
-      await downloadOfficialMgaReport(reportData);
-    } catch (err) {
-      setExportError(
-        err instanceof Error ? err.message : 'No se pudo generar el documento PDF',
-      );
-    } finally {
-      setIsExportingPdf(false);
-    }
-  }, [currentProject, fetchFormulation, getFormulation, isExportingPdf, user?.full_name]);
+  }, [id, fetchProjectById, fetchBudget, clearCurrentProject]);
 
   if (isLoading && !currentProject) {
     return (
@@ -143,24 +108,13 @@ export default function ProjectDetailPage() {
                 <span className="material-symbols-outlined text-base">fact_check</span>
                 Validar y Enviar
               </button>
-              <button
-                type="button"
-                onClick={() => void handleExportPdf()}
-                disabled={isExportingPdf}
-                className="inline-flex items-center gap-1.5 rounded border border-[#2980b9] bg-white px-3 py-1.5 text-sm font-medium text-[#2980b9] hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isExportingPdf ? (
-                  <>
-                    <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                    Generando…
-                  </>
-                ) : (
-                  <>
-                    <span aria-hidden>📄</span>
-                    Exportar a PDF
-                  </>
-                )}
-              </button>
+              <MgaPdfExportButton
+                project={currentProject}
+                formuladorLabel={user?.full_name || user?.email || 'Usuario'}
+                formuladorType="Formulador oficial"
+                variant="outline"
+                className="border-[#2980b9] text-[#2980b9] hover:bg-blue-50"
+              />
               <span className="inline-flex items-center rounded-full bg-teal-50 text-[#006162] px-2.5 py-0.5 text-xs font-medium">
                 {currentProject.status}
               </span>
@@ -180,18 +134,6 @@ export default function ProjectDetailPage() {
             </div>
           </dl>
         </div>
-
-        {exportError && (
-          <div
-            role="alert"
-            className="mb-4 flex items-start justify-between gap-3 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 print:hidden"
-          >
-            <span>{exportError}</span>
-            <button type="button" onClick={() => setExportError(null)} aria-label="Cerrar">
-              <span className="material-symbols-outlined text-base">close</span>
-            </button>
-          </div>
-        )}
 
         {error && (
           <div

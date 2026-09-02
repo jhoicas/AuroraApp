@@ -93,11 +93,17 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	if appai.IsMgaCausesEffectsRoute(req.RouteContext) {
 		return h.chatMgaCausesEffects(c, userID, role, tenantID, sessionID, req)
 	}
+	if appai.IsMgaSituacionExistenteRoute(req.RouteContext) || appai.IsMgaMagnitudProblemaRoute(req.RouteContext) {
+		return h.chatMgaIdentificationField(c, userID, role, tenantID, sessionID, req)
+	}
+	if appai.IsMgaProjectCreationRoute(req.RouteContext) {
+		return h.chatProjectCreation(c, userID, role, tenantID, sessionID, req)
+	}
 
 	ragContext := h.buildRAGContext(c, tenantID, req.Message)
 	system := buildAuroraSystemPrompt(req.RouteContext, ragContext)
 
-	intent := appai.ClassifyIntent(req.Message)
+	intent := appai.ResolveIntent(req.RouteContext, req.Message)
 	selectedModel := appai.ResolveModel(intent, h.cfg)
 	messages := []llm.Message{{Role: "user", Content: req.Message}}
 
@@ -135,6 +141,37 @@ func (h *AuroraChatHandler) buildMgaCausesEffectsRAG(c *fiber.Ctx, query string)
 		return ""
 	}
 	return formatKnowledgeNodes(nodes)
+}
+
+func (h *AuroraChatHandler) buildMgaGlobalRAG(c *fiber.Ctx, query string) string {
+	vec, err := h.embedder.Embed(query)
+	if err != nil {
+		return ""
+	}
+	nodes, err := h.repo.SearchSimilarGlobal(c.Context(), vec, 8)
+	if err != nil || len(nodes) == 0 {
+		return ""
+	}
+	return formatKnowledgeNodes(nodes)
+}
+
+func (h *AuroraChatHandler) buildProjectCreationRAG(c *fiber.Ctx, query string, filters postgres.KnowledgeSearchFilters) (string, error) {
+	vec, err := h.embedder.Embed(query)
+	if err != nil {
+		return "", err
+	}
+
+	var nodes []models.AiKnowledgeNode
+	if filters.HasFilters() {
+		nodes, _ = h.repo.SearchSimilarGlobalFiltered(c.Context(), vec, 8, filters)
+	}
+	if len(nodes) == 0 {
+		nodes, _ = h.repo.SearchSimilarGlobal(c.Context(), vec, 8)
+	}
+	if len(nodes) == 0 {
+		return "", nil
+	}
+	return formatKnowledgeNodes(nodes), nil
 }
 
 func formatKnowledgeNodes(nodes []models.AiKnowledgeNode) string {
@@ -182,6 +219,115 @@ func (h *AuroraChatHandler) chatMgaCausesEffects(
 	return h.persistAndRespondChat(c, userID, role, tenantID, sessionID, req, reply, cards, responseModel)
 }
 
+func (h *AuroraChatHandler) chatMgaIdentificationField(
+	c *fiber.Ctx,
+	userID uuid.UUID,
+	role string,
+	tenantID *uuid.UUID,
+	sessionID string,
+	req dto.AuroraChatRequest,
+) error {
+	problem, situacion, magnitud := extractProjectContext(req)
+	ragQuery := appai.BuildMgaCausesEffectsRAGQuery(problem, situacion, magnitud, req.Message)
+	ragContext := h.buildMgaGlobalRAG(c, ragQuery)
+
+	if strings.TrimSpace(ragContext) == "" {
+		reply := appai.MgaIdentificationEmptyRAGMessage
+		return h.persistAndRespondChat(c, userID, role, tenantID, sessionID, req, reply, nil, "rag-empty")
+	}
+
+	var system string
+	switch {
+	case appai.IsMgaSituacionExistenteRoute(req.RouteContext):
+		system = appai.BuildMgaSituacionExistenteSystemPrompt(ragContext)
+	case appai.IsMgaMagnitudProblemaRoute(req.RouteContext):
+		system = appai.BuildMgaMagnitudProblemaSystemPrompt(ragContext)
+	default:
+		system = appai.BuildMgaSituacionExistenteSystemPrompt(ragContext)
+	}
+
+	intent := appai.IntentFAQ
+	selectedModel := appai.ResolveModel(intent, h.cfg)
+	messages := []llm.Message{{Role: "user", Content: req.Message}}
+
+	raw, responseModel, err := h.completeWithFallback(system, messages, selectedModel)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"error": fmt.Sprintf("no se pudo contactar a Aurora (proveedores IA): %v", err),
+		})
+	}
+
+	reply, cards := parseAuroraResponse(raw)
+	return h.persistAndRespondChat(c, userID, role, tenantID, sessionID, req, reply, cards, responseModel)
+}
+
+func (h *AuroraChatHandler) chatProjectCreation(
+	c *fiber.Ctx,
+	userID uuid.UUID,
+	role string,
+	tenantID *uuid.UUID,
+	sessionID string,
+	req dto.AuroraChatRequest,
+) error {
+	idea, sectorCode, sectorName, productCodes, programCodes, odsCodes := extractCreationContext(req)
+	ragQuery := appai.BuildProjectCreationRAGQuery(
+		idea, sectorCode, sectorName, productCodes, programCodes, odsCodes, req.Message,
+	)
+	filters := postgres.KnowledgeSearchFilters{
+		SectorCode:   sectorCode,
+		SectorName:   sectorName,
+		ProductCodes: productCodes,
+	}
+
+	ragContext, err := h.buildProjectCreationRAG(c, ragQuery, filters)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"error": fmt.Sprintf("no se pudo generar el embedding para Aurora: %v", err),
+		})
+	}
+
+	catalogSummary := appai.FormatCreationCatalogSummary(
+		idea, sectorCode, sectorName, productCodes, programCodes, odsCodes,
+	)
+	system := appai.BuildProjectCreationSystemPrompt(ragContext, catalogSummary)
+
+	history, err := h.chatRepo.ListBySession(c.Context(), userID, sessionID, 40)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load chat history"})
+	}
+	messages := chatMessagesToLLM(history, req.Message)
+
+	intent := appai.ResolveIntent(req.RouteContext, req.Message)
+	selectedModel := appai.ResolveModel(intent, h.cfg)
+
+	raw, responseModel, err := h.completeWithFallback(system, messages, selectedModel)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"error": fmt.Sprintf("no se pudo contactar a Aurora (proveedores IA): %v", err),
+		})
+	}
+
+	reply, cards := parseAuroraResponse(raw)
+	return h.persistAndRespondChat(c, userID, role, tenantID, sessionID, req, reply, cards, responseModel)
+}
+
+func chatMessagesToLLM(history []models.AiChatMessage, currentMessage string) []llm.Message {
+	messages := make([]llm.Message, 0, len(history)+1)
+	for _, m := range history {
+		role := strings.TrimSpace(m.Role)
+		if role != models.ChatRoleUser && role != models.ChatRoleAssistant {
+			continue
+		}
+		content := strings.TrimSpace(m.Content)
+		if content == "" {
+			continue
+		}
+		messages = append(messages, llm.Message{Role: role, Content: content})
+	}
+	messages = append(messages, llm.Message{Role: models.ChatRoleUser, Content: currentMessage})
+	return messages
+}
+
 func extractProjectContext(req dto.AuroraChatRequest) (problem, situacion, magnitud string) {
 	if req.ProjectContext == nil {
 		return "", "", ""
@@ -189,6 +335,17 @@ func extractProjectContext(req dto.AuroraChatRequest) (problem, situacion, magni
 	return req.ProjectContext.ProblemDescription,
 		req.ProjectContext.SituacionExistente,
 		req.ProjectContext.MagnitudProblema
+}
+
+func extractCreationContext(req dto.AuroraChatRequest) (
+	ideaSummary, sectorCode, sectorName string,
+	productCodes, programCodes, odsCodes []string,
+) {
+	if req.CreationContext == nil {
+		return "", "", "", nil, nil, nil
+	}
+	ctx := req.CreationContext
+	return ctx.IdeaSummary, ctx.SectorCode, ctx.SectorName, ctx.ProductCodes, ctx.ProgramCodes, ctx.OdsCodes
 }
 
 func (h *AuroraChatHandler) persistAndRespondChat(
@@ -221,8 +378,8 @@ func (h *AuroraChatHandler) persistAndRespondChat(
 	}
 
 	if h.telemetry != nil && responseModel != "rag-empty" {
-		intent := appai.ClassifyIntent(req.Message)
-		if appai.IsMgaCausesEffectsRoute(req.RouteContext) {
+		intent := appai.ResolveIntent(req.RouteContext, req.Message)
+		if appai.IsMgaIdentificationKgRoute(req.RouteContext) {
 			intent = appai.IntentFAQ
 		}
 		h.telemetry.LogCopilotAsync(userID, role, intent, responseModel)

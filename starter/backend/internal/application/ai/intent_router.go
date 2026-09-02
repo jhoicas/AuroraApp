@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	IntentMGAGenerate = "INTENT_MGA_GENERATE"
-	IntentFAQ         = "INTENT_FAQ"
+	IntentMGAGenerate              = "INTENT_MGA_GENERATE"
+	IntentFAQ                      = "INTENT_FAQ"
+	IntentProjectCreationInterview = "INTENT_PROJECT_CREATION_INTERVIEW"
 )
 
 var mgaGenerateKeywords = []string{
@@ -31,13 +32,21 @@ func ClassifyIntent(prompt string) string {
 	return IntentFAQ
 }
 
+// ResolveIntent prioriza el route_context sobre la clasificación por keywords.
+func ResolveIntent(routeContext, message string) string {
+	if IsMgaProjectCreationRoute(routeContext) {
+		return IntentProjectCreationInterview
+	}
+	return ClassifyIntent(message)
+}
+
 // ResolveModel selecciona el modelo Anthropic según la intención detectada.
 func ResolveModel(intent string, cfg *config.Config) string {
 	if cfg == nil {
 		return defaultFastModel()
 	}
 	switch intent {
-	case IntentMGAGenerate:
+	case IntentMGAGenerate, IntentProjectCreationInterview:
 		if m := strings.TrimSpace(cfg.AnthropicModelPowerful); m != "" {
 			return m
 		}

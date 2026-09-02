@@ -78,6 +78,8 @@ func describeRoute(route string) string {
 		return "El usuario está en la Gestión IA / Knowledge Base MGA."
 	case strings.Contains(r, "mga:identificacion:causas-efectos"):
 		return "El usuario está en Identificación MGA — Causas y Efectos del árbol de problemas."
+	case strings.Contains(r, "mga:project-creation"):
+		return "El usuario está en la entrevista de creación asistida de proyecto MGA."
 	case strings.Contains(r, "/admin/tenants"):
 		return "El usuario está en la Gestión de Tenants."
 	default:
@@ -235,7 +237,68 @@ func normalizeActionCard(c dto.ActionCard) (dto.ActionCard, bool) {
 		}
 		return c, true
 
+	case "mga_generate_project":
+		if c.Label == "" || c.Payload == nil {
+			return c, false
+		}
+		name, _ := c.Payload["name"].(string)
+		problemDesc, _ := c.Payload["problem_description"].(string)
+		generalObj, _ := c.Payload["general_objective"].(string)
+		name = strings.TrimSpace(name)
+		problemDesc = strings.TrimSpace(problemDesc)
+		generalObj = strings.TrimSpace(generalObj)
+		if name == "" || problemDesc == "" || generalObj == "" {
+			return c, false
+		}
+		causes := payloadStringSlice(c.Payload, "causes")
+		effects := payloadStringSlice(c.Payload, "effects")
+		if len(causes) < 2 || len(effects) < 2 {
+			return c, false
+		}
+		c.Payload["name"] = name
+		c.Payload["problem_description"] = problemDesc
+		c.Payload["general_objective"] = generalObj
+		c.Payload["causes"] = causes
+		c.Payload["effects"] = effects
+		return c, true
+
 	default:
 		return c, false
 	}
+}
+
+func payloadStringSlice(payload map[string]interface{}, key string) []string {
+	raw, ok := payload[key]
+	if !ok || raw == nil {
+		return nil
+	}
+
+	var items []string
+	switch v := raw.(type) {
+	case []string:
+		items = v
+	case []interface{}:
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				items = append(items, s)
+			}
+		}
+	default:
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(items))
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		if _, dup := seen[item]; dup {
+			continue
+		}
+		seen[item] = struct{}{}
+		out = append(out, item)
+	}
+	return out
 }

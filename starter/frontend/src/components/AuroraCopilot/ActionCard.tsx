@@ -18,12 +18,14 @@ const catalogLabels: Record<string, string> = {
 
 const typeLabels: Record<string, string> = {
   mga_apply: 'Sugerencia MGA',
+  mga_generate_project: 'Generar proyecto',
   catalog_search: 'Catálogo DNP',
   navigate: 'Navegación',
 };
 
 function cardKind(card: ActionCardPayload): string {
   if (card.type === 'mga_apply') return 'mga_apply';
+  if (card.type === 'mga_generate_project') return 'mga_generate_project';
   if (card.type === 'navigate') return 'navigate';
   if (card.catalog) return card.catalog;
   return 'action';
@@ -31,6 +33,7 @@ function cardKind(card: ActionCardPayload): string {
 
 function cardIcon(kind: string): string {
   if (kind === 'mga_apply') return 'auto_fix_high';
+  if (kind === 'mga_generate_project') return 'rocket_launch';
   if (kind === 'navigate') return 'open_in_new';
   return 'inventory_2';
 }
@@ -50,7 +53,9 @@ export default function ActionCard({ card, onApply }: ActionCardProps) {
       ? '✓ Aplicado'
       : status === 'applying'
         ? 'Aplicando…'
-        : card.label || 'Aplicar';
+        : card.type === 'mga_generate_project'
+          ? 'Crear Proyecto'
+          : card.label || 'Aplicar';
 
   const handleClick = async () => {
     if (status === 'applied' || status === 'applying') return;

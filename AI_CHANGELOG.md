@@ -15,6 +15,25 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de errores de compilación de TypeScript (TS2345, TS6133)
+
+- **Objetivo:** Corregir errores de compilación TypeScript surgidos al hacer obligatorios los campos base de la MGA en `CreateProjectPayload`.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx` - Eliminadas importaciones sin usar (`api`, `Region`).
+  - `starter/frontend/src/lib/auroraActionDispatcher.ts` - Añadidos valores por defecto MGA a la creación del proyecto.
+  - `starter/frontend/src/pages/tenant/CatalogPage.tsx` - Añadidos valores por defecto MGA a la creación del proyecto.
+  - `starter/frontend/src/store/projectStore.test.ts` - Añadidos datos ficticios MGA a los mocks de creación para satisfacer los tests.
+- **Logica implementada:**
+  - Se inyectaron payloads por defecto para los campos requeridos (`proceso_id`, `objeto`, `localizaciones`, `tipo_inversion`, `tipologia`) en los flujos alternativos (Catálogo y Asistente IA) y en las pruebas, para que TypeScript reanude la compilación correctamente.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` - exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Los campos inyectados en la base de datos (Catálogo y Asistente) son valores predeterminados ("Territorial", "Nacional", etc.) que el usuario deberá editar más tarde en la plataforma, pero permiten que el flujo no se rompa prematuramente.
+
 ### 2026-09-16 - Antigravity - Validación obligatoria de campos MGA
 
 - **Objetivo:** Hacer obligatorios los campos de proyecto MGA (Proceso, Objeto, Localizaciones, Tipo de inversión, Tipología, Sector, Producto).

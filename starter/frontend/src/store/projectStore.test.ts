@@ -122,6 +122,11 @@ describe('projectStore — createProject', () => {
         sector: '  40  ',
         description: '  Descripción  ',
         code_bpin: '  2026001  ',
+        proceso_id: 1, 
+        objeto: 'Test', 
+        localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }], 
+        tipo_inversion: 'Territorial', 
+        tipologia: 'Test',
       });
     });
 
@@ -130,6 +135,11 @@ describe('projectStore — createProject', () => {
       sector: '40',
       description: 'Descripción',
       code_bpin: '2026001',
+      proceso_id: 1, 
+      objeto: 'Test', 
+      localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }], 
+      tipo_inversion: 'Territorial', 
+      tipologia: 'Test',
     });
     expect(created?.id).toBe('proj-nuevo');
     expect(store().projects.map((p) => p.id)).toEqual(['proj-nuevo', 'proj-viejo']);
@@ -147,16 +157,42 @@ describe('projectStore — createProject', () => {
     );
 
     await act(async () => {
-      await store().createProject({ name: 'A', sector: '40', description: '   ', code_bpin: '  ' });
+      await store().createProject({ 
+        name: 'A', 
+        sector: '40', 
+        description: '   ', 
+        code_bpin: '  ',
+        proceso_id: 1, 
+        objeto: 'Test', 
+        localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }], 
+        tipo_inversion: 'Territorial', 
+        tipologia: 'Test',
+      });
     });
 
-    expect(body).toEqual({ name: 'A', sector: '40' });
+    expect(body).toEqual({ 
+      name: 'A', 
+      sector: '40',
+      proceso_id: 1, 
+      objeto: 'Test', 
+      localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }], 
+      tipo_inversion: 'Territorial', 
+      tipologia: 'Test',
+    });
   });
 
   it('lanza el error del backend y lo deja en el estado', async () => {
     server.use(http.post(apiUrl('/projects'), () => errorResponse(409, 'BPIN duplicado')));
 
-    await expect(store().createProject({ name: 'A', sector: '40' })).rejects.toThrow('BPIN duplicado');
+    await expect(store().createProject({ 
+      name: 'A', 
+      sector: '40',
+      proceso_id: 1, 
+      objeto: 'Test', 
+      localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }], 
+      tipo_inversion: 'Territorial', 
+      tipologia: 'Test',
+    })).rejects.toThrow('BPIN duplicado');
     expect(store().error).toBe('BPIN duplicado');
     expect(store().isLoading).toBe(false);
     expect(store().projects).toEqual([]);

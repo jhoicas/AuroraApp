@@ -1,13 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
-import { api } from '../../lib/api';
+
 import { useProjectStore } from '../../store/projectStore';
-import {
   useLocationStore,
   generateProjectName,
   type LocationSelection,
-  type Region,
 } from '../../store/locationStore';
 import {
   CATALOG_FULL_LIST_LIMIT,

@@ -194,6 +194,11 @@ export default function CatalogPage() {
         product_code: selectedProduct.codigo_del_producto,
         description: `Clasificación DNP · Sector ${selectedSector.code} · Programa ${selectedProgram.code} · Producto ${selectedProduct.codigo_del_producto}`,
         code_bpin: selectedProduct.codigo_del_producto,
+        proceso_id: 1,
+        objeto: "Creado desde el catálogo de productos",
+        localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }],
+        tipo_inversion: "Territorial",
+        tipologia: "General - Esquemas SUIFP's",
       });
       setModalOpen(false);
       navigate(`/tenant/projects/${project.id}`);

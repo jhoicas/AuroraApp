@@ -61,6 +61,37 @@ export type GeneralObjectiveIndicator = {
   verificationSource: string;
 };
 
+export type PlanDesarrolloPndLink = {
+  id: string;
+  transformacion: string;
+  pilar: string;
+  catalizador: string;
+  componente: string;
+};
+
+export type PlanDesarrolloData = {
+  pndLinks: PlanDesarrolloPndLink[];
+  departamental: {
+    plan: string;
+    estrategia: string;
+    programa: string;
+  };
+  municipal: {
+    plan: string;
+    estrategia: string;
+    programa: string;
+  };
+  etnico: {
+    tipoComunidad: string;
+    instrumentos: string;
+  };
+  otros: {
+    plan: string;
+    estrategia: string;
+    programa: string;
+  };
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -68,6 +99,7 @@ export type ProjectMgaFormulation = {
   participants: MgaParticipant[];
   populations: MgaPopulation[];
   alternatives: MgaAlternative[];
+  planDesarrollo?: PlanDesarrolloData;
 };
 
 type ProjectMgaState = {
@@ -119,6 +151,7 @@ type ProjectMgaState = {
   removeAlternative: (projectId: string, alternativeId: string) => Promise<void>;
   createIndicator: (projectId: string, payload: CreateMgaIndicatorPayload) => Promise<void>;
   deleteIndicator: (projectId: string, indicatorId: string) => Promise<void>;
+  savePlanDesarrollo: (projectId: string, data: PlanDesarrolloData) => Promise<void>;
   clearError: () => void;
 };
 
@@ -184,6 +217,8 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     participants: data.participants ?? [],
     populations: data.populations ?? [],
     alternatives: data.alternatives ?? [],
+    // As we don't have this in API yet, it will be undefined initially
+    planDesarrollo: undefined,
   };
 }
 
@@ -206,6 +241,27 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   error: null,
 
   clearError: () => set({ error: null }),
+
+  savePlanDesarrollo: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      // Mock API call for now
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        return {
+          byProjectId: {
+            ...state.byProjectId,
+            [projectId]: { ...formulation, planDesarrollo: data },
+          },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando plan de desarrollo', isSaving: false });
+      throw err;
+    }
+  },
 
   getFormulation: (projectId) => get().byProjectId[projectId] ?? EMPTY_FORMULATION,
 

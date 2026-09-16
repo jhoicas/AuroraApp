@@ -3,6 +3,7 @@ import { Home, Pencil } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import type { MgaAuditTabId } from './FormulationAuditPanel';
 import IdentificacionTab from './IdentificacionTab';
+import PlanDesarrolloTab from './PlanDesarrolloTab';
 import ParticipantesTab from './ParticipantesTab';
 import PoblacionTab from './PoblacionTab';
 import ObjetivosTab from './ObjetivosTab';
@@ -96,7 +97,7 @@ function useMgaSectionStatuses(project: Project) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
 
-  const cPlan = true; 
+  const cPlan = !!formulation.planDesarrollo; 
   const cIdentificacion = formulation.causeRelations.length > 0 || formulation.effects.length > 0 || !!project.problem_description;
   const cParticipantes = formulation.participants.length > 0;
   const cPoblacion = formulation.populations.length > 0;
@@ -105,7 +106,7 @@ function useMgaSectionStatuses(project: Project) {
   const cAlternativas = formulation.alternatives.length > 0;
 
   const statuses: Record<MgaLayoutTabId, SectionStatus> = {
-    'plan-desarrollo': 'COMPLETED',
+    'plan-desarrollo': cPlan ? 'COMPLETED' : 'ACTIVE',
     'identificacion': cIdentificacion ? 'COMPLETED' : (cPlan ? 'ACTIVE' : 'LOCKED'),
     'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
     'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
@@ -134,21 +135,10 @@ function useMgaMainStageStatuses(subStatuses: Record<MgaLayoutTabId, SectionStat
   return statuses;
 }
 
-function PlanDesarrolloPlaceholder() {
-  return (
-    <div className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-8 text-center text-sm text-outline">
-      <p className="font-medium text-gray-700">Plan de desarrollo</p>
-      <p className="mt-2 text-gray-500">
-        Vincule el proyecto con el plan de desarrollo territorial o sectorial correspondiente.
-      </p>
-    </div>
-  );
-}
-
 function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
   switch (activeTab) {
     case 'plan-desarrollo':
-      return <PlanDesarrolloPlaceholder />;
+      return <PlanDesarrolloTab project={project} />;
     case 'identificacion':
       return <IdentificacionTab project={project} />;
     case 'participantes':

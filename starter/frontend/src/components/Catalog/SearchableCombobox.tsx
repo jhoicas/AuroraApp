@@ -157,7 +157,7 @@ export default function SearchableCombobox({
 
   return (
     <div ref={containerRef} className="relative block space-y-2">
-      <label htmlFor={inputId} className="text-sm font-semibold text-gray-700">
+      <label htmlFor={inputId} className="text-base font-semibold text-gray-700">
         {label}
       </label>
 
@@ -227,7 +227,7 @@ export default function SearchableCombobox({
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => handleSelect(option.value)}
-                      className={`flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left text-sm transition hover:bg-teal-50 ${
+                      className={`flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left text-base transition hover:bg-teal-50 ${
                         isSelected ? 'bg-teal-50/80 text-[#006162]' : 'text-gray-800'
                       }`}
                     >

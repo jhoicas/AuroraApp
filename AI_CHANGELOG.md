@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Rediseño UX/UI Accesible para Localizaciones
+
+- **Objetivo:** Mejorar drásticamente la accesibilidad (enfocada en adultos mayores) del bloque de selección de localizaciones (Región, Departamento, Municipio) en los modales de creación de proyecto, migrando de un layout horizontal estrecho a tarjetas (Cards) verticales amplias, y aumentando los tamaños de fuente.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Catalog/SearchableCombobox.tsx`: Se elevó el tamaño de la tipografía base a `text-base` (16px mínimo) en la etiqueta (`label`) y en las opciones de lista para mayor legibilidad.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`: Se reestructuró la cuadrícula de localizaciones usando un diseño de Tarjetas (`Card layout`). Se cambió la orientación horizontal por una vertical, integrando un resumen inferior (Badge de confirmación) una vez seleccionada una ubicación completa. Se rediseñó el botón "Agregar localización" para hacerlo más evidente y fácil de hacer clic.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Se aplicó exactamente el mismo rediseño estructural de Tarjetas y botón de agregar, manteniendo la sincronización entre ambos flujos.
+- **Validación ejecutada:** Ejecución de `npx tsc --noEmit` completada sin errores (exit code 0).
+
 ### 2026-09-16 - Antigravity - Corrección Estricta de TypeScript (TS6133)
 
 - **Objetivo:** Eliminar variables declaradas pero no utilizadas tras las recientes refactorizaciones en los catálogos para evitar el quiebre del build de Docker en el pipeline.

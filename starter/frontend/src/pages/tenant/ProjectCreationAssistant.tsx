@@ -426,59 +426,84 @@ export default function ProjectCreationAssistant() {
               <label className="block text-sm font-semibold text-gray-800 mb-1">
                 Localizaciones <span className="text-red-500">*</span>
               </label>
-              <div className="space-y-2">
-                {localizaciones.map((loc, idx) => (
-                  <div key={idx} className="flex gap-1 items-start">
-                    <div className="flex-1 grid grid-cols-3 gap-1">
-                      <SearchableCombobox
-                        id={`region-${idx}`}
-                        label=""
-                        placeholder="Región"
-                        disabled={inputsLocked}
-                        options={regions.map(r => ({ value: String(r.id), label: r.name, code: String(r.id) }))}
-                        value={loc.regionId ? String(loc.regionId) : ''}
-                        onChange={(val) => updateLocation(idx, 'regionId', val ? Number(val) : null)}
-                      />
-                      <SearchableCombobox
-                        id={`dep-${idx}`}
-                        label=""
-                        placeholder="Depto."
-                        disabled={inputsLocked || !loc.regionId}
-                        options={getDepartamentos(loc.regionId).map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
-                        value={loc.departamentoId ? String(loc.departamentoId) : ''}
-                        onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
-                      />
-                      <SearchableCombobox
-                        id={`mun-${idx}`}
-                        label=""
-                        placeholder="Mpio. (opc.)"
-                        disabled={inputsLocked || !loc.departamentoId}
-                        options={getMunicipios(loc.regionId, loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
-                        value={loc.municipioId ? String(loc.municipioId) : ''}
-                        onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
-                      />
+              <div className="space-y-3">
+                {localizaciones.map((loc, idx) => {
+                  const selectedRegion = regions.find(r => r.id === loc.regionId);
+                  const selectedDepto = getDepartamentos(loc.regionId).find(d => d.id === loc.departamentoId);
+                  const selectedMun = getMunicipios(loc.regionId, loc.departamentoId).find(m => m.id === loc.municipioId);
+
+                  return (
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm space-y-3 mb-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-slate-800">Localización #{idx + 1}</h4>
+                        {localizaciones.length > 1 && !inputsLocked && (
+                          <button
+                            type="button"
+                            onClick={() => removeLocation(idx)}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center gap-1"
+                            aria-label={`Quitar localización ${idx + 1}`}
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                            Quitar localización
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col space-y-3">
+                        <div>
+                          <span className="text-sm font-semibold text-slate-700 mb-1 block">Región</span>
+                          <SearchableCombobox
+                            id={`region-${idx}`}
+                            label=""
+                            placeholder="Región"
+                            disabled={inputsLocked}
+                            options={regions.map(r => ({ value: String(r.id), label: r.name, code: String(r.id) }))}
+                            value={loc.regionId ? String(loc.regionId) : ''}
+                            onChange={(val) => updateLocation(idx, 'regionId', val ? Number(val) : null)}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-slate-700 mb-1 block">Departamento</span>
+                          <SearchableCombobox
+                            id={`dep-${idx}`}
+                            label=""
+                            placeholder="Depto."
+                            disabled={inputsLocked || !loc.regionId}
+                            options={getDepartamentos(loc.regionId).map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
+                            value={loc.departamentoId ? String(loc.departamentoId) : ''}
+                            onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-slate-700 mb-1 block">Municipio</span>
+                          <SearchableCombobox
+                            id={`mun-${idx}`}
+                            label=""
+                            placeholder="Mpio. (opc.)"
+                            disabled={inputsLocked || !loc.departamentoId}
+                            options={getMunicipios(loc.regionId, loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
+                            value={loc.municipioId ? String(loc.municipioId) : ''}
+                            onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
+                          />
+                        </div>
+                      </div>
+
+                      {loc.regionId && loc.departamentoId && loc.municipioId && (
+                        <div className="bg-emerald-100/70 text-emerald-800 text-sm p-2 rounded-md font-medium mt-3">
+                          ✓ {selectedRegion?.name} › {selectedDepto?.name} › {selectedMun?.name}
+                        </div>
+                      )}
                     </div>
-                    {localizaciones.length > 1 && !inputsLocked && (
-                      <button
-                        type="button"
-                        onClick={() => removeLocation(idx)}
-                        className="mt-1 text-red-400 hover:text-red-600 shrink-0"
-                        aria-label={`Quitar localización ${idx + 1}`}
-                      >
-                        <span className="material-symbols-outlined text-sm">close</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {!inputsLocked && (
                 <button
                   type="button"
                   onClick={addLocation}
-                  className="mt-1 inline-flex items-center gap-0.5 text-xs text-[#006162] hover:underline font-medium"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg font-medium hover:bg-emerald-100 flex items-center justify-center gap-2 transition-colors mt-2"
                 >
-                  <span className="material-symbols-outlined text-sm">add</span>
-                  Agregar
+                  + Agregar otra localización
                 </button>
               )}
             </div>

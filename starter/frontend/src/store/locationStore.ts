@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
-import { adminListLocations, PaginationMeta } from '../lib/adminApi';
+import { adminListLocations } from '../lib/adminApi';
+import type { PaginationMeta } from '../lib/adminApi';
 
 // ─── Tipos ───────────────────────────────────────────────────────────
 

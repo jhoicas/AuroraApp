@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search, Edit2, Upload } from 'lucide-react';
 import { useLocationStore } from '../../store/locationStore';
+import type { Region, Departamento } from '../../store/locationStore';
 import {
   adminCreateRegion, adminUpdateRegion,
   adminCreateDepartamento, adminUpdateDepartamento,
@@ -8,12 +9,12 @@ import {
   adminImportLocations
 } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';
-import CatalogPagination from './CatalogPagination';
+import CatalogPagination from '../../components/admin/CatalogPagination';
 
 type Tab = 'regiones' | 'departamentos' | 'municipios';
 
 export default function LocationsCatalogPage() {
-  const { adminLocations, adminLocationsMeta, isLoadingLocations, fetchAdminLocations } = useLocationStore();
+  const { regions, adminLocations, adminLocationsMeta, isLoadingLocations, fetchLocations, fetchAdminLocations } = useLocationStore();
   const [activeTab, setActiveTab] = useState<Tab>('regiones');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -29,6 +30,14 @@ export default function LocationsCatalogPage() {
   useEffect(() => {
     fetchAdminLocations(activeTab, searchTerm, page, limit);
   }, [fetchAdminLocations, activeTab, searchTerm, page, limit]);
+
+  useEffect(() => {
+    fetchLocations(false);
+  }, [fetchLocations]);
+
+  const departamentos = regions.flatMap((r: Region) => 
+    r.departamentos.map((d: Departamento) => ({ ...d, regionName: r.name }))
+  );
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
@@ -356,7 +365,7 @@ export default function LocationsCatalogPage() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162] disabled:bg-slate-100"
                   >
                     <option value="">Seleccione una región...</option>
-                    {regions.map(r => (
+                    {regions.map((r: Region) => (
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
@@ -373,7 +382,7 @@ export default function LocationsCatalogPage() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162] disabled:bg-slate-100"
                   >
                     <option value="">Seleccione un departamento...</option>
-                    {departamentos.map(d => (
+                    {departamentos.map((d: Departamento & { regionName: string }) => (
                       <option key={d.id} value={d.id}>{d.name} ({d.regionName})</option>
                     ))}
                   </select>

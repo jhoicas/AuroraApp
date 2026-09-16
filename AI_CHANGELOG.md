@@ -15,6 +15,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de Tipado en Frontend (Zustand & Paginación)
+
+- **Objetivo:** Resolver errores estrictos de TypeScript causados por sintaxis de importación inválida y desestructuración incompleta del store, los cuales impedían la compilación del build de producción.
+- **Archivos modificados:**
+  - `starter/frontend/src/store/locationStore.ts`: Se corrigió la importación de `PaginationMeta` utilizando `import type` para cumplir con las reglas de `verbatimModuleSyntax`.
+  - `starter/frontend/src/pages/admin/ProcesosCatalogPage.tsx`: Se eliminó el import no utilizado `useMemo` de React y se corrigió la ruta de importación de `CatalogPagination`.
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx`: Se eliminó el import no utilizado `useMemo`. Se reincorporaron `regions` y `fetchLocations` del store, y se restauró el array derivado `departamentos` para poder poblar los dropdowns modales. Se agregaron los tipos explícitos `(r: Region)` y `(d: Departamento & { regionName: string })` en los ciclos `map` para evitar el error `implicit any`.
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` completó exitosamente (código 0).
+
 ### 2026-09-16 - Antigravity - Importador CSV y Paginación de Localizaciones/Procesos
 
 - **Objetivo:** Habilitar la importación masiva por archivos CSV en los catálogos y estandarizar la paginación con el diseño de la interfaz EDT, reduciendo la carga en los listados del admin.

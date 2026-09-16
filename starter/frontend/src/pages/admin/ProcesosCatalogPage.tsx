@@ -1,9 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search, Edit2, Archive, ArchiveRestore, Upload } from 'lucide-react';
 import { useCatalogStore } from '../../store/catalogStore';
 import { adminCreateProceso, adminUpdateProceso, adminToggleProceso, adminImportProcesos } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';
-import CatalogPagination from './CatalogPagination';
+import CatalogPagination from '../../components/admin/CatalogPagination';
 
 export default function ProcesosCatalogPage() {
   const { procesos, procesosMeta, isLoadingProcesos, fetchProcesos } = useCatalogStore();

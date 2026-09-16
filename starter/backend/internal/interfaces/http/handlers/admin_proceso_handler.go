@@ -53,8 +53,8 @@ func (h *AdminProcesoHandler) ImportProcesos(c *fiber.Ctx) error {
 				UpdatedAt: now,
 			}
 			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"name", "is_active", "updated_at"}),
+				Columns:   []clause.Column{{Name: "name"}},
+				DoUpdates: clause.AssignmentColumns([]string{"updated_at"}),
 			}).Create(&proceso).Error; err != nil {
 				return err
 			}

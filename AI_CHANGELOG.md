@@ -15,6 +15,22 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de restricción de clave única al importar Procesos
+
+- **Objetivo:** Evitar que el importador de procesos falle por duplicados en la base de datos (e.g. verbo "Reparación") a causa de la restricción `idx_procesos_name`.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/handlers/admin_proceso_handler.go` - Se modificó la cláusula `clause.OnConflict` en el endpoint de importación masiva para apuntar a la columna `name`, haciendo que en caso de colisión de nombre sólo se actualice la marca `updated_at`.
+- **Logica implementada:**
+  - Al recibir verbos con nombres duplicados desde el frontend, GORM intercepta la violación del constraint de nombre único en PostgreSQL y aplica un "DoNothing" efectivo actualizando sólo una columna irrelevante para evitar crashear la transacción en bloque.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `go build ./...` - Exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
+
 ### 2026-09-16 - Antigravity - Migraciones GORM y Esquemas SQL para Catálogos MGA
 
 - **Objetivo:** Resolver el error `relation does not exist` al importar catálogos de Procesos y Localizaciones agregando los nuevos modelos al `AutoMigrate` y documentando el DDL.

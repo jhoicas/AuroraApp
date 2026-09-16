@@ -199,12 +199,28 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     e.preventDefault();
     setFormError(null);
 
-    if (!generatedName.trim()) {
-      setFormError('Selecciona proceso, escribe el objeto y al menos una localización para generar el nombre.');
+    if (!proceso) {
+      setFormError('El proceso es obligatorio.');
+      return;
+    }
+    if (!objeto.trim()) {
+      setFormError('El objeto del proyecto es obligatorio.');
+      return;
+    }
+    if (localizaciones.length === 0 || !localizaciones.some(l => l.regionId)) {
+      setFormError('Debe seleccionar al menos una localización con su respectiva región.');
+      return;
+    }
+    if (!tipologiaProyecto) {
+      setFormError('La tipología de proyecto es obligatoria.');
       return;
     }
     if (!sectorId) {
       setFormError('Selecciona un sector.');
+      return;
+    }
+    if (!productoPrincipal) {
+      setFormError('El producto principal es obligatorio.');
       return;
     }
 
@@ -216,6 +232,11 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
         description: description || undefined,
         code_bpin: codeBpin || undefined,
         product_code: productoPrincipal || undefined,
+        proceso_id: parseInt(proceso, 10),
+        objeto: objeto.trim(),
+        localizaciones: localizaciones,
+        tipo_inversion: tipoInversion,
+        tipologia: tipologiaProyecto,
       });
       handleClose();
       navigate(`/tenant/projects/${project.id}`);
@@ -487,11 +508,13 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
           <AIAssistedField
             label="Producto principal del proyecto"
             htmlFor="project-producto-principal"
+            required
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."
             askPrompt="¿Cómo identifico el producto principal de mi proyecto MGA en el catálogo DNP?"
           >
             <select
               id="project-producto-principal"
+              required
               value={productoPrincipal}
               onChange={(e) => setProductoPrincipal(e.target.value)}
               disabled={!sectorId || isLoadingProducts}

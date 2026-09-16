@@ -41,6 +41,15 @@ export type CreateProjectPayload = {
   sector_id?: string;
   program_code?: string;
   product_code?: string;
+  proceso_id: number;
+  objeto: string;
+  localizaciones: {
+    regionId: number | null;
+    departamentoId: number | null;
+    municipioId: number | null;
+  }[];
+  tipo_inversion: string;
+  tipologia: string;
 };
 
 export type UpdateProjectDetailsPayload = {

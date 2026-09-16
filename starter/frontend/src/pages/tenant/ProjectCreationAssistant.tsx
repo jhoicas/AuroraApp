@@ -278,10 +278,34 @@ export default function ProjectCreationAssistant() {
     sectorId: selectedSector?.id,
     productCodes: selectedProductCodes,
     programCodes: selectedProgramCodes,
+    procesoId: parseInt(proceso, 10) || undefined,
+    objeto: objeto.trim(),
+    localizaciones: localizaciones,
+    tipoInversion: 'Territorial',
   });
 
   const handleStartInterview = async () => {
     setStartError(null);
+    if (!proceso) {
+      setStartError('El proceso es obligatorio.');
+      return;
+    }
+    if (!objeto.trim()) {
+      setStartError('El objeto del proyecto es obligatorio.');
+      return;
+    }
+    if (localizaciones.length === 0 || !localizaciones.some(l => l.regionId)) {
+      setStartError('Debe seleccionar al menos una localización con su respectiva región.');
+      return;
+    }
+    if (!sectorId) {
+      setStartError('Selecciona un sector.');
+      return;
+    }
+    if (selectedProductCodes.length === 0) {
+      setStartError('Debe añadir al menos un producto principal.');
+      return;
+    }
     const idea = ideaSummary.trim();
     if (idea.length < 10) {
       setStartError('Describe tu idea con al menos 10 caracteres.');
@@ -362,6 +386,7 @@ export default function ProjectCreationAssistant() {
               </label>
               <select
                 id="creation-proceso"
+                required
                 value={proceso}
                 onChange={(e) => setProceso(e.target.value)}
                 disabled={inputsLocked}
@@ -383,6 +408,7 @@ export default function ProjectCreationAssistant() {
               </label>
               <textarea
                 id="creation-objeto"
+                required
                 rows={3}
                 maxLength={1000}
                 value={objeto}

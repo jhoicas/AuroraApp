@@ -15,6 +15,26 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Validación obligatoria de campos MGA
+
+- **Objetivo:** Hacer obligatorios los campos de proyecto MGA (Proceso, Objeto, Localizaciones, Tipo de inversión, Tipología, Sector, Producto).
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/dto/project_dto.go` - Agregados campos MGA con tag `binding:"required"`.
+  - `starter/frontend/src/store/projectStore.ts` - Agregados campos MGA al payload.
+  - `starter/frontend/src/store/auroraCopilotStore.ts` - Agregados campos MGA al `CreationContext`.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx` - Validación de campos obligatorios en el submit y tag `required`.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx` - Validación obligatoria antes de iniciar la entrevista MGA.
+- **Logica implementada:**
+  - Los endpoints de backend validarán la presencia estricta de estos campos.
+  - El frontend bloqueará los flujos (Modal manual y Asistente IA) si faltan los campos clave.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - Revisión estática de código; se implementó el binding requerido en Fiber DTOs.
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
 ### 2026-09-16 - Copilot - Base de alineacion multi-IA
 
 - **Objetivo:** Preparar AuroraApp para trabajo concurrente y trazable entre GitHub Copilot, Cursor y Antigravity.

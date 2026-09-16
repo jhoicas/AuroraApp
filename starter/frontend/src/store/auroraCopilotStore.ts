@@ -30,6 +30,15 @@ export type CreationContext = {
   productCodes?: string[];
   programCodes?: string[];
   odsCodes?: string[];
+  procesoId?: number;
+  objeto?: string;
+  localizaciones?: {
+    regionId: number | null;
+    departamentoId: number | null;
+    municipioId: number | null;
+  }[];
+  tipoInversion?: string;
+  tipologia?: string;
 };
 
 /** Ruta backend para la entrevista de creación asistida de proyecto MGA. */

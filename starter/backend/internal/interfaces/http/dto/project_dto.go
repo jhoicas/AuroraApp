@@ -8,10 +8,22 @@ type CreateProjectRequest struct {
 	Name        string  `json:"name" validate:"required,min=3,max=500"`
 	Description string  `json:"description" validate:"omitempty,max=5000"`
 	CodeBPIN    *string `json:"code_bpin" validate:"omitempty,min=1,max=50"`
-	Sector      string  `json:"sector" validate:"required,min=2,max=255"`
-	SectorID    *string `json:"sector_id" validate:"omitempty,uuid"`
-	ProgramCode *string `json:"program_code" validate:"omitempty,max=50"`
-	ProductCode *string `json:"product_code" validate:"omitempty,max=50"`
+	Sector      string                 `json:"sector" binding:"required" validate:"required,min=2,max=255"`
+	SectorID    *string                `json:"sector_id" binding:"required" validate:"required,uuid"`
+	ProgramCode *string                `json:"program_code" validate:"omitempty,max=50"`
+	ProductCode *string                `json:"product_code" binding:"required" validate:"required,max=50"`
+	ProcesoID   int                    `json:"proceso_id" binding:"required" validate:"required"`
+	Objeto      string                 `json:"objeto" binding:"required" validate:"required,min=10,max=1000"`
+	Localizaciones []LocationSelectionDTO `json:"localizaciones" binding:"required,min=1" validate:"required,min=1,dive"`
+	TipoInversion  string                 `json:"tipo_inversion" binding:"required" validate:"required"`
+	Tipologia      string                 `json:"tipologia" binding:"required" validate:"required"`
+}
+
+// LocationSelectionDTO representa una selección de localización en la creación del proyecto.
+type LocationSelectionDTO struct {
+	RegionID       *int `json:"regionId"`
+	DepartamentoID *int `json:"departamentoId"`
+	MunicipioID    *int `json:"municipioId"`
 }
 
 // UpdateProjectDetailsRequest campos de formulación MGA.

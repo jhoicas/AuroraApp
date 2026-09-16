@@ -15,6 +15,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección del límite en la obtención de procesos MGA
+
+- **Objetivo:** Asegurar que el selector de "Proceso" en el formulario de creación de proyectos cargue la lista completa (102 procesos) en lugar de truncarse a los 10 primeros registros.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/handlers/admin_proceso_handler.go`: Se incrementó el límite máximo de 100 a 1000 en el parseo de paginación para `ListProcesos`.
+  - `starter/frontend/src/store/locationStore.ts`: Se ajustó la petición `api.get` en `fetchProcesos` enviando los query params `limit=1000` y `page=1`.
+- **Validación ejecutada:** `go build ./...` en backend exitoso y `npx tsc --noEmit` en frontend exitoso (exit code 0 en ambos).
+
 ### 2026-09-16 - Antigravity - Correcciones Estrictas de TypeScript en Formularios
 
 - **Objetivo:** Solucionar errores de TypeScript estricto (`TS2448`, `TS2454`, `TS6133`) reportados en el proceso de build de Docker tras las últimas modificaciones en el formulario de creación de proyectos.

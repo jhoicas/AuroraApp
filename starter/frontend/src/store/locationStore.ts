@@ -112,7 +112,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
     set({ isLoadingProcesos: true, error: null });
     try {
-      const { data } = await api.get<{ data: Proceso[] }>('/procesos?limit=1000');
+      const { data } = await api.get<{ data: Proceso[] }>('/procesos?limit=1000&page=1');
       set({
         procesos: data.data ?? [],
         isLoadingProcesos: false,

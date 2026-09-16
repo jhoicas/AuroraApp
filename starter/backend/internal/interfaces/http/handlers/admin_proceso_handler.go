@@ -108,7 +108,7 @@ func (h *AdminProcesoHandler) ListProcesos(c *fiber.Ctx) error {
 		page = 1
 	}
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	if limit < 1 || limit > 100 {
+	if limit < 1 || limit > 1000 {
 		limit = 10
 	}
 	offset := (page - 1) * limit

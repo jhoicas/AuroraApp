@@ -43,7 +43,7 @@ type LocationState = {
   isLoadingLocations: boolean;
   isLoadingProcesos: boolean;
   error: string | null;
-  fetchLocations: () => Promise<void>;
+  fetchLocations: (force?: boolean) => Promise<void>;
   fetchProcesos: () => Promise<void>;
   clearError: () => void;
 };
@@ -65,9 +65,9 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  fetchLocations: async () => {
-    // Cache: no recarga si ya tiene datos
-    if (get().regions.length > 0) return;
+  fetchLocations: async (force?: boolean) => {
+    // Cache: no recarga si ya tiene datos y no se fuerza
+    if (!force && get().regions.length > 0) return;
 
     set({ isLoadingLocations: true, error: null });
     try {

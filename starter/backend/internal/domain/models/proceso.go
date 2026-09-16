@@ -7,6 +7,7 @@ import "time"
 type Proceso struct {
 	ID        int       `gorm:"column:id;primaryKey;autoIncrement:false" json:"id"`
 	Name      string    `gorm:"column:name;type:varchar(255);not null;uniqueIndex" json:"name"`
+	IsActive  bool      `gorm:"column:is_active;not null;default:true" json:"is_active"`
 	CreatedAt time.Time `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updated_at"`
 }

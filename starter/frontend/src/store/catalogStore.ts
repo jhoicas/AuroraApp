@@ -13,6 +13,12 @@ export type CatalogSector = {
   observations?: string;
 };
 
+export type Proceso = {
+  id: number;
+  name: string;
+  is_active?: boolean;
+};
+
 /** Programa ligado a sector (tabla programs) — explorador DNP. */
 export type CatalogProgram = {
   id: string;
@@ -316,6 +322,8 @@ type CatalogState = {
   isLoadingDeliverables: boolean;
   isLoadingActivities: boolean;
   isLoadingOds: boolean;
+  procesos: Proceso[];
+  isLoadingProcesos: boolean;
   error: string | null;
   fetchSectors: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   createSector: (input: CreateSectorInput) => Promise<CatalogSector>;
@@ -346,6 +354,10 @@ type CatalogState = {
   importActivities: (file: File) => Promise<CatalogImportResult>;
   fetchCatalogOds: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   importOds: (file: File) => Promise<CatalogImportResult>;
+  fetchProcesos: (isActive?: boolean, search?: string) => Promise<void>;
+  createProceso: (payload: { id: number; name: string }) => Promise<void>;
+  updateProceso: (id: number, name: string) => Promise<void>;
+  toggleProcesoStatus: (id: number) => Promise<void>;
   clearPrograms: () => void;
   clearProducts: () => void;
   clearEdt: () => void;
@@ -466,7 +478,7 @@ function mapMgaProductToApi(input: CreateProductInput) {
   };
 }
 
-export const useCatalogStore = create<CatalogState>((set) => ({
+export const useCatalogStore = create<CatalogState>()((set, get) => ({
   sectors: [],
   sectorsMeta: null,
   programs: [],
@@ -931,6 +943,55 @@ export const useCatalogStore = create<CatalogState>((set) => ({
       return data;
     } catch (err) {
       throw new Error(extractError(err, 'No se pudo importar el archivo ODS'));
+    }
+  },
+
+  // --- Procesos ---
+  fetchProcesos: async (isActive?: boolean, search?: string) => {
+    set({ isLoadingProcesos: true, error: null });
+    try {
+      const params = new URLSearchParams();
+      if (isActive !== undefined) params.append('isActive', String(isActive));
+      if (search) params.append('search', search);
+      const { data } = await api.get<{ data: Proceso[] }>(`/admin/procesos?${params.toString()}`);
+      set({ procesos: data.data || [], isLoadingProcesos: false });
+    } catch (err) {
+      set({
+        isLoadingProcesos: false,
+        error: extractError(err, 'No se pudieron cargar los procesos'),
+        procesos: [],
+      });
+    }
+  },
+  
+  createProceso: async (payload) => {
+    try {
+      const { data } = await api.post<Proceso>('/admin/procesos', payload);
+      set((state) => ({ procesos: [...state.procesos, data].sort((a, b) => a.name.localeCompare(b.name)) }));
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo crear el proceso'));
+    }
+  },
+  
+  updateProceso: async (id, name) => {
+    try {
+      await api.put(`/admin/procesos/${id}`, { name });
+      set((state) => ({
+        procesos: state.procesos.map((p) => (p.id === id ? { ...p, name } : p)),
+      }));
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo actualizar el proceso'));
+    }
+  },
+  
+  toggleProcesoStatus: async (id) => {
+    try {
+      const { data } = await api.delete<{ status: string; is_active: boolean }>(`/admin/procesos/${id}`);
+      set((state) => ({
+        procesos: state.procesos.map((p) => (p.id === id ? { ...p, is_active: data.is_active } : p)),
+      }));
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo cambiar el estado del proceso'));
     }
   },
 }));

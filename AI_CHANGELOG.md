@@ -15,6 +15,32 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Vistas de Administración para Catálogos MGA (Frontend)
+
+- **Objetivo:** Implementar las vistas frontend de administración para gestionar Procesos y Localizaciones MGA por parte del Super Admin, incluyendo modales de importación masiva.
+- **Archivos modificados:**
+  - `starter/frontend/src/lib/adminApi.ts` - [NUEVO] Agregados métodos CRUD para Procesos y Localizaciones MGA.
+  - `starter/frontend/src/store/catalogStore.ts` - Estado extendido para alojar y manejar CRUD de `Procesos`.
+  - `starter/frontend/src/store/locationStore.ts` - Firmas actualizadas en estado para recarga de localizaciones saltando caché (`force`).
+  - `starter/frontend/src/layouts/SuperAdminLayout.tsx` - Añadidas opciones de navegación a 'Procesos MGA' y 'Localizaciones MGA' en el menú lateral.
+  - `starter/frontend/src/components/admin/CatalogImporterModal.tsx` - [NUEVO] Componente genérico reutilizable para importaciones drag-and-drop masivas vía JSON.
+  - `starter/frontend/src/pages/admin/ProcesosCatalogPage.tsx` - [NUEVO] Paginación, lógica de importación y modal CRUD para Procesos.
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx` - [NUEVO] Estructura de tabs (Regiones/Departamentos/Municipios), lógica de importación masiva JSON y modales de actualización/creación manual.
+  - `starter/frontend/src/App.tsx` - Importación y mapeo de rutas para las páginas de Procesos y Localizaciones MGA.
+- **Logica implementada:**
+  - Consumo directo de los handlers creados en el Backend (`admin_proceso_handler` y `admin_location_handler`).
+  - Se habilitó UI interactiva de tabs para manejar Regiones, Departamentos y Municipios.
+  - Modales de edición permiten desactivación lógica de registros para respetar las reglas de negocio (Soft delete con is_active).
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` - exitoso (código 0).
+  - Componentes compilados y estáticamente validados en TS.
+- **Decisiones ADR:**
+  - Se separó la importación en un componente independiente `CatalogImporterModal.tsx` para evitar acoplar lógica genérica a los modales CSV de catálogos DNP que existían previamente (`CatalogImporter.tsx`).
+- **Riesgos y pendientes:**
+  - La importación JSON masiva sobrescribe descripciones. Los scripts de seed JSON tendrán que prepararse de forma exacta según los requerimientos del DNP.
+
 ### 2026-09-16 - Antigravity - Corrección de errores de compilación de TypeScript (TS2345, TS6133)
 
 - **Objetivo:** Corregir errores de compilación TypeScript surgidos al hacer obligatorios los campos base de la MGA en `CreateProjectPayload`.

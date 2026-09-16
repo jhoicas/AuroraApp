@@ -20,6 +20,8 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/deliverables', label: 'Catálogo de Entregables' },
   { to: '/admin/catalogs/activities', label: 'Lista de actividades' },
   { to: '/admin/catalogs/ods', label: 'ODS' },
+  { to: '/admin/catalogs/procesos', label: 'Procesos MGA' },
+  { to: '/admin/catalogs/locations', label: 'Localizaciones MGA' },
 ] as const;
 
 function headerTitle(pathname: string): string {
@@ -37,6 +39,8 @@ function headerTitle(pathname: string): string {
   }
   if (pathname.includes('/admin/catalogs/activities')) return 'Lista de actividades';
   if (pathname.includes('/admin/catalogs/ods')) return 'ODS';
+  if (pathname.includes('/admin/catalogs/procesos')) return 'Procesos MGA';
+  if (pathname.includes('/admin/catalogs/locations')) return 'Localizaciones MGA';
   if (pathname.includes('/admin/catalog')) return 'Catálogos Maestros';
   if (pathname.includes('/admin/tenants')) return 'Gestión de Tenants';
   if (pathname.includes('/admin/ai')) return 'Gestión IA Aurora';

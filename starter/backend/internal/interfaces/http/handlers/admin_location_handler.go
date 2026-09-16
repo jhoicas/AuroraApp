@@ -51,6 +51,7 @@ func (h *AdminLocationHandler) ImportLocations(c *fiber.Ctx) error {
 			region := models.Region{
 				ID:        regionDTO.ID,
 				Name:      regionDTO.Name,
+				IsActive:  true,
 				CreatedAt: now,
 				UpdatedAt: now,
 			}
@@ -67,6 +68,7 @@ func (h *AdminLocationHandler) ImportLocations(c *fiber.Ctx) error {
 					ID:        depDTO.ID,
 					Name:      depDTO.Name,
 					RegionID:  regionDTO.ID,
+					IsActive:  true,
 					CreatedAt: now,
 					UpdatedAt: now,
 				}
@@ -83,6 +85,7 @@ func (h *AdminLocationHandler) ImportLocations(c *fiber.Ctx) error {
 						ID:             munDTO.ID,
 						Name:           munDTO.Name,
 						DepartamentoID: depDTO.ID,
+						IsActive:       true,
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
@@ -160,81 +163,164 @@ func (h *AdminLocationHandler) ListLocations(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": data})
 }
 
-// ─────────────────────────── Procesos MGA ───────────────────────────
+// ─────────────────────────── CRUD Individual ───────────────────────────
 
-// ImportProcesos carga masiva de verbos rectores MGA.
-// POST /api/v1/admin/procesos/import
-func (h *AdminLocationHandler) ImportProcesos(c *fiber.Ctx) error {
-	var req dto.ProcesoImportRequest
+// CreateRegion
+func (h *AdminLocationHandler) CreateRegion(c *fiber.Ctx) error {
+	var req struct {
+		ID   int    `json:"id" validate:"required"`
+		Name string `json:"name" validate:"required"`
+	}
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid JSON body",
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
 	}
 	if err := dto.Validate(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-
 	now := time.Now().UTC()
-	resp := dto.ProcesoImportResponse{
-		Status:  "success",
-		Message: "Procesos importados correctamente",
+	region := models.Region{ID: req.ID, Name: req.Name, IsActive: true, CreatedAt: now, UpdatedAt: now}
+	if err := h.db.WithContext(c.Context()).Create(&region).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-
-	err := h.db.WithContext(c.Context()).Transaction(func(tx *gorm.DB) error {
-		for _, p := range req.Procesos {
-			proceso := models.Proceso{
-				ID:        p.ID,
-				Name:      p.Name,
-				CreatedAt: now,
-				UpdatedAt: now,
-			}
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"name", "updated_at"}),
-			}).Create(&proceso).Error; err != nil {
-				return err
-			}
-			resp.ProcesosUpserted++
-		}
-		return nil
-	})
-
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error":   "failed to import procesos",
-			"details": err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusCreated).JSON(region)
 }
 
-// ListProcesos devuelve todos los verbos rectores MGA ordenados alfabéticamente.
-// GET /api/v1/procesos
-func (h *AdminLocationHandler) ListProcesos(c *fiber.Ctx) error {
-	var procesos []models.Proceso
-
-	err := h.db.WithContext(c.Context()).
-		Order("name ASC").
-		Find(&procesos).Error
-
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error":   "failed to list procesos",
-			"details": err.Error(),
-		})
+// UpdateRegion
+func (h *AdminLocationHandler) UpdateRegion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var req struct {
+		Name string `json:"name" validate:"required"`
 	}
-
-	data := make([]dto.ProcesoResponse, 0, len(procesos))
-	for _, p := range procesos {
-		data = append(data, dto.ProcesoResponse{
-			ID:   p.ID,
-			Name: p.Name,
-		})
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
 	}
-
-	return c.JSON(fiber.Map{"data": data})
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.db.WithContext(c.Context()).Model(&models.Region{}).Where("id = ?", id).Update("name", req.Name).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated"})
 }
+
+// ToggleRegion
+func (h *AdminLocationHandler) ToggleRegion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var r models.Region
+	if err := h.db.WithContext(c.Context()).First(&r, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	}
+	r.IsActive = !r.IsActive
+	if err := h.db.WithContext(c.Context()).Save(&r).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+// CreateDepartamento
+func (h *AdminLocationHandler) CreateDepartamento(c *fiber.Ctx) error {
+	var req struct {
+		ID       int    `json:"id" validate:"required"`
+		Name     string `json:"name" validate:"required"`
+		RegionID int    `json:"region_id" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	now := time.Now().UTC()
+	dep := models.Departamento{ID: req.ID, Name: req.Name, RegionID: req.RegionID, IsActive: true, CreatedAt: now, UpdatedAt: now}
+	if err := h.db.WithContext(c.Context()).Create(&dep).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusCreated).JSON(dep)
+}
+
+// UpdateDepartamento
+func (h *AdminLocationHandler) UpdateDepartamento(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var req struct {
+		Name string `json:"name" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.db.WithContext(c.Context()).Model(&models.Departamento{}).Where("id = ?", id).Update("name", req.Name).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated"})
+}
+
+// ToggleDepartamento
+func (h *AdminLocationHandler) ToggleDepartamento(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var r models.Departamento
+	if err := h.db.WithContext(c.Context()).First(&r, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	}
+	r.IsActive = !r.IsActive
+	if err := h.db.WithContext(c.Context()).Save(&r).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+// CreateMunicipio
+func (h *AdminLocationHandler) CreateMunicipio(c *fiber.Ctx) error {
+	var req struct {
+		ID             int    `json:"id" validate:"required"`
+		Name           string `json:"name" validate:"required"`
+		DepartamentoID int    `json:"departamento_id" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	now := time.Now().UTC()
+	mun := models.Municipio{ID: req.ID, Name: req.Name, DepartamentoID: req.DepartamentoID, IsActive: true, CreatedAt: now, UpdatedAt: now}
+	if err := h.db.WithContext(c.Context()).Create(&mun).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusCreated).JSON(mun)
+}
+
+// UpdateMunicipio
+func (h *AdminLocationHandler) UpdateMunicipio(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var req struct {
+		Name string `json:"name" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.db.WithContext(c.Context()).Model(&models.Municipio{}).Where("id = ?", id).Update("name", req.Name).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated"})
+}
+
+// ToggleMunicipio
+func (h *AdminLocationHandler) ToggleMunicipio(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var r models.Municipio
+	if err := h.db.WithContext(c.Context()).First(&r, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	}
+	r.IsActive = !r.IsActive
+	if err := h.db.WithContext(c.Context()).Save(&r).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+

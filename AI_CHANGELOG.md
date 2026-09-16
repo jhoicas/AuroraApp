@@ -15,6 +15,24 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de errores de compilación TypeScript en catálogos de administración
+
+- **Objetivo:** Resolver errores estrictos de TypeScript (TS2305, TS6133, TS2739) causados por imports incorrectos, variables no usadas y estados incompletos.
+- **Archivos modificados:**
+  - `starter/frontend/src/lib/adminApi.ts` - Corregida la importación de `Region`, `Departamento` y `Municipio` desde `locationStore`.
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx` - Eliminadas importaciones sin uso y función `handleToggle` muerta.
+  - `starter/frontend/src/store/catalogStore.ts` - Agregados `procesos: []` e `isLoadingProcesos: false` a la inicialización de estado y renombrado de parámetro `get` a `_get`.
+- **Logica implementada:**
+  - Limpieza de código estricto y ajuste de variables del store de Zustand para cumplir la interfaz TS.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` - Exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
+
 ### 2026-09-16 - Antigravity - Vistas de Administración para Catálogos MGA (Frontend)
 
 - **Objetivo:** Implementar las vistas frontend de administración para gestionar Procesos y Localizaciones MGA por parte del Super Admin, incluyendo modales de importación masiva.

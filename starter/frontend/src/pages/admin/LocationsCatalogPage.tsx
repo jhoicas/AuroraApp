@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Search, Edit2, Archive, ArchiveRestore, Upload } from 'lucide-react';
-import { useLocationStore, type Region, type Departamento, type Municipio } from '../../store/locationStore';
+import { Plus, Search, Edit2, Upload } from 'lucide-react';
+import { useLocationStore } from '../../store/locationStore';
 import {
   adminCreateRegion, adminUpdateRegion, adminToggleRegion,
   adminCreateDepartamento, adminUpdateDepartamento, adminToggleDepartamento,
@@ -90,17 +90,6 @@ export default function LocationsCatalogPage() {
     }
   };
 
-  const handleToggle = async (id: number) => {
-    if (!window.confirm('¿Está seguro de cambiar el estado?')) return;
-    try {
-      if (activeTab === 'regiones') await adminToggleRegion(id);
-      else if (activeTab === 'departamentos') await adminToggleDepartamento(id);
-      else await adminToggleMunicipio(id);
-      fetchLocations(true);
-    } catch (err) {
-      alert('Error al cambiar el estado.');
-    }
-  };
 
   const handleImport = async (file: File) => {
     return new Promise<void>((resolve, reject) => {

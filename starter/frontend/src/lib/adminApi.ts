@@ -1,6 +1,6 @@
 import { api } from './api';
-import type { Proceso, Region, Departamento, Municipio } from '../store/catalogStore';
-
+import type { Proceso } from '../store/catalogStore';
+import type { Region, Departamento, Municipio } from '../store/locationStore';
 // ─────────────────────────── Procesos ───────────────────────────
 
 export const adminImportProcesos = async (procesos: Partial<Proceso>[]): Promise<void> => {

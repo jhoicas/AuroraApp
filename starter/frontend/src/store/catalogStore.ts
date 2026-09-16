@@ -478,7 +478,7 @@ function mapMgaProductToApi(input: CreateProductInput) {
   };
 }
 
-export const useCatalogStore = create<CatalogState>()((set, get) => ({
+export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   sectors: [],
   sectorsMeta: null,
   programs: [],
@@ -497,6 +497,7 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
   catalogActivitiesMeta: null,
   catalogOds: [],
   catalogOdsMeta: null,
+  procesos: [],
   isLoading: false,
   isLoadingSectorPrograms: false,
   isLoadingPrograms: false,
@@ -505,6 +506,7 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
   isLoadingDeliverables: false,
   isLoadingActivities: false,
   isLoadingOds: false,
+  isLoadingProcesos: false,
   error: null,
   copilotSearch: null,
 

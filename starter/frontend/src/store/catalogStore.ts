@@ -323,6 +323,7 @@ type CatalogState = {
   isLoadingActivities: boolean;
   isLoadingOds: boolean;
   procesos: Proceso[];
+  procesosMeta: CatalogPageMeta | null;
   isLoadingProcesos: boolean;
   error: string | null;
   fetchSectors: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
@@ -354,7 +355,7 @@ type CatalogState = {
   importActivities: (file: File) => Promise<CatalogImportResult>;
   fetchCatalogOds: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   importOds: (file: File) => Promise<CatalogImportResult>;
-  fetchProcesos: (isActive?: boolean, search?: string) => Promise<void>;
+  fetchProcesos: (isActive?: boolean, search?: string, page?: number, limit?: number) => Promise<void>;
   createProceso: (payload: { id: number; name: string }) => Promise<void>;
   updateProceso: (id: number, name: string) => Promise<void>;
   toggleProcesoStatus: (id: number) => Promise<void>;
@@ -498,6 +499,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   catalogOds: [],
   catalogOdsMeta: null,
   procesos: [],
+  procesosMeta: null,
   isLoading: false,
   isLoadingSectorPrograms: false,
   isLoadingPrograms: false,
@@ -949,19 +951,27 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   },
 
   // --- Procesos ---
-  fetchProcesos: async (isActive?: boolean, search?: string) => {
+  fetchProcesos: async (isActive?: boolean, search?: string, page: number = 1, limit: number = 10) => {
     set({ isLoadingProcesos: true, error: null });
     try {
       const params = new URLSearchParams();
       if (isActive !== undefined) params.append('isActive', String(isActive));
       if (search) params.append('search', search);
-      const { data } = await api.get<{ data: Proceso[] }>(`/admin/procesos?${params.toString()}`);
-      set({ procesos: data.data || [], isLoadingProcesos: false });
+      params.append('page', String(page));
+      params.append('limit', String(limit));
+      
+      const { data } = await api.get<{ data: Proceso[], meta: CatalogPageMeta }>(`/admin/procesos?${params.toString()}`);
+      set({ 
+        procesos: data.data || [], 
+        procesosMeta: data.meta,
+        isLoadingProcesos: false 
+      });
     } catch (err) {
       set({
         isLoadingProcesos: false,
         error: extractError(err, 'No se pudieron cargar los procesos'),
         procesos: [],
+        procesosMeta: null,
       });
     }
   },

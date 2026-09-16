@@ -15,6 +15,27 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Importador CSV y Paginación de Localizaciones/Procesos
+
+- **Objetivo:** Habilitar la importación masiva por archivos CSV en los catálogos y estandarizar la paginación con el diseño de la interfaz EDT, reduciendo la carga en los listados del admin.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/handlers/admin_location_handler.go`: Se creó el endpoint `ListAdminLocations` (con filtros `type`, `search`, `page`, `limit`).
+  - `starter/backend/internal/interfaces/http/router/admin_locations.go`: Se expuso la ruta `GET /api/v1/admin/locations`.
+  - `starter/frontend/src/lib/adminApi.ts`: Se ajustaron las firmas de los endpoints para enviar parámetros y recibir el wrapper de `PaginationMeta`.
+  - `starter/frontend/src/store/catalogStore.ts` y `locationStore.ts`: Se agregaron los estados `meta` para paginación y se actualizó la lógica de fetching.
+  - `starter/frontend/src/components/admin/CatalogImporterModal.tsx`: Se habilitó la extensión `.csv`.
+  - `starter/frontend/src/pages/admin/ProcesosCatalogPage.tsx` y `LocationsCatalogPage.tsx`: Se incluyó un parseo local manual de CSV para estandarizar las columnas y se agregaron los componentes de búsqueda (`Search`) y `CatalogPagination`.
+- **Logica implementada:**
+  - El frontend transforma archivos CSV planos en los JSON jerárquicos esperados por el backend (ej. anidando departamentos y municipios bajo regiones) antes de enviar la petición de importación.
+- **Dependencias:**
+  - Ninguna nueva, el parser CSV se hizo localmente.
+- **Validacion ejecutada:**
+  - `go build ./...` y `npx tsc --noEmit` completaron sin errores (código 0).
+- **Decisiones ADR:**
+  - Parser CSV manual en la capa de vista para evitar nuevas librerías.
+- **Riesgos y pendientes:**
+  - Se debe asegurar de que el CSV a importar esté separado estrictamente por comas estándar y no contenga comas dentro de los strings (por ejemplo `"Bogotá, D.C."`) debido a que el parser implementado usa un `.split(',')` simple.
+
 ### 2026-09-16 - Antigravity - Corrección de Tipos en Metadatos de Paginación
 
 - **Objetivo:** Resolver el error de compilación del backend Go ocasionado por el uso de nombres de campos incorrectos al inicializar la estructura `PaginationMeta` del DTO.

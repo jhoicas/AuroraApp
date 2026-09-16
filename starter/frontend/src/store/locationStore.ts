@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
+import { adminListLocations, PaginationMeta } from '../lib/adminApi';
 
 // ─── Tipos ───────────────────────────────────────────────────────────
 
@@ -45,6 +46,9 @@ type LocationState = {
   error: string | null;
   fetchLocations: (force?: boolean) => Promise<void>;
   fetchProcesos: () => Promise<void>;
+  adminLocations: any[];
+  adminLocationsMeta: PaginationMeta | null;
+  fetchAdminLocations: (type: 'regiones' | 'departamentos' | 'municipios', search?: string, page?: number, limit?: number) => Promise<void>;
   clearError: () => void;
 };
 
@@ -59,11 +63,28 @@ function extractError(err: unknown, fallback: string): string {
 export const useLocationStore = create<LocationState>((set, get) => ({
   regions: [],
   procesos: [],
+  adminLocations: [],
+  adminLocationsMeta: null,
   isLoadingLocations: false,
   isLoadingProcesos: false,
   error: null,
 
   clearError: () => set({ error: null }),
+
+  fetchAdminLocations: async (type, search, page = 1, limit = 10) => {
+    set({ isLoadingLocations: true, error: null });
+    try {
+      const { data, meta } = await adminListLocations(type, search, page, limit);
+      set({ adminLocations: data, adminLocationsMeta: meta, isLoadingLocations: false });
+    } catch (err) {
+      set({
+        isLoadingLocations: false,
+        error: extractError(err, 'No se pudieron cargar las localizaciones (admin)'),
+        adminLocations: [],
+        adminLocationsMeta: null,
+      });
+    }
+  },
 
   fetchLocations: async (force?: boolean) => {
     // Cache: no recarga si ya tiene datos y no se fuerza

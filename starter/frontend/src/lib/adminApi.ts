@@ -7,13 +7,27 @@ export const adminImportProcesos = async (procesos: Partial<Proceso>[]): Promise
   await api.post('/admin/procesos/import', { procesos });
 };
 
-export const adminListProcesos = async (isActive?: boolean, search?: string): Promise<Proceso[]> => {
+export interface PaginationMeta {
+  page: number;
+  last_page: number;
+  total: number;
+  limit: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+export const adminListProcesos = async (isActive?: boolean, search?: string, page: number = 1, limit: number = 10): Promise<PaginatedResponse<Proceso>> => {
   const params = new URLSearchParams();
   if (isActive !== undefined) params.append('isActive', String(isActive));
   if (search) params.append('search', search);
+  params.append('page', String(page));
+  params.append('limit', String(limit));
   
-  const { data } = await api.get<{ data: Proceso[] }>(`/admin/procesos?${params.toString()}`);
-  return data.data;
+  const { data } = await api.get<PaginatedResponse<Proceso>>(`/admin/procesos?${params.toString()}`);
+  return data;
 };
 
 export const adminCreateProceso = async (payload: { id: number; name: string }): Promise<Proceso> => {
@@ -34,6 +48,22 @@ export const adminToggleProceso = async (id: number): Promise<boolean> => {
 
 export const adminImportLocations = async (localizaciones: any[]): Promise<void> => {
   await api.post('/admin/locations/import', { localizaciones });
+};
+
+export const adminListLocations = async (
+  type: 'regiones' | 'departamentos' | 'municipios',
+  search?: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<PaginatedResponse<any>> => {
+  const params = new URLSearchParams();
+  params.append('type', type);
+  if (search) params.append('search', search);
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+  
+  const { data } = await api.get<PaginatedResponse<any>>(`/admin/locations?${params.toString()}`);
+  return data;
 };
 
 export const adminCreateRegion = async (payload: { id: number; name: string }): Promise<Region> => {

@@ -8,13 +8,16 @@ import {
   adminImportLocations
 } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';
+import CatalogPagination from './CatalogPagination';
 
 type Tab = 'regiones' | 'departamentos' | 'municipios';
 
 export default function LocationsCatalogPage() {
-  const { regions, isLoadingLocations, fetchLocations } = useLocationStore();
+  const { adminLocations, adminLocationsMeta, isLoadingLocations, fetchAdminLocations } = useLocationStore();
   const [activeTab, setActiveTab] = useState<Tab>('regiones');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,36 +27,19 @@ export default function LocationsCatalogPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchLocations(true); // fetch with force=true to bypass cache on mount
-  }, [fetchLocations]);
+    fetchAdminLocations(activeTab, searchTerm, page, limit);
+  }, [fetchAdminLocations, activeTab, searchTerm, page, limit]);
 
-  // Derived arrays
-  const departamentos = useMemo(() => {
-    return regions.flatMap(r => r.departamentos.map(d => ({ ...d, regionName: r.name })));
-  }, [regions]);
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setSearchTerm('');
+    setPage(1);
+  };
 
-  const municipios = useMemo(() => {
-    return departamentos.flatMap(d => d.municipios.map(m => ({ ...m, departamentoName: d.name })));
-  }, [departamentos]);
-
-  // Filters
-  const filteredRegiones = useMemo(() => {
-    if (!searchTerm) return regions;
-    const lower = searchTerm.toLowerCase();
-    return regions.filter(r => r.name.toLowerCase().includes(lower) || String(r.id).includes(lower));
-  }, [regions, searchTerm]);
-
-  const filteredDepartamentos = useMemo(() => {
-    if (!searchTerm) return departamentos;
-    const lower = searchTerm.toLowerCase();
-    return departamentos.filter(d => d.name.toLowerCase().includes(lower) || String(d.id).includes(lower));
-  }, [departamentos, searchTerm]);
-
-  const filteredMunicipios = useMemo(() => {
-    if (!searchTerm) return municipios;
-    const lower = searchTerm.toLowerCase();
-    return municipios.filter(m => m.name.toLowerCase().includes(lower) || String(m.id).includes(lower));
-  }, [municipios, searchTerm]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -82,7 +68,7 @@ export default function LocationsCatalogPage() {
         else await adminCreateMunicipio({ id: formData.id, name: formData.name, departamento_id: formData.parentId });
       }
       setIsModalOpen(false);
-      fetchLocations(true);
+      fetchAdminLocations(activeTab, searchTerm, page, limit);
     } catch (err) {
       alert('Error al guardar. Verifique los datos.');
     } finally {
@@ -97,14 +83,62 @@ export default function LocationsCatalogPage() {
       reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
-          const json = JSON.parse(content);
-          if (!json.Localizaciones || !Array.isArray(json.Localizaciones)) {
-            throw new Error('El JSON debe contener un array "Localizaciones".');
+          const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
+
+          let parsedLocations = [];
+          if (isCSV) {
+            const lines = content.split(/\r?\n/).filter(line => line.trim());
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            
+            for (let i = 1; i < lines.length; i++) {
+              const values = lines[i].split(',').map(v => v.trim());
+              const obj: any = {};
+              headers.forEach((header, index) => {
+                if (header === 'regionid') obj.RegionId = parseInt(values[index], 10);
+                if (header === 'regionname') obj.RegionName = values[index];
+                if (header === 'departamentoid') obj.DepartamentoId = parseInt(values[index], 10);
+                if (header === 'departamentoname') obj.DepartamentoName = values[index];
+                if (header === 'municipioid') obj.MunicipioId = parseInt(values[index], 10);
+                if (header === 'municipioname') obj.MunicipioName = values[index];
+              });
+              
+              if (obj.RegionId && obj.RegionName) {
+                // Find or create Region
+                let region = parsedLocations.find(r => r.Id === obj.RegionId);
+                if (!region) {
+                  region = { Id: obj.RegionId, Name: obj.RegionName, Departamentos: [] };
+                  parsedLocations.push(region);
+                }
+                
+                if (obj.DepartamentoId && obj.DepartamentoName) {
+                  let dep = region.Departamentos.find((d: any) => d.Id === obj.DepartamentoId);
+                  if (!dep) {
+                    dep = { Id: obj.DepartamentoId, Name: obj.DepartamentoName, Municipios: [] };
+                    region.Departamentos.push(dep);
+                  }
+                  
+                  if (obj.MunicipioId && obj.MunicipioName) {
+                    if (!dep.Municipios.find((m: any) => m.Id === obj.MunicipioId)) {
+                      dep.Municipios.push({ Id: obj.MunicipioId, Name: obj.MunicipioName });
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            const json = JSON.parse(content);
+            if (!json.Localizaciones || !Array.isArray(json.Localizaciones)) {
+              throw new Error('El JSON debe contener un array "Localizaciones".');
+            }
+            parsedLocations = json.Localizaciones;
           }
-          await adminImportLocations(json.Localizaciones);
+          
+          if (parsedLocations.length === 0) throw new Error('No se encontraron localizaciones válidas en el archivo.');
+
+          await adminImportLocations(parsedLocations);
           resolve();
         } catch (error: any) {
-          reject(new Error(error.message || 'Error parsing JSON'));
+          reject(new Error(error.message || 'Error parsing file'));
         }
       };
       reader.onerror = () => reject(new Error('Error reading file'));
@@ -139,7 +173,7 @@ export default function LocationsCatalogPage() {
 
       <div className="mb-6 flex space-x-1 rounded-xl bg-slate-100 p-1">
         <button
-          onClick={() => setActiveTab('regiones')}
+          onClick={() => handleTabChange('regiones')}
           className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
             activeTab === 'regiones' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
           }`}
@@ -147,7 +181,7 @@ export default function LocationsCatalogPage() {
           Regiones
         </button>
         <button
-          onClick={() => setActiveTab('departamentos')}
+          onClick={() => handleTabChange('departamentos')}
           className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
             activeTab === 'departamentos' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
           }`}
@@ -155,7 +189,7 @@ export default function LocationsCatalogPage() {
           Departamentos
         </button>
         <button
-          onClick={() => setActiveTab('municipios')}
+          onClick={() => handleTabChange('municipios')}
           className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
             activeTab === 'municipios' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
           }`}
@@ -164,16 +198,33 @@ export default function LocationsCatalogPage() {
         </button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="relative max-w-md">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder={`Buscar en ${activeTab}...`}
+            className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
+            onChange={handleSearchChange}
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="limit" className="text-sm text-slate-600">Mostrar:</label>
+          <select
+            id="limit"
+            className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
+            value={limit}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
         </div>
       </div>
 
@@ -194,7 +245,7 @@ export default function LocationsCatalogPage() {
                 <td colSpan={5} className="py-12 text-center text-slate-500">Cargando...</td>
               </tr>
             ) : activeTab === 'regiones' ? (
-              filteredRegiones.map((r: any) => (
+              adminLocations.map((r: any) => (
                 <tr key={r.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-800">{r.id}</td>
                   <td className="px-6 py-4">{r.name}</td>
@@ -208,11 +259,11 @@ export default function LocationsCatalogPage() {
                 </tr>
               ))
             ) : activeTab === 'departamentos' ? (
-              filteredDepartamentos.map((d: any) => (
+              adminLocations.map((d: any) => (
                 <tr key={d.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-800">{d.id}</td>
                   <td className="px-6 py-4">{d.name}</td>
-                  <td className="px-6 py-4 text-slate-500">{d.regionName}</td>
+                  <td className="px-6 py-4 text-slate-500">{d.region_id}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => handleOpenEdit(d, d.region_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
@@ -223,11 +274,11 @@ export default function LocationsCatalogPage() {
                 </tr>
               ))
             ) : (
-              filteredMunicipios.map((m: any) => (
+              adminLocations.map((m: any) => (
                 <tr key={m.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-800">{m.id}</td>
                   <td className="px-6 py-4">{m.name}</td>
-                  <td className="px-6 py-4 text-slate-500">{m.departamentoName}</td>
+                  <td className="px-6 py-4 text-slate-500">{m.departamento_id}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => handleOpenEdit(m, m.departamento_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
@@ -241,6 +292,16 @@ export default function LocationsCatalogPage() {
           </tbody>
         </table>
       </div>
+
+      {adminLocationsMeta && (
+        <CatalogPagination
+          currentPage={adminLocationsMeta.page}
+          totalPages={adminLocationsMeta.last_page}
+          totalItems={adminLocationsMeta.total}
+          itemsPerPage={limit}
+          onPageChange={setPage}
+        />
+      )}
 
       <CatalogImporterModal
         title="Importar Localizaciones"

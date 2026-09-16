@@ -3,10 +3,13 @@ import { Plus, Search, Edit2, Archive, ArchiveRestore, Upload } from 'lucide-rea
 import { useCatalogStore } from '../../store/catalogStore';
 import { adminCreateProceso, adminUpdateProceso, adminToggleProceso, adminImportProcesos } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';
+import CatalogPagination from './CatalogPagination';
 
 export default function ProcesosCatalogPage() {
-  const { procesos, isLoadingProcesos, fetchProcesos } = useCatalogStore();
+  const { procesos, procesosMeta, isLoadingProcesos, fetchProcesos } = useCatalogStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,14 +19,15 @@ export default function ProcesosCatalogPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchProcesos(); // Fetch all for admin
-  }, [fetchProcesos]);
+    fetchProcesos(undefined, searchTerm, page, limit);
+  }, [fetchProcesos, searchTerm, page, limit]);
 
-  const filteredProcesos = useMemo(() => {
-    if (!searchTerm) return procesos;
-    const lower = searchTerm.toLowerCase();
-    return procesos.filter((p) => p.name.toLowerCase().includes(lower) || String(p.id).includes(lower));
-  }, [procesos, searchTerm]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const filteredProcesos = procesos;
 
   const handleOpenCreate = () => {
     setEditingProceso(null);
@@ -59,7 +63,7 @@ export default function ProcesosCatalogPage() {
     if (!window.confirm('¿Está seguro de cambiar el estado de este proceso?')) return;
     try {
       await adminToggleProceso(id);
-      fetchProcesos();
+      fetchProcesos(undefined, searchTerm, page, limit);
     } catch (err) {
       alert('Error al cambiar el estado.');
     }
@@ -71,14 +75,38 @@ export default function ProcesosCatalogPage() {
       reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
-          const json = JSON.parse(content);
-          if (!json.Procesos || !Array.isArray(json.Procesos)) {
-            throw new Error('El JSON debe contener un array "Procesos".');
+          const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
+          
+          let parsedProcesos = [];
+          if (isCSV) {
+            const lines = content.split(/\r?\n/).filter(line => line.trim());
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            
+            for (let i = 1; i < lines.length; i++) {
+              const values = lines[i].split(',').map(v => v.trim());
+              const obj: any = {};
+              headers.forEach((header, index) => {
+                if (header === 'id') obj.Id = parseInt(values[index], 10);
+                if (header === 'name' || header === 'nombre') obj.Name = values[index];
+              });
+              if (obj.Id && obj.Name) {
+                parsedProcesos.push({ id: obj.Id, name: obj.Name });
+              }
+            }
+          } else {
+            const json = JSON.parse(content);
+            if (!json.Procesos || !Array.isArray(json.Procesos)) {
+              throw new Error('El JSON debe contener un array "Procesos".');
+            }
+            parsedProcesos = json.Procesos;
           }
-          await adminImportProcesos(json.Procesos);
+          
+          if (parsedProcesos.length === 0) throw new Error('No se encontraron procesos válidos en el archivo.');
+
+          await adminImportProcesos(parsedProcesos);
           resolve();
         } catch (error: any) {
-          reject(new Error(error.message || 'Error parsing JSON'));
+          reject(new Error(error.message || 'Error parsing file'));
         }
       };
       reader.onerror = () => reject(new Error('Error reading file'));
@@ -121,6 +149,36 @@ export default function ProcesosCatalogPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
           />
+        </div>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar por ID o nombre..."
+            className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="limit" className="text-sm text-slate-600">Mostrar:</label>
+          <select
+            id="limit"
+            className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            value={limit}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
         </div>
       </div>
 
@@ -183,6 +241,16 @@ export default function ProcesosCatalogPage() {
           </tbody>
         </table>
       </div>
+
+      {procesosMeta && (
+        <CatalogPagination
+          currentPage={procesosMeta.page}
+          totalPages={procesosMeta.last_page}
+          totalItems={procesosMeta.total}
+          itemsPerPage={limit}
+          onPageChange={setPage}
+        />
+      )}
 
       <CatalogImporterModal
         title="Importar Procesos MGA"

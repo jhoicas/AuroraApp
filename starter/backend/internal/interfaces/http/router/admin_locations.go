@@ -34,6 +34,9 @@ func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) 
 	admin.Post("/locations/import", locHandler.ImportLocations)
 	admin.Post("/procesos/import", procHandler.ImportProcesos)
 	
+	// Listado de localizaciones (Paginado admin)
+	admin.Get("/locations", locHandler.ListAdminLocations)
+	
 	// Procesos CRUD
 	admin.Get("/procesos", procHandler.ListProcesos) // Admin list (includes inactive)
 	admin.Post("/procesos", procHandler.CreateProceso)

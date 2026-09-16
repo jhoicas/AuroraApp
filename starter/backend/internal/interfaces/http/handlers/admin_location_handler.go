@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strconv"
 	"time"
 
 	"aurora-backend/internal/domain/models"
@@ -161,6 +162,84 @@ func (h *AdminLocationHandler) ListLocations(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"data": data})
+}
+
+// ListAdminLocations devuelve listas paginadas para administración según el query param "type".
+// GET /api/v1/admin/locations
+func (h *AdminLocationHandler) ListAdminLocations(c *fiber.Ctx) error {
+	locType := c.Query("type", "regiones") // regiones, departamentos, municipios
+	search := c.Query("search")
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	var totalRecords int64
+	var data interface{}
+
+	switch locType {
+	case "departamentos":
+		query := h.db.WithContext(c.Context()).Model(&models.Departamento{})
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+		if err := query.Count(&totalRecords).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		var deps []models.Departamento
+		if err := query.Order("name ASC").Offset(offset).Limit(limit).Find(&deps).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		data = deps
+	case "municipios":
+		query := h.db.WithContext(c.Context()).Model(&models.Municipio{})
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+		if err := query.Count(&totalRecords).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		var muns []models.Municipio
+		if err := query.Order("name ASC").Offset(offset).Limit(limit).Find(&muns).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		data = muns
+	default: // regiones
+		query := h.db.WithContext(c.Context()).Model(&models.Region{})
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+		if err := query.Count(&totalRecords).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		var regs []models.Region
+		if err := query.Order("name ASC").Offset(offset).Limit(limit).Find(&regs).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		data = regs
+	}
+
+	totalPages := int((totalRecords + int64(limit) - 1) / int64(limit))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	meta := dto.PaginationMeta{
+		Page:     page,
+		LastPage: totalPages,
+		Total:    totalRecords,
+		Limit:    limit,
+	}
+
+	return c.JSON(fiber.Map{
+		"data": data,
+		"meta": meta,
+	})
 }
 
 // ─────────────────────────── CRUD Individual ───────────────────────────

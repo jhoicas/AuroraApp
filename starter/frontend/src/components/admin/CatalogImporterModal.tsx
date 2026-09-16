@@ -52,6 +52,7 @@ export default function CatalogImporterModal({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/json': ['.json'],
+      'text/csv': ['.csv'],
     },
     multiple: false,
     disabled: isProcessing,

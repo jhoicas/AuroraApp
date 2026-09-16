@@ -2,9 +2,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Upload } from 'lucide-react';
 import { useLocationStore } from '../../store/locationStore';
 import {
-  adminCreateRegion, adminUpdateRegion, adminToggleRegion,
-  adminCreateDepartamento, adminUpdateDepartamento, adminToggleDepartamento,
-  adminCreateMunicipio, adminUpdateMunicipio, adminToggleMunicipio,
+  adminCreateRegion, adminUpdateRegion,
+  adminCreateDepartamento, adminUpdateDepartamento,
+  adminCreateMunicipio, adminUpdateMunicipio,
   adminImportLocations
 } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';

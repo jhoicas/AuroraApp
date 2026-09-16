@@ -15,6 +15,22 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Limpieza de importaciones no utilizadas en Vistas Administrativas (TS6133)
+
+- **Objetivo:** Resolver errores estrictos de TypeScript causados por imports no utilizados en la página de catálogo de localizaciones.
+- **Archivos modificados:**
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx` - Eliminadas las funciones de desactivación (`adminToggleRegion`, `adminToggleDepartamento`, `adminToggleMunicipio`) que ya no se usan en el componente.
+- **Logica implementada:**
+  - Limpieza de desestructuración y código muerto.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` - Exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
+
 ### 2026-09-16 - Antigravity - Corrección de errores de compilación TypeScript en catálogos de administración
 
 - **Objetivo:** Resolver errores estrictos de TypeScript (TS2305, TS6133, TS2739) causados por imports incorrectos, variables no usadas y estados incompletos.

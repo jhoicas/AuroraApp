@@ -97,13 +97,13 @@ function useMgaSectionStatuses(project: Project) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
 
-  const cPlan = !!formulation.planDesarrollo; 
-  const cIdentificacion = formulation.causeRelations.length > 0 || formulation.effects.length > 0 || !!project.problem_description;
-  const cParticipantes = formulation.participants.length > 0;
-  const cPoblacion = formulation.populations.length > 0;
-  const cObjetivos = formulation.generalIndicators.length > 0 || !!project.general_objective;
-  const cCadenaValor = edtChain && edtChain.edtNodes && edtChain.edtNodes.length > 0;
-  const cAlternativas = formulation.alternatives.length > 0;
+  const cPlan = !!formulation.completedSections['plan-desarrollo']; 
+  const cIdentificacion = !!formulation.completedSections['problematica'];
+  const cParticipantes = !!formulation.completedSections['participantes'];
+  const cPoblacion = !!formulation.completedSections['poblacion'];
+  const cObjetivos = !!formulation.completedSections['objetivos'];
+  const cCadenaValor = !!formulation.completedSections['cadena-valor'];
+  const cAlternativas = !!formulation.completedSections['alternativas'];
 
   const statuses: Record<MgaLayoutTabId, SectionStatus> = {
     'plan-desarrollo': cPlan ? 'COMPLETED' : 'ACTIVE',

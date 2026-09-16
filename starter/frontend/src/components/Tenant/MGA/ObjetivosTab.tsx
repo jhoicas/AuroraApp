@@ -42,6 +42,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
   const isMgaSaving = useProjectMgaStore((s) => s.isSaving);
   const mgaError = useProjectMgaStore((s) => s.error);
   const clearMgaError = useProjectMgaStore((s) => s.clearError);
+  const saveObjetivos = useProjectMgaStore((s) => s.saveObjetivos);
 
   const formulation = getFormulation(project.id);
   const { causeRelations, generalIndicators } = formulation;
@@ -152,6 +153,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
         situacion_existente: project.situacion_existente ?? '',
         magnitud_problema: project.magnitud_problema ?? '',
       });
+      await saveObjetivos(project.id);
       setMessage('Objetivos guardados correctamente.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron guardar los objetivos');
@@ -366,18 +368,17 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
       </div>
 
       {message && (
-        <div className="rounded border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-[#006162]">
-          {message}
-        </div>
+        <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />
       )}
 
-      <div className="flex justify-end">
-        <button
+      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <button 
           type="submit"
           disabled={isSaving || isMgaSaving}
-          className="inline-flex items-center gap-1 px-4 py-2 bg-[#2980b9] hover:bg-[#1f6391] disabled:opacity-60 text-white text-sm font-semibold rounded"
+          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
         >
-          {isSaving || isMgaSaving ? 'Guardando…' : 'Guardar objetivos'}
+          {(isSaving || isMgaSaving) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Guardar Objetivos
         </button>
       </div>
     </form>

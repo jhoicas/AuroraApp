@@ -100,6 +100,7 @@ export type ProjectMgaFormulation = {
   populations: MgaPopulation[];
   alternatives: MgaAlternative[];
   planDesarrollo?: PlanDesarrolloData;
+  completedSections: Record<string, boolean>;
 };
 
 type ProjectMgaState = {
@@ -152,6 +153,12 @@ type ProjectMgaState = {
   createIndicator: (projectId: string, payload: CreateMgaIndicatorPayload) => Promise<void>;
   deleteIndicator: (projectId: string, indicatorId: string) => Promise<void>;
   savePlanDesarrollo: (projectId: string, data: PlanDesarrolloData) => Promise<void>;
+  saveProblematica: (projectId: string) => Promise<void>;
+  saveParticipantes: (projectId: string) => Promise<void>;
+  savePoblacion: (projectId: string) => Promise<void>;
+  saveObjetivos: (projectId: string) => Promise<void>;
+  saveCadenaDeValor: (projectId: string) => Promise<void>;
+  saveAlternativas: (projectId: string) => Promise<void>;
   clearError: () => void;
 };
 
@@ -162,6 +169,7 @@ const EMPTY_FORMULATION: ProjectMgaFormulation = {
   participants: [],
   populations: [],
   alternatives: [],
+  completedSections: {},
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -219,6 +227,7 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     alternatives: data.alternatives ?? [],
     // As we don't have this in API yet, it will be undefined initially
     planDesarrollo: undefined,
+    completedSections: {},
   };
 }
 
@@ -245,14 +254,17 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   savePlanDesarrollo: async (projectId, data) => {
     set({ isSaving: true, error: null });
     try {
-      // Mock API call for now
       await new Promise((resolve) => setTimeout(resolve, 500));
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         return {
           byProjectId: {
             ...state.byProjectId,
-            [projectId]: { ...formulation, planDesarrollo: data },
+            [projectId]: { 
+              ...formulation, 
+              planDesarrollo: data,
+              completedSections: { ...formulation.completedSections, 'plan-desarrollo': true }
+            },
           },
           isSaving: false,
         };
@@ -261,6 +273,60 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       set({ isLoading: false, error: 'Error guardando plan de desarrollo', isSaving: false });
       throw err;
     }
+  },
+
+  saveProblematica: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, problematica: true } } }, isSaving: false };
+    });
+  },
+
+  saveParticipantes: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, participantes: true } } }, isSaving: false };
+    });
+  },
+
+  savePoblacion: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, poblacion: true } } }, isSaving: false };
+    });
+  },
+
+  saveObjetivos: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, objetivos: true } } }, isSaving: false };
+    });
+  },
+
+  saveCadenaDeValor: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, 'cadena-valor': true } } }, isSaving: false };
+    });
+  },
+
+  saveAlternativas: async (projectId) => {
+    set({ isSaving: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    set((state) => {
+      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, alternativas: true } } }, isSaving: false };
+    });
   },
 
   getFormulation: (projectId) => get().byProjectId[projectId] ?? EMPTY_FORMULATION,

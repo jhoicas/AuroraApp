@@ -223,12 +223,29 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
 }
 
 export default function PoblacionTab({ project }: PoblacionTabProps) {
+  const savePoblacion = useProjectMgaStore((s) => s.savePoblacion);
+  const isSaving = useProjectMgaStore((s) => s.isSaving);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSaveSection = async () => {
+    try {
+      await savePoblacion(project.id);
+      setSuccessMessage('Poblaciones guardadas exitosamente.');
+    } catch (err) {
+      setError('Error al guardar la sección.');
+    }
+  };
+
   return (
     <div className="space-y-4 bg-white p-4 border rounded-lg text-xs">
       <div className="flex items-center gap-2 border-b pb-3">
         <h1 className="text-xl font-normal text-[#2980b9]">Población</h1>
         <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
       </div>
+
+      {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
+      {successMessage && <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />}
 
       <PopulationPanel
         project={project}
@@ -242,6 +259,19 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
         number="02"
         title="Población objetivo"
       />
+
+      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <button 
+          type="button"
+          onClick={handleSaveSection} 
+          disabled={isSaving}
+          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+        >
+          {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Guardar Población
+        </button>
+      </div>
+
     </div>
   );
 }

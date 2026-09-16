@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { HelpCircle, Link2, Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
+import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type {
   ProjectActivity,
   ProjectDeliverable,
@@ -58,6 +59,10 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const isSaving = useProjectEdtStore((s) => s.isSaving);
   const storeError = useProjectEdtStore((s) => s.error);
   const clearError = useProjectEdtStore((s) => s.clearError);
+  
+  const saveCadenaDeValor = useProjectMgaStore((s) => s.saveCadenaDeValor);
+  const isMgaSaving = useProjectMgaStore((s) => s.isSaving);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { catalogLink, edtNodes, deliverables, activities } = getChain(project.id);
   const displayError = localError ?? storeError;
@@ -270,17 +275,17 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
         <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
       </div>
 
-      {displayError && (
+      {localError && (
         <MgaAlert
-          message={displayError}
-          onDismiss={() => {
-            setLocalError(null);
-            clearError();
-          }}
+          message={localError}
+          onDismiss={() => setLocalError(null)}
         />
       )}
       {message && (
         <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />
+      )}
+      {successMessage && (
+        <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />
       )}
 
       <MgaAccordion
@@ -680,6 +685,19 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
           )}
         </MgaAccordion>
       )}
+
+      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <button 
+          type="button"
+          onClick={handleSaveSection} 
+          disabled={isSaving || isMgaSaving}
+          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+        >
+          {(isSaving || isMgaSaving) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Guardar Cadena de Valor
+        </button>
+      </div>
+
     </div>
   );
 }

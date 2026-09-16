@@ -22,11 +22,13 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const getFormulation = useProjectMgaStore((s) => s.getFormulation);
   const addAlternative = useProjectMgaStore((s) => s.addAlternative);
   const editAlternative = useProjectMgaStore((s) => s.editAlternative);
   const removeAlternative = useProjectMgaStore((s) => s.removeAlternative);
+  const saveAlternativas = useProjectMgaStore((s) => s.saveAlternativas);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const { alternatives } = getFormulation(project.id);
@@ -36,7 +38,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
     setEditingId(null);
   };
 
-  const handleSave = async () => {
+  const handleAddAlternative = async () => {
     if (!draft.description.trim()) {
       setError('La descripción de la alternativa es obligatoria.');
       return;
@@ -59,6 +61,15 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
       resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la alternativa');
+    }
+  };
+
+  const handleSaveSection = async () => {
+    try {
+      await saveAlternativas(project.id);
+      setSuccessMessage('Alternativas guardadas exitosamente.');
+    } catch (err) {
+      setError('Error al guardar la sección.');
     }
   };
 
@@ -97,6 +108,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+      {successMessage && <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />}
 
       <div className="border rounded p-4 bg-gray-50 space-y-3">
         <AIAssistedField
@@ -159,7 +171,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           <button
             type="button"
             disabled={isSaving}
-            onClick={() => void handleSave()}
+            onClick={handleAddAlternative}
             className="flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white font-semibold rounded disabled:opacity-60"
           >
             <PlusCircle className="w-4 h-4" />
@@ -223,6 +235,19 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           </tbody>
         </table>
       </div>
+
+      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <button 
+          type="button"
+          onClick={handleSaveSection} 
+          disabled={isSaving}
+          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+        >
+          {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Guardar Alternativas
+        </button>
+      </div>
+
     </div>
   );
 }

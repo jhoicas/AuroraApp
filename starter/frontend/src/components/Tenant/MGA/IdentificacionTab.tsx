@@ -90,6 +90,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const [editTarget, setEditTarget] = useState<EditTarget>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const problemDescription = project.problem_description ?? '';
   const situacionExistente = project.situacion_existente ?? '';
@@ -105,6 +106,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const addEffect = useProjectMgaStore((s) => s.addEffect);
   const editEffect = useProjectMgaStore((s) => s.editEffect);
   const removeEffect = useProjectMgaStore((s) => s.removeEffect);
+  const saveProblematica = useProjectMgaStore((s) => s.saveProblematica);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
   const sendMessage = useAuroraCopilotStore((s) => s.sendMessage);
   const openCopilot = useAuroraCopilotStore((s) => s.open);
@@ -172,6 +174,16 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       setMessage('Identificación del problema guardada.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la identificación');
+    }
+  };
+
+  const handleSaveSection = async () => {
+    try {
+      await handleSaveIdentification();
+      await saveProblematica(project.id);
+      setSuccessMessage('Problemática guardada exitosamente.');
+    } catch (err) {
+      setError('Error al guardar la sección.');
     }
   };
 
@@ -460,6 +472,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     <div className="space-y-6">
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+      {successMessage && <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />}
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Columna izquierda — Problema central (40%) */}
@@ -583,14 +596,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
           />
         </div>
 
-        <div className="flex justify-end">
-          <button
+        <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+          <button 
             type="button"
-            disabled={isProjectSaving}
-            onClick={() => void handleSaveIdentification()}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-aurora-dark disabled:opacity-60"
+            onClick={handleSaveSection} 
+            disabled={isProjectSaving || isSaving}
+            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
           >
-            {isProjectSaving ? 'Guardando…' : 'Guardar campos de contexto'}
+            {(isProjectSaving || isSaving) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+            Guardar Problemática
           </button>
         </div>
       </div>

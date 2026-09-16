@@ -28,7 +28,10 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
   const addParticipant = useProjectMgaStore((s) => s.addParticipant);
   const editParticipant = useProjectMgaStore((s) => s.editParticipant);
   const removeParticipant = useProjectMgaStore((s) => s.removeParticipant);
+  const saveParticipantes = useProjectMgaStore((s) => s.saveParticipantes);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { participants } = getFormulation(project.id);
 
@@ -37,7 +40,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
     setEditingId(null);
   };
 
-  const handleSave = async () => {
+  const handleAddParticipant = async () => {
     if (!draft.actor.trim() || !draft.entity.trim()) {
       setError('Actor y entidad son obligatorios.');
       return;
@@ -61,6 +64,15 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
       resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el participante');
+    }
+  };
+
+  const handleSaveSection = async () => {
+    try {
+      await saveParticipantes(project.id);
+      setSuccessMessage('Participantes guardados exitosamente.');
+    } catch (err) {
+      setError('Error al guardar la sección.');
     }
   };
 
@@ -95,6 +107,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+      {successMessage && <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />}
 
       <div className="grid gap-3 sm:grid-cols-2 border rounded p-4 bg-gray-50">
         <div>
@@ -174,11 +187,11 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           <button
             type="button"
             disabled={isSaving}
-            onClick={() => void handleSave()}
-            className="flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white font-semibold rounded disabled:opacity-60"
+            onClick={handleAddParticipant}
+            className="rounded bg-[#27ae60] px-4 py-2 font-medium text-white hover:bg-[#219150] disabled:opacity-60 text-xs flex items-center gap-1"
           >
-            <PlusCircle className="w-4 h-4" />
-            {editingId ? 'Actualizar' : 'Adicionar participante'}
+            <PlusCircle className="w-3.5 h-3.5" />
+            {editingId ? 'Actualizar Participante' : 'Agregar Participante'}
           </button>
         </div>
       </div>
@@ -236,6 +249,19 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           </tbody>
         </table>
       </div>
+
+      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <button 
+          type="button"
+          onClick={handleSaveSection} 
+          disabled={isSaving}
+          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+        >
+          {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Guardar Participantes
+        </button>
+      </div>
+
     </div>
   );
 }

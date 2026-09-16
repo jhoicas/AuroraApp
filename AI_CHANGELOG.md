@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Estandarización de Stepper y Botones de Guardado (MGA)
+
+- **Objetivo:** Refactorizar la navegación por etapas (Stepper) para que dependa de un guardado explícito ("Guardar Módulo") en lugar de activarse automáticamente al agregar datos.
+- **Archivos modificados:**
+  - `projectMgaStore.ts`: Se añadió el diccionario `completedSections` y múltiples funciones `saveX` (mockeadas).
+  - `MGALayout.tsx`: Se conectaron las etapas a `formulation.completedSections`.
+  - `IdentificacionTab.tsx`, `ParticipantesTab.tsx`, `PoblacionTab.tsx`, `ObjetivosTab.tsx`, `CadenaValorTab.tsx`, `AlternativasTab.tsx`, `PlanDesarrolloTab.tsx`: Se les agregó el botón estándar de color `bg-blue-600` en la parte inferior junto con lógica y alertas (`MgaAlert`) para validar su guardado y transición.
+- **Validación ejecutada:** `npx tsc --noEmit` completado exitosamente sin errores (Exit Code 0).
+
 ### 2026-09-16 - Antigravity - Módulo Plan de Desarrollo (MGA)
 
 - **Objetivo:** Construir la interfaz de Plan de Desarrollo con sus 5 secciones según especificaciones DNP y conectar la lógica de autoguardado para desbloquear etapas siguientes.

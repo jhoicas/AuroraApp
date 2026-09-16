@@ -20,9 +20,20 @@ import {
   type ActionCardPayload,
   type CreationContext,
 } from '../../store/auroraCopilotStore';
+import {
+  useLocationStore,
+  generateProjectName,
+  type LocationSelection,
+} from '../../store/locationStore';
 
 const inputClass =
   'w-full px-3 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:border-[#006162] focus:ring-4 focus:ring-[#006162]/10 transition-all disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed';
+
+const EMPTY_LOCATION: LocationSelection = {
+  regionId: null,
+  departamentoId: null,
+  municipioId: null,
+};
 
 export default function ProjectCreationAssistant() {
   const navigate = useNavigate();
@@ -58,6 +69,12 @@ export default function ProjectCreationAssistant() {
     setDraftInput,
   } = useAuroraCopilotStore();
 
+  // Location + Proceso store
+  const regions = useLocationStore((s) => s.regions);
+  const procesos = useLocationStore((s) => s.procesos);
+  const fetchLocations = useLocationStore((s) => s.fetchLocations);
+  const fetchProcesos = useLocationStore((s) => s.fetchProcesos);
+
   const [ideaSummary, setIdeaSummary] = useState('');
   const [sectorId, setSectorId] = useState('');
   const [programCode, setProgramCode] = useState('');
@@ -67,10 +84,19 @@ export default function ProjectCreationAssistant() {
   const [toast, setToast] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
 
+  // MGA name fields
+  const [proceso, setProceso] = useState('');
+  const [objeto, setObjeto] = useState('');
+  const [localizaciones, setLocalizaciones] = useState<LocationSelection[]>([
+    { ...EMPTY_LOCATION },
+  ]);
+
   useEffect(() => {
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
+    void fetchLocations();
+    void fetchProcesos();
     return () => endInterview();
-  }, [fetchSectors, endInterview]);
+  }, [fetchSectors, fetchLocations, fetchProcesos, endInterview]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -82,6 +108,65 @@ export default function ProjectCreationAssistant() {
   const selectedSector: CatalogSector | undefined = useMemo(
     () => sectors.find((s) => s.id === sectorId),
     [sectors, sectorId],
+  );
+
+  // ── MGA auto-generated name ──
+  const procesoName = useMemo(
+    () => procesos.find((p) => String(p.id) === proceso)?.name ?? '',
+    [procesos, proceso],
+  );
+
+  const generatedName = useMemo(
+    () => generateProjectName(procesoName, objeto, localizaciones, regions),
+    [procesoName, objeto, localizaciones, regions],
+  );
+
+  // ── Location helpers ──
+  const updateLocation = useCallback(
+    (index: number, field: keyof LocationSelection, value: number | null) => {
+      setLocalizaciones((prev) => {
+        const copy = [...prev];
+        const item = { ...copy[index] };
+        item[field] = value;
+        if (field === 'regionId') {
+          item.departamentoId = null;
+          item.municipioId = null;
+        }
+        if (field === 'departamentoId') {
+          item.municipioId = null;
+        }
+        copy[index] = item;
+        return copy;
+      });
+    },
+    [],
+  );
+
+  const addLocation = useCallback(() => {
+    setLocalizaciones((prev) => [...prev, { ...EMPTY_LOCATION }]);
+  }, []);
+
+  const removeLocation = useCallback((index: number) => {
+    setLocalizaciones((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const getDepartamentos = useCallback(
+    (regionId: number | null) => {
+      if (regionId === null) return [];
+      return regions.find((r) => r.id === regionId)?.departamentos ?? [];
+    },
+    [regions],
+  );
+
+  const getMunicipios = useCallback(
+    (regionId: number | null, depId: number | null) => {
+      if (regionId === null || depId === null) return [];
+      return regions
+        .find((r) => r.id === regionId)
+        ?.departamentos.find((d) => d.id === depId)
+        ?.municipios ?? [];
+    },
+    [regions],
   );
 
   const sectorPrograms: CatalogProgram[] = useMemo(() => {
@@ -262,18 +347,145 @@ export default function ProjectCreationAssistant() {
         {/* Panel izquierdo — contexto */}
         <aside className="w-[30%] min-w-[280px] max-w-md shrink-0 border-r border-gray-200 bg-white flex flex-col overflow-y-auto">
           <div className="p-5 space-y-5 flex-1">
+            {/* ── Nombre auto-generado ── */}
+            {generatedName && (
+              <div className="rounded-lg border-2 border-[#006162]/20 bg-[#006162]/5 p-3">
+                <p className="text-xs font-semibold text-[#006162] mb-1">Nombre del proyecto</p>
+                <p className="text-sm text-gray-800">{generatedName}</p>
+              </div>
+            )}
+
+            {/* ── Proceso MGA ── */}
+            <div>
+              <label htmlFor="creation-proceso" className="block text-sm font-semibold text-gray-800 mb-1">
+                Proceso <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="creation-proceso"
+                value={proceso}
+                onChange={(e) => setProceso(e.target.value)}
+                disabled={inputsLocked}
+                className={inputClass}
+              >
+                <option value="">Selecciona un proceso</option>
+                {procesos.map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Objeto ── */}
+            <div>
+              <label htmlFor="creation-objeto" className="block text-sm font-semibold text-gray-800 mb-1">
+                Objeto <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="creation-objeto"
+                rows={3}
+                maxLength={1000}
+                value={objeto}
+                onChange={(e) => setObjeto(e.target.value)}
+                disabled={inputsLocked}
+                placeholder="Ej: acueducto rural para mejorar acceso a agua potable"
+                className={`${inputClass} resize-none`}
+              />
+              <p className="text-xs text-gray-400 mt-0.5 text-right">{objeto.length}/1000</p>
+            </div>
+
+            {/* ── Localizaciones ── */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">
+                Localizaciones <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-2">
+                {localizaciones.map((loc, idx) => (
+                  <div key={idx} className="flex gap-1 items-start">
+                    <div className="flex-1 grid grid-cols-3 gap-1">
+                      <select
+                        value={loc.regionId ?? ''}
+                        onChange={(e) =>
+                          updateLocation(idx, 'regionId', e.target.value ? Number(e.target.value) : null)
+                        }
+                        disabled={inputsLocked}
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white"
+                        aria-label={`Región ${idx + 1}`}
+                      >
+                        <option value="">Región</option>
+                        {regions.map((r) => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={loc.departamentoId ?? ''}
+                        onChange={(e) =>
+                          updateLocation(idx, 'departamentoId', e.target.value ? Number(e.target.value) : null)
+                        }
+                        disabled={inputsLocked || !loc.regionId}
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white disabled:bg-gray-50"
+                        aria-label={`Departamento ${idx + 1}`}
+                      >
+                        <option value="">Depto.</option>
+                        {getDepartamentos(loc.regionId).map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={loc.municipioId ?? ''}
+                        onChange={(e) =>
+                          updateLocation(idx, 'municipioId', e.target.value ? Number(e.target.value) : null)
+                        }
+                        disabled={inputsLocked || !loc.departamentoId}
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white disabled:bg-gray-50"
+                        aria-label={`Municipio ${idx + 1}`}
+                      >
+                        <option value="">Mpio. (opc.)</option>
+                        {getMunicipios(loc.regionId, loc.departamentoId).map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {localizaciones.length > 1 && !inputsLocked && (
+                      <button
+                        type="button"
+                        onClick={() => removeLocation(idx)}
+                        className="mt-1 text-red-400 hover:text-red-600 shrink-0"
+                        aria-label={`Quitar localización ${idx + 1}`}
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {!inputsLocked && (
+                <button
+                  type="button"
+                  onClick={addLocation}
+                  className="mt-1 inline-flex items-center gap-0.5 text-xs text-[#006162] hover:underline font-medium"
+                >
+                  <span className="material-symbols-outlined text-sm">add</span>
+                  Agregar
+                </button>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* ── Describe tu idea ── */}
             <div>
               <label htmlFor="idea-summary" className="block text-sm font-semibold text-gray-800 mb-2">
                 Describe tu idea de proyecto
               </label>
               <textarea
                 id="idea-summary"
-                rows={8}
+                rows={5}
                 value={ideaSummary}
                 onChange={(e) => setIdeaSummary(e.target.value)}
                 disabled={inputsLocked}
                 placeholder="Ej.: Quiero formular un proyecto de acueducto rural para mejorar el acceso al agua potable en veredas del municipio…"
-                className={`${inputClass} resize-none min-h-[180px]`}
+                className={`${inputClass} resize-none min-h-[120px]`}
               />
             </div>
 

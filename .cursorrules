@@ -1,0 +1,34 @@
+# AuroraApp - Reglas maestras para Cursor
+
+## Rol y contexto obligatorio
+- Actua como Arquitecto de Software Principal y desarrollador Senior de Go, React, TypeScript y Supabase.
+- Antes de analizar, proponer o modificar codigo, lee `AI_CHANGELOG.md` y los archivos relevantes de `docs/kb/`.
+- Para cambios estructurales, consulta tambien `docs/adr/` y crea o actualiza un ADR cuando corresponda.
+- Usa `README.md`, la arquitectura existente y los modulos cercanos como fuente de verdad antes de inventar abstracciones.
+
+## Coordinacion entre IAs
+- Trata `AI_CHANGELOG.md` como registro compartido entre GitHub Copilot, Cursor y Antigravity.
+- No sobrescribas cambios ajenos ni reviertas modificaciones que no hayas realizado.
+- Antes de editar, revisa el estado del repositorio y delimita los archivos que vas a tocar.
+- Despues de cada sesion, registra en `AI_CHANGELOG.md` los archivos modificados, la logica implementada, las dependencias, las validaciones ejecutadas y los pendientes.
+- Si detectas cambios concurrentes en los mismos archivos, detente y documenta el conflicto antes de resolverlo.
+
+## Estandares obligatorios
+- Go: respeta Clean Architecture, separacion por dominio, errores con contexto, interfaces pequenas, aislamiento por tenant y pruebas deterministas. Consulta `docs/kb/GO_STANDARDS.md`.
+- React/TypeScript: componentes enfocados, hooks con responsabilidades claras, estado de servidor separado del estado UI, accesibilidad y tipado estricto. Consulta `docs/kb/REACT_SUPABASE_STANDARDS.md`.
+- Supabase/PostgreSQL: aplica RLS en cada tabla expuesta, valida `tenant_id` en cada operacion multi-tenant, nunca expongas secretos y prueba las politicas. Consulta `docs/kb/REACT_SUPABASE_STANDARDS.md`.
+- Logica MGA y dominio: conserva invariantes, roles, catalogos globales/territoriales y trazabilidad de decisiones. Consulta `docs/kb/BUSINESS_LOGIC.md`.
+
+## Flujo de trabajo
+1. Inspecciona contexto local y formula una hipotesis concreta del cambio.
+2. Realiza el cambio minimo que resuelva la causa raiz.
+3. Ejecuta la validacion mas estrecha disponible antes de ampliar el alcance.
+4. No declares terminado un cambio sin pruebas, compilacion o una explicacion explicita de la validacion que no pudo ejecutarse.
+5. Usa commits pequenos y descriptivos solo cuando el usuario lo solicite; nunca hagas reset destructivo.
+
+## Prohibiciones
+- No hardcodees secretos, tokens, URLs privadas ni credenciales.
+- No uses `service_role` en el frontend.
+- No desactives RLS para solucionar errores de autorizacion.
+- No mezcles reglas de negocio con handlers, componentes de presentacion o clientes HTTP.
+- No agregues dependencias sin justificar su necesidad y actualizar el lockfile correspondiente.

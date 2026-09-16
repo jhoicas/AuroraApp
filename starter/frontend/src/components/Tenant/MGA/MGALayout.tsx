@@ -8,6 +8,8 @@ import PoblacionTab from './PoblacionTab';
 import ObjetivosTab from './ObjetivosTab';
 import CadenaValorTab from './CadenaValorTab';
 import AlternativasTab from './AlternativasTab';
+import { useProjectMgaStore } from '../../../store/projectMgaStore';
+import { useProjectEdtStore } from '../../../store/projectEdtStore';
 
 export type MgaMainStageId =
   | 'identificacion'
@@ -76,6 +78,62 @@ function CheckBadge({ className = '' }: { className?: string }) {
   );
 }
 
+function LockBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] text-slate-500 ${className}`}
+      aria-hidden
+      title="Sección bloqueada"
+    >
+      🔒
+    </span>
+  );
+}
+
+type SectionStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
+
+function useMgaSectionStatuses(project: Project) {
+  const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const edtChain = useProjectEdtStore((s) => s.getEdtChain(project.id));
+
+  const cPlan = true; 
+  const cIdentificacion = formulation.causeRelations.length > 0 || formulation.effects.length > 0 || !!project.problem_description;
+  const cParticipantes = formulation.participants.length > 0;
+  const cPoblacion = formulation.populations.length > 0;
+  const cObjetivos = formulation.generalIndicators.length > 0 || !!project.general_objective;
+  const cCadenaValor = edtChain && edtChain.length > 0;
+  const cAlternativas = formulation.alternatives.length > 0;
+
+  const statuses: Record<MgaLayoutTabId, SectionStatus> = {
+    'plan-desarrollo': 'COMPLETED',
+    'identificacion': cIdentificacion ? 'COMPLETED' : (cPlan ? 'ACTIVE' : 'LOCKED'),
+    'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
+    'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
+    'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion ? 'ACTIVE' : 'LOCKED'),
+    'cadena-valor': cCadenaValor ? 'COMPLETED' : (cObjetivos ? 'ACTIVE' : 'LOCKED'),
+    'alternativas': cAlternativas ? 'COMPLETED' : (cCadenaValor ? 'ACTIVE' : 'LOCKED'),
+  };
+
+  return statuses;
+}
+
+function useMgaMainStageStatuses(subStatuses: Record<MgaLayoutTabId, SectionStatus>) {
+  const cIdentificacion = subStatuses['alternativas'] === 'COMPLETED';
+  const cPreparacion = false; // Add logic when more tabs are implemented
+  const cEvaluacion = false;
+  const cProgramacion = false;
+  const cPresentar = false;
+
+  const statuses: Record<MgaMainStageId, SectionStatus> = {
+    identificacion: cIdentificacion ? 'COMPLETED' : 'ACTIVE',
+    preparacion: cPreparacion ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
+    evaluacion: cEvaluacion ? 'COMPLETED' : (cPreparacion ? 'ACTIVE' : 'LOCKED'),
+    programacion: cProgramacion ? 'COMPLETED' : (cEvaluacion ? 'ACTIVE' : 'LOCKED'),
+    presentar: cPresentar ? 'COMPLETED' : (cProgramacion ? 'ACTIVE' : 'LOCKED'),
+  };
+  return statuses;
+}
+
 function PlanDesarrolloPlaceholder() {
   return (
     <div className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-8 text-center text-sm text-outline">
@@ -121,12 +179,20 @@ export default function MGALayout({
   footerSlot,
   bannerActions,
 }: MGALayoutProps) {
-  const activeMainStage: MgaMainStageId = 'identificacion';
+  const sectionStatuses = useMgaSectionStatuses(project);
+  const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses);
 
   const resolvedTitle =
     projectTitle?.trim() ||
     project.name?.trim() ||
     'Proyecto sin título';
+
+  // We find the first non-completed stage or default to identificacion
+  const activeMainStage: MgaMainStageId = 
+    mainStageStatuses.identificacion !== 'COMPLETED' ? 'identificacion' :
+    mainStageStatuses.preparacion !== 'COMPLETED' ? 'preparacion' :
+    mainStageStatuses.evaluacion !== 'COMPLETED' ? 'evaluacion' :
+    mainStageStatuses.programacion !== 'COMPLETED' ? 'programacion' : 'presentar';
 
   return (
     <div className="flex min-h-[32rem] flex-col overflow-hidden rounded-lg border border-outline-variant/40 bg-surface font-body text-gray-800 shadow-sm">
@@ -168,19 +234,30 @@ export default function MGALayout({
         <div className="flex overflow-x-auto px-2 sm:px-4">
           {MAIN_STAGES.map((stage) => {
             const isActive = activeMainStage === stage.id;
+            const status = mainStageStatuses[stage.id];
+            const isLocked = status === 'LOCKED';
+            const isCompleted = status === 'COMPLETED';
+
+            let btnClass = 'flex shrink-0 items-center gap-2 border-b-4 px-4 py-3 text-sm font-medium transition-colors sm:px-5 ';
+            if (isActive) {
+              btnClass += 'border-white bg-primary-container/30 text-white';
+            } else if (isLocked) {
+              btnClass += 'cursor-not-allowed border-transparent text-white/50';
+            } else {
+              btnClass += 'border-transparent text-white/80 hover:bg-primary-container/20';
+            }
+
             return (
               <button
                 key={stage.id}
                 type="button"
-                disabled={stage.id !== 'identificacion'}
-                className={`flex shrink-0 items-center gap-2 border-b-4 px-4 py-3 text-sm font-medium transition-colors sm:px-5 ${
-                  isActive
-                    ? 'border-white bg-primary-container/30 text-white'
-                    : 'cursor-not-allowed border-transparent text-white/50'
-                }`}
+                disabled={isLocked}
+                className={btnClass}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <CheckBadge className={isActive ? 'bg-white text-[#2e7d32]' : ''} />
+                {isCompleted && <CheckBadge className="bg-white text-[#2e7d32]" />}
+                {isLocked && <LockBadge className="bg-white/20 text-white/50" />}
+                {!isCompleted && !isLocked && <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />}
                 <span>{stage.label}</span>
                 {stage.hasDropdown && (
                   <span className="text-xs opacity-90" aria-hidden>
@@ -227,21 +304,34 @@ export default function MGALayout({
           <ul className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-visible lg:p-3">
             {SUB_SECTIONS.map((section) => {
               const isActive = activeTab === section.id;
+              const status = sectionStatuses[section.id];
+              const isLocked = status === 'LOCKED';
+              const isCompleted = status === 'COMPLETED';
+
+              let btnClass = 'flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm transition-colors ';
+              if (isActive) {
+                btnClass += 'bg-primary text-white shadow-sm font-semibold';
+              } else if (isLocked) {
+                btnClass += 'text-slate-400 cursor-not-allowed opacity-60 pointer-events-none';
+              } else {
+                btnClass += 'text-gray-700 hover:bg-primary/5 hover:text-primary';
+              }
 
               return (
                 <li key={section.id} className="min-w-[9.5rem] lg:min-w-0">
                   <button
                     type="button"
+                    disabled={isLocked}
                     onClick={() => onChangeSubTab(section.id)}
-                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
-                      isActive
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'text-gray-700 hover:bg-primary/5 hover:text-primary'
-                    }`}
+                    className={btnClass}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    <CheckBadge className={isActive ? 'bg-white text-[#2e7d32]' : ''} />
+                    {isCompleted && <CheckBadge className={isActive ? 'bg-white text-[#2e7d32]' : ''} />}
+                    {isLocked && <LockBadge />}
+                    {!isCompleted && !isLocked && <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />}
+                    
                     <span className="flex-1">{section.label}</span>
+                    
                     {isActive && (
                       <span className="text-xs font-bold" aria-hidden>
                         ►

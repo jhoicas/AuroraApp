@@ -15,6 +15,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Flujo Secuencial (Stepper) en Formulación MGA
+
+- **Objetivo:** Transformar la navegación del proyecto en un asistente secuencial estricto donde las secciones deben completarse en orden (Plan de desarrollo ➔ Problemática ➔ Participantes, etc.) y bloquear accesos prematuros para guiar correctamente la formulación.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/MGA/MGALayout.tsx`: Se implementaron los hooks locales `useMgaSectionStatuses` y `useMgaMainStageStatuses` que evalúan dinámicamente el progreso analizando los arreglos y propiedades del proyecto en el store de Zustand (ej: si hay participantes guardados, desbloquea Población). Se rediseñó el renderizado del sidebar y la barra superior para reflejar visualmente los estados `COMPLETED` (check verde), `ACTIVE` (seleccionable) y `LOCKED` (candado, gris, deshabilitado).
+- **Validación ejecutada:** `npx tsc --noEmit` completado exitosamente sin errores de tipado.
+
 ### 2026-09-16 - Antigravity - Sanitización de Errores de Validación y UI
 
 - **Objetivo:** Mejorar la experiencia del usuario final evitando que vea nombres técnicos o errores crudos (ej: "CreateProjectRequest.Objeto") provenientes de las reglas de validación en Go. Además, se agregaron validaciones visuales preventivas en el frontend y textos de ayuda para cumplir con las reglas de longitud.

@@ -15,6 +15,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección Build Docker TS2551
+
+- **Objetivo:** Resolver el error de tipos en `MGALayout.tsx` que impedía el build del frontend en producción.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/MGA/MGALayout.tsx`: Se actualizó el selector del store de Cadena de Valor (EDT) de `getEdtChain` a `getChain` coincidiendo con la firma de `projectEdtStore.ts`. Además, se corrigió el acceso de longitud validando sobre `.edtNodes.length`.
+- **Validación ejecutada:** `npx tsc --noEmit` completado exitosamente sin errores de tipado.
+
 ### 2026-09-16 - Antigravity - Flujo Secuencial (Stepper) en Formulación MGA
 
 - **Objetivo:** Transformar la navegación del proyecto en un asistente secuencial estricto donde las secciones deben completarse en orden (Plan de desarrollo ➔ Problemática ➔ Participantes, etc.) y bloquear accesos prematuros para guiar correctamente la formulación.

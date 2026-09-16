@@ -94,14 +94,14 @@ type SectionStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
 
 function useMgaSectionStatuses(project: Project) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
-  const edtChain = useProjectEdtStore((s) => s.getEdtChain(project.id));
+  const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
 
   const cPlan = true; 
   const cIdentificacion = formulation.causeRelations.length > 0 || formulation.effects.length > 0 || !!project.problem_description;
   const cParticipantes = formulation.participants.length > 0;
   const cPoblacion = formulation.populations.length > 0;
   const cObjetivos = formulation.generalIndicators.length > 0 || !!project.general_objective;
-  const cCadenaValor = edtChain && edtChain.length > 0;
+  const cCadenaValor = edtChain && edtChain.edtNodes && edtChain.edtNodes.length > 0;
   const cAlternativas = formulation.alternatives.length > 0;
 
   const statuses: Record<MgaLayoutTabId, SectionStatus> = {

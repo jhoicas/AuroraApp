@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"github.com/go-playground/validator/v10"
 )
 
 type ProjectHandler struct {
@@ -65,6 +66,32 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	}
 
 	if err := dto.Validate(&req); err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			var errMsg string
+			for _, fieldErr := range validationErrors {
+				switch fieldErr.Field() {
+				case "Objeto":
+					if fieldErr.Tag() == "min" {
+						errMsg = "El objeto del proyecto debe contener al menos 10 caracteres."
+					}
+				case "ProcesoID":
+					if fieldErr.Tag() == "required" {
+						errMsg = "Por favor selecciona un Proceso MGA válido."
+					}
+				case "Localizaciones":
+					if fieldErr.Tag() == "required" || fieldErr.Tag() == "min" {
+						errMsg = "Debes agregar al menos una localización."
+					}
+				}
+				if errMsg != "" {
+					break
+				}
+			}
+			if errMsg == "" {
+				errMsg = "Por favor completa todos los campos requeridos correctamente."
+			}
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errMsg})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 

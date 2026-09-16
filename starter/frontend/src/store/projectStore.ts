@@ -120,7 +120,21 @@ type ProjectState = {
 function extractError(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
     const msg = (err.response?.data as { error?: string } | undefined)?.error;
-    return msg || fallback;
+    if (msg) {
+      if (msg.includes('CreateProjectRequest.Objeto') && msg.includes('min')) {
+        return 'El objeto del proyecto debe contener al menos 10 caracteres.';
+      }
+      if (msg.includes('CreateProjectRequest.ProcesoID') && msg.includes('required')) {
+        return 'Por favor selecciona un Proceso MGA válido.';
+      }
+      if (msg.includes('CreateProjectRequest.Localizaciones') && msg.includes('required')) {
+        return 'Debes agregar al menos una localización.';
+      }
+      if (msg.includes('CreateProjectRequest') || msg.includes('Error:Field validation')) {
+        return 'Por favor completa todos los campos requeridos correctamente.';
+      }
+      return msg;
+    }
   }
   return fallback;
 }

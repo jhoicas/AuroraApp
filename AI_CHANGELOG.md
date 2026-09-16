@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Sanitización de Errores de Validación y UI
+
+- **Objetivo:** Mejorar la experiencia del usuario final evitando que vea nombres técnicos o errores crudos (ej: "CreateProjectRequest.Objeto") provenientes de las reglas de validación en Go. Además, se agregaron validaciones visuales preventivas en el frontend y textos de ayuda para cumplir con las reglas de longitud.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/handlers/project_handler.go`: Se interceptó el error de tipo `validator.ValidationErrors` arrojado por `dto.Validate`. Se iteran los errores de campo y se traducen a mensajes explícitos en español (ej: para `Objeto`, `ProcesoID` y `Localizaciones`) antes de devolver el HTTP 400.
+  - `starter/frontend/src/store/projectStore.ts`: Se reforzó el traductor de errores en `extractError` para atrapar las combinaciones de strings técnicos residuales en caso de que un validador no sea atrapado por el backend, mapeándolos a textos de UI amigables.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx` y `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Se agregaron textos de ayuda permanentes indicando "Mínimo 10 caracteres" para el campo Objeto. Se configuró una pre-validación bloqueante al pulsar crear (`objeto.trim().length < 10`) para frenar la solicitud antes de siquiera tocar la red y mostrar un error inmediato amigable.
+- **Validación ejecutada:** `go build ./...` y `npx tsc --noEmit` completadas exitosamente sin errores.
+
 ### 2026-09-16 - Antigravity - Corrección de Payload en Creación de Proyectos MGA
 
 - **Objetivo:** Resolver el error HTTP 400 (Bad Request) proveniente de Go al crear un proyecto garantizando el envío íntegro de todos los campos MGA obligatorios requeridos por la base de datos y la API.

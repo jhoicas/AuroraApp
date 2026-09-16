@@ -241,8 +241,8 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
       setFormError('El proceso es obligatorio.');
       return;
     }
-    if (!objeto.trim()) {
-      setFormError('El objeto del proyecto es obligatorio.');
+    if (objeto.trim().length < 10) {
+      setFormError('El objeto del proyecto debe contener al menos 10 caracteres.');
       return;
     }
     if (localizaciones.length === 0 || !localizaciones.some(l => l.regionId)) {
@@ -360,7 +360,10 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none"
               placeholder="Ej: acueducto rural para mejorar acceso a agua potable en veredas del municipio"
             />
-            <p className="text-xs text-gray-400 mt-1 text-right">{objeto.length}/1000</p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-slate-500 block">Mínimo 10 caracteres</span>
+              <p className="text-xs text-gray-400 text-right">{objeto.length}/1000</p>
+            </div>
           </AIAssistedField>
 
           {/* ── Localizaciones ── */}

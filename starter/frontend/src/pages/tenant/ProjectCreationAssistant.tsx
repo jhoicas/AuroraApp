@@ -297,8 +297,8 @@ export default function ProjectCreationAssistant() {
       setStartError('El proceso es obligatorio.');
       return;
     }
-    if (!objeto.trim()) {
-      setStartError('El objeto del proyecto es obligatorio.');
+    if (objeto.trim().length < 10) {
+      setStartError('El objeto del proyecto debe contener al menos 10 caracteres.');
       return;
     }
     if (localizaciones.length === 0 || !localizaciones.some(l => l.regionId)) {
@@ -418,7 +418,10 @@ export default function ProjectCreationAssistant() {
                 placeholder="Ej: acueducto rural para mejorar acceso a agua potable"
                 className={`${inputClass} resize-none`}
               />
-              <p className="text-xs text-gray-400 mt-0.5 text-right">{objeto.length}/1000</p>
+              <div className="flex items-center justify-between mt-0.5">
+                <span className="text-xs text-slate-500 block">Mínimo 10 caracteres</span>
+                <p className="text-xs text-gray-400 text-right">{objeto.length}/1000</p>
+              </div>
             </div>
 
             {/* ── Localizaciones ── */}

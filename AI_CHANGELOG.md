@@ -15,6 +15,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección Estricta de TypeScript (TS6133)
+
+- **Objetivo:** Eliminar variables declaradas pero no utilizadas tras las recientes refactorizaciones en los catálogos para evitar el quiebre del build de Docker en el pipeline.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`: Se eliminó la importación `formatCatalogProductOptionTitle` sin uso de `catalogStore`.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Se eliminó la misma importación `formatCatalogProductOptionTitle`.
+- **Validación ejecutada:** `npx tsc --noEmit` completó exitosamente (exit code 0).
+
 ### 2026-09-16 - Antigravity - Estandarización de SearchableCombobox y UI Cleanliness
 
 - **Objetivo:** Asegurar que los selectores de búsqueda (Proceso, Sector, Producto, Localizaciones) en los formularios de creación de proyectos solo muestren nombres (sin códigos/IDs) en la UI y mejoren la calidad de búsqueda ignorando acentos y mayúsculas.

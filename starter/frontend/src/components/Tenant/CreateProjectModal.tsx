@@ -12,7 +12,6 @@ import {
 } from '../../store/locationStore';
 import {
   CATALOG_FULL_LIST_LIMIT,
-  formatCatalogProductOptionTitle,
   useCatalogStore,
   type CatalogSector,
   type Product,

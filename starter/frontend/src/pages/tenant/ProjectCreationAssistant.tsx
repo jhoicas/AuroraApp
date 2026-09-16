@@ -9,7 +9,6 @@ import { dispatchActionCard } from '../../lib/auroraActionDispatcher';
 import ProductDetailModal from '../../components/Tenant/ProductDetailModal';
 import {
   CATALOG_FULL_LIST_LIMIT,
-  formatCatalogProductOptionTitle,
   useCatalogStore,
   type CatalogProgram,
   type CatalogSector,

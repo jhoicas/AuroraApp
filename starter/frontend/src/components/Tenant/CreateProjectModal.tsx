@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 
 import { useProjectStore } from '../../store/projectStore';
+import {
   useLocationStore,
   generateProjectName,
   type LocationSelection,

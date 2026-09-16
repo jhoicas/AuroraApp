@@ -79,10 +79,11 @@ func (h *AdminProcesoHandler) ImportProcesos(c *fiber.Ctx) error {
 // Para el endpoint público, filtra IsActive = true. Para admin, devuelve todos.
 func (h *AdminProcesoHandler) ListProcesos(c *fiber.Ctx) error {
 	var procesos []models.Proceso
+	var totalRecords int64
 
-	query := h.db.WithContext(c.Context())
+	query := h.db.WithContext(c.Context()).Model(&models.Proceso{})
 
-	// Si hay param isActive, filtrar
+	// Filtro isActive
 	if isActiveParam := c.Query("isActive"); isActiveParam != "" {
 		if isActive, err := strconv.ParseBool(isActiveParam); err == nil {
 			query = query.Where("is_active = ?", isActive)
@@ -94,7 +95,25 @@ func (h *AdminProcesoHandler) ListProcesos(c *fiber.Ctx) error {
 		query = query.Where("name ILIKE ?", "%"+search+"%")
 	}
 
-	err := query.Order("name ASC").Find(&procesos).Error
+	// Contar total antes de paginar
+	if err := query.Count(&totalRecords).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to count procesos",
+		})
+	}
+
+	// Paginación
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	err := query.Order("name ASC").Offset(offset).Limit(limit).Find(&procesos).Error
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -103,8 +122,22 @@ func (h *AdminProcesoHandler) ListProcesos(c *fiber.Ctx) error {
 		})
 	}
 
-	// Usaremos el mismo ProcesoResponse (podríamos agregarle IsActive)
-	return c.JSON(fiber.Map{"data": procesos})
+	totalPages := int((totalRecords + int64(limit) - 1) / int64(limit))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	meta := dto.PaginationMeta{
+		CurrentPage:  page,
+		TotalPages:   totalPages,
+		TotalRecords: int(totalRecords),
+		Limit:        limit,
+	}
+
+	return c.JSON(fiber.Map{
+		"data": procesos,
+		"meta": meta,
+	})
 }
 
 // CreateProceso crea un único proceso.

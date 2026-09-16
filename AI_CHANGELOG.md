@@ -15,6 +15,17 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Mejora del Formulario de Creación de Proyectos
+
+- **Objetivo:** Simplificar y mejorar la usabilidad del formulario de creación de proyectos (`/tenant/projects`), eliminando campos y usando catálogos buscables.
+- **Archivos modificados:**
+  - `starter/frontend/src/store/locationStore.ts`: Se ajustó `fetchProcesos` con `limit=1000`.
+  - `starter/frontend/src/components/Tenant/ProductDetailModal.tsx`: Se creó el componente `ProductDetailModal`.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`: Se eliminaron campos "Código BPIN" y "Descripción", se cambió Proceso, Sector y Producto a `SearchableCombobox`. Se integró `ProductDetailModal`.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Se cambió el selector de Proceso a `SearchableCombobox`. Se integró el botón "Ver detalle" junto con el `ProductDetailModal` para los productos.
+- **Validación ejecutada:** `npx tsc --noEmit` en frontend exitoso (exit code 0).
+- **Riesgos/Notas:** El payload de creación de proyectos (`CreateProjectPayload`) fue modificado ligeramente (se eliminaron `code_bpin` y `description`), lo cual era válido dado que eran opcionales, pero si el backend exige enviarlos aunque estén vacíos podría generar un error. (El esquema los manejaba opcionales).
+
 ### 2026-09-16 - Antigravity - Corrección de Props y Tipos en Paginación
 
 - **Objetivo:** Resolver el error de compilación de TypeScript en `LocationsCatalogPage.tsx` y `ProcesosCatalogPage.tsx` por divergencia de propiedades en el componente `CatalogPagination`.

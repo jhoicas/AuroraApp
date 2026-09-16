@@ -1,6 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
+import SearchableCombobox, { type ComboboxOption } from '../Catalog/SearchableCombobox';
+import ProductDetailModal from './ProductDetailModal';
 
 import { useProjectStore } from '../../store/projectStore';
 import {
@@ -10,8 +12,10 @@ import {
 } from '../../store/locationStore';
 import {
   CATALOG_FULL_LIST_LIMIT,
+  formatCatalogProductOptionTitle,
   useCatalogStore,
   type CatalogSector,
+  type Product,
 } from '../../store/catalogStore';
 
 type CreateProjectModalProps = {
@@ -66,9 +70,29 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
   const [tipologiaProyecto, setTipologiaProyecto] = useState('');
   const [sectorId, setSectorId] = useState('');
   const [productoPrincipal, setProductoPrincipal] = useState('');
-  const [codeBpin, setCodeBpin] = useState('');
-  const [description, setDescription] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
+
+  // ─── Combobox Options ──────────────────
+  const procesoOptions: ComboboxOption[] = useMemo(
+    () => procesos.map((p) => ({ value: String(p.id), label: p.name })),
+    [procesos]
+  );
+
+  const sectorOptions: ComboboxOption[] = useMemo(
+    () => filteredSectors.map((s) => ({ value: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name })),
+    [filteredSectors]
+  );
+
+  const productOptions: ComboboxOption[] = useMemo(
+    () => catalogProducts.map((p) => ({
+      value: p.codigo_del_producto,
+      label: formatCatalogProductOptionTitle(p)
+    })),
+    [catalogProducts]
+  );
 
   // ─── Cargar datos al abrir ──────────────────
   useEffect(() => {
@@ -77,6 +101,20 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     void fetchProcesos();
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
   }, [open, fetchLocations, fetchProcesos, fetchSectors]);
+
+  // ─── Cargar Productos por Sector ──────────────────
+  useEffect(() => {
+    if (sectorId) {
+      const selectedSector = sectors.find((s) => s.id === sectorId);
+      if (selectedSector?.code) {
+        void fetchCatalogProducts({
+          page: 1,
+          limit: CATALOG_FULL_LIST_LIMIT,
+          search: selectedSector.code,
+        });
+      }
+    }
+  }, [sectorId, sectors, fetchCatalogProducts]);
 
   // ─── Nombre auto-generado ──────────────────
   const procesoName = useMemo(
@@ -176,8 +214,6 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     setTipologiaProyecto('');
     setSectorId('');
     setProductoPrincipal('');
-    setCodeBpin('');
-    setDescription('');
     setFormError(null);
   };
 
@@ -228,8 +264,6 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
         name: generatedName,
         sector: selectedSector?.name ?? '',
         sector_id: sectorId,
-        description: description || undefined,
-        code_bpin: codeBpin || undefined,
         product_code: productoPrincipal || undefined,
         proceso_id: parseInt(proceso, 10),
         objeto: objeto.trim(),
@@ -295,20 +329,14 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
             guidance="Verbo rector que define el tipo de intervención del proyecto según la MGA (ej: Construcción, Adquisición, Dotación)."
             askPrompt="¿Qué es el proceso en la formulación MGA y cómo elijo el verbo rector correcto para mi proyecto?"
           >
-            <select
+            <SearchableCombobox
               id="project-proceso"
-              required
+              label=""
+              placeholder="Busque y seleccione un proceso..."
+              options={procesoOptions}
               value={proceso}
-              onChange={(e) => setProceso(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            >
-              <option value="">Selecciona un proceso</option>
-              {procesos.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={setProceso}
+            />
           </AIAssistedField>
 
           {/* ── Objeto ── */}
@@ -479,28 +507,18 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
             guidance="El sector define la clasificación programática DNP. Cuando la tipología es 'A - PIIP', solo se muestran los sectores con ámbito territorial."
             askPrompt="¿Cómo elijo el sector correcto del catálogo DNP para mi proyecto de inversión? Explica el criterio de clasificación programática."
           >
-            <select
+            <SearchableCombobox
               id="project-sector"
-              required
+              label=""
+              placeholder={!tipologiaProyecto ? 'Selecciona primero una tipología' : 'Selecciona un sector'}
+              disabled={!tipologiaProyecto}
+              options={sectorOptions}
               value={sectorId}
-              onChange={(e) => {
-                setSectorId(e.target.value);
+              onChange={(val) => {
+                setSectorId(val);
                 setProductoPrincipal('');
               }}
-              disabled={!tipologiaProyecto}
-              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-gray-50 disabled:text-gray-400"
-            >
-              <option value="">
-                {!tipologiaProyecto
-                  ? 'Selecciona primero una tipología'
-                  : 'Selecciona un sector'}
-              </option>
-              {filteredSectors.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.code ? `${s.code} — ${s.name}` : s.name}
-                </option>
-              ))}
-            </select>
+            />
           </AIAssistedField>
 
           {/* ── Producto principal (habilitado tras sector) ── */}
@@ -511,60 +529,43 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."
             askPrompt="¿Cómo identifico el producto principal de mi proyecto MGA en el catálogo DNP?"
           >
-            <select
-              id="project-producto-principal"
-              required
-              value={productoPrincipal}
-              onChange={(e) => setProductoPrincipal(e.target.value)}
-              disabled={!sectorId || isLoadingProducts}
-              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-gray-50 disabled:text-gray-400"
-            >
-              <option value="">
-                {!sectorId
-                  ? 'Selecciona primero un sector'
-                  : isLoadingProducts
-                    ? 'Cargando productos…'
-                    : 'Selecciona un producto'}
-              </option>
-              {catalogProducts.map((p) => (
-                <option key={p.id} value={p.codigo_del_producto}>
-                  {p.codigo_del_producto} — {p.producto}
-                </option>
-              ))}
-            </select>
-          </AIAssistedField>
-
-          {/* ── Código BPIN (opcional) ── */}
-          <AIAssistedField
-            label="Código BPIN"
-            htmlFor="project-bpin"
-            guidance="El BPIN identifica el proyecto en el Banco de Programas y Proyectos. Si aún no lo tiene, déjelo vacío y regístrelo cuando la entidad lo asigne."
-            askPrompt="¿Qué es el código BPIN y cuándo debo registrarlo en la formulación de un proyecto MGA?"
-          >
-            <input
-              id="project-bpin"
-              value={codeBpin}
-              onChange={(e) => setCodeBpin(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-              placeholder="2024000123456 (opcional)"
-            />
-          </AIAssistedField>
-
-          {/* ── Descripción (opcional) ── */}
-          <AIAssistedField
-            label="Descripción"
-            htmlFor="project-desc"
-            guidance="Resuma en pocas líneas el alcance del proyecto: qué se construye o implementa, para quién y en qué territorio."
-            askPrompt="¿Cómo redacto una descripción breve y clara de un proyecto de inversión pública para el MGA?"
-          >
-            <textarea
-              id="project-desc"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none"
-              placeholder="Breve descripción del proyecto de inversión"
-            />
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <SearchableCombobox
+                  id="project-producto-principal"
+                  label=""
+                  placeholder={
+                    !sectorId
+                      ? 'Selecciona primero un sector'
+                      : isLoadingProducts
+                        ? 'Cargando productos…'
+                        : 'Selecciona un producto'
+                  }
+                  disabled={!sectorId || isLoadingProducts}
+                  options={productOptions}
+                  value={productoPrincipal}
+                  onChange={setProductoPrincipal}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const prod = catalogProducts.find(p => p.codigo_del_producto === productoPrincipal);
+                  if (prod) {
+                    setSelectedProductData(prod);
+                    setIsProductModalOpen(true);
+                  } else if (!productoPrincipal && catalogProducts.length > 0) {
+                    // Si no hay seleccionado, mostrar el primero disponible de sugerencia
+                    setSelectedProductData(catalogProducts[0]);
+                    setIsProductModalOpen(true);
+                  }
+                }}
+                disabled={!sectorId || isLoadingProducts || catalogProducts.length === 0}
+                className="shrink-0 rounded border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100"
+              >
+                Ver detalle
+              </button>
+            </div>
           </AIAssistedField>
 
           {formError && (
@@ -595,6 +596,13 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
           </div>
         </form>
       </div>
+
+      <ProductDetailModal
+        open={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        product={selectedProductData}
+        onSelect={setProductoPrincipal}
+      />
     </div>
   );
 }

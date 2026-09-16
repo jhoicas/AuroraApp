@@ -6,6 +6,7 @@ import SearchableCombobox, {
   type ComboboxOption,
 } from '../../components/Catalog/SearchableCombobox';
 import { dispatchActionCard } from '../../lib/auroraActionDispatcher';
+import ProductDetailModal from '../../components/Tenant/ProductDetailModal';
 import {
   CATALOG_FULL_LIST_LIMIT,
   formatCatalogProductOptionTitle,
@@ -83,6 +84,9 @@ export default function ProjectCreationAssistant() {
   const [selectedProgramCodes, setSelectedProgramCodes] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
 
   // MGA name fields
   const [proceso, setProceso] = useState('');
@@ -182,6 +186,11 @@ export default function ProjectCreationAssistant() {
         p.codigo_del_programa.startsWith(programCode),
     );
   }, [catalogProducts, catalogProductsProgramCode, programCode]);
+
+  const procesoOptions: ComboboxOption[] = useMemo(
+    () => procesos.map((p) => ({ value: String(p.id), label: p.name })),
+    [procesos]
+  );
 
   const sectorOptions: ComboboxOption[] = useMemo(
     () =>
@@ -384,21 +393,15 @@ export default function ProjectCreationAssistant() {
               <label htmlFor="creation-proceso" className="block text-sm font-semibold text-gray-800 mb-1">
                 Proceso <span className="text-red-500">*</span>
               </label>
-              <select
+              <SearchableCombobox
                 id="creation-proceso"
-                required
+                label=""
+                placeholder="Selecciona un proceso"
+                options={procesoOptions}
                 value={proceso}
-                onChange={(e) => setProceso(e.target.value)}
+                onChange={setProceso}
                 disabled={inputsLocked}
-                className={inputClass}
-              >
-                <option value="">Selecciona un proceso</option>
-                {procesos.map((p) => (
-                  <option key={p.id} value={String(p.id)}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* ── Objeto ── */}
@@ -558,6 +561,20 @@ export default function ProjectCreationAssistant() {
                     <li key={code}>
                       <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2.5 py-1 text-xs text-[#006162]">
                         {code}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const prod = catalogProducts.find((p) => p.codigo_del_producto === code);
+                            if (prod) {
+                              setSelectedProductData(prod);
+                              setIsProductModalOpen(true);
+                            }
+                          }}
+                          className="hover:text-[#004f50] ml-1"
+                          aria-label={`Ver detalle de producto ${code}`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">info</span>
+                        </button>
                         {!inputsLocked && (
                           <button
                             type="button"
@@ -705,6 +722,15 @@ export default function ProjectCreationAssistant() {
           )}
         </section>
       </div>
+
+      <ProductDetailModal
+        open={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        product={selectedProductData}
+        onSelect={(code) => {
+          // Ya está seleccionado si llegó aquí por el chip, no es necesario hacer nada extra
+        }}
+      />
     </div>
   );
 }

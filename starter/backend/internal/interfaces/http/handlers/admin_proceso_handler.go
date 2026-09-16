@@ -128,10 +128,10 @@ func (h *AdminProcesoHandler) ListProcesos(c *fiber.Ctx) error {
 	}
 
 	meta := dto.PaginationMeta{
-		CurrentPage:  page,
-		TotalPages:   totalPages,
-		TotalRecords: int(totalRecords),
-		Limit:        limit,
+		Page:     page,
+		LastPage: totalPages,
+		Total:    totalRecords,
+		Limit:    limit,
 	}
 
 	return c.JSON(fiber.Map{

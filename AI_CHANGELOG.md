@@ -15,6 +15,22 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de Tipos en Metadatos de Paginación
+
+- **Objetivo:** Resolver el error de compilación del backend Go ocasionado por el uso de nombres de campos incorrectos al inicializar la estructura `PaginationMeta` del DTO.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/handlers/admin_proceso_handler.go` - Actualizada la inicialización de `dto.PaginationMeta` para usar las propiedades correctas (`Page`, `LastPage`, `Total`, `Limit`) en lugar de los nombres en formato camelCase inconsistente.
+- **Logica implementada:**
+  - Se mapearon exactamente las propiedades del struct declarado en `catalog_dto.go` a sus respectivos valores calculados en la rutina de paginación del handler de procesos.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `go build ./...` - Exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
+
 ### 2026-09-16 - Antigravity - Corrección de restricción de clave única al importar Procesos
 
 - **Objetivo:** Evitar que el importador de procesos falle por duplicados en la base de datos (e.g. verbo "Reparación") a causa de la restricción `idx_procesos_name`.

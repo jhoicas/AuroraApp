@@ -188,7 +188,7 @@ export default function ProjectCreationAssistant() {
   }, [catalogProducts, catalogProductsProgramCode, programCode]);
 
   const procesoOptions: ComboboxOption[] = useMemo(
-    () => procesos.map((p) => ({ value: String(p.id), label: p.name })),
+    () => procesos.map((p) => ({ value: String(p.id), label: p.name, code: String(p.id) })),
     [procesos]
   );
 
@@ -222,7 +222,6 @@ export default function ProjectCreationAssistant() {
           label: product.producto,
           indicatorCode: product.codigo_del_indicador_de_producto,
           indicatorLabel: product.indicador_de_producto,
-          hint: formatCatalogProductOptionTitle(product),
         })),
     [filteredProducts, selectedProductCodes],
   );
@@ -432,48 +431,33 @@ export default function ProjectCreationAssistant() {
                 {localizaciones.map((loc, idx) => (
                   <div key={idx} className="flex gap-1 items-start">
                     <div className="flex-1 grid grid-cols-3 gap-1">
-                      <select
-                        value={loc.regionId ?? ''}
-                        onChange={(e) =>
-                          updateLocation(idx, 'regionId', e.target.value ? Number(e.target.value) : null)
-                        }
+                      <SearchableCombobox
+                        id={`region-${idx}`}
+                        label=""
+                        placeholder="Región"
                         disabled={inputsLocked}
-                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white"
-                        aria-label={`Región ${idx + 1}`}
-                      >
-                        <option value="">Región</option>
-                        {regions.map((r) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={loc.departamentoId ?? ''}
-                        onChange={(e) =>
-                          updateLocation(idx, 'departamentoId', e.target.value ? Number(e.target.value) : null)
-                        }
+                        options={regions.map(r => ({ value: String(r.id), label: r.name, code: String(r.id) }))}
+                        value={loc.regionId ? String(loc.regionId) : ''}
+                        onChange={(val) => updateLocation(idx, 'regionId', val ? Number(val) : null)}
+                      />
+                      <SearchableCombobox
+                        id={`dep-${idx}`}
+                        label=""
+                        placeholder="Depto."
                         disabled={inputsLocked || !loc.regionId}
-                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white disabled:bg-gray-50"
-                        aria-label={`Departamento ${idx + 1}`}
-                      >
-                        <option value="">Depto.</option>
-                        {getDepartamentos(loc.regionId).map((d) => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={loc.municipioId ?? ''}
-                        onChange={(e) =>
-                          updateLocation(idx, 'municipioId', e.target.value ? Number(e.target.value) : null)
-                        }
+                        options={getDepartamentos(loc.regionId).map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
+                        value={loc.departamentoId ? String(loc.departamentoId) : ''}
+                        onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
+                      />
+                      <SearchableCombobox
+                        id={`mun-${idx}`}
+                        label=""
+                        placeholder="Mpio. (opc.)"
                         disabled={inputsLocked || !loc.departamentoId}
-                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs bg-white disabled:bg-gray-50"
-                        aria-label={`Municipio ${idx + 1}`}
-                      >
-                        <option value="">Mpio. (opc.)</option>
-                        {getMunicipios(loc.regionId, loc.departamentoId).map((m) => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
+                        options={getMunicipios(loc.regionId, loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
+                        value={loc.municipioId ? String(loc.municipioId) : ''}
+                        onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
+                      />
                     </div>
                     {localizaciones.length > 1 && !inputsLocked && (
                       <button

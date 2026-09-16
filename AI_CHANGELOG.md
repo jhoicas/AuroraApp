@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Estandarización de SearchableCombobox y UI Cleanliness
+
+- **Objetivo:** Asegurar que los selectores de búsqueda (Proceso, Sector, Producto, Localizaciones) en los formularios de creación de proyectos solo muestren nombres (sin códigos/IDs) en la UI y mejoren la calidad de búsqueda ignorando acentos y mayúsculas.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Catalog/SearchableCombobox.tsx`: Se mejoró la función `normalizeText` utilizando `.normalize('NFD')` para omitir acentos en el filtro interno. Se ajustó `formatOptionLabel` para que solo renderice el `label` (sin concatenar el código base).
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`: Se limpiaron las opciones de catálogos eliminando el ID del string de la propiedad `label`. Se refactorizaron los 3 `<select>` de Localizaciones a componentes `<SearchableCombobox>`.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Similar al modal, se depuró el `label` de las opciones para procesos, sectores, programas y productos. También se migraron los selectores de localizaciones (Región, Departamento, Municipio) al estándar `SearchableCombobox`.
+- **Validación ejecutada:** `npx tsc --noEmit` en frontend exitoso (exit code 0).
+
 ### 2026-09-16 - Antigravity - Corrección del límite en la obtención de procesos MGA
 
 - **Objetivo:** Asegurar que el selector de "Proceso" en el formulario de creación de proyectos cargue la lista completa (102 procesos) en lugar de truncarse a los 10 primeros registros.

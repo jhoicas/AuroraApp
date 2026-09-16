@@ -87,19 +87,22 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
 
   // ─── Combobox Options ──────────────────
   const procesoOptions: ComboboxOption[] = useMemo(
-    () => procesos.map((p) => ({ value: String(p.id), label: p.name })),
+    () => procesos.map((p) => ({ value: String(p.id), label: p.name, code: String(p.id) })),
     [procesos]
   );
 
   const sectorOptions: ComboboxOption[] = useMemo(
-    () => filteredSectors.map((s) => ({ value: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name })),
+    () => filteredSectors.map((s) => ({ value: s.id, label: s.name, code: s.code })),
     [filteredSectors]
   );
 
   const productOptions: ComboboxOption[] = useMemo(
     () => catalogProducts.map((p) => ({
       value: p.codigo_del_producto,
-      label: formatCatalogProductOptionTitle(p)
+      label: p.producto.trim(),
+      code: p.codigo_del_producto.trim(),
+      indicatorCode: p.codigo_del_indicador_de_producto.trim(),
+      indicatorLabel: p.indicador_de_producto.trim()
     })),
     [catalogProducts]
   );
@@ -371,65 +374,36 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
                 <div key={idx} className="flex gap-2 items-start">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     {/* Región */}
-                    <select
-                      value={loc.regionId ?? ''}
-                      onChange={(e) =>
-                        updateLocation(idx, 'regionId', e.target.value ? Number(e.target.value) : null)
-                      }
-                      className="rounded border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                      aria-label={`Región ${idx + 1}`}
-                    >
-                      <option value="">Región</option>
-                      {regions.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableCombobox
+                      id={`region-${idx}`}
+                      label=""
+                      placeholder="Región"
+                      options={regions.map(r => ({ value: String(r.id), label: r.name, code: String(r.id) }))}
+                      value={loc.regionId ? String(loc.regionId) : ''}
+                      onChange={(val) => updateLocation(idx, 'regionId', val ? Number(val) : null)}
+                    />
 
                     {/* Departamento */}
-                    <select
-                      value={loc.departamentoId ?? ''}
-                      onChange={(e) =>
-                        updateLocation(
-                          idx,
-                          'departamentoId',
-                          e.target.value ? Number(e.target.value) : null,
-                        )
-                      }
+                    <SearchableCombobox
+                      id={`dep-${idx}`}
+                      label=""
+                      placeholder="Departamento"
                       disabled={!loc.regionId}
-                      className="rounded border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-gray-50 disabled:text-gray-400"
-                      aria-label={`Departamento ${idx + 1}`}
-                    >
-                      <option value="">Departamento</option>
-                      {getDepartamentos(loc.regionId).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={getDepartamentos(loc.regionId).map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
+                      value={loc.departamentoId ? String(loc.departamentoId) : ''}
+                      onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
+                    />
 
                     {/* Municipio */}
-                    <select
-                      value={loc.municipioId ?? ''}
-                      onChange={(e) =>
-                        updateLocation(
-                          idx,
-                          'municipioId',
-                          e.target.value ? Number(e.target.value) : null,
-                        )
-                      }
+                    <SearchableCombobox
+                      id={`mun-${idx}`}
+                      label=""
+                      placeholder="Municipio (opc.)"
                       disabled={!loc.departamentoId}
-                      className="rounded border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-gray-50 disabled:text-gray-400"
-                      aria-label={`Municipio ${idx + 1}`}
-                    >
-                      <option value="">Municipio (opc.)</option>
-                      {getMunicipios(loc.regionId, loc.departamentoId).map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={getMunicipios(loc.regionId, loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
+                      value={loc.municipioId ? String(loc.municipioId) : ''}
+                      onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
+                    />
                   </div>
                   {localizaciones.length > 1 && (
                     <button

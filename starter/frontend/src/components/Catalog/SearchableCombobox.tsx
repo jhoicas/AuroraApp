@@ -27,7 +27,11 @@ type SearchableComboboxProps = {
 };
 
 function normalizeText(value: string): string {
-  return value.trim().toLowerCase();
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function matchesQuery(option: ComboboxOption, rawQuery: string): boolean {
@@ -53,8 +57,7 @@ function matchesQuery(option: ComboboxOption, rawQuery: string): boolean {
 }
 
 function formatOptionLabel(option: ComboboxOption): string {
-  const code = option.code ?? option.value;
-  const base = `${code} — ${option.label}`;
+  const base = option.label;
   const indicatorCode = option.indicatorCode?.trim();
   const indicatorLabel = option.indicatorLabel?.trim();
 

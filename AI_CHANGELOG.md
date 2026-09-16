@@ -15,6 +15,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de Payload en Creación de Proyectos MGA
+
+- **Objetivo:** Resolver el error HTTP 400 (Bad Request) proveniente de Go al crear un proyecto garantizando el envío íntegro de todos los campos MGA obligatorios requeridos por la base de datos y la API.
+- **Archivos modificados:**
+  - `starter/frontend/src/store/projectStore.ts`: Se refactorizó la asignación del objeto JSON `body` en la función `createProject`. Anteriormente filtraba los nuevos campos MGA (`proceso_id`, `objeto`, `localizaciones`, `tipo_inversion`, `tipologia`); ahora los inyecta en el objeto que se envía a la API de Go.
+  - `starter/frontend/src/lib/auroraActionDispatcher.ts`: Se corrigió el despacho asíncrono para proyectos iniciados vía IA, reemplazando los parámetros duros (ej. `proceso_id: 1`) por la información extraída dinámicamente desde el `CreationContext` del componente principal.
+- **Validación ejecutada:** Comprobación estricta de TypeScript mediante `npx tsc --noEmit` completada sin advertencias.
+
 ### 2026-09-16 - Antigravity - Rediseño UX/UI Accesible para Localizaciones
 
 - **Objetivo:** Mejorar drásticamente la accesibilidad (enfocada en adultos mayores) del bloque de selección de localizaciones (Región, Departamento, Municipio) en los modales de creación de proyecto, migrando de un layout horizontal estrecho a tarjetas (Cards) verticales amplias, y aumentando los tamaños de fuente.

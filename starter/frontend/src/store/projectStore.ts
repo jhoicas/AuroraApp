@@ -155,9 +155,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   createProject: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      const body: Record<string, string> = {
+      const body: Record<string, any> = {
         name: payload.name.trim(),
         sector: payload.sector.trim(),
+        proceso_id: payload.proceso_id,
+        objeto: payload.objeto.trim(),
+        localizaciones: payload.localizaciones,
+        tipo_inversion: payload.tipo_inversion,
+        tipologia: payload.tipologia,
       };
       if (payload.description?.trim()) {
         body.description = payload.description.trim();

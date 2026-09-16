@@ -104,11 +104,11 @@ async function dispatchMgaGenerateProject(
     ...(payloadString(payload, 'product_code') || ctx?.productCodes?.[0]
       ? { product_code: payloadString(payload, 'product_code') || ctx?.productCodes?.[0] }
       : {}),
-    proceso_id: 1,
-    objeto: problemDescription || "Proyecto generado mediante asistente de IA",
-    localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }],
-    tipo_inversion: "Territorial",
-    tipologia: "General - Esquemas SUIFP's",
+    proceso_id: ctx?.procesoId ?? 1,
+    objeto: ctx?.objeto || problemDescription || "Proyecto generado mediante asistente de IA",
+    localizaciones: ctx?.localizaciones?.length ? ctx.localizaciones : [{ regionId: null, departamentoId: null, municipioId: null }],
+    tipo_inversion: ctx?.tipoInversion || "Territorial",
+    tipologia: ctx?.tipologia || "General - Esquemas SUIFP's",
   });
 
   await projectStore.updateProjectDetails(project.id, {

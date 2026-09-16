@@ -94,7 +94,7 @@ export default function LocationsCatalogPage() {
           const content = e.target?.result as string;
           const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
 
-          let parsedLocations = [];
+          let parsedLocations: any[] = [];
           if (isCSV) {
             const lines = content.split(/\r?\n/).filter(line => line.trim());
             const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -113,7 +113,7 @@ export default function LocationsCatalogPage() {
               
               if (obj.RegionId && obj.RegionName) {
                 // Find or create Region
-                let region = parsedLocations.find(r => r.Id === obj.RegionId);
+                let region: any = parsedLocations.find((r: any) => r.Id === obj.RegionId);
                 if (!region) {
                   region = { Id: obj.RegionId, Name: obj.RegionName, Departamentos: [] };
                   parsedLocations.push(region);
@@ -304,10 +304,7 @@ export default function LocationsCatalogPage() {
 
       {adminLocationsMeta && (
         <CatalogPagination
-          currentPage={adminLocationsMeta.page}
-          totalPages={adminLocationsMeta.last_page}
-          totalItems={adminLocationsMeta.total}
-          itemsPerPage={limit}
+          meta={adminLocationsMeta}
           onPageChange={setPage}
         />
       )}

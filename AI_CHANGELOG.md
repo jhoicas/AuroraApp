@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Corrección de Props y Tipos en Paginación
+
+- **Objetivo:** Resolver el error de compilación de TypeScript en `LocationsCatalogPage.tsx` y `ProcesosCatalogPage.tsx` por divergencia de propiedades en el componente `CatalogPagination`.
+- **Archivos modificados:**
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx`: Se agregaron tipos explícitos para el arreglo interno `parsedLocations` (`any[]`) y el iterador de búsqueda (`region: any`) solucionando el error TS7022 (`implicitly has type 'any'`). Se actualizaron las properties pasadas a `<CatalogPagination />` para coincidir con la declaración del componente (`meta` y `onPageChange`).
+  - `starter/frontend/src/pages/admin/ProcesosCatalogPage.tsx`: Se actualizaron las properties pasadas a `<CatalogPagination />` a la nueva interfaz que exige enviar el objeto meta completo en lugar de valores discretos desestructurados.
+- **Validacion ejecutada:**
+  - `npx tsc --noEmit` completó exitosamente (código 0), dejando el frontend libre de errores de tipado estrictos.
+
 ### 2026-09-16 - Antigravity - Corrección de Tipado en Frontend (Zustand & Paginación)
 
 - **Objetivo:** Resolver errores estrictos de TypeScript causados por sintaxis de importación inválida y desestructuración incompleta del store, los cuales impedían la compilación del build de producción.

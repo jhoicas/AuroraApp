@@ -244,10 +244,7 @@ export default function ProcesosCatalogPage() {
 
       {procesosMeta && (
         <CatalogPagination
-          currentPage={procesosMeta.page}
-          totalPages={procesosMeta.last_page}
-          totalItems={procesosMeta.total}
-          itemsPerPage={limit}
+          meta={procesosMeta}
           onPageChange={setPage}
         />
       )}

@@ -118,6 +118,36 @@ CREATE TABLE IF NOT EXISTS public.ods (
 );
 ALTER TABLE public.ods ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.procesos (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.procesos ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.regiones (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.regiones ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.departamentos (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    region_id BIGINT REFERENCES public.regiones(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.departamentos ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.municipios (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    departamento_id BIGINT REFERENCES public.departamentos(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.municipios ENABLE ROW LEVEL SECURITY;
+
 -- ============================================================================
 -- CREACIÓN DE ÍNDICES (Ubicado aquí porque las tablas ya existen)
 -- ============================================================================

@@ -15,6 +15,24 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Migraciones GORM y Esquemas SQL para Catálogos MGA
+
+- **Objetivo:** Resolver el error `relation does not exist` al importar catálogos de Procesos y Localizaciones agregando los nuevos modelos al `AutoMigrate` y documentando el DDL.
+- **Archivos modificados:**
+  - `starter/backend/internal/infrastructure/persistence/postgres/db.go` - Agregados `models.Proceso{}`, `models.Region{}`, `models.Departamento{}`, `models.Municipio{}` a la lista de `AutoMigrate`.
+  - `docs/schema.sql` - Añadidos los bloques `CREATE TABLE` correspondientes a Procesos, Regiones, Departamentos y Municipios.
+  - `docs/schema-antigravity.sql` - Añadidos los mismos bloques `CREATE TABLE` para mantener la sincronización documental de la arquitectura.
+- **Logica implementada:**
+  - Las tablas del catálogo ahora se generarán e instanciarán correctamente en la base de datos de PostgreSQL al inicializar o reconectar GORM, asegurando que los Endpoints de importación masiva no fallen por tablas inexistentes.
+- **Dependencias:**
+  - Ninguna
+- **Validacion ejecutada:**
+  - `go build ./...` - Exitoso (código 0).
+- **Decisiones ADR:**
+  - No aplica
+- **Riesgos y pendientes:**
+  - Ninguno
+
 ### 2026-09-16 - Antigravity - Limpieza de importaciones no utilizadas en Vistas Administrativas (TS6133)
 
 - **Objetivo:** Resolver errores estrictos de TypeScript causados por imports no utilizados en la página de catálogo de localizaciones.

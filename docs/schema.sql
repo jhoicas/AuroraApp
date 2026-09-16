@@ -99,6 +99,40 @@ CREATE TABLE public.edt (
 );
 
 -- ============================================================================
+-- 3.1 CATÁLOGOS MGA (Administración global)
+-- ============================================================================
+
+CREATE TABLE public.procesos (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.procesos ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE public.regiones (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.regiones ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE public.departamentos (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    region_id BIGINT REFERENCES public.regiones(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.departamentos ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE public.municipios (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    departamento_id BIGINT REFERENCES public.departamentos(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.municipios ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
 -- 4. PROYECTOS Y FORMULACIÓN
 -- ============================================================================
 CREATE TABLE public.proyectos (

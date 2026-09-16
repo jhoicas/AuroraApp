@@ -115,6 +115,18 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.ProjectActivity{}); err != nil {
 		log.Printf("automigrate ProjectActivity: %v", err)
 	}
+	if err := db.AutoMigrate(&models.Proceso{}); err != nil {
+		log.Printf("automigrate Proceso: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Region{}); err != nil {
+		log.Printf("automigrate Region: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Departamento{}); err != nil {
+		log.Printf("automigrate Departamento: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Municipio{}); err != nil {
+		log.Printf("automigrate Municipio: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)

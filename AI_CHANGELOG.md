@@ -15,6 +15,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Correcciones Estrictas de TypeScript en Formularios
+
+- **Objetivo:** Solucionar errores de TypeScript estricto (`TS2448`, `TS2454`, `TS6133`) reportados en el proceso de build de Docker tras las últimas modificaciones en el formulario de creación de proyectos.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`: Se reubicó la variable `filteredSectors` antes de su uso (TS2448).
+  - `starter/frontend/src/components/Tenant/ProductDetailModal.tsx`: Se removió el import innecesario de `React` (TS6133).
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`: Se renombró el parámetro no utilizado `code` a `_code` (TS6133).
+- **Validación ejecutada:** `npx tsc --noEmit` en frontend completó sin errores (exit code 0).
+
 ### 2026-09-16 - Antigravity - Mejora del Formulario de Creación de Proyectos
 
 - **Objetivo:** Simplificar y mejorar la usabilidad del formulario de creación de proyectos (`/tenant/projects`), eliminando campos y usando catálogos buscables.

@@ -727,7 +727,7 @@ export default function ProjectCreationAssistant() {
         open={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
         product={selectedProductData}
-        onSelect={(code) => {
+        onSelect={(_code) => {
           // Ya está seleccionado si llegó aquí por el chip, no es necesario hacer nada extra
         }}
       />

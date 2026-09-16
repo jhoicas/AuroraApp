@@ -73,6 +73,16 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
   const [formError, setFormError] = useState<string | null>(null);
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  // ─── Sectores filtrados por tipología ──────────────────
+  const filteredSectors = useMemo(() => {
+    if (tipologiaProyecto === 'A - PIIP - Bienes y Servicios') {
+      return sectors.filter(
+        (s) => s.application && s.application.toUpperCase().includes('TERRITORIO'),
+      );
+    }
+    return sectors;
+  }, [sectors, tipologiaProyecto]);
+
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
 
   // ─── Combobox Options ──────────────────
@@ -127,15 +137,6 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     [procesoName, objeto, localizaciones, regions],
   );
 
-  // ─── Sectores filtrados por tipología ──────────────────
-  const filteredSectors = useMemo(() => {
-    if (tipologiaProyecto === 'A - PIIP - Bienes y Servicios') {
-      return sectors.filter(
-        (s) => s.application && s.application.toUpperCase().includes('TERRITORIO'),
-      );
-    }
-    return sectors;
-  }, [sectors, tipologiaProyecto]);
 
   // ─── Productos del sector seleccionado ──────────────────
   const selectedSector: CatalogSector | undefined = useMemo(

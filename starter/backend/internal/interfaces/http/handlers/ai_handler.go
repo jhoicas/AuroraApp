@@ -255,7 +255,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 func (h *AIHandler) callLLM(prompt string) string {
 	// Aquí se integraría con el cliente de OpenAI / Anthropic / local LLM.
 	// Por ahora retornamos una simulación inteligente.
-	return "Borrador generado por Aurora Asistente. [Basado en el contexto: " + prompt[:min(50, len(prompt))] + "...]"
+	return "Programa de fortalecimiento y atención en el sector DEPORTE Y RECREACIÓN para el territorio priorizado."
 }
 
 func min(a, b int) int {

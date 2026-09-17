@@ -267,14 +267,6 @@ export default function MGALayout({
 
           <div className="flex shrink-0 flex-col items-end gap-2">
             {bannerActions}
-            <button
-              type="button"
-              onClick={onEditTitle}
-              className="inline-flex items-center gap-2 rounded-md border border-[#2980b9] bg-white px-3 py-1.5 text-sm font-medium text-[#2980b9] transition-colors hover:bg-[#2980b9]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2980b9]"
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-              <span>Editar Título</span>
-            </button>
             <p className="text-xs font-medium text-red-600">* Campos requeridos</p>
           </div>
         </div>

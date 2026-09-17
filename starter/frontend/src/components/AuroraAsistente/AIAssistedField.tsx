@@ -11,9 +11,9 @@ type AIAssistedFieldProps = {
   htmlFor?: string;
   required?: boolean;
   /** Guía metodológica breve mostrada en el popover. */
-  guidance: string;
+  guidance?: string;
   /** Prompt inyectado al abrir Aurora Asistente (modo chat completo). */
-  askPrompt: string;
+  askPrompt?: string;
   /** Valor actual para validación normativa en pantalla. */
   validationValue?: string;
   /** Regla de validación MGA aplicada bajo el campo. */

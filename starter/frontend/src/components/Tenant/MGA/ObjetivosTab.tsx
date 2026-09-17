@@ -56,9 +56,9 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
       productCode: project.product_code ?? undefined,
       problemDescription,
       generalObjective,
-      objeto: project.objeto ?? undefined,
+      objeto: (project as any)?.objeto ?? undefined,
     }),
-    [project.name, project.sector, project.product_code, problemDescription, generalObjective, project.objeto],
+    [project.name, project.sector, project.product_code, problemDescription, generalObjective, (project as any)?.objeto],
   );
 
   useEffect(() => {

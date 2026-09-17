@@ -129,9 +129,9 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       productCode: project.product_code ?? undefined,
       problemDescription,
       generalObjective: project.general_objective ?? undefined,
-      objeto: project.objeto ?? undefined,
+      objeto: (project as any)?.objeto ?? undefined,
     }),
-    [project.name, project.sector, project.product_code, problemDescription, project.general_objective, project.objeto],
+    [project.name, project.sector, project.product_code, problemDescription, project.general_objective, (project as any)?.objeto],
   );
 
   const requestAuroraAssist = useCallback(
@@ -153,19 +153,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     [requestAuroraAssist, project.name],
   );
 
-  const suggestSituacionWithAurora = useCallback(() => {
-    requestAuroraAssist(
-      buildMgaSituacionExistentePrompt(problemDescription),
-      MGA_SITUACION_EXISTENTE_ROUTE,
-    );
-  }, [requestAuroraAssist, problemDescription]);
 
-  const suggestMagnitudWithAurora = useCallback(() => {
-    requestAuroraAssist(
-      buildMgaMagnitudProblemaPrompt(problemDescription),
-      MGA_MAGNITUD_PROBLEMA_ROUTE,
-    );
-  }, [requestAuroraAssist, problemDescription]);
 
   const { causeRelations, effects } = getFormulation(project.id);
 

@@ -95,8 +95,8 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
     projectName: project.name,
     sector: project.sector || undefined,
     productCode: project.product_code || undefined,
-    procesoName: project.proceso_id ? String(project.proceso_id) : undefined,
-    objeto: project.objeto || undefined,
+    procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
+    objeto: (project as any)?.objeto || undefined,
     municipio: panel.municipalities || undefined,
     departamento: panel.departments || undefined,
   };

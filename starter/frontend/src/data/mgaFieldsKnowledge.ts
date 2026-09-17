@@ -265,7 +265,7 @@ export const MGA_FIELD_KNOWLEDGE: Record<string, MgaFieldKnowledge> = {
     templatePattern: 'Tipo de Instrumento + Nombre de la Comunidad',
     exampleText:
       'Plan de Vida del Resguardo Indígena.',
-    buildSuggestion: (ctx) => {
+    buildSuggestion: (_ctx) => {
       return `Plan integral de vida o instrumento equivalente de la comunidad étnica presente en el territorio de influencia del proyecto.`;
     },
   },
@@ -298,7 +298,7 @@ export const MGA_FIELD_KNOWLEDGE: Record<string, MgaFieldKnowledge> = {
     templatePattern: 'Tipo de aporte (técnico/financiero/político) + Descripción',
     exampleText:
       'Apoyo técnico en la supervisión de las obras y acompañamiento social a la comunidad.',
-    buildSuggestion: (ctx) => {
+    buildSuggestion: (_ctx) => {
       return `Acompañamiento, apoyo en gestión territorial y participación activa durante la ejecución y operación del proyecto.`;
     },
   },

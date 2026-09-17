@@ -140,6 +140,12 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     [procesoName, objeto, localizaciones, regions],
   );
 
+  // ─── Productos del sector seleccionado ──────────────────
+  const selectedSector: CatalogSector | undefined = useMemo(
+    () => sectors.find((s) => s.id === sectorId),
+    [sectors, sectorId],
+  );
+
   const fieldProjectContext: ProjectContext = useMemo(() => {
     const mainRegion = localizaciones[0]?.regionId ? regions.find(r => r.id === localizaciones[0].regionId) : undefined;
     const mainDep = mainRegion && localizaciones[0]?.departamentoId ? mainRegion.departamentos.find(d => d.id === localizaciones[0].departamentoId) : undefined;
@@ -151,18 +157,11 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
       objeto: objeto,
       sector: selectedSector?.name,
       productCode: productoPrincipal,
-      productName: selectedProductData?.nombre_del_producto,
+      productName: selectedProductData?.nombre_producto || selectedProductData?.nombre,
       departamento: mainDep?.name,
       municipio: mainMun?.name,
     };
   }, [generatedName, procesoName, objeto, selectedSector, productoPrincipal, selectedProductData, localizaciones, regions]);
-
-
-  // ─── Productos del sector seleccionado ──────────────────
-  const selectedSector: CatalogSector | undefined = useMemo(
-    () => sectors.find((s) => s.id === sectorId),
-    [sectors, sectorId],
-  );
 
   useEffect(() => {
     if (!sectorId || !selectedSector) {

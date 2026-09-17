@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -301,8 +302,16 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 		project.MagnitudProblema = *req.MagnitudProblema
 	}
 	if req.MgaFormulationData != nil {
-		// Convertir el mapa a JSON byte array para almacenarlo en datatypes.JSON
-		jsonBytes, err := json.Marshal(*req.MgaFormulationData)
+		currentData := make(map[string]interface{})
+		if project.MgaFormulationData != nil && len(project.MgaFormulationData) > 0 {
+			_ = json.Unmarshal(project.MgaFormulationData, &currentData)
+		}
+
+		for k, v := range *req.MgaFormulationData {
+			currentData[k] = v
+		}
+
+		jsonBytes, err := json.Marshal(currentData)
 		if err == nil {
 			project.MgaFormulationData = datatypes.JSON(jsonBytes)
 		}
@@ -312,6 +321,7 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 
 	// Actualizar usando Save() o Updates() (ya que estamos actualizando campos dinámicamente)
 	if err := h.db.WithContext(c.Context()).Save(project).Error; err != nil {
+		log.Printf("Error patching project: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to patch project"})
 	}
 

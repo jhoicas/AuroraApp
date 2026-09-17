@@ -83,28 +83,30 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   useEffect(() => {
     if (open) {
       if (editProject) {
-        // 1. Extraer o parsear mga_formulation_data de forma segura
-        let mgaData: any = editProject.mga_formulation_data || {};
-        if (typeof mgaData === 'string') {
+        console.log("[CreateProjectModal] open:", open, "editProject:", editProject);
+
+        // Soporte dual para snake_case y camelCase
+        let rawMga: any = editProject.mga_formulation_data || (editProject as any).mgaFormulationData || {};
+        if (typeof rawMga === 'string') {
           try {
-            mgaData = JSON.parse(mgaData);
+            rawMga = JSON.parse(rawMga);
           } catch (e) {
-            mgaData = {};
+            rawMga = {};
           }
         }
 
-        const iden = mgaData?.identificacion || {};
+        const identificacion = rawMga?.identificacion || rawMga?.PlanDesarrollo || {};
 
-        setProceso(iden?.proceso_id ? String(iden.proceso_id) : mgaData?.proceso_id ? String(mgaData.proceso_id) : '');
-        setObjeto(iden?.objeto || mgaData?.objeto || '');
+        setProceso(identificacion.proceso_id ? String(identificacion.proceso_id) : identificacion.proceso ? String(identificacion.proceso) : editProject.proceso_id ? String(editProject.proceso_id) : (editProject as any).proceso ? String((editProject as any).proceso) : '');
+        setObjeto(identificacion.objeto || editProject.objeto || '');
         
-        const rawLocations = iden?.localizaciones?.length ? iden.localizaciones : mgaData?.localizaciones?.length ? mgaData.localizaciones : [{ ...EMPTY_LOCATION }];
-        setLocalizaciones(Array.isArray(rawLocations) ? rawLocations : [{ ...EMPTY_LOCATION }]);
+        const rawLocations = editProject.locations || (editProject as any).localizaciones || identificacion.localizaciones || [];
+        setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
         
-        setTipoInversion(mgaData?.tipo_inversion ?? 'Territorial');
-        setTipologiaProyecto(mgaData?.tipologia ?? '');
-        setSectorId(editProject.sector_id ?? '');
-        setProductoPrincipal(editProject.product_code ?? '');
+        setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
+        setTipologiaProyecto(rawMga?.tipologia ?? '');
+        setSectorId(editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '');
+        setProductoPrincipal(editProject.product_code || (editProject as any).productCode || '');
       } else {
         setProceso('');
         setObjeto('');

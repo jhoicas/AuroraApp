@@ -10,7 +10,6 @@ import ObjetivosTab from './ObjetivosTab';
 import CadenaValorTab from './CadenaValorTab';
 import AlternativasTab from './AlternativasTab';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
-import { useProjectEdtStore } from '../../../store/projectEdtStore';
 
 export type MgaMainStageId =
   | 'identificacion'

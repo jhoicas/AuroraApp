@@ -57,7 +57,6 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const editActivity = useProjectEdtStore((s) => s.editActivity);
   const removeActivity = useProjectEdtStore((s) => s.removeActivity);
   const isSaving = useProjectEdtStore((s) => s.isSaving);
-  const storeError = useProjectEdtStore((s) => s.error);
   const clearError = useProjectEdtStore((s) => s.clearError);
   
   const saveCadenaDeValor = useProjectMgaStore((s) => s.saveCadenaDeValor);

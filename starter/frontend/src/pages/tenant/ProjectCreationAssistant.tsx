@@ -14,6 +14,8 @@ import {
   type CatalogSector,
   type Product,
 } from '../../store/catalogStore';
+import AIAssistedField from '../../components/AuroraAsistente/AIAssistedField';
+import type { ProjectContext } from '../../data/mgaFieldsKnowledge';
 import {
   ROUTE_PROJECT_CREATION,
   useAuroraCopilotStore,
@@ -123,6 +125,21 @@ export default function ProjectCreationAssistant() {
     () => generateProjectName(procesoName, objeto, localizaciones, regions),
     [procesoName, objeto, localizaciones, regions],
   );
+
+  const fieldProjectContext: ProjectContext = useMemo(() => {
+    const mainRegion = localizaciones[0]?.regionId ? regions.find(r => r.id === localizaciones[0].regionId) : undefined;
+    const mainDep = mainRegion && localizaciones[0]?.departamentoId ? mainRegion.departamentos.find(d => d.id === localizaciones[0].departamentoId) : undefined;
+    const mainMun = mainDep && localizaciones[0]?.municipioId ? mainDep.municipios.find(m => m.id === localizaciones[0].municipioId) : undefined;
+    
+    return {
+      projectName: generatedName,
+      procesoName: procesoName,
+      objeto: objeto,
+      sector: selectedSector?.name,
+      departamento: mainDep?.name,
+      municipio: mainMun?.name,
+    };
+  }, [generatedName, procesoName, objeto, selectedSector, localizaciones, regions]);
 
   // ── Location helpers ──
   const updateLocation = useCallback(
@@ -380,10 +397,17 @@ export default function ProjectCreationAssistant() {
           <div className="p-5 space-y-5 flex-1">
             {/* ── Nombre auto-generado ── */}
             {generatedName && (
-              <div className="rounded-lg border-2 border-[#006162]/20 bg-[#006162]/5 p-3">
-                <p className="text-xs font-semibold text-[#006162] mb-1">Nombre del proyecto</p>
-                <p className="text-sm text-gray-800">{generatedName}</p>
-              </div>
+              <AIAssistedField
+                label="Nombre del proyecto"
+                guidance="El nombre del proyecto MGA se auto-genera para garantizar la estructura normativa: Proceso + Objeto + Localización."
+                askPrompt="¿Por qué el nombre del proyecto se genera automáticamente y cuál es su estructura según la MGA?"
+                fieldHelpKey="name"
+                projectContext={fieldProjectContext}
+              >
+                <div className="rounded-lg border-2 border-[#006162]/20 bg-[#006162]/5 p-3">
+                  <p className="text-sm text-gray-800">{generatedName}</p>
+                </div>
+              </AIAssistedField>
             )}
 
             {/* ── Proceso MGA ── */}
@@ -403,10 +427,16 @@ export default function ProjectCreationAssistant() {
             </div>
 
             {/* ── Objeto ── */}
-            <div>
-              <label htmlFor="creation-objeto" className="block text-sm font-semibold text-gray-800 mb-1">
-                Objeto <span className="text-red-500">*</span>
-              </label>
+            <AIAssistedField
+              label="Objeto"
+              htmlFor="creation-objeto"
+              required
+              guidance="Describa brevemente qué se entrega (bien o servicio público). Máximo 1000 caracteres. Este texto es parte del nombre oficial del proyecto."
+              askPrompt="¿Cómo redacto el objeto de un proyecto MGA? Dame ejemplos de buena y mala redacción."
+              fieldHelpKey="objeto"
+              projectContext={fieldProjectContext}
+              onAutoFill={(v) => setObjeto(v)}
+            >
               <textarea
                 id="creation-objeto"
                 required
@@ -416,13 +446,13 @@ export default function ProjectCreationAssistant() {
                 onChange={(e) => setObjeto(e.target.value)}
                 disabled={inputsLocked}
                 placeholder="Ej: acueducto rural para mejorar acceso a agua potable"
-                className={`${inputClass} resize-none`}
+                className={`${inputClass} resize-none mt-1`}
               />
               <div className="flex items-center justify-between mt-0.5">
                 <span className="text-xs text-slate-500 block">Mínimo 10 caracteres</span>
                 <p className="text-xs text-gray-400 text-right">{objeto.length}/1000</p>
               </div>
-            </div>
+            </AIAssistedField>
 
             {/* ── Localizaciones ── */}
             <div>

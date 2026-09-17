@@ -3,6 +3,8 @@ import { Save, Plus, Trash2 } from 'lucide-react';
 import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const [openAccordion, setOpenAccordion] = useState<string>('01');
@@ -10,6 +12,14 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const savePlanDesarrollo = useProjectMgaStore((s) => s.savePlanDesarrollo);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
+
+  const fieldProjectContext: ProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+    procesoName: project.proceso_id ? String(project.proceso_id) : undefined,
+    objeto: project.objeto || undefined,
+  };
 
   const [pndLinks, setPndLinks] = useState<PlanDesarrolloPndLink[]>([]);
   
@@ -191,42 +201,60 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
         onToggle={() => handleToggle('02')}
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Plan de Desarrollo Departamental o Sectorial</label>
+          <AIAssistedField
+            label="Plan de Desarrollo Departamental o Sectorial"
+            htmlFor="dep-plan"
+            fieldHelpKey="plan_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setDepPlan(v)}
+          >
             <textarea 
+              id="dep-plan"
               maxLength={1500} 
               rows={3} 
               value={depPlan} 
               onChange={(e) => setDepPlan(e.target.value)} 
               placeholder="Diligencie el nombre del Plan Departamental de Desarrollo si es entidad territorial." 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{depPlan.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Estrategia</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Estrategia"
+            htmlFor="dep-estrategia"
+            fieldHelpKey="estrategia_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setDepEstrategia(v)}
+          >
             <textarea 
+              id="dep-estrategia"
               maxLength={1500} 
               rows={3} 
               value={depEstrategia} 
               onChange={(e) => setDepEstrategia(e.target.value)} 
               placeholder="Diligencie el nombre de la estrategia" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{depEstrategia.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Programa</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Programa"
+            htmlFor="dep-programa"
+            fieldHelpKey="programa_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setDepPrograma(v)}
+          >
             <textarea 
+              id="dep-programa"
               maxLength={1500} 
               rows={3} 
               value={depPrograma} 
               onChange={(e) => setDepPrograma(e.target.value)} 
               placeholder="Diligencie el nombre del programa" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{depPrograma.length} / 1500</p>
-          </div>
+          </AIAssistedField>
         </div>
       </MgaAccordion>
 
@@ -237,42 +265,60 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
         onToggle={() => handleToggle('03')}
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Plan de Desarrollo Distrital o Municipal</label>
+          <AIAssistedField
+            label="Plan de Desarrollo Distrital o Municipal"
+            htmlFor="mun-plan"
+            fieldHelpKey="plan_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setMunPlan(v)}
+          >
             <textarea 
+              id="mun-plan"
               maxLength={1500} 
               rows={3} 
               value={munPlan} 
               onChange={(e) => setMunPlan(e.target.value)} 
               placeholder="Diligencie el nombre del Plan de Desarrollo Distrital o Municipal" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{munPlan.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Estrategia</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Estrategia"
+            htmlFor="mun-estrategia"
+            fieldHelpKey="estrategia_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setMunEstrategia(v)}
+          >
             <textarea 
+              id="mun-estrategia"
               maxLength={1500} 
               rows={3} 
               value={munEstrategia} 
               onChange={(e) => setMunEstrategia(e.target.value)} 
               placeholder="Diligencie el nombre de la estrategia" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{munEstrategia.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Programa</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Programa"
+            htmlFor="mun-programa"
+            fieldHelpKey="programa_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setMunPrograma(v)}
+          >
             <textarea 
+              id="mun-programa"
               maxLength={1500} 
               rows={3} 
               value={munPrograma} 
               onChange={(e) => setMunPrograma(e.target.value)} 
               placeholder="Diligencie el nombre del programa" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{munPrograma.length} / 1500</p>
-          </div>
+          </AIAssistedField>
         </div>
       </MgaAccordion>
 
@@ -297,18 +343,24 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
               <option value="No aplica / Ninguna">No aplica / Ninguna</option>
             </select>
           </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Instrumentos de planeación de grupos étnicos</label>
+          <AIAssistedField
+            label="Instrumentos de planeación de grupos étnicos"
+            htmlFor="etnico-instrumentos"
+            fieldHelpKey="instrumentos_etnicos"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setEtnicoInstrumentos(v)}
+          >
             <textarea 
+              id="etnico-instrumentos"
               maxLength={500} 
               rows={3} 
               value={etnicoInstrumentos} 
               onChange={(e) => setEtnicoInstrumentos(e.target.value)} 
               placeholder="Diligencie el nombre de los Instrumentos de planeación de grupos étnicos" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{etnicoInstrumentos.length} / 500</p>
-          </div>
+          </AIAssistedField>
         </div>
       </MgaAccordion>
 
@@ -319,42 +371,60 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
         onToggle={() => handleToggle('05')}
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Plan de Desarrollo</label>
+          <AIAssistedField
+            label="Plan de Desarrollo"
+            htmlFor="otros-plan"
+            fieldHelpKey="plan_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setOtrosPlan(v)}
+          >
             <textarea 
+              id="otros-plan"
               maxLength={1500} 
               rows={3} 
               value={otrosPlan} 
               onChange={(e) => setOtrosPlan(e.target.value)} 
               placeholder="Diligencie el nombre del Plan de Desarrollo si el proyecto es registrado por una Localidad..." 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{otrosPlan.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Estrategia</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Estrategia"
+            htmlFor="otros-estrategia"
+            fieldHelpKey="estrategia_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setOtrosEstrategia(v)}
+          >
             <textarea 
+              id="otros-estrategia"
               maxLength={1500} 
               rows={3} 
               value={otrosEstrategia} 
               onChange={(e) => setOtrosEstrategia(e.target.value)} 
-              placeholder="Diligencie el nombre de la Estrategia..." 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              placeholder="Diligencie el nombre de la estrategia" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{otrosEstrategia.length} / 1500</p>
-          </div>
-          <div>
-            <label className="block text-base font-medium text-slate-700 mb-1">Programa</label>
+          </AIAssistedField>
+          <AIAssistedField
+            label="Programa"
+            htmlFor="otros-programa"
+            fieldHelpKey="programa_desarrollo"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setOtrosPrograma(v)}
+          >
             <textarea 
+              id="otros-programa"
               maxLength={1500} 
               rows={3} 
               value={otrosPrograma} 
               onChange={(e) => setOtrosPrograma(e.target.value)} 
-              placeholder="Diligencie el nombre del Programa..." 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none" 
+              placeholder="Diligencie el nombre del programa" 
+              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
             <p className="text-xs text-slate-500 mt-1 text-right">{otrosPrograma.length} / 1500</p>
-          </div>
+          </AIAssistedField>
         </div>
       </MgaAccordion>
 

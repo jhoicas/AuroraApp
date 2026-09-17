@@ -10,6 +10,7 @@ import {
 import type { MgaPopulationType } from '../../../lib/mgaApi';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type PoblacionTabProps = {
   project: Project;
@@ -89,6 +90,16 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
   const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const populations = getFormulation(project.id).populations;
+
+  const fieldProjectContext: ProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+    procesoName: project.proceso_id ? String(project.proceso_id) : undefined,
+    objeto: project.objeto || undefined,
+    municipio: panel.municipalities || undefined,
+    departamento: panel.departments || undefined,
+  };
 
   useEffect(() => {
     setPanel(panelFromRecord(populationType, populations));
@@ -197,6 +208,9 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           compact
           guidance="Incluya sexo, edad, grupo étnico, condición socioeconómica u otras variables relevantes según el manual MGA."
           askPrompt={`¿Qué características demográficas debo registrar para la ${label} del proyecto "${project.name}"?`}
+          fieldHelpKey={populationType === 'afectada' ? 'poblacion_afectada' : 'poblacion_objetivo'}
+          projectContext={fieldProjectContext}
+          onAutoFill={(v) => setPanel((p) => ({ ...p, demographicNotes: v }))}
         >
           <textarea
             id={`pop-demo-${populationType}-${project.id}`}

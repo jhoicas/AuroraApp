@@ -5,6 +5,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { MgaParticipant } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type ParticipantesTabProps = {
   project: Project;
@@ -34,6 +35,14 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { participants } = getFormulation(project.id);
+
+  const fieldProjectContext: ProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+    procesoName: project.proceso_id ? String(project.proceso_id) : undefined,
+    objeto: project.objeto || undefined,
+  };
 
   const resetForm = () => {
     setDraft(EMPTY_DRAFT);
@@ -147,13 +156,16 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             compact
             guidance="Describa los intereses del actor respecto al proyecto: beneficios esperados, riesgos percibidos y motivaciones."
             askPrompt={`¿Cómo redacto los intereses del actor "${draft.actor || 'participante'}" en la formulación MGA del proyecto "${project.name}"?`}
+            fieldHelpKey="intereses_participante"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
           >
             <textarea
               id={`participant-interests-${project.id}`}
               rows={2}
               value={draft.interests}
               onChange={(e) => setDraft((d) => ({ ...d, interests: e.target.value }))}
-              className="w-full p-2 border rounded bg-white"
+              className="w-full p-2 border rounded bg-white mt-1"
             />
           </AIAssistedField>
         </div>
@@ -164,13 +176,16 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             compact
             guidance="Indique qué aporta el participante al proyecto: recursos, conocimiento, legitimidad, gestión del territorio, etc."
             askPrompt={`¿Qué contribuciones puede aportar "${draft.entity || 'esta entidad'}" al proyecto "${project.name}" según MGA?`}
+            fieldHelpKey="contribucion_participante"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
           >
             <textarea
               id={`participant-contribution-${project.id}`}
               rows={2}
               value={draft.contribution}
               onChange={(e) => setDraft((d) => ({ ...d, contribution: e.target.value }))}
-              className="w-full p-2 border rounded bg-white"
+              className="w-full p-2 border rounded bg-white mt-1"
             />
           </AIAssistedField>
         </div>

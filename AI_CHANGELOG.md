@@ -15,6 +15,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-16 - Antigravity - Integración de Autollenado AI en Campos MGA
+
+- **Objetivo:** Finalizar la integración del componente `AIAssistedField` en los formularios MGA restantes para sugerencias de autollenado contextual guiadas por Aurora Copilot.
+- **Archivos modificados:**
+  - `mgaFieldsKnowledge.ts`: Se ampliaron las reglas y templates para incluir `plan_desarrollo`, `estrategia_desarrollo`, `programa_desarrollo`, `instrumentos_etnicos`, `intereses_participante`, y `contribucion_participante`. Se mejoró la estructura de `ProjectContext`.
+  - `PlanDesarrolloTab.tsx`: Se reemplazaron 10 `textarea` por `AIAssistedField` conectándolos con las respectivas llaves de conocimiento y `onAutoFill`.
+  - `PoblacionTab.tsx`: Se integró el autollenado en la sección de características demográficas, diferenciando entre población objetivo y afectada.
+  - `ParticipantesTab.tsx`: Se conectó el autollenado para el análisis de intereses y contribuciones de los actores, usando el contexto del proyecto y el actor/entidad actual.
+- **Validación ejecutada:** `npx tsc --noEmit` exitoso en el frontend.
+
 ### 2026-09-16 - Antigravity - Estandarización de Stepper y Botones de Guardado (MGA)
 
 - **Objetivo:** Refactorizar la navegación por etapas (Stepper) para que dependa de un guardado explícito ("Guardar Módulo") en lugar de activarse automáticamente al agregar datos.

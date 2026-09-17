@@ -16,6 +16,7 @@ import {
   type CatalogSector,
   type Product,
 } from '../../store/catalogStore';
+import type { ProjectContext } from '../../data/mgaFieldsKnowledge';
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -138,6 +139,23 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     () => generateProjectName(procesoName, objeto, localizaciones, regions),
     [procesoName, objeto, localizaciones, regions],
   );
+
+  const fieldProjectContext: ProjectContext = useMemo(() => {
+    const mainRegion = localizaciones[0]?.regionId ? regions.find(r => r.id === localizaciones[0].regionId) : undefined;
+    const mainDep = mainRegion && localizaciones[0]?.departamentoId ? mainRegion.departamentos.find(d => d.id === localizaciones[0].departamentoId) : undefined;
+    const mainMun = mainDep && localizaciones[0]?.municipioId ? mainDep.municipios.find(m => m.id === localizaciones[0].municipioId) : undefined;
+    
+    return {
+      projectName: generatedName,
+      procesoName: procesoName,
+      objeto: objeto,
+      sector: selectedSector?.name,
+      productCode: productoPrincipal,
+      productName: selectedProductData?.nombre_del_producto,
+      departamento: mainDep?.name,
+      municipio: mainMun?.name,
+    };
+  }, [generatedName, procesoName, objeto, selectedSector, productoPrincipal, selectedProductData, localizaciones, regions]);
 
 
   // ─── Productos del sector seleccionado ──────────────────
@@ -307,11 +325,14 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* ── Nombre auto-generado (readonly) ── */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre del proyecto
-              <span className="ml-1 text-xs text-gray-400">(auto-generado)</span>
-            </label>
+          <AIAssistedField
+            label="Nombre del proyecto"
+            htmlFor="project-generated-name"
+            guidance="El nombre del proyecto MGA se auto-genera para garantizar la estructura normativa: Proceso + Objeto + Localización."
+            askPrompt="¿Por qué el nombre del proyecto se genera automáticamente y cuál es su estructura según la MGA?"
+            fieldHelpKey="name"
+            projectContext={fieldProjectContext}
+          >
             <div
               id="project-generated-name"
               className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 min-h-[40px]"
@@ -322,7 +343,7 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
                 </span>
               )}
             </div>
-          </div>
+          </AIAssistedField>
 
           {/* ── Proceso ── */}
           <AIAssistedField
@@ -349,6 +370,9 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
             required
             guidance="Describa brevemente qué se entrega (bien o servicio público). Máximo 1000 caracteres. Este texto es parte del nombre oficial del proyecto."
             askPrompt="¿Cómo redacto el objeto de un proyecto MGA? Dame ejemplos de buena y mala redacción."
+            fieldHelpKey="objeto"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => setObjeto(v)}
           >
             <textarea
               id="project-objeto"

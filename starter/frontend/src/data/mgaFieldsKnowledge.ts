@@ -94,8 +94,8 @@ export const MGA_FIELD_KNOWLEDGE: Record<string, MgaFieldKnowledge> = {
       'Construcción y dotación del centro de desarrollo infantil en el municipio de Santiago de Cali, Valle del Cauca.',
     buildSuggestion: (ctx) => {
       const producto = productoOrDefault(ctx);
-      const sector = sectorOrDefault(ctx);
-      return `Fortalecimiento de ${producto} del sector ${sector} en ${loc(ctx)}.`;
+      const proceso = ctx.procesoName?.trim() || 'Desarrollo';
+      return `${proceso} de ${producto} en ${loc(ctx)}.`;
     },
   },
 
@@ -201,6 +201,105 @@ export const MGA_FIELD_KNOWLEDGE: Record<string, MgaFieldKnowledge> = {
     buildSuggestion: (ctx) => {
       const sector = sectorOrDefault(ctx);
       return `La población objetivo del proyecto comprende el subgrupo de habitantes de ${loc(ctx)} que será beneficiario directo de la intervención en ${sector}, focalizado según los criterios de priorización definidos.`;
+    },
+  },
+
+  // ── Plan de Desarrollo ───────────────────────────────────────────────
+  plan_desarrollo: {
+    fieldId: 'plan_desarrollo',
+    displayName: 'Plan de Desarrollo',
+    whatGoesHere:
+      'Nombre oficial del Plan de Desarrollo al cual se articula el proyecto.',
+    whyRule:
+      'Todo proyecto de inversión pública debe estar alineado con los planes de desarrollo vigentes.',
+    templatePattern: 'Nombre del Plan de Desarrollo + Vigencia',
+    exampleText:
+      'Plan de Desarrollo Departamental "Construyendo Futuro" (2024-2027).',
+    buildSuggestion: (ctx) => {
+      return `Plan de Desarrollo Territorial de ${loc(ctx)} para el periodo vigente.`;
+    },
+  },
+
+  // ── Estrategia del Plan ──────────────────────────────────────────────
+  estrategia_desarrollo: {
+    fieldId: 'estrategia_desarrollo',
+    displayName: 'Estrategia',
+    whatGoesHere:
+      'Estrategia o línea estratégica del Plan de Desarrollo a la cual aporta el proyecto.',
+    whyRule:
+      'Demuestra la contribución del proyecto a los ejes temáticos definidos por la administración.',
+    templatePattern: 'Nombre de la Estrategia / Eje estratégico',
+    exampleText:
+      'Estrategia de Desarrollo Social e Inclusión.',
+    buildSuggestion: (ctx) => {
+      const sector = sectorOrDefault(ctx);
+      return `Estrategia orientada al mejoramiento de condiciones en el sector ${sector}.`;
+    },
+  },
+
+  // ── Programa del Plan ────────────────────────────────────────────────
+  programa_desarrollo: {
+    fieldId: 'programa_desarrollo',
+    displayName: 'Programa',
+    whatGoesHere:
+      'Programa específico del Plan de Desarrollo al que se vincula el proyecto.',
+    whyRule:
+      'Vincula la inversión con la estructura programática y el presupuesto de la entidad.',
+    templatePattern: 'Nombre del programa',
+    exampleText:
+      'Programa de ampliación de cobertura educativa.',
+    buildSuggestion: (ctx) => {
+      const sector = sectorOrDefault(ctx);
+      return `Programa de fortalecimiento y atención en el sector ${sector} para ${loc(ctx)}.`;
+    },
+  },
+
+  // ── Instrumentos Étnicos ─────────────────────────────────────────────
+  instrumentos_etnicos: {
+    fieldId: 'instrumentos_etnicos',
+    displayName: 'Instrumentos de Comunidades Étnicas',
+    whatGoesHere:
+      'Instrumento de planeación de la comunidad étnica (ej. Plan de Vida, Plan de Salvaguarda) si aplica.',
+    whyRule:
+      'Garantiza el enfoque diferencial y la armonización con la visión de desarrollo de los pueblos étnicos.',
+    templatePattern: 'Tipo de Instrumento + Nombre de la Comunidad',
+    exampleText:
+      'Plan de Vida del Resguardo Indígena.',
+    buildSuggestion: (ctx) => {
+      return `Plan integral de vida o instrumento equivalente de la comunidad étnica presente en el territorio de influencia del proyecto.`;
+    },
+  },
+
+  // ── Intereses Participante ─────────────────────────────────────────────
+  intereses_participante: {
+    fieldId: 'intereses_participante',
+    displayName: 'Intereses del Participante',
+    whatGoesHere:
+      'Descripción de las expectativas, necesidades o intereses que tiene el actor respecto al proyecto.',
+    whyRule:
+      'Permite identificar posibles conflictos o sinergias y diseñar estrategias de gestión de actores.',
+    templatePattern: 'Expectativa principal + Razón o necesidad subyacente',
+    exampleText:
+      'Mejorar la calidad educativa de la región para garantizar acceso equitativo a oportunidades.',
+    buildSuggestion: (ctx) => {
+      const sector = sectorOrDefault(ctx);
+      return `Mejoramiento de las condiciones actuales de ${sector} para garantizar mayores niveles de bienestar en ${loc(ctx)}.`;
+    },
+  },
+
+  // ── Contribución Participante ──────────────────────────────────────────
+  contribucion_participante: {
+    fieldId: 'contribucion_participante',
+    displayName: 'Contribución del Participante',
+    whatGoesHere:
+      'Recursos, apoyo técnico, normativo o logístico que el actor puede aportar al proyecto.',
+    whyRule:
+      'El DNP solicita mapear los aportes de cada actor para evaluar la viabilidad institucional y financiera.',
+    templatePattern: 'Tipo de aporte (técnico/financiero/político) + Descripción',
+    exampleText:
+      'Apoyo técnico en la supervisión de las obras y acompañamiento social a la comunidad.',
+    buildSuggestion: (ctx) => {
+      return `Acompañamiento, apoyo en gestión territorial y participación activa durante la ejecución y operación del proyecto.`;
     },
   },
 };

@@ -95,7 +95,7 @@ export default function AssistantChatPanel({
 
   const handleApply = useCallback(
     async (card: ActionCardPayload) => {
-      if (!project?.id && card.type !== 'catalog_search' && !card.catalog) {
+      if (!project?.id && card.type !== 'catalog_search' && !card.catalog && card.type !== 'field_autofill') {
         throw new Error('Abre un proyecto para aplicar esta sugerencia MGA');
       }
       await dispatchActionCard(card, project?.id ?? '', {

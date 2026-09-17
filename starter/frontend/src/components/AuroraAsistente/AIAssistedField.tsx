@@ -50,7 +50,6 @@ export default function AIAssistedField({
 }: AIAssistedFieldProps) {
   const tipId = useId();
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
   const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
@@ -76,30 +75,7 @@ export default function AIAssistedField({
 
   const fieldKnowledge = fieldHelpKey ? getFieldKnowledge(fieldHelpKey) : null;
 
-  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
 
-  const handleSuggestText = async () => {
-    if (!fieldHelpKey || !onAutoFill) return;
-    setIsLoadingSuggestion(true);
-    try {
-      const { api } = await import('../../lib/api');
-      const ctx = projectContext ?? {};
-      const { data } = await api.post<{ suggestion: string }>('/ai/mga/suggest-field', {
-        field_help_key: fieldHelpKey,
-        project_context: ctx,
-      });
-      onAutoFill(data.suggestion);
-      setOpen(false);
-      setToast('Texto sugerido insertado en el campo. Puedes editarlo si lo deseas.');
-      setTimeout(() => setToast(null), 4000);
-    } catch (err) {
-      console.error('Error fetching suggestion:', err);
-      setToast('Error al generar sugerencia.');
-      setTimeout(() => setToast(null), 4000);
-    } finally {
-      setIsLoadingSuggestion(false);
-    }
-  };
 
   const handleAskFieldHelp = () => {
     if (fieldHelpKey) {
@@ -170,34 +146,12 @@ export default function AIAssistedField({
               )}
 
               <div className="flex flex-wrap gap-2">
-                {/* Primary: Instant auto-fill */}
-                {fieldKnowledge && onAutoFill && (
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={handleSuggestText}
-                    disabled={isLoadingSuggestion}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#006162] hover:bg-[#004f50] disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
-                  >
-                    {isLoadingSuggestion ? (
-                      <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    )}
-                    {isLoadingSuggestion ? 'Generando...' : 'Sugerir texto'}
-                  </button>
-                )}
-
                 {/* Secondary: Open chat with field-help */}
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={handleAskFieldHelp}
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                    fieldKnowledge && onAutoFill
-                      ? 'border border-[#006162] text-[#006162] hover:bg-teal-50'
-                      : 'bg-[#006162] hover:bg-[#004f50] text-white'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-[#006162] hover:bg-[#004f50] text-white`}
                 >
                   <span className="material-symbols-outlined text-sm">chat</span>
                   Preguntar a Aurora
@@ -218,15 +172,7 @@ export default function AIAssistedField({
           {validationMessage}
         </p>
       )}
-      {toast && (
-        <div
-          role="status"
-          className="mt-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium flex items-center gap-1.5 animate-fade-in"
-        >
-          <span className="material-symbols-outlined text-sm">check_circle</span>
-          {toast}
-        </div>
-      )}
+
     </div>
   );
 }

@@ -94,7 +94,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const situacionExistente = project.situacion_existente ?? '';
   const magnitudProblema = project.magnitud_problema ?? '';
   const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
-  const updateProjectDetails = useProjectStore((s) => s.updateProjectDetails);
   const isProjectSaving = useProjectStore((s) => s.isSaving);
 
   const getFormulation = useProjectMgaStore((s) => s.getFormulation);
@@ -156,13 +155,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
 
   const effectGroups = useMemo(() => groupEffectsByParent(effects), [effects]);
   const causeGroups = useMemo(() => groupCausesByParent(causeRelations), [causeRelations]);
-
-  const buildDetailsPayload = () => ({
-    problem_description: problemDescription,
-    general_objective: project.general_objective ?? '',
-    situacion_existente: situacionExistente,
-    magnitud_problema: magnitudProblema,
-  });
 
   const handleSaveIdentification = useMemo(
     () =>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
@@ -14,7 +14,6 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const savePlanDesarrollo = useProjectMgaStore((s) => s.savePlanDesarrollo);
-  const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const fieldProjectContext: ProjectContext = {
     projectName: project.name,

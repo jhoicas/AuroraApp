@@ -157,7 +157,7 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
       objeto: objeto,
       sector: selectedSector?.name,
       productCode: productoPrincipal,
-      productName: selectedProductData?.nombre_producto || selectedProductData?.nombre,
+      productName: ((selectedProductData as any)?.nombre_producto || (selectedProductData as any)?.nombre || (selectedProductData as any)?.name || ''),
       departamento: mainDep?.name,
       municipio: mainMun?.name,
     };

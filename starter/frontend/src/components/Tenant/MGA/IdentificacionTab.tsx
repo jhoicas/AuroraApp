@@ -7,11 +7,7 @@ import { useAuroraCopilotStore } from '../../../store/auroraCopilotStore';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 import {
   buildMgaCausesEffectsPrompt,
-  buildMgaMagnitudProblemaPrompt,
-  buildMgaSituacionExistentePrompt,
   MGA_CAUSES_EFFECTS_ROUTE,
-  MGA_MAGNITUD_PROBLEMA_ROUTE,
-  MGA_SITUACION_EXISTENTE_ROUTE,
   type MgaCausesEffectsFocus,
 } from '../../../lib/mgaAuroraAssist';
 import type { MgaEffect } from '../../../lib/mgaApi';

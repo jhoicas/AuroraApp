@@ -90,7 +90,7 @@ export default function AIAssistedField({
     if (fieldHelpKey) {
       askFieldHelp(fieldHelpKey, projectContext ?? {});
     } else {
-      askAurora(askPrompt);
+      askAurora(askPrompt || '');
     }
     setOpen(false);
   };

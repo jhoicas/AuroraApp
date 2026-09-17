@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Home, Pencil } from 'lucide-react';
+import { Home } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import type { MgaAuditTabId } from './FormulationAuditPanel';
 import IdentificacionTab from './IdentificacionTab';
@@ -57,7 +57,6 @@ export type MGALayoutProps = {
   projectTitle?: string;
   userName?: string;
   userRole?: string;
-  onEditTitle?: () => void;
   onNavigateHome?: () => void;
   /** Contenido opcional sobre el área de trabajo (alertas, estado de guardado). */
   headerSlot?: ReactNode;
@@ -161,7 +160,6 @@ export default function MGALayout({
   projectTitle,
   userName = 'Usuario',
   userRole = 'Formulador',
-  onEditTitle,
   onNavigateHome,
   headerSlot,
   footerSlot,

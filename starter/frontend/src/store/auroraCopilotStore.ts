@@ -3,8 +3,9 @@ import { isAxiosError } from 'axios';
 import { useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCatalogStore, type CopilotCatalogTarget } from './catalogStore';
+import { getFieldKnowledge, type ProjectContext } from '../data/mgaFieldsKnowledge';
 
-export type ActionCardType = 'mga_apply' | 'mga_generate_project' | 'catalog_search' | 'navigate';
+export type ActionCardType = 'mga_apply' | 'mga_generate_project' | 'catalog_search' | 'navigate' | 'field_autofill';
 
 export type ActionCardPayload = {
   type?: ActionCardType;
@@ -66,6 +67,26 @@ export type MgaProjectContext = {
   magnitud_problema?: string;
 };
 
+/**
+ * Registro global de callbacks de auto-fill por fieldId.
+ * Los componentes se registran al montar y se limpian al desmontar.
+ */
+const autoFillCallbacks = new Map<string, (value: string) => void>();
+
+export function registerAutoFillCallback(fieldId: string, cb: (value: string) => void): () => void {
+  autoFillCallbacks.set(fieldId, cb);
+  return () => { autoFillCallbacks.delete(fieldId); };
+}
+
+export function dispatchAutoFill(fieldId: string, value: string): boolean {
+  const cb = autoFillCallbacks.get(fieldId);
+  if (cb) {
+    cb(value);
+    return true;
+  }
+  return false;
+}
+
 type AuroraCopilotState = {
   isOpen: boolean;
   messages: CopilotMessage[];
@@ -92,6 +113,8 @@ type AuroraCopilotState = {
   appendToDraft: (text: string) => void;
   /** Abre el asistente flotante e inyecta un prompt en el input. */
   askAurora: (prompt: string) => void;
+  /** Genera ayuda contextual local para un campo MGA y la muestra como mensaje. */
+  askFieldHelp: (fieldId: string, projectContext: ProjectContext) => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -157,6 +180,49 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       isOpen: true,
       error: null,
       draftInput: trimmed || get().draftInput,
+    });
+  },
+
+  askFieldHelp: (fieldId, projectContext) => {
+    const knowledge = getFieldKnowledge(fieldId);
+    if (!knowledge) return;
+
+    const suggestion = knowledge.buildSuggestion(projectContext);
+
+    const replyLines = [
+      `**¿Qué va aquí?** ${knowledge.whatGoesHere}`,
+      '',
+      `**¿Por qué?** ${knowledge.whyRule}`,
+      '',
+      `**Sugerencia lista para usar:**`,
+      `> ${suggestion}`,
+    ];
+
+    const userMsg: CopilotMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: `¿Qué debo escribir en «${knowledge.displayName}»?`,
+    };
+
+    const assistantMsg: CopilotMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: replyLines.join('\n'),
+      actionCards: [
+        {
+          type: 'field_autofill',
+          label: `Usar esta sugerencia en ${knowledge.displayName}`,
+          description: suggestion,
+          payload: { fieldId, suggestedValue: suggestion },
+        },
+      ],
+    };
+
+    set({
+      isOpen: true,
+      error: null,
+      draftInput: '',
+      messages: [...get().messages, userMsg, assistantMsg],
     });
   },
 

@@ -2,6 +2,7 @@ import {
   COPILOT_CATALOG_ROUTES,
   type ActionCardPayload,
   type CreationContext,
+  dispatchAutoFill,
 } from '../store/auroraCopilotStore';
 import { useCatalogStore } from '../store/catalogStore';
 import { useProjectStore } from '../store/projectStore';
@@ -56,6 +57,10 @@ export async function dispatchActionCard(
 
     case 'navigate':
       dispatchNavigate(card, options);
+      return;
+
+    case 'field_autofill':
+      dispatchFieldAutoFill(card, options);
       return;
 
     default:
@@ -289,6 +294,36 @@ function dispatchNavigate(card: ActionCardPayload, options: DispatchActionOption
     throw new Error('No hay navegador disponible para esta acción');
   }
   options.navigate(path);
+  if (options.variant === 'floating' && options.onCloseAssistant) {
+    options.onCloseAssistant();
+  }
+}
+
+function dispatchFieldAutoFill(card: ActionCardPayload, options: DispatchActionOptions): void {
+  const fieldId = payloadString(card.payload, 'fieldId');
+  const suggestedValue = payloadString(card.payload, 'suggestedValue');
+  if (!fieldId || !suggestedValue) {
+    throw new Error('La tarjeta de autollenado no incluye fieldId o suggestedValue');
+  }
+
+  // Try registered callback first (from AIAssistedField)
+  const dispatched = dispatchAutoFill(fieldId, suggestedValue);
+
+  // Fallback: patch project store directly for known project fields
+  if (!dispatched) {
+    const projectStore = useProjectStore.getState();
+    const project = projectStore.currentProject;
+    if (project) {
+      const patchableFields = [
+        'name', 'objeto', 'general_objective', 'problem_description',
+        'situacion_existente', 'magnitud_problema',
+      ];
+      if (patchableFields.includes(fieldId)) {
+        projectStore.patchCurrentProject({ [fieldId]: suggestedValue });
+      }
+    }
+  }
+
   if (options.variant === 'floating' && options.onCloseAssistant) {
     options.onCloseAssistant();
   }

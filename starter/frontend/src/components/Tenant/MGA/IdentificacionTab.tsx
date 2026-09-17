@@ -4,6 +4,7 @@ import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type CauseObjectiveRelation } from '../../../store/projectMgaStore';
 import { useAuroraCopilotStore } from '../../../store/auroraCopilotStore';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 import {
   buildMgaCausesEffectsPrompt,
   buildMgaMagnitudProblemaPrompt,
@@ -119,6 +120,18 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       magnitud_problema: magnitudProblema,
     }),
     [problemDescription, situacionExistente, magnitudProblema],
+  );
+
+  const fieldProjectContext: ProjectContext = useMemo(
+    () => ({
+      projectName: project.name,
+      sector: project.sector ?? undefined,
+      productCode: project.product_code ?? undefined,
+      problemDescription,
+      generalObjective: project.general_objective ?? undefined,
+      objeto: project.objeto ?? undefined,
+    }),
+    [project.name, project.sector, project.product_code, problemDescription, project.general_objective, project.objeto],
   );
 
   const requestAuroraAssist = useCallback(
@@ -484,6 +497,9 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               required
               guidance="El problema central es la situación negativa que el proyecto busca atenuar. Debe ser verificable, sin incluir soluciones, y coherente con el árbol de problemas MGA."
               askPrompt={`¿Cómo redacto el problema central del proyecto "${project.name}" según la metodología MGA del DNP?`}
+              fieldHelpKey="problem_description"
+              projectContext={fieldProjectContext}
+              onAutoFill={(v) => patchCurrentProject({ problem_description: v })}
             >
               <textarea
                 id={`mga-problem-${project.id}`}
@@ -557,43 +573,45 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       {/* Campos inferiores — ancho completo */}
       <div className="space-y-6">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <label
-              htmlFor={`mga-situation-${project.id}`}
-              className="font-semibold text-gray-800"
-            >
-              Descripción de la situación existente con respecto al problema
-            </label>
-            <AuroraAssistButton label="Redactar con Aurora" onClick={suggestSituacionWithAurora} />
-          </div>
-          <textarea
-            id={`mga-situation-${project.id}`}
-            value={situacionExistente}
-            onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value })}
-            onBlur={() => void handleSaveIdentification()}
-            className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
-            placeholder="Describa el contexto territorial, social o institucional actual…"
-          />
+          <AIAssistedField
+            label="Descripción de la situación existente con respecto al problema"
+            htmlFor={`mga-situation-${project.id}`}
+            guidance="Describa el estado actual de la problemática en el territorio con cifras y fuentes verificables."
+            askPrompt={`¿Cómo redacto la situación existente del proyecto "${project.name}"?`}
+            fieldHelpKey="situacion_existente"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => patchCurrentProject({ situacion_existente: v })}
+          >
+            <textarea
+              id={`mga-situation-${project.id}`}
+              value={situacionExistente}
+              onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value })}
+              onBlur={() => void handleSaveIdentification()}
+              className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
+              placeholder="Describa el contexto territorial, social o institucional actual…"
+            />
+          </AIAssistedField>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <label
-              htmlFor={`mga-magnitude-${project.id}`}
-              className="font-semibold text-gray-800"
-            >
-              Magnitud actual del problema e indicadores de referencia
-            </label>
-            <AuroraAssistButton label="Redactar con Aurora" onClick={suggestMagnitudWithAurora} />
-          </div>
-          <textarea
-            id={`mga-magnitude-${project.id}`}
-            value={magnitudProblema}
-            onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value })}
-            onBlur={() => void handleSaveIdentification()}
-            className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
-            placeholder="Indique magnitud, fuentes y línea base del problema…"
-          />
+          <AIAssistedField
+            label="Magnitud actual del problema e indicadores de referencia"
+            htmlFor={`mga-magnitude-${project.id}`}
+            guidance="Indicadores cuantitativos de referencia que dimensionan la magnitud del problema."
+            askPrompt={`¿Qué indicadores y métricas debo usar para la magnitud del problema del proyecto "${project.name}"?`}
+            fieldHelpKey="magnitud_problema"
+            projectContext={fieldProjectContext}
+            onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v })}
+          >
+            <textarea
+              id={`mga-magnitude-${project.id}`}
+              value={magnitudProblema}
+              onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value })}
+              onBlur={() => void handleSaveIdentification()}
+              className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
+              placeholder="Indique magnitud, fuentes y línea base del problema…"
+            />
+          </AIAssistedField>
         </div>
 
         <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">

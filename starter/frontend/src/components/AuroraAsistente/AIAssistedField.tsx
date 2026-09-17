@@ -1,6 +1,10 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
-import { useAuroraCopilotStore } from '../../store/auroraCopilotStore';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useAuroraCopilotStore,
+  registerAutoFillCallback,
+} from '../../store/auroraCopilotStore';
 import { validateInfinitiveObjective } from '../../lib/mgaObjectiveValidation';
+import { getFieldKnowledge, type ProjectContext } from '../../data/mgaFieldsKnowledge';
 
 type AIAssistedFieldProps = {
   label: string;
@@ -8,7 +12,7 @@ type AIAssistedFieldProps = {
   required?: boolean;
   /** Guía metodológica breve mostrada en el popover. */
   guidance: string;
-  /** Prompt inyectado al abrir Aurora Asistente. */
+  /** Prompt inyectado al abrir Aurora Asistente (modo chat completo). */
   askPrompt: string;
   /** Valor actual para validación normativa en pantalla. */
   validationValue?: string;
@@ -18,6 +22,12 @@ type AIAssistedFieldProps = {
   className?: string;
   /** Estilo compacto para tablas Modo MGA. */
   compact?: boolean;
+  /** Clave del campo en el catálogo de conocimiento MGA. */
+  fieldHelpKey?: string;
+  /** Contexto del proyecto para generar sugerencias contextualizadas. */
+  projectContext?: ProjectContext;
+  /** Callback para insertar el valor sugerido directamente en el campo. */
+  onAutoFill?: (value: string) => void;
 };
 
 /**
@@ -34,11 +44,23 @@ export default function AIAssistedField({
   children,
   className = '',
   compact = false,
+  fieldHelpKey,
+  projectContext,
+  onAutoFill,
 }: AIAssistedFieldProps) {
   const tipId = useId();
   const [open, setOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
+  const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
+
+  // Register auto-fill callback so the chat ActionCard can dispatch back
+  useEffect(() => {
+    if (fieldHelpKey && onAutoFill) {
+      return registerAutoFillCallback(fieldHelpKey, onAutoFill);
+    }
+  }, [fieldHelpKey, onAutoFill]);
 
   const clearCloseTimer = () => {
     if (closeTimer.current) {
@@ -50,6 +72,27 @@ export default function AIAssistedField({
   const scheduleClose = () => {
     clearCloseTimer();
     closeTimer.current = setTimeout(() => setOpen(false), 180);
+  };
+
+  const fieldKnowledge = fieldHelpKey ? getFieldKnowledge(fieldHelpKey) : null;
+
+  const handleSuggestText = () => {
+    if (!fieldKnowledge || !onAutoFill) return;
+    const ctx = projectContext ?? {};
+    const suggestion = fieldKnowledge.buildSuggestion(ctx);
+    onAutoFill(suggestion);
+    setOpen(false);
+    setToast('Texto insertado en el campo. Puedes editarlo si lo deseas.');
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleAskFieldHelp = () => {
+    if (fieldHelpKey) {
+      askFieldHelp(fieldHelpKey, projectContext ?? {});
+    } else {
+      askAurora(askPrompt);
+    }
+    setOpen(false);
   };
 
   const validationMessage =
@@ -103,18 +146,44 @@ export default function AIAssistedField({
                 Guía metodológica
               </p>
               <p className="text-sm text-gray-600 leading-relaxed mb-3">{guidance}</p>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  askAurora(askPrompt);
-                  setOpen(false);
-                }}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#006162] hover:bg-[#004f50] text-white text-xs font-semibold transition-colors"
-              >
-                <span className="material-symbols-outlined text-sm">chat</span>
-                Preguntar a Aurora
-              </button>
+
+              {/* Pattern hint from knowledge catalog */}
+              {fieldKnowledge && (
+                <p className="text-xs text-gray-500 mb-3 italic">
+                  Patrón: {fieldKnowledge.templatePattern}
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                {/* Primary: Instant auto-fill */}
+                {fieldKnowledge && onAutoFill && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleSuggestText}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#006162] hover:bg-[#004f50] text-white text-xs font-semibold transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                    Sugerir texto
+                  </button>
+                )}
+
+                {/* Secondary: Open chat with field-help */}
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleAskFieldHelp}
+                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                    fieldKnowledge && onAutoFill
+                      ? 'border border-[#006162] text-[#006162] hover:bg-teal-50'
+                      : 'bg-[#006162] hover:bg-[#004f50] text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">chat</span>
+                  Preguntar a Aurora
+                </button>
+              </div>
+
               <span
                 className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
                 aria-hidden
@@ -128,6 +197,15 @@ export default function AIAssistedField({
         <p role="alert" className="mt-1 text-xs text-amber-700 font-medium">
           {validationMessage}
         </p>
+      )}
+      {toast && (
+        <div
+          role="status"
+          className="mt-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium flex items-center gap-1.5 animate-fade-in"
+        >
+          <span className="material-symbols-outlined text-sm">check_circle</span>
+          {toast}
+        </div>
       )}
     </div>
   );

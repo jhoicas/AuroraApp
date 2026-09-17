@@ -12,6 +12,7 @@ import {
   type GeneralObjectiveIndicator,
 } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type ObjetivosTabProps = {
   project: Project;
@@ -47,6 +48,18 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
 
   const formulation = getFormulation(project.id);
   const { causeRelations, generalIndicators } = formulation;
+
+  const fieldProjectContext: ProjectContext = useMemo(
+    () => ({
+      projectName: project.name,
+      sector: project.sector ?? undefined,
+      productCode: project.product_code ?? undefined,
+      problemDescription,
+      generalObjective,
+      objeto: project.objeto ?? undefined,
+    }),
+    [project.name, project.sector, project.product_code, problemDescription, generalObjective, project.objeto],
+  );
 
   useEffect(() => {
     if (skipInitialFetch) {
@@ -218,6 +231,9 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               askPrompt={infinitiveAskPrompt}
               validationRule="infinitive-verb"
               validationValue={generalObjective}
+              fieldHelpKey="general_objective"
+              projectContext={fieldProjectContext}
+              onAutoFill={(v) => handleGeneralObjectiveChange(v)}
             >
               <textarea
                 id={`mga-general-objective-${project.id}`}

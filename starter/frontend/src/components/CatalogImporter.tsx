@@ -24,8 +24,8 @@ type CatalogSummary = {
 };
 
 type CatalogImporterProps = {
-  /** `full` = DNP multi-hoja; matriciales: products | edt | deliverables | activities | ods. */
-  variant?: 'full' | 'products' | 'edt' | 'deliverables' | 'activities' | 'ods';
+  /** `full` = DNP multi-hoja; matriciales: products | edt | deliverables | activities | ods | pnd. */
+  variant?: 'full' | 'products' | 'edt' | 'deliverables' | 'activities' | 'ods' | 'pnd';
   onImported?: (result: CatalogImportResult | CatalogSummary) => void;
   className?: string;
 };

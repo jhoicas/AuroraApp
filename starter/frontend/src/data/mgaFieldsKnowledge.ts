@@ -312,5 +312,35 @@ export const MGA_FIELD_KNOWLEDGE: Record<string, MgaFieldKnowledge> = {
  * Devuelve el conocimiento de un campo MGA, o `undefined` si el fieldId no existe.
  */
 export function getFieldKnowledge(fieldId: string): MgaFieldKnowledge | undefined {
+  if (fieldId.startsWith('cause-direct-') || fieldId.startsWith('cause-indirect-')) {
+    const isIndirect = fieldId.startsWith('cause-indirect-');
+    return {
+      fieldId,
+      displayName: isIndirect ? 'Causa Indirecta' : 'Causa Directa',
+      whatGoesHere: isIndirect 
+        ? 'Una causa indirecta es un factor estructural o de nivel superior que origina una causa directa.' 
+        : 'Una causa directa es el factor o situación negativa observable que origina de manera inmediata el problema central.',
+      whyRule: 'La metodología MGA exige estructurar el Árbol de Problemas con relaciones lógicas de causalidad directa e indirecta.',
+      templatePattern: 'Situación negativa (Sustantivo + Verbo participio + Condición desfavorable)',
+      exampleText: isIndirect ? 'Insuficiente asignación de recursos en el presupuesto municipal.' : 'Deficiente infraestructura física y tecnológica.',
+      buildSuggestion: (ctx) => `Condición deficiente o insuficiente relacionada con ${sectorOrDefault(ctx)} en ${loc(ctx)}.`,
+    };
+  }
+  
+  if (fieldId.startsWith('effect-direct-') || fieldId.startsWith('effect-indirect-')) {
+    const isIndirect = fieldId.startsWith('effect-indirect-');
+    return {
+      fieldId,
+      displayName: isIndirect ? 'Efecto Indirecto' : 'Efecto Directo',
+      whatGoesHere: isIndirect 
+        ? 'Consecuencia de mediano o largo plazo derivada de un efecto directo.' 
+        : 'Consecuencia inmediata u observable directamente asociada al problema central.',
+      whyRule: 'El DNP requiere el Árbol de Efectos para sustentar el impacto del problema y formular luego los fines del proyecto.',
+      templatePattern: 'Impacto negativo (Sustantivo + Condición desfavorable + Población/Área)',
+      exampleText: isIndirect ? 'Estancamiento del desarrollo económico local.' : 'Incremento en los costos de operación del servicio.',
+      buildSuggestion: (ctx) => `Aumento de los niveles de afectación y deterioro de las condiciones de vida en ${loc(ctx)}.`,
+    };
+  }
+
   return MGA_FIELD_KNOWLEDGE[fieldId];
 }

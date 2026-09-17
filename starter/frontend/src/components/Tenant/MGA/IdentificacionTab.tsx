@@ -320,14 +320,24 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
         )}
         {isEditing ? (
           <div className="space-y-2 pr-10">
-            <textarea
-              rows={3}
-              value={editTarget.draft}
-              onChange={(e) =>
-                setEditTarget({ kind: 'effect', id: effect.id, draft: e.target.value })
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
-            />
+            <AIAssistedField
+              label={isIndirect ? 'Efecto Indirecto' : 'Efecto Directo'}
+              htmlFor={`effect-${effect.id}`}
+              fieldHelpKey={`effect-${isIndirect ? 'indirect' : 'direct'}-${effect.id}`}
+              projectContext={fieldProjectContext}
+              askPrompt={`Sugiere una redacción para este efecto ${isIndirect ? 'indirecto' : 'directo'} del problema: ${problemDescription}`}
+              onAutoFill={(val) => setEditTarget({ kind: 'effect', id: effect.id, draft: val })}
+            >
+              <textarea
+                id={`effect-${effect.id}`}
+                rows={3}
+                value={editTarget.draft}
+                onChange={(e) =>
+                  setEditTarget({ kind: 'effect', id: effect.id, draft: e.target.value })
+                }
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary mt-1"
+              />
+            </AIAssistedField>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -377,14 +387,24 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
         )}
         {isEditing ? (
           <div className="space-y-2 pr-10">
-            <textarea
-              rows={3}
-              value={editTarget.draft}
-              onChange={(e) =>
-                setEditTarget({ kind: 'cause', id: relation.id, draft: e.target.value })
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
-            />
+            <AIAssistedField
+              label={isIndirect ? 'Causa Indirecta' : 'Causa Directa'}
+              htmlFor={`cause-${relation.id}`}
+              fieldHelpKey={`cause-${isIndirect ? 'indirect' : 'direct'}-${relation.id}`}
+              projectContext={fieldProjectContext}
+              askPrompt={`Sugiere una redacción para esta causa ${isIndirect ? 'indirecta' : 'directa'} del problema: ${problemDescription}`}
+              onAutoFill={(val) => setEditTarget({ kind: 'cause', id: relation.id, draft: val })}
+            >
+              <textarea
+                id={`cause-${relation.id}`}
+                rows={3}
+                value={editTarget.draft}
+                onChange={(e) =>
+                  setEditTarget({ kind: 'cause', id: relation.id, draft: e.target.value })
+                }
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary mt-1"
+              />
+            </AIAssistedField>
             <div className="flex gap-2">
               <button
                 type="button"

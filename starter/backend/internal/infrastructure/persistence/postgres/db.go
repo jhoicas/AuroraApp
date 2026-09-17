@@ -44,6 +44,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	log.Println("PostgreSQL connection pool: maxOpen=100 maxIdle=20 maxLifetime=1h")
 
+	// Asegurar columna mga_formulation_data antes de AutoMigrate por problemas de GORM
+	db.Exec("ALTER TABLE projects ADD COLUMN IF NOT EXISTS mga_formulation_data JSONB DEFAULT '{}'::jsonb;")
+
 	reconcileTenantUniqueConstraints(db)
 
 	if err := autoMigrateSafe(db); err != nil {

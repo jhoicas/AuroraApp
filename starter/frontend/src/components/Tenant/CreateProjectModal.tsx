@@ -52,7 +52,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const patchProject = useProjectStore((s) => s.patchProject);
   const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
   const isLoading = useProjectStore((s) => s.isLoading);
-  const clearChat = import('../../store/auroraCopilotStore').then(m => m.useAuroraCopilotStore.getState().clearChat);
+
 
   // Stores externos
   const regions = useLocationStore((s) => s.regions);

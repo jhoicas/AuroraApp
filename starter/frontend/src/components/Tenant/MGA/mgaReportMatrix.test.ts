@@ -21,6 +21,7 @@ describe('buildMgaLogicMatrix', () => {
         participants: [],
         populations: [],
         alternatives: [],
+        completedSections: {},
       },
       edtChain: {
         catalogLink: null,

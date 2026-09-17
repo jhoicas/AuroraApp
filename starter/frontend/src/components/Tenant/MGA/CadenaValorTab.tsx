@@ -65,7 +65,15 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { catalogLink, edtNodes, deliverables, activities } = getChain(project.id);
-  const displayError = localError ?? storeError;
+
+  const handleSaveSection = async () => {
+    try {
+      await saveCadenaDeValor(project.id);
+      setSuccessMessage('Cadena de Valor guardada exitosamente.');
+    } catch (err) {
+      setLocalError('Error al guardar la sección.');
+    }
+  };
 
   const productCodeHint = project.product_code?.trim() ?? '';
 

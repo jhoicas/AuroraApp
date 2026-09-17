@@ -95,7 +95,6 @@ type SectionStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
 
 function useMgaSectionStatuses(project: Project) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
-  const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
 
   const cPlan = !!formulation.completedSections['plan-desarrollo']; 
   const cIdentificacion = !!formulation.completedSections['problematica'];

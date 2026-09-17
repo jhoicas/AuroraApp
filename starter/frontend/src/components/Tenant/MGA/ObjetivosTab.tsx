@@ -11,6 +11,7 @@ import {
   type CauseObjectiveRelation,
   type GeneralObjectiveIndicator,
 } from '../../../store/projectMgaStore';
+import MgaAlert from './MgaAlert';
 
 type ObjetivosTabProps = {
   project: Project;

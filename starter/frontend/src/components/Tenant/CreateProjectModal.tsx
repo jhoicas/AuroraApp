@@ -319,33 +319,42 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
     try {
       if (editProject) {
         // Modo Edición
-        const payload = {
-          name: generatedName,
-          sector: selectedSector?.name ?? '',
-          sector_id: sectorId,
-          product_code: productoPrincipal || undefined,
+        const idenPayload = {
           proceso_id: parseInt(proceso, 10),
           objeto: objeto.trim(),
           localizaciones: localizaciones,
           tipo_inversion: tipoInversion,
           tipologia: tipologiaProyecto,
         };
+
+        const currentProject = useProjectStore.getState().currentProject;
+        const currentMgaData = currentProject?.mga_formulation_data || {};
+        const currentIden = currentMgaData.identificacion || {};
+
         // Parcheamos el estado local de forma síncrona
         patchCurrentProject({ 
           name: generatedName, 
           sector: selectedSector?.name ?? '', 
           sector_id: sectorId, 
-          product_code: productoPrincipal || undefined 
+          product_code: productoPrincipal || undefined,
+          mga_formulation_data: {
+            ...currentMgaData,
+            identificacion: {
+              ...currentIden,
+              ...idenPayload
+            }
+          }
         });
         
-        // Hacemos el PATCH al backend. Necesitamos pasar esto envuelto o como mga_formulation_data?
-        // En projectStore, patchProject hace un PATCH directo. Los datos de MGA van en mga_formulation_data.
+        // Hacemos el PATCH al backend. Los datos de MGA van en mga_formulation_data.identificacion
         await patchProject(editProject.id, {
           name: generatedName,
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
-          mga_formulation_data: payload
+          mga_formulation_data: {
+            identificacion: idenPayload
+          }
         });
         
         // Limpiamos el chat para que el contexto copilot se refresque

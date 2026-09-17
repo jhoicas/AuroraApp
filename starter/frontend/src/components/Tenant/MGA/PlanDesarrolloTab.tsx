@@ -4,10 +4,13 @@ import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import PndSelectionModal from './PndSelectionModal';
+import { type CatalogPnd } from '../../../store/catalogStore';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const [openAccordion, setOpenAccordion] = useState<string>('01');
+  const [isPndModalOpen, setIsPndModalOpen] = useState(false);
   
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const savePlanDesarrollo = useProjectMgaStore((s) => s.savePlanDesarrollo);
@@ -74,8 +77,15 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     await savePlanDesarrollo(project.id, data);
   };
 
-  const addPndLink = () => {
-    setPndLinks([...pndLinks, { id: crypto.randomUUID(), transformacion: '', pilar: '', catalizador: '', componente: '' }]);
+  const addPndLink = (pnd: CatalogPnd) => {
+    setPndLinks([...pndLinks, { 
+      id: crypto.randomUUID(), 
+      transformacion: pnd.PillarDescription, 
+      pilar: pnd.ObjectiveDescription, 
+      catalizador: pnd.StrategyDescription, 
+      componente: pnd.ComponentDescription 
+    }]);
+    setIsPndModalOpen(false);
   };
 
   const updatePndLink = (id: string, field: keyof PlanDesarrolloPndLink, value: string) => {
@@ -183,16 +193,23 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                 </tbody>
               </table>
             </div>
+            </div>
             <button 
               type="button" 
-              onClick={addPndLink} 
+              onClick={() => setIsPndModalOpen(true)} 
               className="mt-3 inline-flex items-center gap-1 bg-blue-600 text-white font-medium hover:bg-blue-700 px-3 py-1.5 rounded-md text-sm transition-colors"
             >
-              <Plus className="w-4 h-4" /> Adicionar
+              <Plus className="w-4 h-4" /> Agregar desde catálogo
             </button>
           </div>
         </div>
       </MgaAccordion>
+
+      <PndSelectionModal 
+        isOpen={isPndModalOpen} 
+        onClose={() => setIsPndModalOpen(false)} 
+        onSelect={addPndLink} 
+      />
 
       <MgaAccordion
         number="02"

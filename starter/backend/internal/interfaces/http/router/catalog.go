@@ -36,4 +36,6 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	catalog.Post("/activities/import", h.ImportActivities)
 	catalog.Get("/ods", h.ListCatalogOds)
 	catalog.Post("/ods/import", h.ImportOds)
+	catalog.Get("/pnd", h.ListCatalogPnd)
+	catalog.Post("/pnd/import", h.ImportPnd)
 }

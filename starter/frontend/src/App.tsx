@@ -17,6 +17,7 @@ import ActivitiesCatalogPage from './pages/admin/ActivitiesCatalogPage';
 import OdsCatalogPage from './pages/admin/OdsCatalogPage';
 import ProcesosCatalogPage from './pages/admin/ProcesosCatalogPage';
 import LocationsCatalogPage from './pages/admin/LocationsCatalogPage';
+import PndCatalogPage from './pages/admin/PndCatalogPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectCreationAssistant from './pages/tenant/ProjectCreationAssistant';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
@@ -53,6 +54,7 @@ function App() {
               <Route path="catalogs/deliverables" element={<DeliverablesCatalogPage />} />
               <Route path="catalogs/activities" element={<ActivitiesCatalogPage />} />
               <Route path="catalogs/ods" element={<OdsCatalogPage />} />
+              <Route path="catalogs/pnd" element={<PndCatalogPage />} />
               <Route path="catalogs/procesos" element={<ProcesosCatalogPage />} />
               <Route path="catalogs/locations" element={<LocationsCatalogPage />} />
               <Route

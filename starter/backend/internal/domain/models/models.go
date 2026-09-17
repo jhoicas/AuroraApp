@@ -41,5 +41,6 @@ func AllModels() []any {
 		&ProjectEdtNode{},
 		&ProjectDeliverable{},
 		&ProjectActivity{},
+		&PNDCatalog{},
 	}
 }

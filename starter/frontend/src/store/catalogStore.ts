@@ -244,12 +244,33 @@ export type CatalogDeliverable = {
   tenant_id?: string | null;
   codigo_entregable: string;
   listado_de_entregables: string;
-  created_at?: string;
+	created_at?: string;
 };
 
 type PaginatedCatalogDeliverables = {
-  data: CatalogDeliverable[];
-  meta: CatalogPageMeta;
+	data: CatalogDeliverable[];
+	meta: CatalogPageMeta;
+};
+
+export type CatalogPnd = {
+	id: number;
+	PlanId?: number;
+	PlanName?: string;
+	PillarId: number;
+	ObjectiveId: number;
+	StrategyId: number;
+	ComponentId: number;
+	PillarDescription: string;
+	ObjectiveDescription: string;
+	StrategyDescription: string;
+	ComponentDescription: string;
+	RowState: number;
+	UniqueIdentifier?: string;
+};
+
+type PaginatedCatalogPnd = {
+	data: CatalogPnd[];
+	meta: CatalogPageMeta;
 };
 
 /** Fila del catálogo de actividades (lista DNP). */
@@ -313,6 +334,8 @@ type CatalogState = {
   catalogActivitiesMeta: CatalogPageMeta | null;
   catalogOds: CatalogOds[];
   catalogOdsMeta: CatalogPageMeta | null;
+  catalogPnd: CatalogPnd[];
+  catalogPndMeta: CatalogPageMeta | null;
   isLoading: boolean;
   /** Carga de programas por sector (wizard tenant /tenant/catalog). */
   isLoadingSectorPrograms: boolean;
@@ -322,6 +345,7 @@ type CatalogState = {
   isLoadingDeliverables: boolean;
   isLoadingActivities: boolean;
   isLoadingOds: boolean;
+  isLoadingPnd: boolean;
   procesos: Proceso[];
   procesosMeta: CatalogPageMeta | null;
   isLoadingProcesos: boolean;
@@ -355,6 +379,8 @@ type CatalogState = {
   importActivities: (file: File) => Promise<CatalogImportResult>;
   fetchCatalogOds: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   importOds: (file: File) => Promise<CatalogImportResult>;
+  fetchCatalogPnd: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
+  importPnd: (file: File) => Promise<CatalogImportResult>;
   fetchProcesos: (isActive?: boolean, search?: string, page?: number, limit?: number) => Promise<void>;
   createProceso: (payload: { id: number; name: string }) => Promise<void>;
   updateProceso: (id: number, name: string) => Promise<void>;
@@ -365,6 +391,7 @@ type CatalogState = {
   clearDeliverables: () => void;
   clearActivities: () => void;
   clearOds: () => void;
+  clearPnd: () => void;
   clearError: () => void;
   copilotSearch: { catalog: CopilotCatalogTarget; query: string } | null;
   applyCopilotSearch: (catalog: CopilotCatalogTarget, query: string) => void;
@@ -498,6 +525,8 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   catalogActivitiesMeta: null,
   catalogOds: [],
   catalogOdsMeta: null,
+  catalogPnd: [],
+  catalogPndMeta: null,
   procesos: [],
   procesosMeta: null,
   isLoading: false,
@@ -508,6 +537,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   isLoadingDeliverables: false,
   isLoadingActivities: false,
   isLoadingOds: false,
+  isLoadingPnd: false,
   isLoadingProcesos: false,
   error: null,
   copilotSearch: null,
@@ -535,6 +565,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   clearDeliverables: () => set({ catalogDeliverables: [], catalogDeliverablesMeta: null }),
   clearActivities: () => set({ catalogActivities: [], catalogActivitiesMeta: null }),
   clearOds: () => set({ catalogOds: [], catalogOdsMeta: null }),
+  clearPnd: () => set({ catalogPnd: [], catalogPndMeta: null }),
 
   fetchSectors: async (opts) => {
     set({ isLoading: true, error: null });
@@ -947,6 +978,45 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
       return data;
     } catch (err) {
       throw new Error(extractError(err, 'No se pudo importar el archivo ODS'));
+    }
+  },
+
+  fetchCatalogPnd: async (opts) => {
+    set({ isLoadingPnd: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedCatalogPnd>('/catalog/pnd', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        catalogPnd: data.data ?? [],
+        catalogPndMeta: data.meta ?? null,
+        isLoadingPnd: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingPnd: false,
+        error: extractError(err, 'No se pudo cargar el catálogo PND'),
+        catalogPnd: [],
+        catalogPndMeta: null,
+      });
+    }
+  },
+
+  importPnd: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post<CatalogImportResult>('/catalog/pnd/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo importar el archivo PND'));
     }
   },
 

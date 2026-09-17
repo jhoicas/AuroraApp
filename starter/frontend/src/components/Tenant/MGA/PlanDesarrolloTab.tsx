@@ -193,7 +193,6 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                 </tbody>
               </table>
             </div>
-            </div>
             <button 
               type="button" 
               onClick={() => setIsPndModalOpen(true)} 

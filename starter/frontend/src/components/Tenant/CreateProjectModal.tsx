@@ -83,16 +83,26 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   useEffect(() => {
     if (open) {
       if (editProject) {
-        const iden = editProject.mga_formulation_data?.identificacion;
-        setProceso(iden?.proceso_id ? String(iden.proceso_id) : editProject.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
-        setObjeto(iden?.objeto || editProject.mga_formulation_data?.objeto || '');
-        setLocalizaciones(
-          iden?.localizaciones?.length ? iden.localizaciones 
-          : editProject.mga_formulation_data?.localizaciones?.length ? editProject.mga_formulation_data.localizaciones 
-          : [{ ...EMPTY_LOCATION }]
-        );
-        setTipoInversion(editProject.mga_formulation_data?.tipo_inversion ?? 'Territorial');
-        setTipologiaProyecto(editProject.mga_formulation_data?.tipologia ?? '');
+        // 1. Extraer o parsear mga_formulation_data de forma segura
+        let mgaData: any = editProject.mga_formulation_data || {};
+        if (typeof mgaData === 'string') {
+          try {
+            mgaData = JSON.parse(mgaData);
+          } catch (e) {
+            mgaData = {};
+          }
+        }
+
+        const iden = mgaData?.identificacion || {};
+
+        setProceso(iden?.proceso_id ? String(iden.proceso_id) : mgaData?.proceso_id ? String(mgaData.proceso_id) : '');
+        setObjeto(iden?.objeto || mgaData?.objeto || '');
+        
+        const rawLocations = iden?.localizaciones?.length ? iden.localizaciones : mgaData?.localizaciones?.length ? mgaData.localizaciones : [{ ...EMPTY_LOCATION }];
+        setLocalizaciones(Array.isArray(rawLocations) ? rawLocations : [{ ...EMPTY_LOCATION }]);
+        
+        setTipoInversion(mgaData?.tipo_inversion ?? 'Territorial');
+        setTipologiaProyecto(mgaData?.tipologia ?? '');
         setSectorId(editProject.sector_id ?? '');
         setProductoPrincipal(editProject.product_code ?? '');
       } else {

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Home } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
+import { useProjectStore } from '../../../store/projectStore';
 import CreateProjectModal from '../CreateProjectModal';
 import type { MgaAuditTabId } from './FormulationAuditPanel';
 import IdentificacionTab from './IdentificacionTab';
@@ -169,6 +170,7 @@ export default function MGALayout({
   const sectionStatuses = useMgaSectionStatuses(project);
   const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const currentProject = useProjectStore((state) => state.currentProject);
 
   const resolvedTitle =
     projectTitle?.trim() ||
@@ -347,12 +349,11 @@ export default function MGALayout({
         </main>
       </div>
       
-      {/* Modal de edición de datos */}
       {isEditModalOpen && (
         <CreateProjectModal 
           open={isEditModalOpen} 
           onClose={() => setIsEditModalOpen(false)} 
-          editProject={project}
+          editProject={currentProject || project}
         />
       )}
     </div>

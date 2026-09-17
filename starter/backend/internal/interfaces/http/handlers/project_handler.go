@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -302,27 +303,36 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 		project.MagnitudProblema = *req.MagnitudProblema
 	}
 	if req.MgaFormulationData != nil {
-		currentData := make(map[string]interface{})
-		if project.MgaFormulationData != nil && len(project.MgaFormulationData) > 0 {
-			_ = json.Unmarshal(project.MgaFormulationData, &currentData)
+		var existingMap map[string]interface{}
+		if len(project.MgaFormulationData) > 0 {
+			if err := json.Unmarshal(project.MgaFormulationData, &existingMap); err != nil {
+				existingMap = make(map[string]interface{})
+			}
+		} else {
+			existingMap = make(map[string]interface{})
 		}
 
-		for k, v := range *req.MgaFormulationData {
-			currentData[k] = v
+		patchMap := *req.MgaFormulationData
+
+		for k, v := range patchMap {
+			existingMap[k] = v
 		}
 
-		jsonBytes, err := json.Marshal(currentData)
-		if err == nil {
-			project.MgaFormulationData = datatypes.JSON(jsonBytes)
+		mergedBytes, err := json.Marshal(existingMap)
+		if err != nil {
+			log.Printf("[PATCH Project] Error marshaling merged JSON: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to merge formulation data"})
 		}
+
+		project.MgaFormulationData = datatypes.JSON(mergedBytes)
 	}
 
 	project.UpdatedAt = time.Now().UTC()
 
-	// Actualizar usando Save() o Updates() (ya que estamos actualizando campos dinámicamente)
-	if err := h.db.WithContext(c.Context()).Save(project).Error; err != nil {
-		log.Printf("Error patching project: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to patch project"})
+	// Actualizar usando Updates()
+	if err := h.db.WithContext(c.Context()).Model(project).Updates(project).Error; err != nil {
+		log.Printf("[PATCH Project DB Error]: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("failed to patch project: %v", err)})
 	}
 
 	return c.JSON(toProjectResponse(*project))

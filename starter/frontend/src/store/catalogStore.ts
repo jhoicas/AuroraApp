@@ -311,7 +311,9 @@ export type CopilotCatalogTarget =
   | 'programs'
   | 'edt'
   | 'deliverables'
-  | 'activities';
+  | 'activities'
+  | 'pnd'
+  | 'full';
 
 type CatalogState = {
   sectors: CatalogSector[];

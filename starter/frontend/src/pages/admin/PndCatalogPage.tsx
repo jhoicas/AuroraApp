@@ -203,7 +203,6 @@ export default function PndCatalogPage() {
               <CatalogPagination
                 meta={catalogPndMeta}
                 onPageChange={setPage}
-                isLoading={isLoadingPnd}
               />
             </div>
           )}

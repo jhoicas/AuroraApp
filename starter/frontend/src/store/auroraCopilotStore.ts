@@ -396,4 +396,6 @@ export const COPILOT_CATALOG_ROUTES: Record<CopilotCatalogTarget, string> = {
   edt: '/admin/catalogs/edt',
   deliverables: '/admin/catalogs/deliverables',
   activities: '/admin/catalogs/activities',
+  pnd: '/admin/catalogs/pnd',
+  full: '/admin/catalog',
 };

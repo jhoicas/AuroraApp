@@ -81,16 +81,29 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const [formError, setFormError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (editProject && open) {
-      setProceso(editProject.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
-      setObjeto(editProject.mga_formulation_data?.objeto ?? '');
-      setLocalizaciones(editProject.mga_formulation_data?.localizaciones?.length 
-        ? editProject.mga_formulation_data.localizaciones 
-        : [{ ...EMPTY_LOCATION }]);
-      setTipoInversion(editProject.mga_formulation_data?.tipo_inversion ?? 'Territorial');
-      setTipologiaProyecto(editProject.mga_formulation_data?.tipologia ?? '');
-      setSectorId(editProject.sector_id ?? '');
-      setProductoPrincipal(editProject.product_code ?? '');
+    if (open) {
+      if (editProject) {
+        const iden = editProject.mga_formulation_data?.identificacion;
+        setProceso(iden?.proceso_id ? String(iden.proceso_id) : editProject.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
+        setObjeto(iden?.objeto || editProject.mga_formulation_data?.objeto || '');
+        setLocalizaciones(
+          iden?.localizaciones?.length ? iden.localizaciones 
+          : editProject.mga_formulation_data?.localizaciones?.length ? editProject.mga_formulation_data.localizaciones 
+          : [{ ...EMPTY_LOCATION }]
+        );
+        setTipoInversion(editProject.mga_formulation_data?.tipo_inversion ?? 'Territorial');
+        setTipologiaProyecto(editProject.mga_formulation_data?.tipologia ?? '');
+        setSectorId(editProject.sector_id ?? '');
+        setProductoPrincipal(editProject.product_code ?? '');
+      } else {
+        setProceso('');
+        setObjeto('');
+        setLocalizaciones([{ ...EMPTY_LOCATION }]);
+        setTipoInversion('Territorial');
+        setTipologiaProyecto('');
+        setSectorId('');
+        setProductoPrincipal('');
+      }
     }
   }, [editProject, open]);
   

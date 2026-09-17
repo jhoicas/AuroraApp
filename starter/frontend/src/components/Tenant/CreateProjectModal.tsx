@@ -21,6 +21,7 @@ import type { ProjectContext } from '../../data/mgaFieldsKnowledge';
 type CreateProjectModalProps = {
   open: boolean;
   onClose: () => void;
+  editProject?: import('../../store/projectStore').Project;
 };
 
 // ─── Constantes MGA ────────────────────────────────────────────────
@@ -45,10 +46,13 @@ const EMPTY_LOCATION: LocationSelection = {
 
 // ─── Componente principal ──────────────────────────────────────────
 
-export default function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
+export default function CreateProjectModal({ open, onClose, editProject }: CreateProjectModalProps) {
   const navigate = useNavigate();
   const createProject = useProjectStore((s) => s.createProject);
+  const patchProject = useProjectStore((s) => s.patchProject);
+  const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
   const isLoading = useProjectStore((s) => s.isLoading);
+  const clearChat = import('../../store/auroraCopilotStore').then(m => m.useAuroraCopilotStore.getState().clearChat);
 
   // Stores externos
   const regions = useLocationStore((s) => s.regions);
@@ -63,14 +67,32 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
   const fetchCatalogProducts = useCatalogStore((s) => s.fetchCatalogProducts);
 
   // ─── Estado del formulario ──────────────────
-  const [proceso, setProceso] = useState('');
-  const [objeto, setObjeto] = useState('');
-  const [localizaciones, setLocalizaciones] = useState<LocationSelection[]>([{ ...EMPTY_LOCATION }]);
-  const [tipoInversion, setTipoInversion] = useState('Territorial');
-  const [tipologiaProyecto, setTipologiaProyecto] = useState('');
-  const [sectorId, setSectorId] = useState('');
-  const [productoPrincipal, setProductoPrincipal] = useState('');
+  const [proceso, setProceso] = useState(editProject?.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
+  const [objeto, setObjeto] = useState(editProject?.mga_formulation_data?.objeto ?? '');
+  const [localizaciones, setLocalizaciones] = useState<LocationSelection[]>(
+    editProject?.mga_formulation_data?.localizaciones?.length 
+      ? editProject.mga_formulation_data.localizaciones 
+      : [{ ...EMPTY_LOCATION }]
+  );
+  const [tipoInversion, setTipoInversion] = useState(editProject?.mga_formulation_data?.tipo_inversion ?? 'Territorial');
+  const [tipologiaProyecto, setTipologiaProyecto] = useState(editProject?.mga_formulation_data?.tipologia ?? '');
+  const [sectorId, setSectorId] = useState(editProject?.sector_id ?? '');
+  const [productoPrincipal, setProductoPrincipal] = useState(editProject?.product_code ?? '');
   const [formError, setFormError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (editProject && open) {
+      setProceso(editProject.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
+      setObjeto(editProject.mga_formulation_data?.objeto ?? '');
+      setLocalizaciones(editProject.mga_formulation_data?.localizaciones?.length 
+        ? editProject.mga_formulation_data.localizaciones 
+        : [{ ...EMPTY_LOCATION }]);
+      setTipoInversion(editProject.mga_formulation_data?.tipo_inversion ?? 'Territorial');
+      setTipologiaProyecto(editProject.mga_formulation_data?.tipologia ?? '');
+      setSectorId(editProject.sector_id ?? '');
+      setProductoPrincipal(editProject.product_code ?? '');
+    }
+  }, [editProject, open]);
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   // ─── Sectores filtrados por tipología ──────────────────
@@ -227,13 +249,15 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
 
   // ─── Reset ──────────────────
   const reset = () => {
-    setProceso('');
-    setObjeto('');
-    setLocalizaciones([{ ...EMPTY_LOCATION }]);
-    setTipoInversion('Territorial');
-    setTipologiaProyecto('');
-    setSectorId('');
-    setProductoPrincipal('');
+    if (!editProject) {
+      setProceso('');
+      setObjeto('');
+      setLocalizaciones([{ ...EMPTY_LOCATION }]);
+      setTipoInversion('Territorial');
+      setTipologiaProyecto('');
+      setSectorId('');
+      setProductoPrincipal('');
+    }
     setFormError(null);
   };
 
@@ -280,19 +304,58 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
     }
 
     try {
-      const project = await createProject({
-        name: generatedName,
-        sector: selectedSector?.name ?? '',
-        sector_id: sectorId,
-        product_code: productoPrincipal || undefined,
-        proceso_id: parseInt(proceso, 10),
-        objeto: objeto.trim(),
-        localizaciones: localizaciones,
-        tipo_inversion: tipoInversion,
-        tipologia: tipologiaProyecto,
-      });
-      handleClose();
-      navigate(`/tenant/projects/${project.id}`);
+      if (editProject) {
+        // Modo Edición
+        const payload = {
+          name: generatedName,
+          sector: selectedSector?.name ?? '',
+          sector_id: sectorId,
+          product_code: productoPrincipal || undefined,
+          proceso_id: parseInt(proceso, 10),
+          objeto: objeto.trim(),
+          localizaciones: localizaciones,
+          tipo_inversion: tipoInversion,
+          tipologia: tipologiaProyecto,
+        };
+        // Parcheamos el estado local de forma síncrona
+        patchCurrentProject({ 
+          name: generatedName, 
+          sector: selectedSector?.name ?? '', 
+          sector_id: sectorId, 
+          product_code: productoPrincipal || undefined 
+        });
+        
+        // Hacemos el PATCH al backend. Necesitamos pasar esto envuelto o como mga_formulation_data?
+        // En projectStore, patchProject hace un PATCH directo. Los datos de MGA van en mga_formulation_data.
+        await patchProject(editProject.id, {
+          name: generatedName,
+          sector: selectedSector?.name ?? '',
+          sector_id: sectorId,
+          product_code: productoPrincipal || undefined,
+          mga_formulation_data: payload
+        });
+        
+        // Limpiamos el chat para que el contexto copilot se refresque
+        const { useAuroraCopilotStore } = await import('../../store/auroraCopilotStore');
+        useAuroraCopilotStore.getState().clearChat();
+        
+        handleClose();
+      } else {
+        // Modo Creación
+        const project = await createProject({
+          name: generatedName,
+          sector: selectedSector?.name ?? '',
+          sector_id: sectorId,
+          product_code: productoPrincipal || undefined,
+          proceso_id: parseInt(proceso, 10),
+          objeto: objeto.trim(),
+          localizaciones: localizaciones,
+          tipo_inversion: tipoInversion,
+          tipologia: tipologiaProyecto,
+        });
+        handleClose();
+        navigate(`/tenant/projects/${project.id}/plan-desarrollo`);
+      }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error al crear el proyecto');
     }
@@ -310,7 +373,7 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 sticky top-0 bg-white z-10">
           <h3 id="create-project-title" className="text-lg font-semibold text-gray-800">
-            Nuevo proyecto MGA
+            {editProject ? 'Editar datos del proyecto MGA' : 'Nuevo proyecto MGA'}
           </h3>
           <button
             type="button"
@@ -597,7 +660,7 @@ export default function CreateProjectModal({ open, onClose }: CreateProjectModal
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
             <button
               type="button"
               onClick={handleClose}

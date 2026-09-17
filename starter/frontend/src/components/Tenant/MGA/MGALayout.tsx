@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Home } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
+import CreateProjectModal from '../CreateProjectModal';
 import type { MgaAuditTabId } from './FormulationAuditPanel';
 import IdentificacionTab from './IdentificacionTab';
 import PlanDesarrolloTab from './PlanDesarrolloTab';
@@ -167,6 +168,7 @@ export default function MGALayout({
 }: MGALayoutProps) {
   const sectionStatuses = useMgaSectionStatuses(project);
   const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const resolvedTitle =
     projectTitle?.trim() ||
@@ -259,9 +261,19 @@ export default function MGALayout({
       {/* 3. Banner de proyecto */}
       <section className="shrink-0 border-b border-outline-variant/40 bg-white px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <p className="max-w-4xl text-sm font-medium leading-relaxed text-gray-800 sm:text-base">
-            {resolvedTitle}
-          </p>
+          <div className="flex items-start gap-3 max-w-4xl">
+            <p className="text-sm font-medium leading-relaxed text-gray-800 sm:text-base">
+              {resolvedTitle}
+            </p>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-[#006162] focus:outline-none focus:ring-2 focus:ring-[#006162] focus:ring-offset-1 mt-0.5"
+              title="Editar Datos del Proyecto"
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              <span className="hidden sm:inline">Editar</span>
+            </button>
+          </div>
 
           <div className="flex shrink-0 flex-col items-end gap-2">
             {bannerActions}
@@ -334,6 +346,15 @@ export default function MGALayout({
           )}
         </main>
       </div>
+      
+      {/* Modal de edición de datos */}
+      {isEditModalOpen && (
+        <CreateProjectModal 
+          open={isEditModalOpen} 
+          onClose={() => setIsEditModalOpen(false)} 
+          editProject={project}
+        />
+      )}
     </div>
   );
 }

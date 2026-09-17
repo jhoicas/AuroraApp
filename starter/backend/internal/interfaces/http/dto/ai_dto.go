@@ -34,3 +34,14 @@ type PaginatedAIMessagesResponse struct {
 	Total      int64               `json:"total"`
 	TotalPages int                 `json:"total_pages"`
 }
+
+// SuggestFieldRequest payload para el motor de sugerencias MGA.
+type SuggestFieldRequest struct {
+	FieldHelpKey   string                 `json:"field_help_key" validate:"required"`
+	ProjectContext map[string]interface{} `json:"project_context" validate:"required"`
+}
+
+// SuggestFieldResponse respuesta del motor de sugerencias MGA.
+type SuggestFieldResponse struct {
+	Suggestion string `json:"suggestion"`
+}

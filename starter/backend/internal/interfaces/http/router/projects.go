@@ -25,6 +25,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	projects.Get("/", ph.List)
 	projects.Get("/evaluations/summary", eh.ListTenantEvaluations)
 	projects.Get("/:id", ph.GetByID)
+	projects.Patch("/:id", ph.Patch)
 	projects.Patch("/:id/details", ph.UpdateDetails)
 	projects.Post("/:id/evaluate", eh.Evaluate)
 	projects.Get("/:id/evaluations", eh.ListEvaluations)

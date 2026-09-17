@@ -39,6 +39,8 @@ import {
   type UpdateMgaEffectPayload,
   type UpdateMgaParticipantPayload,
 } from '../lib/mgaApi';
+import debounce from 'lodash.debounce';
+import { useProjectStore } from './projectStore';
 
 export type CauseType = 'Causa directa' | 'Causa indirecta';
 export type EffectType = 'Efecto directo' | 'Efecto indirecto';
@@ -243,6 +245,14 @@ function patchFormulation(
   };
 }
 
+export const debouncedPatchProject = debounce(async (projectId: string, patchData: Record<string, any>) => {
+  try {
+    await useProjectStore.getState().patchProject(projectId, { mga_formulation_data: patchData });
+  } catch (err) {
+    console.error('Auto-save error', err);
+  }
+}, 1000);
+
 export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   byProjectId: {},
   isLoading: false,
@@ -254,16 +264,17 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   savePlanDesarrollo: async (projectId, data) => {
     set({ isSaving: true, error: null });
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, 'plan-desarrollo': true };
+        debouncedPatchProject(projectId, { planDesarrollo: data, completedSections: newCompleted });
         return {
           byProjectId: {
             ...state.byProjectId,
             [projectId]: { 
               ...formulation, 
               planDesarrollo: data,
-              completedSections: { ...formulation.completedSections, 'plan-desarrollo': true }
+              completedSections: newCompleted
             },
           },
           isSaving: false,
@@ -277,55 +288,61 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
 
   saveProblematica: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, problematica: true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, problematica: true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
   saveParticipantes: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, participantes: true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, participantes: true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
   savePoblacion: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, poblacion: true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, poblacion: true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
   saveObjetivos: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, objetivos: true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, objetivos: true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
   saveCadenaDeValor: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, 'cadena-valor': true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, 'cadena-valor': true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
   saveAlternativas: async (projectId) => {
     set({ isSaving: true, error: null });
-    await new Promise((resolve) => setTimeout(resolve, 500));
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: { ...formulation.completedSections, alternativas: true } } }, isSaving: false };
+      const newCompleted = { ...formulation.completedSections, alternativas: true };
+      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
 
@@ -336,6 +353,17 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       const data = await fetchMgaFormulation(projectId);
       const formulation = formulationFromApi(data);
+      
+      const project = useProjectStore.getState().projects.find(p => p.id === projectId);
+      if (project?.mga_formulation_data) {
+        if (project.mga_formulation_data.planDesarrollo) {
+          formulation.planDesarrollo = project.mga_formulation_data.planDesarrollo as PlanDesarrolloData;
+        }
+        if (project.mga_formulation_data.completedSections) {
+          formulation.completedSections = project.mga_formulation_data.completedSections;
+        }
+      }
+
       set((state) => ({
         byProjectId: { ...state.byProjectId, [projectId]: formulation },
         isLoading: false,

@@ -50,9 +50,21 @@ type ProjectResponse struct {
 	GeneralObjective   string  `json:"general_objective,omitempty"`
 	SituacionExistente string  `json:"situacion_existente,omitempty"`
 	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
-	Status             string  `json:"status"`
-	CreatedAt          string  `json:"created_at"`
-	UpdatedAt          string  `json:"updated_at"`
+	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
+	Status             string                     `json:"status"`
+	CreatedAt          string                     `json:"created_at"`
+	UpdatedAt          string                     `json:"updated_at"`
+}
+
+// PatchProjectRequest permite actualización parcial asíncrona de campos.
+type PatchProjectRequest struct {
+	Name               *string                 `json:"name,omitempty" validate:"omitempty,min=3,max=500"`
+	Description        *string                 `json:"description,omitempty" validate:"omitempty,max=5000"`
+	ProblemDescription *string                 `json:"problem_description,omitempty" validate:"omitempty,max=10000"`
+	GeneralObjective   *string                 `json:"general_objective,omitempty" validate:"omitempty,max=10000"`
+	SituacionExistente *string                 `json:"situacion_existente,omitempty" validate:"omitempty,max=10000"`
+	MagnitudProblema   *string                 `json:"magnitud_problema,omitempty" validate:"omitempty,max=10000"`
+	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 
 // PaginatedProjectsResponse listado con paginación.

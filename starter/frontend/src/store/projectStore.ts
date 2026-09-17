@@ -17,9 +17,10 @@ export type Project = {
   general_objective?: string;
   situacion_existente?: string;
   magnitud_problema?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
+	status: string;
+	mga_formulation_data?: Record<string, any> | null;
+	created_at: string;
+	updated_at: string;
 };
 
 export type BudgetItem = {
@@ -106,6 +107,7 @@ type ProjectState = {
   createProject: (data: CreateProjectPayload) => Promise<Project>;
   fetchProjectById: (id: string) => Promise<Project>;
   updateProjectDetails: (id: string, data: UpdateProjectDetailsPayload) => Promise<Project>;
+  patchProject: (id: string, patch: Partial<Project>) => Promise<Project>;
   /** Actualiza el borrador local sin persistir en API (Modo MGA). */
   patchCurrentProject: (partial: Partial<Project>) => void;
   fetchBudget: (projectId: string) => Promise<void>;
@@ -239,6 +241,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch (err) {
       const message = extractError(err, 'No se pudieron guardar los detalles');
       set({ isSaving: false, error: message });
+      throw new Error(message);
+    }
+  },
+
+  patchProject: async (id, patch) => {
+    try {
+      const { data } = await api.patch<Project>(`/projects/${id}`, patch);
+      set((state) => ({
+        currentProject: data,
+        projects: state.projects.map((p) => (p.id === id ? data : p)),
+      }));
+      return data;
+    } catch (err) {
+      const message = extractError(err, 'No se pudo guardar parcialmente el proyecto');
       throw new Error(message);
     }
   },

@@ -17,6 +17,7 @@ import {
   groupEffectsByParent,
   type ParentChildGroup,
 } from './mgaProblemTree';
+import debounce from 'lodash.debounce';
 
 type IdentificacionTabProps = {
   project: Project;
@@ -163,16 +164,25 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     magnitud_problema: magnitudProblema,
   });
 
-  const handleSaveIdentification = async () => {
-    setMessage(null);
-    setError(null);
-    try {
-      await updateProjectDetails(project.id, buildDetailsPayload());
-      setMessage('Identificación del problema guardada.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la identificación');
-    }
-  };
+  const handleSaveIdentification = useMemo(
+    () =>
+      debounce(async () => {
+        setMessage(null);
+        setError(null);
+        try {
+          await useProjectStore.getState().updateProjectDetails(project.id, {
+            problem_description: useProjectStore.getState().currentProject?.problem_description ?? '',
+            general_objective: useProjectStore.getState().currentProject?.general_objective ?? '',
+            situacion_existente: useProjectStore.getState().currentProject?.situacion_existente ?? '',
+            magnitud_problema: useProjectStore.getState().currentProject?.magnitud_problema ?? '',
+          });
+          setMessage('Identificación del problema guardada.');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'No se pudo guardar la identificación');
+        }
+      }, 1000),
+    [project.id],
+  );
 
   const handleSaveSection = async () => {
     try {
@@ -489,6 +499,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 id={`mga-problem-${project.id}`}
                 value={problemDescription}
                 onChange={(e) => patchCurrentProject({ problem_description: e.target.value })}
+                onBlur={() => void handleSaveIdentification()}
                 className="min-h-[150px] w-full flex-1 rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
                 placeholder="Describa el problema central…"
               />
@@ -512,17 +523,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 Causa directa
-              </button>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                disabled={isProjectSaving}
-                onClick={() => void handleSaveIdentification()}
-                className="rounded-lg bg-[#2980b9] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1f6391] disabled:opacity-60"
-              >
-                {isProjectSaving ? 'Guardando…' : 'Guardar identificación'}
               </button>
             </div>
           </div>

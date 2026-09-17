@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"encoding/json"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/datatypes"
 
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
@@ -252,6 +255,69 @@ func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
 	return c.JSON(toProjectResponse(*project))
 }
 
+func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
+	_, tenantID, err := httpmw.IdentityFromContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
+	}
+
+	var req dto.PatchProjectRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	project, err := loadOwnedProject(h.db, c.Context(), id, tenantID)
+	if err != nil {
+		if isNotFound(err) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load project"})
+	}
+
+	if req.Name != nil {
+		project.Name = *req.Name
+	}
+	if req.Description != nil {
+		project.Description = *req.Description
+	}
+	if req.ProblemDescription != nil {
+		project.ProblemDescription = *req.ProblemDescription
+	}
+	if req.GeneralObjective != nil {
+		project.GeneralObjective = *req.GeneralObjective
+	}
+	if req.SituacionExistente != nil {
+		project.SituacionExistente = *req.SituacionExistente
+	}
+	if req.MagnitudProblema != nil {
+		project.MagnitudProblema = *req.MagnitudProblema
+	}
+	if req.MgaFormulationData != nil {
+		// Convertir el mapa a JSON byte array para almacenarlo en datatypes.JSON
+		jsonBytes, err := json.Marshal(*req.MgaFormulationData)
+		if err == nil {
+			project.MgaFormulationData = datatypes.JSON(jsonBytes)
+		}
+	}
+
+	project.UpdatedAt = time.Now().UTC()
+
+	// Actualizar usando Save() o Updates() (ya que estamos actualizando campos dinámicamente)
+	if err := h.db.WithContext(c.Context()).Save(project).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to patch project"})
+	}
+
+	return c.JSON(toProjectResponse(*project))
+}
+
 func toProjectResponse(p models.Project) dto.ProjectResponse {
 	resp := dto.ProjectResponse{
 		ID:                 p.ID.String(),
@@ -271,6 +337,14 @@ func toProjectResponse(p models.Project) dto.ProjectResponse {
 		CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),
 	}
+	
+	if p.MgaFormulationData != nil && len(p.MgaFormulationData) > 0 {
+		var mgaData map[string]interface{}
+		if err := json.Unmarshal(p.MgaFormulationData, &mgaData); err == nil {
+			resp.MgaFormulationData = &mgaData
+		}
+	}
+	
 	if p.SectorID != nil {
 		s := p.SectorID.String()
 		resp.SectorID = &s

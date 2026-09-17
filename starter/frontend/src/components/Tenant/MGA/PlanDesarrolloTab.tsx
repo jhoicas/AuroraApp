@@ -66,7 +66,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     setOpenAccordion(openAccordion === id ? '' : id);
   };
 
-  const handleSave = async () => {
+  useEffect(() => {
     const data: PlanDesarrolloData = {
       pndLinks,
       departamental: { plan: depPlan, estrategia: depEstrategia, programa: depPrograma },
@@ -74,8 +74,14 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
       etnico: { tipoComunidad: etnicoComunidad, instrumentos: etnicoInstrumentos },
       otros: { plan: otrosPlan, estrategia: otrosEstrategia, programa: otrosPrograma }
     };
-    await savePlanDesarrollo(project.id, data);
-  };
+    savePlanDesarrollo(project.id, data);
+  }, [
+    pndLinks, depPlan, depEstrategia, depPrograma, 
+    munPlan, munEstrategia, munPrograma, 
+    etnicoComunidad, etnicoInstrumentos, 
+    otrosPlan, otrosEstrategia, otrosPrograma, 
+    project.id, savePlanDesarrollo
+  ]);
 
   const addPndLink = (pnd: CatalogPnd) => {
     setPndLinks([...pndLinks, { 
@@ -443,22 +449,6 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
           </AIAssistedField>
         </div>
       </MgaAccordion>
-
-      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
-        <button
-          type="button"
-          disabled={isSaving}
-          onClick={handleSave}
-          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save className="w-5 h-5" />
-          )}
-          Guardar Plan de Desarrollo
-        </button>
-      </div>
 
     </div>
   );

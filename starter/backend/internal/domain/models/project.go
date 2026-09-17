@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,7 @@ type Project struct {
 	GeneralObjective   string         `gorm:"column:general_objective;type:text" json:"general_objective,omitempty"`
 	SituacionExistente string         `gorm:"column:situacion_existente;type:text" json:"situacion_existente,omitempty"`
 	MagnitudProblema   string         `gorm:"column:magnitud_problema;type:text" json:"magnitud_problema,omitempty"`
+	MgaFormulationData datatypes.JSON `gorm:"column:mga_formulation_data;type:jsonb" json:"mga_formulation_data,omitempty"`
 	Status             string         `gorm:"column:status;type:varchar(50);not null;default:'DRAFT';index" json:"status"`
 	CreatedAt          time.Time      `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt          time.Time      `gorm:"column:updated_at;not null" json:"updated_at"`

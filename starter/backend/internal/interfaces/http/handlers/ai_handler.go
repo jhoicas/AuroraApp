@@ -204,3 +204,63 @@ func toAIMessageResponse(l models.AILog) dto.AIMessageResponse {
 		CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
+func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
+	userID, _, err := httpmw.IdentityFromContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var req dto.SuggestFieldRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+
+	req.FieldHelpKey = strings.TrimSpace(req.FieldHelpKey)
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// 1. Paso 1 (Proyectos Similares): Podríamos buscar en h.db proyectos con el mismo Sector, etc.
+	// Por ahora simularemos la extracción de contexto.
+	// En un escenario real, haríamos queries a la tabla `projects`.
+
+	// 2. Paso 2 (Contexto Acumulado): Ya viene en req.ProjectContext
+	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
+
+	// 3. Generación Adaptativa
+	prompt := fmt.Sprintf("Genera un borrador formal para el campo '%s' basado en este contexto acumulado y proyectos similares: %s", req.FieldHelpKey, ctxStr)
+	
+	// Simular la llamada al LLM
+	suggestion := h.callLLM(prompt)
+
+	// Loggear la petición en AI usage si es necesario
+	now := time.Now().UTC()
+	
+	usageLog := models.AiUsageLog{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Role:      constants.AIRoleUser,
+		Action:    "suggest_field",
+		Intent:    req.FieldHelpKey,
+		Model:     constants.AIMockModel,
+		CreatedAt: now,
+	}
+	h.db.WithContext(c.Context()).Create(&usageLog)
+
+	return c.JSON(dto.SuggestFieldResponse{
+		Suggestion: suggestion,
+	})
+}
+
+func (h *AIHandler) callLLM(prompt string) string {
+	// Aquí se integraría con el cliente de OpenAI / Anthropic / local LLM.
+	// Por ahora retornamos una simulación inteligente.
+	return "Borrador generado por Aurora Asistente. [Basado en el contexto: " + prompt[:min(50, len(prompt))] + "...]"
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

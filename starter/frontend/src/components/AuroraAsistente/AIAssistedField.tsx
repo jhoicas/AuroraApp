@@ -76,14 +76,29 @@ export default function AIAssistedField({
 
   const fieldKnowledge = fieldHelpKey ? getFieldKnowledge(fieldHelpKey) : null;
 
-  const handleSuggestText = () => {
-    if (!fieldKnowledge || !onAutoFill) return;
-    const ctx = projectContext ?? {};
-    const suggestion = fieldKnowledge.buildSuggestion(ctx);
-    onAutoFill(suggestion);
-    setOpen(false);
-    setToast('Texto insertado en el campo. Puedes editarlo si lo deseas.');
-    setTimeout(() => setToast(null), 4000);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+
+  const handleSuggestText = async () => {
+    if (!fieldHelpKey || !onAutoFill) return;
+    setIsLoadingSuggestion(true);
+    try {
+      const { api } = await import('../../lib/api');
+      const ctx = projectContext ?? {};
+      const { data } = await api.post<{ suggestion: string }>('/ai/mga/suggest-field', {
+        field_help_key: fieldHelpKey,
+        project_context: ctx,
+      });
+      onAutoFill(data.suggestion);
+      setOpen(false);
+      setToast('Texto sugerido insertado en el campo. Puedes editarlo si lo deseas.');
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      console.error('Error fetching suggestion:', err);
+      setToast('Error al generar sugerencia.');
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setIsLoadingSuggestion(false);
+    }
   };
 
   const handleAskFieldHelp = () => {
@@ -161,10 +176,15 @@ export default function AIAssistedField({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={handleSuggestText}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#006162] hover:bg-[#004f50] text-white text-xs font-semibold transition-colors"
+                    disabled={isLoadingSuggestion}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#006162] hover:bg-[#004f50] disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
                   >
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    Sugerir texto
+                    {isLoadingSuggestion ? (
+                      <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                    )}
+                    {isLoadingSuggestion ? 'Generando...' : 'Sugerir texto'}
                   </button>
                 )}
 

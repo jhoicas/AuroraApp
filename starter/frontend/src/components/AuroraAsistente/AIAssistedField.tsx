@@ -28,6 +28,10 @@ type AIAssistedFieldProps = {
   projectContext?: ProjectContext;
   /** Callback para insertar el valor sugerido directamente en el campo. */
   onAutoFill?: (value: string) => void;
+  /** Texto sugerido por la IA en fases previas (ej: ideación). */
+  prefilledSuggestion?: string;
+  /** Callback a ejecutar cuando se usa la sugerencia prellenada. */
+  onApplySuggestion?: () => void;
 };
 
 /**
@@ -47,6 +51,8 @@ export default function AIAssistedField({
   fieldHelpKey,
   projectContext,
   onAutoFill,
+  prefilledSuggestion,
+  onApplySuggestion,
 }: AIAssistedFieldProps) {
   const tipId = useId();
   const [open, setOpen] = useState(false);
@@ -165,6 +171,19 @@ export default function AIAssistedField({
             </div>
           )}
         </div>
+        
+        {prefilledSuggestion && (
+          <span className="ml-1 inline-flex items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+            ✨ Sugerencia: {prefilledSuggestion}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); onApplySuggestion?.(); }}
+              className="ml-1 font-semibold hover:underline text-[#006162]"
+            >
+              [Usar]
+            </button>
+          </span>
+        )}
       </div>
       {children}
       {validationMessage && (

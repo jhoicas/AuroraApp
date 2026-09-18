@@ -69,22 +69,6 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const [wizardAnswer1, setWizardAnswer1] = useState('');
   const [wizardAnswer2, setWizardAnswer2] = useState('');
 
-  const SuggestionBadge = ({ text, onApply }: { text?: string, onApply: () => void }) => {
-    if (!text) return null;
-    return (
-      <span className="ml-2 inline-flex items-center text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
-        ✨ Sugerencia: {text}
-        <button
-          type="button"
-          onClick={(e) => { e.preventDefault(); onApply(); }}
-          className="ml-1 font-semibold hover:underline"
-        >
-          (Aplicar)
-        </button>
-      </span>
-    );
-  };
-
   const handleNextWizard = async () => {
     if (wizardQuestion === 1) {
       if (!wizardAnswer1.trim()) return;
@@ -540,7 +524,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Proceso ── */}
           <AIAssistedField
-            label={<>Proceso <SuggestionBadge text={projectSuggestions?.proceso} onApply={() => projectSuggestions?.proceso && setProceso(projectSuggestions.proceso)} /></>}
+            label="Proceso"
+            prefilledSuggestion={projectSuggestions?.proceso}
+            onApplySuggestion={() => projectSuggestions?.proceso && setProceso(projectSuggestions.proceso)}
             htmlFor="project-proceso"
             required
             guidance="Verbo rector que define el tipo de intervención del proyecto según la MGA (ej: Construcción, Adquisición, Dotación)."
@@ -558,7 +544,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Objeto ── */}
           <AIAssistedField
-            label={<>Objeto <SuggestionBadge text={projectSuggestions?.objeto} onApply={() => projectSuggestions?.objeto && setObjeto(projectSuggestions.objeto)} /></>}
+            label="Objeto"
+            prefilledSuggestion={projectSuggestions?.objeto}
+            onApplySuggestion={() => projectSuggestions?.objeto && setObjeto(projectSuggestions.objeto)}
             htmlFor="project-objeto"
             required
             guidance="Describa brevemente qué se entrega (bien o servicio público). Máximo 1000 caracteres. Este texto es parte del nombre oficial del proyecto."
@@ -717,7 +705,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Sector (filtrado por tipología) ── */}
           <AIAssistedField
-            label={<>Sector <SuggestionBadge text={projectSuggestions?.sector_id} onApply={() => projectSuggestions?.sector_id && setSectorId(projectSuggestions.sector_id)} /></>}
+            label="Sector"
+            prefilledSuggestion={projectSuggestions?.sector_id}
+            onApplySuggestion={() => projectSuggestions?.sector_id && setSectorId(projectSuggestions.sector_id)}
             htmlFor="project-sector"
             required
             guidance="El sector define la clasificación programática DNP. Cuando la tipología es 'A - PIIP', solo se muestran los sectores con ámbito territorial."
@@ -739,7 +729,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
-            label={<>Producto principal del proyecto <SuggestionBadge text={projectSuggestions?.producto_principal} onApply={() => projectSuggestions?.producto_principal && setProductoPrincipal(projectSuggestions.producto_principal)} /></>}
+            label="Producto principal del proyecto"
+            prefilledSuggestion={projectSuggestions?.producto_principal}
+            onApplySuggestion={() => projectSuggestions?.producto_principal && setProductoPrincipal(projectSuggestions.producto_principal)}
             htmlFor="project-producto-principal"
             required
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."

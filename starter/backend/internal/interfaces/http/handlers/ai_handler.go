@@ -272,12 +272,18 @@ func (h *AIHandler) SuggestProjectSetup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// 1. Aquí se enviaría el req.PreCreationContext a la IA.
-	// 2. Por ahora retornamos sugerencias simuladas (Mocks) que coincidan con la BD local.
-	// En un escenario real, buscaríamos `proceso_id`, `sector_id`, etc.
+	// 1. Inyecta explícitamente el historial/respuestas del usuario en el prompt del LLM.
+	ctxStr := strings.Join(req.PreCreationContext, "\n")
+	prompt := fmt.Sprintf("Genera los valores para Proceso, Objeto y Localización basándote EXCLUSIVAMENTE en este contexto del usuario:\n%s\n\nDevuelve ÚNICAMENTE el texto exacto que el cliente debe ingresar en el formulario, sin comillas, sin saludos y sin texto adicional.", ctxStr)
+
+	// Simular la llamada al LLM para obtener el texto sugerido
+	suggestion := h.callLLM(prompt)
+
+	// 2. Por ahora retornamos sugerencias simuladas (Mocks) que coincidan con la BD local, 
+	// pero usamos el resultado del LLM en el objeto para simular la funcionalidad.
 	suggestions := dto.ProjectSetupSuggestions{
 		Proceso:           "1", // Mock: 'Construcción'
-		Objeto:            "Construcción y mejoramiento de infraestructura comunitaria",
+		Objeto:            suggestion,
 		Localizaciones:    "[]", // Mock JSON
 		SectorId:          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", // Reemplazar con ID válido si es necesario
 		ProductoPrincipal: "1234",

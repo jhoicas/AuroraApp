@@ -258,6 +258,48 @@ func (h *AIHandler) callLLM(prompt string) string {
 	return "Programa de fortalecimiento y atención en el sector DEPORTE Y RECREACIÓN para el territorio priorizado."
 }
 
+func (h *AIHandler) SuggestProjectSetup(c *fiber.Ctx) error {
+	userID, _, err := httpmw.IdentityFromContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var req dto.SuggestProjectSetupRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// 1. Aquí se enviaría el req.PreCreationContext a la IA.
+	// 2. Por ahora retornamos sugerencias simuladas (Mocks) que coincidan con la BD local.
+	// En un escenario real, buscaríamos `proceso_id`, `sector_id`, etc.
+	suggestions := dto.ProjectSetupSuggestions{
+		Proceso:           "1", // Mock: 'Construcción'
+		Objeto:            "Construcción y mejoramiento de infraestructura comunitaria",
+		Localizaciones:    "[]", // Mock JSON
+		SectorId:          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", // Reemplazar con ID válido si es necesario
+		ProductoPrincipal: "1234",
+	}
+
+	now := time.Now().UTC()
+	usageLog := models.AiUsageLog{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Role:      constants.AIRoleUser,
+		Action:    "suggest_project_setup",
+		Intent:    "project_ideation",
+		Model:     constants.AIMockModel,
+		CreatedAt: now,
+	}
+	h.db.WithContext(c.Context()).Create(&usageLog)
+
+	return c.JSON(dto.SuggestProjectSetupResponse{
+		Suggestions: suggestions,
+	})
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

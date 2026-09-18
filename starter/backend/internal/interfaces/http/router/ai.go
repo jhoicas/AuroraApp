@@ -26,6 +26,7 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	ai.Post("/chat", httpmw.RateLimitPerUser(10), h.Chat)
 	ai.Get("/projects/:projectId/history", h.History)
 	ai.Post("/mga/suggest-field", httpmw.RateLimitPerUser(20), h.SuggestField)
+	ai.Post("/copilot/suggest-project-setup", httpmw.RateLimitPerUser(10), h.SuggestProjectSetup)
 
 	// Aurora Copilot — autenticado (SUPER_ADMIN sin tenant)
 	auroraGroup := app.Group("/api/v1/ai/aurora",

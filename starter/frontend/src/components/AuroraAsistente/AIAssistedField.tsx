@@ -7,7 +7,7 @@ import { validateInfinitiveObjective } from '../../lib/mgaObjectiveValidation';
 import { getFieldKnowledge, type ProjectContext } from '../../data/mgaFieldsKnowledge';
 
 type AIAssistedFieldProps = {
-  label: string;
+  label: ReactNode;
   htmlFor?: string;
   required?: boolean;
   /** Guía metodológica breve mostrada en el popover. */

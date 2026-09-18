@@ -5,6 +5,7 @@ import SearchableCombobox, { type ComboboxOption } from '../Catalog/SearchableCo
 import ProductDetailModal from './ProductDetailModal';
 
 import { useProjectStore } from '../../store/projectStore';
+import { useAuroraCopilotStore } from '../../store/auroraCopilotStore';
 import {
   useLocationStore,
   generateProjectName,
@@ -53,6 +54,49 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
   const isLoading = useProjectStore((s) => s.isLoading);
 
+  const {
+    addPreCreationContext,
+    clearPreCreationContext,
+    suggestProjectSetup,
+    projectSuggestions,
+    isTyping,
+    preCreationContext,
+    clearChat
+  } = useAuroraCopilotStore();
+
+  const [step, setStep] = useState<'wizard' | 'form'>(editProject ? 'form' : 'wizard');
+  const [wizardQuestion, setWizardQuestion] = useState(1);
+  const [wizardAnswer1, setWizardAnswer1] = useState('');
+  const [wizardAnswer2, setWizardAnswer2] = useState('');
+
+  const SuggestionBadge = ({ text, onApply }: { text?: string, onApply: () => void }) => {
+    if (!text) return null;
+    return (
+      <span className="ml-2 inline-flex items-center text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+        ✨ Sugerencia: {text}
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onApply(); }}
+          className="ml-1 font-semibold hover:underline"
+        >
+          (Aplicar)
+        </button>
+      </span>
+    );
+  };
+
+  const handleNextWizard = async () => {
+    if (wizardQuestion === 1) {
+      if (!wizardAnswer1.trim()) return;
+      addPreCreationContext(`Problema o necesidad: ${wizardAnswer1}`);
+      setWizardQuestion(2);
+    } else if (wizardQuestion === 2) {
+      if (!wizardAnswer2.trim()) return;
+      addPreCreationContext(`Lugar y tipo de solución: ${wizardAnswer2}`);
+      await suggestProjectSetup();
+      setStep('form');
+    }
+  };
 
   // Stores externos
   const regions = useLocationStore((s) => s.regions);
@@ -116,8 +160,25 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         setSectorId('');
         setProductoPrincipal('');
       }
+      
+      if (!editProject) {
+        setStep('wizard');
+        setWizardQuestion(1);
+        setWizardAnswer1('');
+        setWizardAnswer2('');
+        clearPreCreationContext();
+      } else {
+        setStep('form');
+      }
     }
   }, [editProject, open]);
+
+  useEffect(() => {
+    if (projectSuggestions && !editProject) {
+      setTipoInversion('Territorial');
+      setTipologiaProyecto('A - PIIP - Bienes y Servicios');
+    }
+  }, [projectSuggestions, editProject]);
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   // ─── Sectores filtrados por tipología ──────────────────
@@ -370,8 +431,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         });
         
         // Limpiamos el chat para que el contexto copilot se refresque
-        const { useAuroraCopilotStore } = await import('../../store/auroraCopilotStore');
-        useAuroraCopilotStore.getState().clearChat();
+        clearChat();
         
         handleClose();
       } else {
@@ -386,6 +446,11 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           localizaciones: localizaciones,
           tipo_inversion: tipoInversion,
           tipologia: tipologiaProyecto,
+          mga_formulation_data: {
+            identificacion: {
+              contexto_inicial: preCreationContext
+            }
+          }
         });
         handleClose();
         navigate(`/tenant/projects/${project.id}/plan-desarrollo`);
@@ -407,7 +472,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 sticky top-0 bg-white z-10">
           <h3 id="create-project-title" className="text-lg font-semibold text-gray-800">
-            {editProject ? 'Editar datos del proyecto MGA' : 'Nuevo proyecto MGA'}
+            {editProject ? 'Editar datos del proyecto MGA' : step === 'wizard' ? 'Aurora: Asistente de ideación' : 'Nuevo proyecto MGA'}
           </h3>
           <button
             type="button"
@@ -419,6 +484,38 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           </button>
         </div>
 
+        {step === 'wizard' ? (
+          <div className="px-6 py-8 space-y-6 flex flex-col items-center">
+            <div className="bg-[#e0f2f1] text-[#004d40] p-4 rounded-lg w-full max-w-lg shadow-sm border border-[#b2dfdb]">
+              <div className="flex items-center gap-2 mb-2 font-semibold">
+                <span className="material-symbols-outlined">auto_awesome</span>
+                <span>Aurora Copilot</span>
+              </div>
+              <p className="text-sm">
+                {wizardQuestion === 1
+                  ? '¡Hola! Para empezar a estructurar tu proyecto MGA, ¿cuál es el problema principal o necesidad que quieres resolver?'
+                  : 'Perfecto. Ahora, ¿en qué lugar (municipio/departamento) se realizará y qué tipo de solución tienes en mente?'}
+              </p>
+            </div>
+            
+            <textarea
+              className="w-full max-w-lg rounded-md border-gray-300 shadow-sm focus:border-[#006162] focus:ring-[#006162] sm:text-sm p-3 min-h-[100px]"
+              placeholder="Escribe tu respuesta aquí..."
+              value={wizardQuestion === 1 ? wizardAnswer1 : wizardAnswer2}
+              onChange={(e) => wizardQuestion === 1 ? setWizardAnswer1(e.target.value) : setWizardAnswer2(e.target.value)}
+              disabled={isTyping}
+            />
+
+            <button
+              type="button"
+              onClick={handleNextWizard}
+              disabled={isTyping || (wizardQuestion === 1 ? !wizardAnswer1.trim() : !wizardAnswer2.trim())}
+              className="inline-flex justify-center rounded-md border border-transparent bg-[#006162] py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-[#004d40] focus:outline-none focus:ring-2 focus:ring-[#006162] focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isTyping ? 'Generando sugerencias...' : wizardQuestion === 1 ? 'Continuar' : 'Finalizar y estructurar'}
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* ── Nombre auto-generado (readonly) ── */}
           <AIAssistedField
@@ -443,7 +540,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Proceso ── */}
           <AIAssistedField
-            label="Proceso"
+            label={<>Proceso <SuggestionBadge text={projectSuggestions?.proceso} onApply={() => projectSuggestions?.proceso && setProceso(projectSuggestions.proceso)} /></>}
             htmlFor="project-proceso"
             required
             guidance="Verbo rector que define el tipo de intervención del proyecto según la MGA (ej: Construcción, Adquisición, Dotación)."
@@ -461,7 +558,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Objeto ── */}
           <AIAssistedField
-            label="Objeto"
+            label={<>Objeto <SuggestionBadge text={projectSuggestions?.objeto} onApply={() => projectSuggestions?.objeto && setObjeto(projectSuggestions.objeto)} /></>}
             htmlFor="project-objeto"
             required
             guidance="Describa brevemente qué se entrega (bien o servicio público). Máximo 1000 caracteres. Este texto es parte del nombre oficial del proyecto."
@@ -581,7 +678,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
               id="project-tipo-inversion"
               value={tipoInversion}
               onChange={(e) => setTipoInversion(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              disabled={!!projectSuggestions && !editProject}
+              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-60"
             >
               {TIPOS_INVERSION.map((t) => (
                 <option key={t.value} value={t.value} disabled={t.disabled}>
@@ -605,7 +703,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
               required
               value={tipologiaProyecto}
               onChange={(e) => handleTipologiaChange(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              disabled={!!projectSuggestions && !editProject}
+              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-60"
             >
               <option value="">Selecciona una tipología</option>
               {TIPOLOGIAS_PROYECTO.map((t) => (
@@ -618,7 +717,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Sector (filtrado por tipología) ── */}
           <AIAssistedField
-            label="Sector"
+            label={<>Sector <SuggestionBadge text={projectSuggestions?.sector_id} onApply={() => projectSuggestions?.sector_id && setSectorId(projectSuggestions.sector_id)} /></>}
             htmlFor="project-sector"
             required
             guidance="El sector define la clasificación programática DNP. Cuando la tipología es 'A - PIIP', solo se muestran los sectores con ámbito territorial."
@@ -640,7 +739,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
-            label="Producto principal del proyecto"
+            label={<>Producto principal del proyecto <SuggestionBadge text={projectSuggestions?.producto_principal} onApply={() => projectSuggestions?.producto_principal && setProductoPrincipal(projectSuggestions.producto_principal)} /></>}
             htmlFor="project-producto-principal"
             required
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."
@@ -712,14 +811,17 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
             </button>
           </div>
         </form>
+      )}
       </div>
 
-      <ProductDetailModal
-        open={isProductModalOpen}
-        onClose={() => setIsProductModalOpen(false)}
-        product={selectedProductData}
-        onSelect={setProductoPrincipal}
-      />
+      {isProductModalOpen && sectorId && selectedSector && (
+        <ProductDetailModal
+          open={isProductModalOpen}
+          onClose={() => setIsProductModalOpen(false)}
+          product={selectedProductData}
+          onSelect={setProductoPrincipal}
+        />
+      )}
     </div>
   );
 }

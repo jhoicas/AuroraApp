@@ -45,3 +45,22 @@ type SuggestFieldRequest struct {
 type SuggestFieldResponse struct {
 	Suggestion string `json:"suggestion"`
 }
+
+// SuggestProjectSetupRequest payload para el wizard pre-creación de proyecto.
+type SuggestProjectSetupRequest struct {
+	PreCreationContext []string `json:"pre_creation_context" validate:"required"`
+}
+
+// ProjectSetupSuggestions sugerencias devueltas por el wizard
+type ProjectSetupSuggestions struct {
+	Proceso           string `json:"proceso"`
+	Objeto            string `json:"objeto"`
+	Localizaciones    string `json:"localizaciones"`
+	SectorId          string `json:"sector_id"`
+	ProductoPrincipal string `json:"producto_principal"`
+}
+
+// SuggestProjectSetupResponse respuesta del wizard pre-creación
+type SuggestProjectSetupResponse struct {
+	Suggestions ProjectSetupSuggestions `json:"suggestions"`
+}

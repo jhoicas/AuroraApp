@@ -67,6 +67,14 @@ export type MgaProjectContext = {
   magnitud_problema?: string;
 };
 
+export type ProjectSuggestions = {
+  proceso: string;
+  objeto: string;
+  localizaciones: string;
+  sector_id: string;
+  producto_principal: string;
+};
+
 /**
  * Registro global de callbacks de auto-fill por fieldId.
  * Los componentes se registran al montar y se limpian al desmontar.
@@ -99,6 +107,11 @@ type AuroraCopilotState = {
   abortController: AbortController | null;
   /** Texto pendiente de enviar (grafo, tooltips, FloatingAssistant). */
   draftInput: string;
+  preCreationContext: string[];
+  projectSuggestions: ProjectSuggestions | null;
+  addPreCreationContext: (text: string) => void;
+  clearPreCreationContext: () => void;
+  suggestProjectSetup: () => Promise<void>;
   toggleOpen: () => void;
   open: () => void;
   close: () => void;
@@ -156,10 +169,32 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   interviewCreationContext: null,
   abortController: null,
   draftInput: '',
+  preCreationContext: [],
+  projectSuggestions: null,
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen, error: null })),
   open: () => set({ isOpen: true, error: null }),
   close: () => set({ isOpen: false }),
+
+  addPreCreationContext: (text) => set((s) => ({ preCreationContext: [...s.preCreationContext, text] })),
+  clearPreCreationContext: () => set({ preCreationContext: [], projectSuggestions: null }),
+
+  suggestProjectSetup: async () => {
+    const { preCreationContext } = get();
+    if (!preCreationContext.length) return;
+    
+    set({ isTyping: true, error: null });
+    try {
+      const res = await api.post<{ suggestions: ProjectSuggestions }>('/api/v1/copilot/suggest-project-setup', {
+        pre_creation_context: preCreationContext,
+      });
+      set({ projectSuggestions: res.data.suggestions });
+    } catch (err) {
+      set({ error: extractError(err, 'Error al generar sugerencias para el proyecto.') });
+    } finally {
+      set({ isTyping: false });
+    }
+  },
 
   clearError: () => set({ error: null }),
 

@@ -141,11 +141,11 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
         const identificacion = rawMga?.identificacion || rawMga?.PlanDesarrollo || {};
 
-        setProceso(identificacion.proceso_id ? String(identificacion.proceso_id) : identificacion.proceso ? String(identificacion.proceso) : editProject.proceso_id ? String(editProject.proceso_id) : (editProject as any).proceso ? String((editProject as any).proceso) : '');
-        setObjeto(identificacion.objeto || editProject.objeto || '');
+        setProceso(identificacion.proceso || (editProject as any).proceso || (editProject as any).proceso_id || '');
+        setObjeto(identificacion.objeto || (editProject as any).objeto || '');
         
-        const rawLocations = editProject.locations || (editProject as any).localizaciones || identificacion.localizaciones || [];
-        setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
+        const rawLocations = (editProject as any).locations || (editProject as any).localizaciones || identificacion.localizaciones || [];
+        setLocalizaciones(Array.isArray(rawLocations) ? rawLocations : (editProject as any).locations || []);
         
         setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
         setTipologiaProyecto(rawMga?.tipologia ?? '');
@@ -451,7 +451,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
               contexto_inicial: preCreationContext
             }
           }
-        });
+        } as any);
         handleClose();
         navigate(`/tenant/projects/${project.id}/plan-desarrollo`);
       }

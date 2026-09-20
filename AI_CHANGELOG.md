@@ -1,3 +1,9 @@
+## 2026-09-20: Ideación Dinámica y Sugerencias RAG
+- **Backend**: Se implementó IdeationHandler con /api/v1/ai/ideation/chat (entrevista de hasta 4 turnos) y /api/v1/ai/ideation/suggest.
+- **Backend**: Se actualizó CreateProjectRequest para aceptar MgaFormulationData y guardar el contexto inicial en JSONB.
+- **Frontend**: Se migró CreateProjectModal de un asistente estático a una interfaz de chat interactiva usando ideationMessages.
+- **Frontend**: Se actualizó uroraCopilotStore.ts con estado de ideación interactivo y transiciones de estado.
+
 # AI_CHANGELOG
 
 Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravity.

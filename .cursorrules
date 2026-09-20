@@ -32,3 +32,9 @@
 - No desactives RLS para solucionar errores de autorizacion.
 - No mezcles reglas de negocio con handlers, componentes de presentacion o clientes HTTP.
 - No agregues dependencias sin justificar su necesidad y actualizar el lockfile correspondiente.
+
+## Anti-Pereza y Ejecución de Alto Nivel (Completitud Obligatoria)
+- **Cero Placeholders:** Tienes estrictamente prohibido omitir código. NUNCA uses comentarios como `// ... resto del código aquí` o `// implementar lógica`. Debes escribir las funciones completas de principio a fin.
+- **Micro-Entregas (Divide y Vencerás):** Si la tarea requiere modificar cientos de líneas o muchos archivos, NO intentes hacerlo de un solo golpe. Presenta un plan de acción numerado (Paso 1, Paso 2...) y pídeme confirmación para empezar a codificar solo el Paso 1.
+- **Proactividad y Autocorrección:** Antes de entregar el código, haz una pausa mental para revisarlo contra `GO_STANDARDS.md` y `REACT_SUPABASE_STANDARDS.md`. Si ves una forma de hacerlo más seguro, más eficiente o más limpio de lo que te pedí inicialmente, implementa esa mejora proactivamente y explícame por qué lo hiciste.
+- **Solo el Diff (Economía de Tokens):** Cuando modifiques un archivo existente, no me imprimas todo el archivo de nuevo. Muéstrame exactamente dónde va el cambio (usando un bloque de código con el antes y el después) para que rinda el contexto.

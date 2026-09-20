@@ -61,6 +61,15 @@ type AuroraChatResponse = {
   assistant_message_id: string;
 };
 
+type IdeationChatResponse = {
+  reply: string;
+  is_complete: boolean;
+  session_id: string;
+  model: string;
+  user_message_id: string;
+  assistant_message_id: string;
+};
+
 export type MgaProjectContext = {
   problem_description?: string;
   situacion_existente?: string;
@@ -109,9 +118,15 @@ type AuroraCopilotState = {
   draftInput: string;
   preCreationContext: string[];
   projectSuggestions: ProjectSuggestions | null;
+  ideationMessages: CopilotMessage[];
+  ideationSessionId: string | null;
+  ideationComplete: boolean;
+  ideationLoading: boolean;
   addPreCreationContext: (text: string) => void;
   clearPreCreationContext: () => void;
   suggestProjectSetup: () => Promise<void>;
+  sendIdeationMessage: (message: string) => Promise<void>;
+  resetIdeation: () => void;
   toggleOpen: () => void;
   open: () => void;
   close: () => void;
@@ -171,6 +186,10 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   draftInput: '',
   preCreationContext: [],
   projectSuggestions: null,
+  ideationMessages: [],
+  ideationSessionId: null,
+  ideationComplete: false,
+  ideationLoading: false,
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen, error: null })),
   open: () => set({ isOpen: true, error: null }),
@@ -179,13 +198,22 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   addPreCreationContext: (text) => set((s) => ({ preCreationContext: [...s.preCreationContext, text] })),
   clearPreCreationContext: () => set({ preCreationContext: [], projectSuggestions: null }),
 
+  resetIdeation: () => set({
+    ideationMessages: [],
+    ideationSessionId: null,
+    ideationComplete: false,
+    ideationLoading: false,
+    projectSuggestions: null,
+    preCreationContext: [],
+  }),
+
   suggestProjectSetup: async () => {
     const { preCreationContext } = get();
     if (!preCreationContext.length) return;
     
     set({ isTyping: true, error: null });
     try {
-      const res = await api.post<{ suggestions: ProjectSuggestions }>('/api/v1/copilot/suggest-project-setup', {
+      const res = await api.post<{ suggestions: ProjectSuggestions }>('/api/v1/ai/ideation/suggest', {
         pre_creation_context: preCreationContext,
       });
       set({ projectSuggestions: res.data.suggestions });
@@ -193,6 +221,61 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       set({ error: extractError(err, 'Error al generar sugerencias para el proyecto.') });
     } finally {
       set({ isTyping: false });
+    }
+  },
+
+  sendIdeationMessage: async (message) => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    const userMsg: CopilotMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+    };
+
+    set((s) => ({
+      ideationMessages: [...s.ideationMessages, userMsg],
+      ideationLoading: true,
+      error: null,
+    }));
+
+    try {
+      const sessionId = get().ideationSessionId;
+      const { data } = await api.post<IdeationChatResponse>('/api/v1/ai/ideation/chat', {
+        message: trimmed,
+        ...(sessionId ? { session_id: sessionId } : {}),
+      });
+
+      const assistantMsg: CopilotMessage = {
+        id: data.assistant_message_id || `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.reply,
+      };
+
+      const userTurns = get().ideationMessages.filter((m) => m.role === 'user').length;
+      const isForcedComplete = userTurns >= 4;
+      const complete = data.is_complete || isForcedComplete;
+
+      set((s) => ({
+        ideationMessages: [...s.ideationMessages, assistantMsg],
+        ideationSessionId: data.session_id || sessionId,
+        ideationComplete: complete,
+        ideationLoading: false,
+      }));
+
+      if (complete) {
+        const contextLines = get().ideationMessages.map(
+          (m) => `${m.role === 'user' ? 'Usuario' : 'Aurora'}: ${m.content}`
+        );
+        set({ preCreationContext: contextLines });
+        await get().suggestProjectSetup();
+      }
+    } catch (err) {
+      set({
+        ideationLoading: false,
+        error: extractError(err, 'Error en el chat de ideación.'),
+      });
     }
   },
 

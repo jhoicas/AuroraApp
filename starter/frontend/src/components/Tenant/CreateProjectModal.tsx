@@ -55,32 +55,31 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const isLoading = useProjectStore((s) => s.isLoading);
 
   const {
-    addPreCreationContext,
-    clearPreCreationContext,
-    suggestProjectSetup,
     projectSuggestions,
-    isTyping,
     preCreationContext,
-    clearChat
+    clearChat,
+    ideationMessages,
+    ideationComplete,
+    ideationLoading,
+    sendIdeationMessage,
+    resetIdeation,
   } = useAuroraCopilotStore();
 
   const [step, setStep] = useState<'wizard' | 'form'>(editProject ? 'form' : 'wizard');
-  const [wizardQuestion, setWizardQuestion] = useState(1);
-  const [wizardAnswer1, setWizardAnswer1] = useState('');
-  const [wizardAnswer2, setWizardAnswer2] = useState('');
+  const [ideationInput, setIdeationInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const handleNextWizard = async () => {
-    if (wizardQuestion === 1) {
-      if (!wizardAnswer1.trim()) return;
-      addPreCreationContext(`Problema o necesidad: ${wizardAnswer1}`);
-      setWizardQuestion(2);
-    } else if (wizardQuestion === 2) {
-      if (!wizardAnswer2.trim()) return;
-      addPreCreationContext(`Lugar y tipo de solución: ${wizardAnswer2}`);
-      await suggestProjectSetup();
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [ideationMessages]);
+
+  useEffect(() => {
+    if (ideationComplete && step === 'wizard') {
       setStep('form');
     }
-  };
+  }, [ideationComplete, step]);
 
   // Stores externos
   const regions = useLocationStore((s) => s.regions);
@@ -147,10 +146,12 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       
       if (!editProject) {
         setStep('wizard');
-        setWizardQuestion(1);
-        setWizardAnswer1('');
-        setWizardAnswer2('');
-        clearPreCreationContext();
+        resetIdeation();
+        setIdeationInput('');
+        // Enviar un mensaje inicial automático para que el LLM arranque la entrevista
+        setTimeout(() => {
+          void sendIdeationMessage('Hola Aurora, quiero estructurar un nuevo proyecto de inversión pública.');
+        }, 100);
       } else {
         setStep('form');
       }
@@ -469,35 +470,69 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         </div>
 
         {step === 'wizard' ? (
-          <div className="px-6 py-8 space-y-6 flex flex-col items-center">
-            <div className="bg-[#e0f2f1] text-[#004d40] p-4 rounded-lg w-full max-w-lg shadow-sm border border-[#b2dfdb]">
-              <div className="flex items-center gap-2 mb-2 font-semibold">
-                <span className="material-symbols-outlined">auto_awesome</span>
-                <span>Aurora Copilot</span>
-              </div>
-              <p className="text-sm">
-                {wizardQuestion === 1
-                  ? '¡Hola! Para empezar a estructurar tu proyecto MGA, ¿cuál es el problema principal o necesidad que quieres resolver?'
-                  : 'Perfecto. Ahora, ¿en qué lugar (municipio/departamento) se realizará y qué tipo de solución tienes en mente?'}
-              </p>
+          <div className="px-6 py-6 flex flex-col h-[60vh]">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
+              {ideationMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                      msg.role === 'user'
+                        ? 'bg-[#006162] text-white rounded-br-none'
+                        : 'bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
+                    }`}
+                  >
+                    {msg.role === 'assistant' && (
+                      <div className="flex items-center gap-1 mb-1 opacity-70 text-xs font-semibold">
+                        <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                        Aurora
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              {ideationLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-100 text-slate-500 rounded-2xl rounded-bl-none px-4 py-3 text-sm border border-slate-200 flex items-center gap-2">
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    Aurora está escribiendo...
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
             </div>
             
-            <textarea
-              className="w-full max-w-lg rounded-md border-gray-300 shadow-sm focus:border-[#006162] focus:ring-[#006162] sm:text-sm p-3 min-h-[100px]"
-              placeholder="Escribe tu respuesta aquí..."
-              value={wizardQuestion === 1 ? wizardAnswer1 : wizardAnswer2}
-              onChange={(e) => wizardQuestion === 1 ? setWizardAnswer1(e.target.value) : setWizardAnswer2(e.target.value)}
-              disabled={isTyping}
-            />
-
-            <button
-              type="button"
-              onClick={handleNextWizard}
-              disabled={isTyping || (wizardQuestion === 1 ? !wizardAnswer1.trim() : !wizardAnswer2.trim())}
-              className="inline-flex justify-center rounded-md border border-transparent bg-[#006162] py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-[#004d40] focus:outline-none focus:ring-2 focus:ring-[#006162] focus:ring-offset-2 disabled:opacity-50"
-            >
-              {isTyping ? 'Generando sugerencias...' : wizardQuestion === 1 ? 'Continuar' : 'Finalizar y estructurar'}
-            </button>
+            <div className="mt-4 pt-4 border-t border-gray-100 relative flex items-center">
+              <input
+                type="text"
+                className="w-full rounded-full border-gray-300 shadow-sm focus:border-[#006162] focus:ring-[#006162] text-sm py-3 pl-4 pr-12"
+                placeholder="Escribe tu respuesta..."
+                value={ideationInput}
+                onChange={(e) => setIdeationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !ideationLoading && ideationInput.trim()) {
+                    e.preventDefault();
+                    void sendIdeationMessage(ideationInput);
+                    setIdeationInput('');
+                  }
+                }}
+                disabled={ideationLoading}
+              />
+              <button
+                type="button"
+                disabled={ideationLoading || !ideationInput.trim()}
+                onClick={() => {
+                  void sendIdeationMessage(ideationInput);
+                  setIdeationInput('');
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#006162] text-white disabled:opacity-50 disabled:bg-gray-400 hover:bg-[#004d40] transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">send</span>
+              </button>
+            </div>
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">

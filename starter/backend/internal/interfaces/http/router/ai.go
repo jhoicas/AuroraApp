@@ -17,6 +17,7 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	kh := handlers.NewAIKnowledgeHandler(db, cfg, telemetry)
 	th := handlers.NewAITelemetryHandler(telemetry)
 	aurora := handlers.NewAuroraChatHandler(db, cfg, telemetry)
+	ideation := handlers.NewIdeationHandler(db, cfg, telemetry)
 
 	ai := app.Group("/api/v1/ai",
 		httpmw.RequireAuth(cfg.JWTSecret),
@@ -27,6 +28,13 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	ai.Get("/projects/:projectId/history", h.History)
 	ai.Post("/mga/suggest-field", httpmw.RateLimitPerUser(20), h.SuggestField)
 	ai.Post("/copilot/suggest-project-setup", httpmw.RateLimitPerUser(10), h.SuggestProjectSetup)
+
+	ideationGroup := app.Group("/api/v1/ai/ideation",
+		httpmw.RequireAuth(cfg.JWTSecret),
+		httpmw.RequireTenant(),
+	)
+	ideationGroup.Post("/chat", httpmw.RateLimitPerUser(20), ideation.Chat)
+	ideationGroup.Post("/suggest", httpmw.RateLimitPerUser(10), ideation.SuggestProjectSetup)
 
 	// Aurora Copilot — autenticado (SUPER_ADMIN sin tenant)
 	auroraGroup := app.Group("/api/v1/ai/aurora",

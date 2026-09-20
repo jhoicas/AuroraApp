@@ -129,6 +129,13 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		UpdatedAt:   now,
 	}
 
+	if req.MgaFormulationData != nil {
+		if b, err := json.Marshal(*req.MgaFormulationData); err == nil {
+			project.MgaFormulationData = datatypes.JSON(b)
+		}
+	}
+
+
 	if err := h.db.WithContext(c.Context()).Create(&project).Error; err != nil {
 		if isUniqueViolation(err) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{

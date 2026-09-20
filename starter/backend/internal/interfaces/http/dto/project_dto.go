@@ -17,6 +17,7 @@ type CreateProjectRequest struct {
 	Localizaciones []LocationSelectionDTO `json:"localizaciones" binding:"required,min=1" validate:"required,min=1,dive"`
 	TipoInversion  string                 `json:"tipo_inversion" binding:"required" validate:"required"`
 	Tipologia      string                 `json:"tipologia" binding:"required" validate:"required"`
+	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 
 // LocationSelectionDTO representa una selección de localización en la creación del proyecto.

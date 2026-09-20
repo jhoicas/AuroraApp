@@ -199,8 +199,17 @@ func (h *IdeationHandler) SuggestProjectSetup(c *fiber.Ctx) error {
 	// ── RAG: vector search global ─────────────────────────────────
 	ragContext := h.buildIdeationRAG(c, ctxStr)
 
+	// ── Serializar datos actuales del formulario ──────────────────
+	cfdStr := ""
+	if req.CurrentFormData != nil && len(req.CurrentFormData) > 0 {
+		cfdBytes, err := json.Marshal(req.CurrentFormData)
+		if err == nil {
+			cfdStr = string(cfdBytes)
+		}
+	}
+
 	// ── Prompt para generación de sugerencias ─────────────────────
-	prompt := appai.BuildSuggestProjectSetupPrompt(ctxStr, ragContext)
+	prompt := appai.BuildSuggestProjectSetupPrompt(ctxStr, ragContext, cfdStr)
 	messages := []llm.Message{{Role: "user", Content: prompt}}
 	selectedModel := appai.ResolveModel(appai.IntentMGAGenerate, h.cfg)
 
@@ -319,10 +328,12 @@ func (h *IdeationHandler) ideationCompleteWithFallback(
 
 // llmSuggestionsRaw estructura intermedia del JSON que devuelve el LLM.
 type llmSuggestionsRaw struct {
-	Proceso              string      `json:"proceso"`
-	Objeto               string      `json:"objeto"`
+	Nombre               []string    `json:"nombre"`
+	Proceso              []string    `json:"proceso"`
+	Objeto               []string    `json:"objeto"`
 	Localizaciones       interface{} `json:"localizaciones"`
-	SectorSugerido       string      `json:"sector_sugerido"`
+	SectorSugerido       []string    `json:"sector_sugerido"`
+	ProductoPrincipal    []string    `json:"producto_principal"`
 }
 
 // parseSuggestionsFromLLMResponse extrae el JSON de sugerencias de la
@@ -362,23 +373,25 @@ func (h *IdeationHandler) resolveIdsFromSuggestions(
 	raw llmSuggestionsRaw,
 ) dto.ProjectSetupSuggestions {
 	suggestions := dto.ProjectSetupSuggestions{
+		Nombre:            raw.Nombre,
 		Proceso:           raw.Proceso,
 		Objeto:            raw.Objeto,
 		Localizaciones:    raw.Localizaciones,
-		SectorId:          raw.SectorSugerido,
-		ProductoPrincipal: "",
+		SectorId:          []string{},
+		ProductoPrincipal: raw.ProductoPrincipal,
 	}
 
 	// ── Resolver Sector: nombre → UUID ───────────────────────────
-	if sectorName := strings.TrimSpace(raw.SectorSugerido); sectorName != "" {
-		var sector models.Sector
-		err := h.db.WithContext(c.Context()).
-			Where("LOWER(nombre) LIKE ?", "%"+strings.ToLower(sectorName)+"%").
-			First(&sector).Error
-		if err == nil && sector.ID != uuid.Nil {
-			suggestions.SectorId = sector.ID.String()
+	for _, sectorName := range raw.SectorSugerido {
+		if sn := strings.TrimSpace(sectorName); sn != "" {
+			var sector models.Sector
+			err := h.db.WithContext(c.Context()).
+				Where("LOWER(nombre) LIKE ?", "%"+strings.ToLower(sn)+"%").
+				First(&sector).Error
+			if err == nil && sector.ID != uuid.Nil {
+				suggestions.SectorId = append(suggestions.SectorId, sector.ID.String())
+			}
 		}
-		// Si no se encuentra, se deja el nombre textual como referencia
 	}
 
 	return suggestions

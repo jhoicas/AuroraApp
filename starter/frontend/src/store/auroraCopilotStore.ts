@@ -78,11 +78,12 @@ export type MgaProjectContext = {
 };
 
 export type ProjectSuggestions = {
-  proceso: string;
-  objeto: string;
-  localizaciones: Array<{ departamento?: string; municipio?: string }>;
-  sector_id: string;
-  producto_principal: string;
+  nombre: string[];
+  proceso: string[];
+  objeto: string[];
+  localizaciones: Array<Array<{ departamento?: string; municipio?: string }>>;
+  sector_id: string[];
+  producto_principal: string[];
 };
 
 /**
@@ -125,7 +126,7 @@ type AuroraCopilotState = {
   ideationLoading: boolean;
   addPreCreationContext: (text: string) => void;
   clearPreCreationContext: () => void;
-  suggestProjectSetup: () => Promise<void>;
+  suggestProjectSetup: (currentFormData?: Record<string, any>) => Promise<void>;
   sendIdeationMessage: (message: string) => Promise<void>;
   resetIdeation: () => void;
   toggleOpen: () => void;
@@ -208,7 +209,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     preCreationContext: [],
   }),
 
-  suggestProjectSetup: async () => {
+  suggestProjectSetup: async (currentFormData?: Record<string, any>) => {
     const { preCreationContext } = get();
     if (!preCreationContext.length) return;
     
@@ -216,6 +217,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     try {
       const res = await api.post<{ suggestions: ProjectSuggestions }>('/ai/ideation/suggest', {
         pre_creation_context: preCreationContext,
+        ...(currentFormData ? { current_form_data: currentFormData } : {}),
       });
       set({ projectSuggestions: res.data.suggestions });
     } catch (err) {

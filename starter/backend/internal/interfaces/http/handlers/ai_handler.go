@@ -258,54 +258,6 @@ func (h *AIHandler) callLLM(prompt string) string {
 	return "Programa de fortalecimiento y atención en el sector DEPORTE Y RECREACIÓN para el territorio priorizado."
 }
 
-func (h *AIHandler) SuggestProjectSetup(c *fiber.Ctx) error {
-	userID, _, err := httpmw.IdentityFromContext(c)
-	if err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	var req dto.SuggestProjectSetupRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
-	}
-	if err := dto.Validate(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	// 1. Inyecta explícitamente el historial/respuestas del usuario en el prompt del LLM.
-	ctxStr := strings.Join(req.PreCreationContext, "\n")
-	prompt := fmt.Sprintf("Genera los valores para Proceso, Objeto y Localización basándote EXCLUSIVAMENTE en este contexto del usuario:\n%s\n\nDevuelve ÚNICAMENTE el texto exacto que el cliente debe ingresar en el formulario, sin comillas, sin saludos y sin texto adicional.", ctxStr)
-
-	// Simular la llamada al LLM para obtener el texto sugerido
-	suggestion := h.callLLM(prompt)
-
-	// 2. Por ahora retornamos sugerencias simuladas (Mocks) que coincidan con la BD local, 
-	// pero usamos el resultado del LLM en el objeto para simular la funcionalidad.
-	suggestions := dto.ProjectSetupSuggestions{
-		Proceso:           "1", // Mock: 'Construcción'
-		Objeto:            suggestion,
-		Localizaciones:    "[]", // Mock JSON
-		SectorId:          "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", // Reemplazar con ID válido si es necesario
-		ProductoPrincipal: "1234",
-	}
-
-	now := time.Now().UTC()
-	usageLog := models.AiUsageLog{
-		ID:        uuid.New(),
-		UserID:    userID,
-		Role:      constants.AIRoleUser,
-		Action:    "suggest_project_setup",
-		Intent:    "project_ideation",
-		Model:     constants.AIMockModel,
-		CreatedAt: now,
-	}
-	h.db.WithContext(c.Context()).Create(&usageLog)
-
-	return c.JSON(dto.SuggestProjectSetupResponse{
-		Suggestions: suggestions,
-	})
-}
-
 func min(a, b int) int {
 	if a < b {
 		return a

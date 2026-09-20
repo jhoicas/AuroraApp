@@ -28,10 +28,10 @@ type AIAssistedFieldProps = {
   projectContext?: ProjectContext;
   /** Callback para insertar el valor sugerido directamente en el campo. */
   onAutoFill?: (value: string) => void;
-  /** Texto sugerido por la IA en fases previas (ej: ideación). */
-  prefilledSuggestion?: string;
-  /** Callback a ejecutar cuando se usa la sugerencia prellenada. */
-  onApplySuggestion?: () => void;
+  /** Textos sugeridos por la IA en fases previas (ej: ideación). */
+  prefilledSuggestions?: string[];
+  /** Callback a ejecutar cuando se usa una sugerencia prellenada. */
+  onApplySuggestion?: (value: string) => void;
 };
 
 /**
@@ -51,7 +51,7 @@ export default function AIAssistedField({
   fieldHelpKey,
   projectContext,
   onAutoFill,
-  prefilledSuggestion,
+  prefilledSuggestions,
   onApplySuggestion,
 }: AIAssistedFieldProps) {
   const tipId = useId();
@@ -172,16 +172,22 @@ export default function AIAssistedField({
           )}
         </div>
         
-        {prefilledSuggestion && (
-          <span className="ml-1 inline-flex items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
-            ✨ Sugerencia: {prefilledSuggestion}
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); onApplySuggestion?.(); }}
-              className="ml-1 font-semibold hover:underline text-[#006162]"
-            >
-              [Usar]
-            </button>
+        {prefilledSuggestions && prefilledSuggestions.length > 0 && (
+          <span className="ml-1 inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1">
+            ✨
+            {prefilledSuggestions.map((sug, i) => (
+              <span key={i} className="inline-flex items-center">
+                <span className="truncate max-w-[200px]" title={sug}>{sug}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); }}
+                  className="ml-1 font-semibold hover:underline text-[#006162]"
+                >
+                  [Usar]
+                </button>
+                {i < prefilledSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
+              </span>
+            ))}
           </span>
         )}
       </div>

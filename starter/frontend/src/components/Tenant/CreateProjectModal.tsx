@@ -63,6 +63,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
     ideationLoading,
     sendIdeationMessage,
     resetIdeation,
+    suggestProjectSetup,
   } = useAuroraCopilotStore();
 
   const [step, setStep] = useState<'wizard' | 'form'>(editProject ? 'form' : 'wizard');
@@ -164,6 +165,50 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       setTipologiaProyecto('A - PIIP - Bienes y Servicios');
     }
   }, [projectSuggestions, editProject]);
+
+  // Reactividad: refrescar sugerencias cuando el usuario edita el formulario
+  useEffect(() => {
+    if (step !== 'form' || editProject) return;
+    
+    const handler = setTimeout(() => {
+      // Mapear localizaciones al formato de texto esperado para mayor claridad al LLM
+      const locNames = localizaciones.map(l => {
+        const r = regions.find(r => r.id === l.regionId);
+        const d = r?.departamentos.find(d => d.id === l.departamentoId);
+        const m = d?.municipios.find(m => m.id === l.municipioId);
+        return {
+          departamento: d?.name || '',
+          municipio: m?.name || '',
+        };
+      }).filter(l => l.departamento || l.municipio);
+
+      const pName = procesos.find(p => String(p.id) === proceso)?.name || '';
+      const sName = sectors.find(s => s.id === sectorId)?.nombre || '';
+      const prodName = catalogProducts.find(p => p.codigo === productoPrincipal)?.nombre || '';
+
+      const currentFormData = {
+        proceso: pName,
+        objeto,
+        localizaciones: locNames,
+        sector: sName,
+        producto: prodName,
+      };
+
+      // Limpiar campos vacíos
+      Object.keys(currentFormData).forEach(key => {
+        const v = (currentFormData as any)[key];
+        if (!v || (Array.isArray(v) && v.length === 0)) {
+          delete (currentFormData as any)[key];
+        }
+      });
+
+      if (Object.keys(currentFormData).length > 0) {
+        void suggestProjectSetup(currentFormData);
+      }
+    }, 3000);
+
+    return () => clearTimeout(handler);
+  }, [proceso, objeto, localizaciones, sectorId, productoPrincipal, step, editProject, regions, procesos, sectors, catalogProducts, suggestProjectSetup]);
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   // ─── Sectores filtrados por tipología ──────────────────
@@ -560,10 +605,10 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Proceso ── */}
           <AIAssistedField
             label="Proceso"
-            prefilledSuggestion={projectSuggestions?.proceso}
-            onApplySuggestion={() => {
-              if (projectSuggestions?.proceso) {
-                const match = procesos.find(p => p.name.toLowerCase().includes(projectSuggestions.proceso.toLowerCase()));
+            prefilledSuggestions={projectSuggestions?.proceso}
+            onApplySuggestion={(sug) => {
+              if (sug) {
+                const match = procesos.find(p => p.name.toLowerCase().includes(sug.toLowerCase()));
                 if (match) setProceso(match.id.toString());
               }
             }}
@@ -585,8 +630,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Objeto ── */}
           <AIAssistedField
             label="Objeto"
-            prefilledSuggestion={projectSuggestions?.objeto}
-            onApplySuggestion={() => projectSuggestions?.objeto && setObjeto(projectSuggestions.objeto)}
+            prefilledSuggestions={projectSuggestions?.objeto}
+            onApplySuggestion={(sug) => sug && setObjeto(sug)}
             htmlFor="project-objeto"
             required
             guidance="Describa brevemente qué se entrega (bien o servicio público). Máximo 1000 caracteres. Este texto es parte del nombre oficial del proyecto."
@@ -618,43 +663,51 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
                 Localizaciones <span className="text-red-500">*</span>
               </label>
               {projectSuggestions?.localizaciones && projectSuggestions.localizaciones.length > 0 && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 text-xs shadow-sm">
+                <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 text-xs shadow-sm">
                   <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                  <span className="font-medium max-w-xs truncate" title={projectSuggestions.localizaciones.map(l => [l.departamento, l.municipio].filter(Boolean).join(', ')).join(' | ')}>
-                    {projectSuggestions.localizaciones.map(l => [l.departamento, l.municipio].filter(Boolean).join(', ')).join(' | ')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newLocs = projectSuggestions.localizaciones.map(locSug => {
-                        let depId: number | null = null;
-                        let munId: number | null = null;
-                        let regId: number | null = null;
-                        
-                        if (locSug.departamento) {
-                           for (const r of regions) {
-                             const dep = r.departamentos.find(d => d.name.toLowerCase().includes(locSug.departamento!.toLowerCase()));
-                             if (dep) {
-                               regId = r.id;
-                               depId = dep.id;
-                               if (locSug.municipio) {
-                                  const mun = dep.municipios.find(m => m.name.toLowerCase().includes(locSug.municipio!.toLowerCase()));
-                                  if (mun) munId = mun.id;
-                               }
-                               break;
-                             }
-                           }
-                        }
-                        return { regionId: regId, departamentoId: depId, municipioId: munId };
-                      });
-                      if (newLocs.length > 0) {
-                         setLocalizaciones(newLocs);
-                      }
-                    }}
-                    className="ml-2 bg-emerald-600 text-white px-2 py-0.5 rounded hover:bg-emerald-700 transition-colors font-medium cursor-pointer"
-                  >
-                    Usar
-                  </button>
+                  {projectSuggestions.localizaciones.map((locOption, idx) => {
+                    const locLabel = locOption.map(l => [l.departamento, l.municipio].filter(Boolean).join(', ')).join(' y ');
+                    return (
+                      <span key={idx} className="inline-flex items-center">
+                        <span className="font-medium max-w-xs truncate" title={locLabel}>
+                          {locLabel}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newLocs = locOption.map(locSug => {
+                              let depId: number | null = null;
+                              let munId: number | null = null;
+                              let regId: number | null = null;
+                              
+                              if (locSug.departamento) {
+                                 for (const r of regions) {
+                                   const dep = r.departamentos.find(d => d.name.toLowerCase().includes(locSug.departamento!.toLowerCase()));
+                                   if (dep) {
+                                     regId = r.id;
+                                     depId = dep.id;
+                                     if (locSug.municipio) {
+                                        const mun = dep.municipios.find(m => m.name.toLowerCase().includes(locSug.municipio!.toLowerCase()));
+                                        if (mun) munId = mun.id;
+                                     }
+                                     break;
+                                   }
+                                 }
+                              }
+                              return { regionId: regId, departamentoId: depId, municipioId: munId };
+                            });
+                            if (newLocs.length > 0) {
+                               setLocalizaciones(newLocs);
+                            }
+                          }}
+                          className="ml-2 font-semibold hover:underline text-[#006162]"
+                        >
+                          [Usar]
+                        </button>
+                        {idx < projectSuggestions.localizaciones.length - 1 && <span className="ml-2 text-teal-300">|</span>}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -788,8 +841,11 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Sector (filtrado por tipología) ── */}
           <AIAssistedField
             label="Sector"
-            prefilledSuggestion={projectSuggestions?.sector_id}
-            onApplySuggestion={() => projectSuggestions?.sector_id && setSectorId(projectSuggestions.sector_id)}
+            prefilledSuggestions={projectSuggestions?.sector_id?.map(sid => sectors.find(s => s.id === sid)?.nombre || sid).filter(Boolean)}
+            onApplySuggestion={(sug) => {
+              const s = sectors.find(s => s.nombre === sug || s.id === sug);
+              if (s) setSectorId(s.id);
+            }}
             htmlFor="project-sector"
             required
             guidance="El sector define la clasificación programática DNP. Cuando la tipología es 'A - PIIP', solo se muestran los sectores con ámbito territorial."
@@ -811,9 +867,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
-            label="Producto principal del proyecto"
-            prefilledSuggestion={projectSuggestions?.producto_principal}
-            onApplySuggestion={() => projectSuggestions?.producto_principal && setProductoPrincipal(projectSuggestions.producto_principal)}
+            label="Producto principal (Opcional)"
+            prefilledSuggestions={projectSuggestions?.producto_principal}
+            onApplySuggestion={(sug) => sug && setProductoPrincipal(sug)}
             htmlFor="project-producto-principal"
             required
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."

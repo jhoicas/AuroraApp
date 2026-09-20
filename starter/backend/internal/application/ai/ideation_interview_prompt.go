@@ -76,7 +76,7 @@ Usa los siguientes proyectos históricos como referencia para formular mejores p
 
 // BuildSuggestProjectSetupPrompt construye el prompt del LLM para generar
 // sugerencias de formulario a partir del historial de ideación y contexto RAG.
-func BuildSuggestProjectSetupPrompt(conversationContext, ragContext string) string {
+func BuildSuggestProjectSetupPrompt(conversationContext, ragContext, currentFormData string) string {
 	var b strings.Builder
 
 	b.WriteString(`Eres Aurora, asistente experta en la Metodología General Ajustada (MGA) de Colombia.
@@ -95,20 +95,35 @@ CONVERSACIÓN DEL USUARIO:
 		b.WriteString("\n\n")
 	}
 
+	cfd := strings.TrimSpace(currentFormData)
+	if cfd != "" && cfd != "{}" {
+		b.WriteString("[DATOS_ACTUALES_FORMULARIO]:\n")
+		b.WriteString("Ten muy en cuenta lo que el usuario ya ha escrito o seleccionado a continuación. Las sugerencias de los demás campos DEBEN alinearse coherentemente con esta información:\n")
+		b.WriteString(cfd)
+		b.WriteString("\n\n")
+	}
+
 	b.WriteString(`INSTRUCCIONES:
-Responde ÚNICAMENTE con un bloque JSON válido (sin texto adicional, sin markdown, sin backticks) con esta estructura exacta:
+Responde ÚNICAMENTE con un bloque JSON válido (sin texto adicional, sin markdown, sin backticks) con esta estructura exacta, generando 2 o 3 opciones para cada campo basándote en la información dada:
 {
-  "proceso": "Para el campo 'proceso', devuelve ÚNICAMENTE el nombre descriptivo en texto (ej. 'Construcción', 'Dotación', 'Adquisición'). NUNCA devuelvas el código numérico.",
-  "objeto": "Texto descriptivo del objeto del proyecto. Mínimo 10 caracteres, máximo 200 caracteres. Describe el bien o servicio público a entregar sin incluir la ubicación ni el proceso.",
-  "localizaciones": [{"departamento": "Nombre del departamento", "municipio": "Nombre del municipio"}],
-  "sector_sugerido": "Nombre del sector MGA más apropiado (ej: Educación, Salud y Protección Social, Transporte, Deporte y Recreación, Vivienda Ciudad y Territorio, Agua Potable y Saneamiento Básico, Agricultura y Desarrollo Rural)"
+  "nombre": ["Opción 1 de nombre del proyecto", "Opción 2 de nombre del proyecto"],
+  "proceso": ["Construcción", "Dotación"],
+  "objeto": ["Opción 1 de objeto a entregar", "Opción 2 de objeto a entregar"],
+  "localizaciones": [
+     [{"departamento": "Nombre del depto 1", "municipio": "Nombre del mun 1"}],
+     [{"departamento": "Nombre del depto 2", "municipio": "Nombre del mun 2"}]
+  ],
+  "sector_sugerido": ["Educación", "Salud y Protección Social"],
+  "producto_principal": ["Producto asociado opción 1", "Producto asociado opción 2"]
 }
 
 REGLAS:
+- Para el campo 'proceso', devuelve ÚNICAMENTE el nombre descriptivo en texto (ej. 'Construcción', 'Dotación', 'Adquisición'). NUNCA devuelvas el código numérico.
+- Para el campo 'localizaciones', devuelve una lista de listas. Cada lista interna representa una opción de ubicaciones (puede tener una o más ubicaciones).
 - No inventes ubicaciones ni datos que el usuario no haya mencionado.
-- El objeto debe ser claro, conciso y seguir el estándar MGA de redacción.
-- Basa tus sugerencias exclusivamente en la información real proporcionada por el usuario.
-- Si algún campo no puede determinarse con certeza, déjalo como cadena vacía "".`)
+- El objeto debe ser claro, conciso y seguir el estándar MGA de redacción (mínimo 10, máximo 200 caracteres).
+- Basa tus sugerencias exclusivamente en la información real proporcionada por el usuario o en los [DATOS_ACTUALES_FORMULARIO].
+- Si algún campo no puede determinarse con certeza, déjalo como lista vacía [].`)
 
 	return b.String()
 }

@@ -80,7 +80,7 @@ export type MgaProjectContext = {
 export type ProjectSuggestions = {
   proceso: string;
   objeto: string;
-  localizaciones: string;
+  localizaciones: Array<{ departamento?: string; municipio?: string }>;
   sector_id: string;
   producto_principal: string;
 };

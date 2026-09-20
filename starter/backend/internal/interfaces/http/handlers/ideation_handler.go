@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -320,10 +319,10 @@ func (h *IdeationHandler) ideationCompleteWithFallback(
 
 // llmSuggestionsRaw estructura intermedia del JSON que devuelve el LLM.
 type llmSuggestionsRaw struct {
-	Proceso              string `json:"proceso"`
-	Objeto               string `json:"objeto"`
-	LocalizacionSugerida string `json:"localizacion_sugerida"`
-	SectorSugerido       string `json:"sector_sugerido"`
+	Proceso              string      `json:"proceso"`
+	Objeto               string      `json:"objeto"`
+	Localizaciones       interface{} `json:"localizaciones"`
+	SectorSugerido       string      `json:"sector_sugerido"`
 }
 
 // parseSuggestionsFromLLMResponse extrae el JSON de sugerencias de la
@@ -365,21 +364,9 @@ func (h *IdeationHandler) resolveIdsFromSuggestions(
 	suggestions := dto.ProjectSetupSuggestions{
 		Proceso:           raw.Proceso,
 		Objeto:            raw.Objeto,
-		Localizaciones:    raw.LocalizacionSugerida,
+		Localizaciones:    raw.Localizaciones,
 		SectorId:          raw.SectorSugerido,
 		ProductoPrincipal: "",
-	}
-
-	// ── Resolver Proceso: nombre → ID numérico ───────────────────
-	if procesoName := strings.TrimSpace(raw.Proceso); procesoName != "" {
-		var proc models.Proceso
-		err := h.db.WithContext(c.Context()).
-			Where("LOWER(name) LIKE ?", "%"+strings.ToLower(procesoName)+"%").
-			First(&proc).Error
-		if err == nil && proc.ID > 0 {
-			suggestions.Proceso = strconv.Itoa(proc.ID)
-		}
-		// Si no se encuentra, se deja el nombre textual como referencia
 	}
 
 	// ── Resolver Sector: nombre → UUID ───────────────────────────

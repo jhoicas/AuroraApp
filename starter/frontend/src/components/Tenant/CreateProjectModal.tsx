@@ -561,7 +561,12 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           <AIAssistedField
             label="Proceso"
             prefilledSuggestion={projectSuggestions?.proceso}
-            onApplySuggestion={() => projectSuggestions?.proceso && setProceso(projectSuggestions.proceso)}
+            onApplySuggestion={() => {
+              if (projectSuggestions?.proceso) {
+                const match = procesos.find(p => p.name.toLowerCase().includes(projectSuggestions.proceso.toLowerCase()));
+                if (match) setProceso(match.id.toString());
+              }
+            }}
             htmlFor="project-proceso"
             required
             guidance="Verbo rector que define el tipo de intervención del proyecto según la MGA (ej: Construcción, Adquisición, Dotación)."
@@ -608,9 +613,51 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Localizaciones ── */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Localizaciones <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Localizaciones <span className="text-red-500">*</span>
+              </label>
+              {projectSuggestions?.localizaciones && projectSuggestions.localizaciones.length > 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 text-xs shadow-sm">
+                  <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                  <span className="font-medium max-w-xs truncate" title={projectSuggestions.localizaciones.map(l => [l.departamento, l.municipio].filter(Boolean).join(', ')).join(' | ')}>
+                    {projectSuggestions.localizaciones.map(l => [l.departamento, l.municipio].filter(Boolean).join(', ')).join(' | ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newLocs = projectSuggestions.localizaciones.map(locSug => {
+                        let depId: number | null = null;
+                        let munId: number | null = null;
+                        let regId: number | null = null;
+                        
+                        if (locSug.departamento) {
+                           for (const r of regions) {
+                             const dep = r.departamentos.find(d => d.name.toLowerCase().includes(locSug.departamento!.toLowerCase()));
+                             if (dep) {
+                               regId = r.id;
+                               depId = dep.id;
+                               if (locSug.municipio) {
+                                  const mun = dep.municipios.find(m => m.name.toLowerCase().includes(locSug.municipio!.toLowerCase()));
+                                  if (mun) munId = mun.id;
+                               }
+                               break;
+                             }
+                           }
+                        }
+                        return { regionId: regId, departamentoId: depId, municipioId: munId };
+                      });
+                      if (newLocs.length > 0) {
+                         setLocalizaciones(newLocs);
+                      }
+                    }}
+                    className="ml-2 bg-emerald-600 text-white px-2 py-0.5 rounded hover:bg-emerald-700 transition-colors font-medium cursor-pointer"
+                  >
+                    Usar
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="space-y-3">
               {localizaciones.map((loc, idx) => {
                 const selectedRegion = regions.find(r => r.id === loc.regionId);

@@ -98,9 +98,9 @@ CONVERSACIÓN DEL USUARIO:
 	b.WriteString(`INSTRUCCIONES:
 Responde ÚNICAMENTE con un bloque JSON válido (sin texto adicional, sin markdown, sin backticks) con esta estructura exacta:
 {
-  "proceso": "Nombre exacto del verbo rector MGA más apropiado (ej: Construcción, Mejoramiento, Dotación, Adquisición, Fortalecimiento, Asistencia, Implementación)",
+  "proceso": "Para el campo 'proceso', devuelve ÚNICAMENTE el nombre descriptivo en texto (ej. 'Construcción', 'Dotación', 'Adquisición'). NUNCA devuelvas el código numérico.",
   "objeto": "Texto descriptivo del objeto del proyecto. Mínimo 10 caracteres, máximo 200 caracteres. Describe el bien o servicio público a entregar sin incluir la ubicación ni el proceso.",
-  "localizacion_sugerida": "Texto con la ubicación geográfica mencionada por el usuario (departamento y/o municipio)",
+  "localizaciones": [{"departamento": "Nombre del departamento", "municipio": "Nombre del municipio"}],
   "sector_sugerido": "Nombre del sector MGA más apropiado (ej: Educación, Salud y Protección Social, Transporte, Deporte y Recreación, Vivienda Ciudad y Territorio, Agua Potable y Saneamiento Básico, Agricultura y Desarrollo Rural)"
 }
 

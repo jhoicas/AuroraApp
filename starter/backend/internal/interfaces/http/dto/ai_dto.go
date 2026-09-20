@@ -53,11 +53,11 @@ type SuggestProjectSetupRequest struct {
 
 // ProjectSetupSuggestions sugerencias devueltas por el wizard
 type ProjectSetupSuggestions struct {
-	Proceso           string `json:"proceso"`
-	Objeto            string `json:"objeto"`
-	Localizaciones    string `json:"localizaciones"`
-	SectorId          string `json:"sector_id"`
-	ProductoPrincipal string `json:"producto_principal"`
+	Proceso           string      `json:"proceso"`
+	Objeto            string      `json:"objeto"`
+	Localizaciones    interface{} `json:"localizaciones"`
+	SectorId          string      `json:"sector_id"`
+	ProductoPrincipal string      `json:"producto_principal"`
 }
 
 // SuggestProjectSetupResponse respuesta del wizard pre-creación

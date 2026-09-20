@@ -183,8 +183,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       }).filter(l => l.departamento || l.municipio);
 
       const pName = procesos.find(p => String(p.id) === proceso)?.name || '';
-      const sName = sectors.find(s => s.id === sectorId)?.nombre || '';
-      const prodName = catalogProducts.find(p => p.codigo === productoPrincipal)?.nombre || '';
+      const sName = sectors.find(s => s.id === sectorId)?.name || '';
+      const prodName = catalogProducts.find(p => p.codigo_del_producto === productoPrincipal)?.producto || '';
 
       const currentFormData = {
         proceso: pName,
@@ -841,9 +841,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Sector (filtrado por tipología) ── */}
           <AIAssistedField
             label="Sector"
-            prefilledSuggestions={projectSuggestions?.sector_id?.map(sid => sectors.find(s => s.id === sid)?.nombre || sid).filter(Boolean)}
+            prefilledSuggestions={projectSuggestions?.sector_id?.map(sid => sectors.find(s => s.id === sid)?.name || sid).filter(Boolean)}
             onApplySuggestion={(sug) => {
-              const s = sectors.find(s => s.nombre === sug || s.id === sug);
+              const s = sectors.find(s => s.name === sug || s.id === sug);
               if (s) setSectorId(s.id);
             }}
             htmlFor="project-sector"

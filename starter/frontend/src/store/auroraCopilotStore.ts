@@ -213,7 +213,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     
     set({ isTyping: true, error: null });
     try {
-      const res = await api.post<{ suggestions: ProjectSuggestions }>('/api/v1/ai/ideation/suggest', {
+      const res = await api.post<{ suggestions: ProjectSuggestions }>('/ai/ideation/suggest', {
         pre_creation_context: preCreationContext,
       });
       set({ projectSuggestions: res.data.suggestions });
@@ -242,7 +242,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
 
     try {
       const sessionId = get().ideationSessionId;
-      const { data } = await api.post<IdeationChatResponse>('/api/v1/ai/ideation/chat', {
+      const { data } = await api.post<IdeationChatResponse>('/ai/ideation/chat', {
         message: trimmed,
         ...(sessionId ? { session_id: sessionId } : {}),
       });

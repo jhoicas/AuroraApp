@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import SearchableCombobox, { type ComboboxOption } from '../Catalog/SearchableCombobox';

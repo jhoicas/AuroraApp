@@ -118,7 +118,7 @@ export default function DNPExplorerModal({ open, onClose, onSelect }: DNPExplore
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">
               search
             </span>
-            <input
+            <input spellCheck={true}
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}

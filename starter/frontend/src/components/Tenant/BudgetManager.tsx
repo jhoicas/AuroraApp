@@ -123,7 +123,7 @@ export default function BudgetManager({ projectId }: BudgetManagerProps) {
               <label htmlFor="budget-desc" className="block text-sm font-medium text-gray-700 mb-1">
                 Descripción
               </label>
-              <input
+              <input spellCheck={true}
                 id="budget-desc"
                 required
                 value={description}
@@ -136,7 +136,7 @@ export default function BudgetManager({ projectId }: BudgetManagerProps) {
               <label htmlFor="budget-amount" className="block text-sm font-medium text-gray-700 mb-1">
                 Monto
               </label>
-              <input
+              <input spellCheck={true}
                 id="budget-amount"
                 required
                 type="number"

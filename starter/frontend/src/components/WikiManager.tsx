@@ -113,7 +113,7 @@ export default function WikiManager() {
         {...getRootProps()}
         className={`mb-4 rounded-3xl border-2 border-dashed border-teal-600 bg-stone-100 p-8 text-center transition ${isDragActive ? 'bg-teal-50 ring-2 ring-teal-300' : ''}`}
       >
-        <input {...getInputProps()} />
+        <input spellCheck={true} {...getInputProps()} />
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3">
           <div className="rounded-full bg-teal-700 p-4 text-stone-50">
             {isUploading ? <LoaderCircle className="h-8 w-8 animate-spin" /> : <CloudUpload className="h-8 w-8" />}
@@ -172,7 +172,7 @@ export default function WikiManager() {
           <div className="text-sm font-semibold text-slate-800">{selected || 'Seleccione un archivo para revisar'}</div>
           <div className="text-sm text-slate-600">Edición en Markdown</div>
         </div>
-        <textarea
+        <textarea spellCheck={true}
           className="min-h-48 w-full rounded-xl border border-stone-300 bg-stone-50 p-3 font-mono text-sm text-slate-800 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-200"
           value={content}
           onChange={e => setContent(e.target.value)}

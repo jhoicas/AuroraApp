@@ -465,7 +465,7 @@ export default function CatalogImporter({
         {...getRootProps()}
         className={`rounded-3xl border-2 border-dashed border-[#006a68] bg-[#E6FFFA]/50 p-8 text-center transition ${isProcessing ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'} ${isDragActive ? 'bg-teal-50 ring-2 ring-teal-300' : ''}`}
       >
-        <input {...getInputProps()} />
+        <input spellCheck={true} {...getInputProps()} />
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3">
           <div className="rounded-full bg-[#006162] p-4 text-white">
             {isProcessing ? (

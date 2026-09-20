@@ -93,7 +93,7 @@ export default function Login() {
                 <span className="absolute left-4 material-symbols-outlined text-slate-400 pointer-events-none">
                   mail
                 </span>
-                <input
+                <input spellCheck={true}
                   id="email"
                   type="email"
                   required
@@ -114,7 +114,7 @@ export default function Login() {
                 <span className="absolute left-4 material-symbols-outlined text-slate-400 pointer-events-none">
                   lock
                 </span>
-                <input
+                <input spellCheck={true}
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required

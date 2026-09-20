@@ -113,7 +113,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
         <div className="space-y-4">
           <div>
             <label className="block text-base font-medium text-slate-700 mb-1">Programa</label>
-            <input 
+            <input spellCheck={true} 
               readOnly 
               type="text" 
               value={project.sector || ''} 
@@ -122,7 +122,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
           </div>
           <div>
             <label className="block text-base font-medium text-slate-700 mb-1">Plan Nacional de Desarrollo</label>
-            <input 
+            <input spellCheck={true} 
               readOnly 
               type="text" 
               value="(2022-2026) Colombia Potencia Mundial de la Vida" 
@@ -147,7 +147,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                   {pndLinks.map((link) => (
                     <tr key={link.id}>
                       <td className="px-2 py-2">
-                        <input 
+                        <input spellCheck={true} 
                           type="text" 
                           value={link.transformacion} 
                           onChange={(e) => updatePndLink(link.id, 'transformacion', e.target.value)} 
@@ -155,7 +155,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <input 
+                        <input spellCheck={true} 
                           type="text" 
                           value={link.pilar} 
                           onChange={(e) => updatePndLink(link.id, 'pilar', e.target.value)} 
@@ -163,7 +163,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <input 
+                        <input spellCheck={true} 
                           type="text" 
                           value={link.catalizador} 
                           onChange={(e) => updatePndLink(link.id, 'catalizador', e.target.value)} 
@@ -171,7 +171,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <input 
+                        <input spellCheck={true} 
                           type="text" 
                           value={link.componente} 
                           onChange={(e) => updatePndLink(link.id, 'componente', e.target.value)} 
@@ -229,7 +229,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDepPlan(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="dep-plan"
               maxLength={1500} 
               rows={3} 
@@ -247,7 +247,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDepEstrategia(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="dep-estrategia"
               maxLength={1500} 
               rows={3} 
@@ -265,7 +265,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDepPrograma(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="dep-programa"
               maxLength={1500} 
               rows={3} 
@@ -293,7 +293,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setMunPlan(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="mun-plan"
               maxLength={1500} 
               rows={3} 
@@ -311,7 +311,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setMunEstrategia(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="mun-estrategia"
               maxLength={1500} 
               rows={3} 
@@ -329,7 +329,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setMunPrograma(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="mun-programa"
               maxLength={1500} 
               rows={3} 
@@ -371,7 +371,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setEtnicoInstrumentos(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="etnico-instrumentos"
               maxLength={500} 
               rows={3} 
@@ -399,7 +399,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setOtrosPlan(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="otros-plan"
               maxLength={1500} 
               rows={3} 
@@ -417,7 +417,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setOtrosEstrategia(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="otros-estrategia"
               maxLength={1500} 
               rows={3} 
@@ -435,7 +435,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setOtrosPrograma(v)}
           >
-            <textarea 
+            <textarea spellCheck={true} 
               id="otros-programa"
               maxLength={1500} 
               rows={3} 

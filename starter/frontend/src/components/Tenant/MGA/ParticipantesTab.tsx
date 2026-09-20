@@ -121,7 +121,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
       <div className="grid gap-3 sm:grid-cols-2 border rounded p-4 bg-gray-50">
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Actor</label>
-          <input
+          <input spellCheck={true}
             type="text"
             value={draft.actor}
             onChange={(e) => setDraft((d) => ({ ...d, actor: e.target.value }))}
@@ -131,7 +131,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
         </div>
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Entidad</label>
-          <input
+          <input spellCheck={true}
             type="text"
             value={draft.entity}
             onChange={(e) => setDraft((d) => ({ ...d, entity: e.target.value }))}
@@ -141,7 +141,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
         </div>
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Posición</label>
-          <input
+          <input spellCheck={true}
             type="text"
             value={draft.position}
             onChange={(e) => setDraft((d) => ({ ...d, position: e.target.value }))}
@@ -160,7 +160,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
           >
-            <textarea
+            <textarea spellCheck={true}
               id={`participant-interests-${project.id}`}
               rows={2}
               value={draft.interests}
@@ -180,7 +180,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
           >
-            <textarea
+            <textarea spellCheck={true}
               id={`participant-contribution-${project.id}`}
               rows={2}
               value={draft.contribution}

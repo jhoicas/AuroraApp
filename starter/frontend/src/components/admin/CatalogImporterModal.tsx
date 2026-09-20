@@ -87,7 +87,7 @@ export default function CatalogImporterModal({
                 : 'border-slate-300 bg-white hover:border-[#006162] hover:bg-[#f9f9ff] cursor-pointer'
             }`}
           >
-            <input {...getInputProps()} />
+            <input spellCheck={true} {...getInputProps()} />
             <div className="mx-auto flex flex-col items-center gap-4">
               <div className="rounded-full bg-[#006162] p-4 text-white">
                 {isProcessing ? (

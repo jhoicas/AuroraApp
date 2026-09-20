@@ -58,7 +58,7 @@ export default function PndSelectionModal({ isOpen, onClose, onSelect }: PndSele
         <div className="p-5 border-b border-slate-100 bg-slate-50/50">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
+            <input spellCheck={true}
               type="text"
               autoFocus
               value={query}

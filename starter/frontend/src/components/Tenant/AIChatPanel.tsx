@@ -131,7 +131,7 @@ export default function AIChatPanel({ projectId, className = '' }: AIChatPanelPr
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-100 p-3 flex gap-2">
-        <input
+        <input spellCheck={true}
           ref={inputRef}
           type="text"
           disabled={isTyping}

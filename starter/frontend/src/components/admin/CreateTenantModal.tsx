@@ -75,7 +75,7 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
             <label htmlFor="tenant-name" className="block text-sm font-medium text-gray-700 mb-1">
               Nombre
             </label>
-            <input
+            <input spellCheck={true}
               id="tenant-name"
               required
               value={name}
@@ -89,7 +89,7 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
             <label htmlFor="tenant-nit" className="block text-sm font-medium text-gray-700 mb-1">
               NIT
             </label>
-            <input
+            <input spellCheck={true}
               id="tenant-nit"
               required
               value={nit}
@@ -103,7 +103,7 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
             <label htmlFor="tenant-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email de contacto
             </label>
-            <input
+            <input spellCheck={true}
               id="tenant-email"
               type="email"
               required
@@ -118,7 +118,7 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
             <label htmlFor="tenant-domain" className="block text-sm font-medium text-gray-700 mb-1">
               Dominio <span className="text-gray-400 font-normal">(opcional)</span>
             </label>
-            <input
+            <input spellCheck={true}
               id="tenant-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}

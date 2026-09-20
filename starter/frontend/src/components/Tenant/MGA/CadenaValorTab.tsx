@@ -373,14 +373,14 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
               <section className="space-y-3">
                 <h3 className="font-bold text-gray-700">1. Nodos EDT</h3>
                 <div className="grid gap-2 sm:grid-cols-3 border rounded p-3 bg-gray-50">
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Código"
                     value={nodeDraft.code}
                     onChange={(e) => setNodeDraft((d) => ({ ...d, code: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="number"
                     min={1}
                     max={10}
@@ -391,7 +391,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                     className="p-2 border rounded bg-white"
                     aria-label="Nivel"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Nombre del nodo"
                     value={nodeDraft.name}
@@ -482,21 +482,21 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                       </option>
                     ))}
                   </select>
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Código entregable"
                     value={deliverableDraft.code}
                     onChange={(e) => setDeliverableDraft((d) => ({ ...d, code: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Monto"
                     value={deliverableDraft.amount}
                     onChange={(e) => setDeliverableDraft((d) => ({ ...d, amount: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Nombre del entregable"
                     value={deliverableDraft.name}
@@ -586,28 +586,28 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                       </option>
                     ))}
                   </select>
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Código actividad"
                     value={activityDraft.code}
                     onChange={(e) => setActivityDraft((d) => ({ ...d, code: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Cantidad"
                     value={activityDraft.quantity}
                     onChange={(e) => setActivityDraft((d) => ({ ...d, quantity: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Costo unitario"
                     value={activityDraft.unit_cost}
                     onChange={(e) => setActivityDraft((d) => ({ ...d, unit_cost: e.target.value }))}
                     className="p-2 border rounded bg-white"
                   />
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     placeholder="Nombre de la actividad"
                     value={activityDraft.name}

@@ -142,7 +142,7 @@ export default function Register() {
                   <label htmlFor="entity_name" className="font-semibold text-lg text-slate-800">
                     Nombre de la Entidad
                   </label>
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     id="entity_name"
                     required
@@ -156,7 +156,7 @@ export default function Register() {
                   <label htmlFor="nit" className="font-semibold text-lg text-slate-800">
                     NIT / ID Tributaria
                   </label>
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     id="nit"
                     required
@@ -175,7 +175,7 @@ export default function Register() {
                   <label htmlFor="full_name" className="font-semibold text-lg text-slate-800">
                     Nombre completo (Administrador)
                   </label>
-                  <input
+                  <input spellCheck={true}
                     type="text"
                     id="full_name"
                     required
@@ -189,7 +189,7 @@ export default function Register() {
                   <label htmlFor="register_email" className="font-semibold text-lg text-slate-800">
                     Correo institucional
                   </label>
-                  <input
+                  <input spellCheck={true}
                     type="email"
                     id="register_email"
                     required
@@ -205,7 +205,7 @@ export default function Register() {
                     <label htmlFor="register_password" className="font-semibold text-lg text-slate-800">
                       Contraseña
                     </label>
-                    <input
+                    <input spellCheck={true}
                       type="password"
                       id="register_password"
                       required
@@ -219,7 +219,7 @@ export default function Register() {
                     <label htmlFor="confirm_password" className="font-semibold text-lg text-slate-800">
                       Confirmar contraseña
                     </label>
-                    <input
+                    <input spellCheck={true}
                       type="password"
                       id="confirm_password"
                       required

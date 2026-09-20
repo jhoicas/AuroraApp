@@ -328,7 +328,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               askPrompt={`Sugiere una redacción para este efecto ${isIndirect ? 'indirecto' : 'directo'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'effect', id: effect.id, draft: val })}
             >
-              <textarea
+              <textarea spellCheck={true}
                 id={`effect-${effect.id}`}
                 rows={3}
                 value={editTarget.draft}
@@ -395,7 +395,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               askPrompt={`Sugiere una redacción para esta causa ${isIndirect ? 'indirecta' : 'directa'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'cause', id: relation.id, draft: val })}
             >
-              <textarea
+              <textarea spellCheck={true}
                 id={`cause-${relation.id}`}
                 rows={3}
                 value={editTarget.draft}
@@ -507,7 +507,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               projectContext={fieldProjectContext}
               onAutoFill={(v) => patchCurrentProject({ problem_description: v })}
             >
-              <textarea
+              <textarea spellCheck={true}
                 id={`mga-problem-${project.id}`}
                 value={problemDescription}
                 onChange={(e) => patchCurrentProject({ problem_description: e.target.value })}
@@ -578,7 +578,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => patchCurrentProject({ situacion_existente: v })}
           >
-            <textarea
+            <textarea spellCheck={true}
               id={`mga-situation-${project.id}`}
               value={situacionExistente}
               onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value })}
@@ -599,7 +599,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v })}
           >
-            <textarea
+            <textarea spellCheck={true}
               id={`mga-magnitude-${project.id}`}
               value={magnitudProblema}
               onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value })}

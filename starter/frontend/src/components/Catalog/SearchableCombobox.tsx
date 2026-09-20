@@ -170,7 +170,7 @@ export default function SearchableCombobox({
           )}
         </span>
 
-        <input
+        <input spellCheck={true}
           id={inputId}
           type="text"
           role="combobox"

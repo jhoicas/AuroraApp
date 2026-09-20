@@ -235,7 +235,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               projectContext={fieldProjectContext}
               onAutoFill={(v) => handleGeneralObjectiveChange(v)}
             >
-              <textarea
+              <textarea spellCheck={true}
                 id={`mga-general-objective-${project.id}`}
                 rows={3}
                 value={generalObjective}
@@ -363,7 +363,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
                             validationValue={draftValue}
                             className="min-w-[280px]"
                           >
-                            <textarea
+                            <textarea spellCheck={true}
                               id={`mga-specific-${rel.id}`}
                               rows={2}
                               value={draftValue}

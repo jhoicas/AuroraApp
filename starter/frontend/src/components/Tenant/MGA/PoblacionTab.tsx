@@ -142,7 +142,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Número total</label>
-            <input
+            <input spellCheck={true}
               type="text"
               inputMode="numeric"
               value={panel.total_number}
@@ -153,7 +153,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           </div>
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Fuente</label>
-            <input
+            <input spellCheck={true}
               type="text"
               value={panel.source}
               onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
@@ -166,7 +166,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Departamentos</label>
-            <input
+            <input spellCheck={true}
               type="text"
               value={panel.departments}
               onChange={(e) => setPanel((p) => ({ ...p, departments: e.target.value }))}
@@ -176,7 +176,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           </div>
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Municipios</label>
-            <input
+            <input spellCheck={true}
               type="text"
               value={panel.municipalities}
               onChange={(e) => setPanel((p) => ({ ...p, municipalities: e.target.value }))}
@@ -193,7 +193,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           guidance="Describa la zona geográfica donde se ubica la población: barrios, veredas, corregimientos o áreas de influencia del proyecto."
           askPrompt={`¿Cómo describo la localización de la ${label} del proyecto "${project.name}" en formulación MGA?`}
         >
-          <textarea
+          <textarea spellCheck={true}
             id={`pop-loc-${populationType}-${project.id}`}
             rows={2}
             value={panel.localization}
@@ -212,7 +212,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           projectContext={fieldProjectContext}
           onAutoFill={(v) => setPanel((p) => ({ ...p, demographicNotes: v }))}
         >
-          <textarea
+          <textarea spellCheck={true}
             id={`pop-demo-${populationType}-${project.id}`}
             rows={3}
             value={panel.demographicNotes}

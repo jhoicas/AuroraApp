@@ -118,7 +118,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           guidance="Describa cada alternativa de manera diferenciada: qué acción se propone, cómo atiende las causas y por qué es viable según MGA."
           askPrompt={`¿Qué alternativas de solución debo plantear para el proyecto "${project.name}" y cómo las redacto según MGA?`}
         >
-          <textarea
+          <textarea spellCheck={true}
             id={`alt-desc-${project.id}`}
             rows={3}
             value={draft.description}

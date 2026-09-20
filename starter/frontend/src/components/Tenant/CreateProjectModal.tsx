@@ -551,7 +551,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-100 relative flex items-center">
-              <input
+              <input spellCheck={true}
                 type="text"
                 className="w-full rounded-full border-gray-300 shadow-sm focus:border-[#006162] focus:ring-[#006162] text-sm py-3 pl-4 pr-12"
                 placeholder="Escribe tu respuesta..."
@@ -640,7 +640,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setObjeto(v)}
           >
-            <textarea
+            <textarea spellCheck={true}
               id="project-objeto"
               required
               maxLength={1000}

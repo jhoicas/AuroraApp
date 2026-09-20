@@ -228,7 +228,7 @@ export default function AssistantChatPanel({
 
       <footer className="p-3 border-t border-gray-100 shrink-0 bg-white">
         <div className="flex gap-2 items-end">
-          <textarea
+          <textarea spellCheck={true}
             ref={resolvedInputRef}
             rows={2}
             value={draftInput}

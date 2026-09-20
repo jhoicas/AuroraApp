@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios';
 import { useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCatalogStore, type CopilotCatalogTarget } from './catalogStore';
+import { useProjectStore } from './projectStore';
 import { getFieldKnowledge, type ProjectContext } from '../data/mgaFieldsKnowledge';
 
 export type ActionCardType = 'mga_apply' | 'mga_generate_project' | 'catalog_search' | 'navigate' | 'field_autofill';
@@ -443,6 +444,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
         {
           message: trimmed,
           route_context: routeContext,
+          project_id: useProjectStore.getState().currentProject?.id,
           ...(sessionId ? { session_id: sessionId } : {}),
           ...(projectContext ? { project_context: projectContext } : {}),
           ...(creationContext ? { creation_context: mapCreationContextToApi(creationContext) } : {}),

@@ -28,6 +28,7 @@ type AuroraChatHandler struct {
 	gemini    LLMClient
 	telemetry *services.TelemetryService
 	cfg       *config.Config
+	db        *gorm.DB
 }
 
 func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AuroraChatHandler {
@@ -39,6 +40,7 @@ func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.T
 		llm.NewGeminiClient(cfg.GeminiApiKey, cfg.GeminiModel),
 		telemetry,
 		cfg,
+		db,
 	)
 }
 
@@ -51,6 +53,7 @@ func NewAuroraChatHandlerWithDeps(
 	gemini LLMClient,
 	telemetry *services.TelemetryService,
 	cfg *config.Config,
+	db *gorm.DB,
 ) *AuroraChatHandler {
 	return &AuroraChatHandler{
 		repo:      repo,
@@ -60,6 +63,7 @@ func NewAuroraChatHandlerWithDeps(
 		gemini:    gemini,
 		telemetry: telemetry,
 		cfg:       cfg,
+		db:        db,
 	}
 }
 
@@ -101,7 +105,23 @@ func (h *AuroraChatHandler) Chat(c *fiber.Ctx) error {
 	}
 
 	ragContext := h.buildRAGContext(c, tenantID, req.Message)
+	
+	// Si hay proyecto activo, inyectar el contexto en el system prompt
+	projectContextStr := ""
+	if req.ProjectID != "" {
+		var project models.Project
+		if err := h.db.WithContext(c.Context()).Where("id = ? AND tenant_id = ?", req.ProjectID, tenantID).First(&project).Error; err == nil {
+			projectContextStr = fmt.Sprintf(
+				"\nEl usuario está trabajando actualmente en este proyecto. Utiliza esta información como contexto principal para tus respuestas:\n- Nombre: %s\n- Sector: %s\n- Problema: %s\n- Objetivo: %s\n- Datos MGA Adicionales: %s\n",
+				project.Name, project.Sector, project.ProblemDescription, project.GeneralObjective, string(project.MgaFormulationData),
+			)
+		}
+	}
+
 	system := buildAuroraSystemPrompt(req.RouteContext, ragContext)
+	if projectContextStr != "" {
+		system += projectContextStr
+	}
 
 	intent := appai.ResolveIntent(req.RouteContext, req.Message)
 	selectedModel := appai.ResolveModel(intent, h.cfg)

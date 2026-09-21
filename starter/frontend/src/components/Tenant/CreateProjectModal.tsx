@@ -125,16 +125,16 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
         const identificacion = rawMga?.identificacion || rawMga?.PlanDesarrollo || {};
 
-        const foundProceso = identificacion.proceso || (editProject as any).proceso || (editProject as any).proceso_id || '';
+        const foundProceso = identificacion.proceso || rawMga?.proceso || (editProject as any).proceso || (editProject as any).proceso_id || '';
         setProceso(foundProceso ? String(foundProceso) : '');
         
-        setObjeto(identificacion.objeto || (editProject as any).objeto || editProject.name || '');
+        setObjeto(editProject.description || '');
         
-        const rawLocations = (editProject as any).locations || (editProject as any).localizaciones || identificacion.localizaciones || [];
+        const rawLocations = rawMga?.localizaciones || identificacion.localizaciones || (editProject as any).locations || (editProject as any).localizaciones || [];
         setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
         
         setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
-        setTipologiaProyecto(rawMga?.tipologia ?? '');
+        setTipologiaProyecto(identificacion.tipologia || rawMga?.tipologia || '');
         
         const foundSector = editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '';
         setSectorId(foundSector ? String(foundSector) : '');

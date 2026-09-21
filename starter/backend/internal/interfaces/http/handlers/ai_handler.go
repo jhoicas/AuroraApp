@@ -230,8 +230,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
 
 	// 3. Generación Adaptativa
-	prompt := fmt.Sprintf("Actúa como un experto en MGA. Para un proyecto con este contexto: %v, sugiere un texto breve y técnico para el campo: %s", ctxStr, req.FieldHelpKey)
-	
+	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA. Tu única tarea es generar el contenido técnico que va exactamente dentro del campo '%s' basado en el siguiente contexto del proyecto: %v. REGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", req.FieldHelpKey, ctxStr)
 	// Simular la llamada al LLM
 	suggestion := h.callLLM(prompt)
 

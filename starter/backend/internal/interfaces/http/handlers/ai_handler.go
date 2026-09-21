@@ -256,8 +256,18 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 
 	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
 
+	fieldRule := "Aplica los criterios estándar de la MGA."
+	switch req.FieldHelpKey {
+	case "situacion_existente":
+		fieldRule = "Narra el contexto histórico y las condiciones actuales. Usa tono descriptivo."
+	case "magnitud_problema":
+		fieldRule = "Describe el problema cuantitativamente. Propone indicadores de referencia realistas o líneas base."
+	case "causas", "efectos":
+		fieldRule = "Redacta una única frase corta que exprese una condición negativa."
+	}
+
 	// 3. Generación Adaptativa
-	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP. REGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", ctxStr, examplesStr, req.FieldHelpKey)
+	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP.\nREGLA DEL CAMPO: %s\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", ctxStr, examplesStr, fieldRule, req.FieldHelpKey)
 	// Simular la llamada al LLM
 	suggestion := h.callLLM(prompt)
 

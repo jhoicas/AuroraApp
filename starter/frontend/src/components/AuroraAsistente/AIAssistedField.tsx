@@ -68,16 +68,8 @@ export default function AIAssistedField({
   const suggestMgaField = useAuroraCopilotStore((s) => s.suggestMgaField);
   const storeSuggestions = useAuroraCopilotStore((s) => fieldHelpKey ? s.mgaFieldSuggestions[fieldHelpKey] : null);
 
-  // Auto-suggestion debounce
-  useEffect(() => {
-    if (!reactiveContext || !fieldHelpKey || currentValue) return;
-
-    const handler = setTimeout(() => {
-      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
-    }, 1000);
-
-    return () => clearTimeout(handler);
-  }, [reactiveContext, fieldHelpKey, currentValue, suggestMgaField, projectContext]);
+  // Eliminado el auto-fetch masivo:
+  // Se disparará solo onFocus o onClick en "Sugerir con Aurora"
 
   const activeSuggestions = prefilledSuggestions || storeSuggestions;
 
@@ -173,6 +165,20 @@ export default function AIAssistedField({
               )}
 
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    if (fieldHelpKey && projectContext && reactiveContext) {
+                      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
+                      setOpen(false);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-teal-100 hover:bg-teal-200 text-teal-800`}
+                >
+                  <span className="material-symbols-outlined text-sm">magic_button</span>
+                  Sugerir con Aurora
+                </button>
                 {/* Secondary: Open chat with field-help */}
                 <button
                   type="button"
@@ -212,7 +218,16 @@ export default function AIAssistedField({
           </span>
         )}
       </div>
-      {children}
+      <div
+        onFocusCapture={() => {
+          // Trigger bajo demanda cuando se hace Focus y está vacío
+          if (!currentValue && fieldHelpKey && projectContext && reactiveContext && !storeSuggestions) {
+            suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
+          }
+        }}
+      >
+        {children}
+      </div>
       {validationMessage && (
         <p role="alert" className="mt-1 text-xs text-amber-700 font-medium">
           {validationMessage}

@@ -143,11 +143,11 @@ func (c *GeminiClient) ChatWithModel(systemPrompt string, messages []Message, mo
 		resp.Body.Close()
 
 		if statusCode == http.StatusServiceUnavailable || statusCode == http.StatusTooManyRequests {
-			lastErr = fmt.Errorf("gemini api error (%d): %s", statusCode, string(raw))
 			if attempt < 3 {
 				time.Sleep(1500 * time.Millisecond)
 				continue
 			}
+			lastErr = fmt.Errorf("⏳ Por favor, espera unos segundos a que Aurora procese la información antes de pedir otra sugerencia.")
 			break
 		}
 		

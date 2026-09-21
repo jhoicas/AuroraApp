@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultGeminiModel      = "gemini-1.5-flash"
+	DefaultGeminiModel      = "gemini-1.5-flash-latest"
 	geminiGenerateBaseURL   = "https://generativelanguage.googleapis.com/v1beta/models"
 	TelemetryGeminiFallback = "gemini_fallback"
 )

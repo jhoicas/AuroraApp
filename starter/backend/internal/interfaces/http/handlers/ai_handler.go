@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/domain/services"
+	"aurora-backend/internal/infrastructure/llm"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -228,7 +230,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
 
 	// 3. Generación Adaptativa
-	prompt := fmt.Sprintf("Genera un borrador formal para el campo '%s' basado en este contexto acumulado y proyectos similares: %s", req.FieldHelpKey, ctxStr)
+	prompt := fmt.Sprintf("Actúa como un experto en MGA. Para un proyecto con este contexto: %v, sugiere un texto breve y técnico para el campo: %s", ctxStr, req.FieldHelpKey)
 	
 	// Simular la llamada al LLM
 	suggestion := h.callLLM(prompt)
@@ -253,9 +255,17 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 }
 
 func (h *AIHandler) callLLM(prompt string) string {
-	// Aquí se integraría con el cliente de OpenAI / Anthropic / local LLM.
-	// Por ahora retornamos una simulación inteligente.
-	return "Programa de fortalecimiento y atención en el sector DEPORTE Y RECREACIÓN para el territorio priorizado."
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return "Error: GEMINI_API_KEY no configurada."
+	}
+	client := llm.NewGeminiClient(apiKey, "")
+	messages := []llm.Message{{Role: "user", Content: prompt}}
+	resp, err := client.Chat("", messages)
+	if err != nil {
+		return "Error generando sugerencia: " + err.Error()
+	}
+	return resp
 }
 
 func min(a, b int) int {

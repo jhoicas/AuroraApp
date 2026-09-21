@@ -521,24 +521,38 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             </AIAssistedField>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={() => void handleAddDirectEffect()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-              >
-                <Plus className="h-4 w-4" aria-hidden />
-                + Efecto directo
-              </button>
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={() => void handleAddDirectCause()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-              >
-                <Plus className="h-4 w-4" aria-hidden />
-                + Causa directa
-              </button>
+              <div className="flex flex-1 gap-2">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void handleAddDirectEffect()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  + Efecto directo
+                </button>
+                <AuroraAssistButton
+                  label="Aurora"
+                  compact
+                  onClick={() => suggestWithAurora('effects')}
+                />
+              </div>
+              <div className="flex flex-1 gap-2">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void handleAddDirectCause()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  + Causa directa
+                </button>
+                <AuroraAssistButton
+                  label="Aurora"
+                  compact
+                  onClick={() => suggestWithAurora('causes')}
+                />
+              </div>
             </div>
           </div>
         </div>

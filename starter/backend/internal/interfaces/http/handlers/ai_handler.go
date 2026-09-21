@@ -8,10 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/infrastructure/llm"
+	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -23,10 +25,19 @@ import (
 type AIHandler struct {
 	db        *gorm.DB
 	telemetry *services.TelemetryService
+	repo      KnowledgeStore
+	embedder  services.EmbeddingProvider
 }
 
-func NewAIHandler(db *gorm.DB, telemetry *services.TelemetryService) *AIHandler {
-	return &AIHandler{db: db, telemetry: telemetry}
+func NewAIHandler(db *gorm.DB, telemetry *services.TelemetryService, cfg *config.Config) *AIHandler {
+	repo := postgres.NewAiKnowledgeRepository(db)
+	embedder := services.NewEmbeddingProvider(cfg)
+	return &AIHandler{
+		db:        db,
+		telemetry: telemetry,
+		repo:      repo,
+		embedder:  embedder,
+	}
 }
 
 func (h *AIHandler) Chat(c *fiber.Ctx) error {
@@ -222,15 +233,31 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// 1. Paso 1 (Proyectos Similares): Podríamos buscar en h.db proyectos con el mismo Sector, etc.
-	// Por ahora simularemos la extracción de contexto.
-	// En un escenario real, haríamos queries a la tabla `projects`.
+	sector, _ := req.ProjectContext["sector"].(string)
+	projectName, _ := req.ProjectContext["projectName"].(string)
+	query := fmt.Sprintf("%s - %s: %s", sector, projectName, req.FieldHelpKey)
 
-	// 2. Paso 2 (Contexto Acumulado): Ya viene en req.ProjectContext
+	vec, errEmb := h.embedder.Embed(query)
+	var examplesStr string
+	if errEmb == nil {
+		nodes, errSearch := h.repo.SearchSimilarGlobal(c.Context(), vec, 3)
+		if errSearch == nil && len(nodes) > 0 {
+			var examples []string
+			for _, n := range nodes {
+				examples = append(examples, n.Content)
+			}
+			examplesStr = strings.Join(examples, "\n\n")
+		} else {
+			examplesStr = "No hay ejemplos previos"
+		}
+	} else {
+		examplesStr = "No hay ejemplos previos"
+	}
+
 	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
 
 	// 3. Generación Adaptativa
-	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA. Tu única tarea es generar el contenido técnico que va exactamente dentro del campo '%s' basado en el siguiente contexto del proyecto: %v. REGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", req.FieldHelpKey, ctxStr)
+	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP. REGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", ctxStr, examplesStr, req.FieldHelpKey)
 	// Simular la llamada al LLM
 	suggestion := h.callLLM(prompt)
 

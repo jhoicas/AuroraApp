@@ -13,7 +13,7 @@ import (
 
 func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	telemetry := services.NewTelemetryService(db)
-	h := handlers.NewAIHandler(db, telemetry)
+	h := handlers.NewAIHandler(db, telemetry, cfg)
 	kh := handlers.NewAIKnowledgeHandler(db, cfg, telemetry)
 	th := handlers.NewAITelemetryHandler(telemetry)
 	aurora := handlers.NewAuroraChatHandler(db, cfg, telemetry)

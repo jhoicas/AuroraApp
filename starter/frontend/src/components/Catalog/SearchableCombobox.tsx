@@ -38,6 +38,8 @@ function matchesQuery(option: ComboboxOption, rawQuery: string): boolean {
   const query = normalizeText(rawQuery);
   if (!query) return true;
 
+  const terms = query.split(/\s+/).filter(Boolean);
+
   const code = normalizeText(option.code ?? option.value);
   const label = normalizeText(option.label);
   const hint = normalizeText(option.hint ?? '');
@@ -45,15 +47,7 @@ function matchesQuery(option: ComboboxOption, rawQuery: string): boolean {
   const indicatorLabel = normalizeText(option.indicatorLabel ?? '');
   const combined = `${code} ${label} ${hint} ${indicatorCode} ${indicatorLabel}`;
 
-  return (
-    code.includes(query) ||
-    code.startsWith(query) ||
-    label.includes(query) ||
-    indicatorCode.includes(query) ||
-    indicatorCode.startsWith(query) ||
-    indicatorLabel.includes(query) ||
-    combined.includes(query)
-  );
+  return terms.every(term => combined.includes(term));
 }
 
 function formatOptionLabel(option: ComboboxOption): string {

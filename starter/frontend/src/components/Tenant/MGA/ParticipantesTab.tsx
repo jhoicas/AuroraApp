@@ -62,8 +62,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
   };
 
   const handleAddParticipant = async () => {
-    if (!draft.actor.trim() || !draft.entity.trim()) {
-      setError('Actor y entidad son obligatorios.');
+    if (!draft.actor.trim() || !draft.entity.trim() || !draft.position.trim()) {
+      setError('Actor, entidad y posición son obligatorios.');
       return;
     }
     setError(null);
@@ -158,13 +158,18 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
         </div>
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Posición</label>
-          <input spellCheck={true}
-            type="text"
+          <select
             value={draft.position}
             onChange={(e) => setDraft((d) => ({ ...d, position: e.target.value }))}
             className="w-full p-2 border rounded bg-white"
-            placeholder="Ej. Favorable, neutral, en contra…"
-          />
+            required
+          >
+            <option value="">Seleccione una posición...</option>
+            <option value="Beneficiario">Beneficiario</option>
+            <option value="Cooperante">Cooperante</option>
+            <option value="Oponente">Oponente</option>
+            <option value="Perjudicado">Perjudicado</option>
+          </select>
         </div>
         <div className="sm:col-span-2">
           <AIAssistedField

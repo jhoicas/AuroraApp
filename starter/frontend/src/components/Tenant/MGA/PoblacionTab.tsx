@@ -145,6 +145,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
             <input spellCheck={true}
               type="number"
               min="0"
+              maxLength={13}
               inputMode="numeric"
               onKeyDown={(e) => {
                 if (['e', 'E', '+', '-', '.'].includes(e.key)) {
@@ -152,7 +153,10 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
                 }
               }}
               value={panel.total_number}
-              onChange={(e) => setPanel((p) => ({ ...p, total_number: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length <= 13) setPanel((p) => ({ ...p, total_number: val }));
+              }}
               className="w-full p-2 border rounded bg-white"
               placeholder="Ej. 15000"
             />
@@ -161,6 +165,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
             <label className="font-semibold text-gray-600 block mb-1">Fuente</label>
             <input spellCheck={true}
               type="text"
+              maxLength={500}
               value={panel.source}
               onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
               className="w-full p-2 border rounded bg-white"

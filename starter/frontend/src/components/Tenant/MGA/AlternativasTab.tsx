@@ -121,6 +121,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           <textarea spellCheck={true}
             id={`alt-desc-${project.id}`}
             rows={3}
+            maxLength={250}
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             className="w-full p-2 border rounded bg-white"

@@ -238,6 +238,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               <textarea spellCheck={true}
                 id={`mga-general-objective-${project.id}`}
                 rows={3}
+                maxLength={250}
                 value={generalObjective}
                 onChange={(e) => handleGeneralObjectiveChange(e.target.value)}
                 className="w-full p-2 border rounded bg-white text-xs"
@@ -366,6 +367,7 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
                             <textarea spellCheck={true}
                               id={`mga-specific-${rel.id}`}
                               rows={2}
+                              maxLength={2000}
                               value={draftValue}
                               onChange={(e) => handleDraftObjectiveChange(rel.id, e.target.value)}
                               className="w-full p-1 border rounded bg-white text-xs"

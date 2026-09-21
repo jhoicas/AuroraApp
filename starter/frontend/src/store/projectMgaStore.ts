@@ -102,6 +102,15 @@ export type ProjectMgaFormulation = {
   populations: MgaPopulation[];
   alternatives: MgaAlternative[];
   planDesarrollo?: PlanDesarrolloData;
+  necesidades?: Record<string, any>;
+  analisisTecnico?: Record<string, any>;
+  localizacion?: Record<string, any>;
+  riesgos?: Record<string, any>;
+  ingresosBeneficios?: Record<string, any>;
+  prestamos?: Record<string, any>;
+  depreciacion?: Record<string, any>;
+  evaluacion?: Record<string, any>;
+  programacion?: Record<string, any>;
   completedSections: Record<string, boolean>;
 };
 
@@ -161,6 +170,15 @@ type ProjectMgaState = {
   saveObjetivos: (projectId: string) => Promise<void>;
   saveCadenaDeValor: (projectId: string) => Promise<void>;
   saveAlternativas: (projectId: string) => Promise<void>;
+  saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveAnalisisTecnico: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveLocalizacion: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveRiesgos: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveIngresosBeneficios: (projectId: string, data: Record<string, any>) => Promise<void>;
+  savePrestamos: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveDepreciacion: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveEvaluacion: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveProgramacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   clearError: () => void;
 };
 
@@ -229,6 +247,15 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     alternatives: data.alternatives ?? [],
     // As we don't have this in API yet, it will be undefined initially
     planDesarrollo: undefined,
+    necesidades: undefined,
+    analisisTecnico: undefined,
+    localizacion: undefined,
+    riesgos: undefined,
+    ingresosBeneficios: undefined,
+    prestamos: undefined,
+    depreciacion: undefined,
+    evaluacion: undefined,
+    programacion: undefined,
     completedSections: {},
   };
 }
@@ -282,6 +309,168 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       });
     } catch (err) {
       set({ isLoading: false, error: 'Error guardando plan de desarrollo', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveNecesidades: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, necesidades: true };
+        debouncedPatchProject(projectId, { necesidades: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, necesidades: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando necesidades', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveAnalisisTecnico: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, analisisTecnico: true };
+        debouncedPatchProject(projectId, { analisisTecnico: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, analisisTecnico: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando analisis tecnico', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveLocalizacion: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, localizacion: true };
+        debouncedPatchProject(projectId, { localizacion: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, localizacion: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando localizacion', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveRiesgos: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, riesgos: true };
+        debouncedPatchProject(projectId, { riesgos: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, riesgos: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando riesgos', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveIngresosBeneficios: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, ingresosBeneficios: true };
+        debouncedPatchProject(projectId, { ingresosBeneficios: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, ingresosBeneficios: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando ingresos y beneficios', isSaving: false });
+      throw err;
+    }
+  },
+
+  savePrestamos: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, prestamos: true };
+        debouncedPatchProject(projectId, { prestamos: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, prestamos: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando prestamos', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveDepreciacion: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, depreciacion: true };
+        debouncedPatchProject(projectId, { depreciacion: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, depreciacion: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando depreciacion', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveEvaluacion: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, evaluacion: true };
+        debouncedPatchProject(projectId, { evaluacion: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, evaluacion: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando evaluacion', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveProgramacion: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, programacion: true };
+        debouncedPatchProject(projectId, { programacion: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, programacion: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando programacion', isSaving: false });
       throw err;
     }
   },
@@ -356,12 +545,18 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       
       const project = useProjectStore.getState().projects.find(p => p.id === projectId);
       if (project?.mga_formulation_data) {
-        if (project.mga_formulation_data.planDesarrollo) {
-          formulation.planDesarrollo = project.mga_formulation_data.planDesarrollo as PlanDesarrolloData;
-        }
-        if (project.mga_formulation_data.completedSections) {
-          formulation.completedSections = project.mga_formulation_data.completedSections;
-        }
+        const pData = project.mga_formulation_data;
+        if (pData.planDesarrollo) formulation.planDesarrollo = pData.planDesarrollo as PlanDesarrolloData;
+        if (pData.necesidades) formulation.necesidades = pData.necesidades;
+        if (pData.analisisTecnico) formulation.analisisTecnico = pData.analisisTecnico;
+        if (pData.localizacion) formulation.localizacion = pData.localizacion;
+        if (pData.riesgos) formulation.riesgos = pData.riesgos;
+        if (pData.ingresosBeneficios) formulation.ingresosBeneficios = pData.ingresosBeneficios;
+        if (pData.prestamos) formulation.prestamos = pData.prestamos;
+        if (pData.depreciacion) formulation.depreciacion = pData.depreciacion;
+        if (pData.evaluacion) formulation.evaluacion = pData.evaluacion;
+        if (pData.programacion) formulation.programacion = pData.programacion;
+        if (pData.completedSections) formulation.completedSections = pData.completedSections;
       }
 
       set((state) => ({

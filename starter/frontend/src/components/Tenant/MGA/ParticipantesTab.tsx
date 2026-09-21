@@ -177,13 +177,14 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
           >
-            <textarea spellCheck={true}
-              id={`participant-interests-${project.id}`}
-              rows={2}
-              value={draft.interests}
-              onChange={(e) => setDraft((d) => ({ ...d, interests: e.target.value }))}
-              className="w-full p-2 border rounded bg-white mt-1"
-            />
+              <textarea spellCheck={true}
+                id={`participant-interests-${project.id}`}
+                rows={2}
+                maxLength={200}
+                value={draft.interests}
+                onChange={(e) => setDraft((d) => ({ ...d, interests: e.target.value }))}
+                className="w-full p-2 border rounded bg-white mt-1"
+              />
           </AIAssistedField>
         </div>
         <div className="sm:col-span-2">
@@ -197,13 +198,14 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
           >
-            <textarea spellCheck={true}
-              id={`participant-contribution-${project.id}`}
-              rows={2}
-              value={draft.contribution}
-              onChange={(e) => setDraft((d) => ({ ...d, contribution: e.target.value }))}
-              className="w-full p-2 border rounded bg-white mt-1"
-            />
+              <textarea spellCheck={true}
+                id={`participant-contribution-${project.id}`}
+                rows={2}
+                maxLength={2000}
+                value={draft.contribution}
+                onChange={(e) => setDraft((d) => ({ ...d, contribution: e.target.value }))}
+                className="w-full p-2 border rounded bg-white mt-1"
+              />
           </AIAssistedField>
         </div>
         <div className="sm:col-span-2 flex flex-wrap justify-end gap-2">
@@ -295,13 +297,14 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           projectContext={fieldProjectContext}
           onAutoFill={(v) => patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: v } })}
         >
-          <textarea spellCheck={true}
-            id={`mga-analisis-participantes-${project.id}`}
-            value={project.mga_formulation_data?.analisis_participantes || ''}
-            onChange={(e) => void patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: e.target.value } })}
-            className="min-h-[120px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
-            placeholder="Describa el tipo de consulta y coordinación…"
-          />
+            <textarea spellCheck={true}
+              id={`mga-analisis-participantes-${project.id}`}
+              maxLength={2500}
+              value={project.mga_formulation_data?.analisis_participantes || ''}
+              onChange={(e) => void patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: e.target.value } })}
+              className="min-h-[120px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
+              placeholder="Describa el tipo de consulta y coordinación…"
+            />
         </AIAssistedField>
       </div>
 

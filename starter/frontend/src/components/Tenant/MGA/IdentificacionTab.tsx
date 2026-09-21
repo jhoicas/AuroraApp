@@ -331,6 +331,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               <textarea spellCheck={true}
                 id={`effect-${effect.id}`}
                 rows={3}
+                maxLength={250}
                 value={editTarget.draft}
                 onChange={(e) =>
                   setEditTarget({ kind: 'effect', id: effect.id, draft: e.target.value })
@@ -398,6 +399,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               <textarea spellCheck={true}
                 id={`cause-${relation.id}`}
                 rows={3}
+                maxLength={250}
                 value={editTarget.draft}
                 onChange={(e) =>
                   setEditTarget({ kind: 'cause', id: relation.id, draft: e.target.value })
@@ -509,6 +511,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             >
               <textarea spellCheck={true}
                 id={`mga-problem-${project.id}`}
+                maxLength={2000}
                 value={problemDescription}
                 onChange={(e) => patchCurrentProject({ problem_description: e.target.value })}
                 onBlur={() => void handleSaveIdentification()}
@@ -580,6 +583,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
           >
             <textarea spellCheck={true}
               id={`mga-situation-${project.id}`}
+              maxLength={2000}
               value={situacionExistente}
               onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value })}
               onBlur={() => void handleSaveIdentification()}
@@ -601,6 +605,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
           >
             <textarea spellCheck={true}
               id={`mga-magnitude-${project.id}`}
+              maxLength={2000}
               value={magnitudProblema}
               onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value })}
               onBlur={() => void handleSaveIdentification()}

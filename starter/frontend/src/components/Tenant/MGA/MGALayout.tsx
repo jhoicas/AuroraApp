@@ -11,6 +11,15 @@ import PoblacionTab from './PoblacionTab';
 import ObjetivosTab from './ObjetivosTab';
 import CadenaValorTab from './CadenaValorTab';
 import AlternativasTab from './AlternativasTab';
+import NecesidadesTab from './NecesidadesTab';
+import AnalisisTecnicoTab from './AnalisisTecnicoTab';
+import LocalizacionTab from './LocalizacionTab';
+import RiesgosTab from './RiesgosTab';
+import IngresosBeneficiosTab from './IngresosBeneficiosTab';
+import PrestamosTab from './PrestamosTab';
+import DepreciacionTab from './DepreciacionTab';
+import EvaluacionTab from './EvaluacionTab';
+import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 
 export type MgaMainStageId =
@@ -21,7 +30,18 @@ export type MgaMainStageId =
   | 'presentar';
 
 /** Pestañas del menú lateral MGA (incluye plan de desarrollo y mapeo problemática → identificación). */
-export type MgaLayoutTabId = MgaAuditTabId | 'plan-desarrollo';
+export type MgaLayoutTabId = 
+  | MgaAuditTabId 
+  | 'plan-desarrollo'
+  | 'necesidades'
+  | 'analisis-tecnico'
+  | 'localizacion'
+  | 'riesgos'
+  | 'ingresos-beneficios'
+  | 'prestamos'
+  | 'depreciacion'
+  | 'evaluacion'
+  | 'programacion';
 
 type MgaMainStage = {
   id: MgaMainStageId;
@@ -42,13 +62,31 @@ const MAIN_STAGES: MgaMainStage[] = [
   { id: 'presentar', label: 'Presentar' },
 ];
 
-const SUB_SECTIONS: MgaSubSection[] = [
+const SUB_SECTIONS_IDENTIFICACION: MgaSubSection[] = [
   { id: 'plan-desarrollo', label: 'Plan de desarrollo' },
   { id: 'identificacion', label: 'Problemática' },
   { id: 'participantes', label: 'Participantes' },
   { id: 'poblacion', label: 'Población' },
   { id: 'objetivos', label: 'Objetivos' },
   { id: 'alternativas', label: 'Alternativas' },
+];
+
+const SUB_SECTIONS_PREPARACION: MgaSubSection[] = [
+  { id: 'necesidades', label: 'Necesidades' },
+  { id: 'analisis-tecnico', label: 'Análisis técnico' },
+  { id: 'localizacion', label: 'Localización' },
+  { id: 'riesgos', label: 'Riesgos' },
+  { id: 'ingresos-beneficios', label: 'Ingresos y beneficios' },
+  { id: 'prestamos', label: 'Préstamos' },
+  { id: 'depreciacion', label: 'Depreciación' },
+];
+
+const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
+  { id: 'evaluacion', label: 'Evaluación Económica' },
+];
+
+const SUB_SECTIONS_PROGRAMACION: MgaSubSection[] = [
+  { id: 'programacion', label: 'Indicadores y Financiación' },
 ];
 
 export type MGALayoutProps = {
@@ -102,6 +140,16 @@ function useMgaSectionStatuses(project: Project) {
   const cObjetivos = !!formulation.completedSections['objetivos'];
   const cAlternativas = !!formulation.completedSections['alternativas'];
 
+  const cNecesidades = !!formulation.completedSections.necesidades;
+  const cAnalisisTecnico = !!formulation.completedSections.analisisTecnico;
+  const cLocalizacion = !!formulation.completedSections.localizacion;
+  const cRiesgos = !!formulation.completedSections.riesgos;
+  const cIngresosBeneficios = !!formulation.completedSections.ingresosBeneficios;
+  const cPrestamos = !!formulation.completedSections.prestamos;
+  const cDepreciacion = !!formulation.completedSections.depreciacion;
+  const cEvaluacion = !!formulation.completedSections.evaluacion;
+  const cProgramacion = !!formulation.completedSections.programacion;
+
   const statuses: Record<MgaLayoutTabId, SectionStatus> = {
     'plan-desarrollo': cPlan ? 'COMPLETED' : 'ACTIVE',
     'identificacion': cIdentificacion ? 'COMPLETED' : (cPlan ? 'ACTIVE' : 'LOCKED'),
@@ -110,6 +158,15 @@ function useMgaSectionStatuses(project: Project) {
     'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion ? 'ACTIVE' : 'LOCKED'),
     'cadena-valor': 'LOCKED',
     'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos ? 'ACTIVE' : 'LOCKED'),
+    'necesidades': cNecesidades ? 'COMPLETED' : (cAlternativas ? 'ACTIVE' : 'LOCKED'),
+    'analisis-tecnico': cAnalisisTecnico ? 'COMPLETED' : (cNecesidades ? 'ACTIVE' : 'LOCKED'),
+    'localizacion': cLocalizacion ? 'COMPLETED' : (cAnalisisTecnico ? 'ACTIVE' : 'LOCKED'),
+    'riesgos': cRiesgos ? 'COMPLETED' : (cLocalizacion ? 'ACTIVE' : 'LOCKED'),
+    'ingresos-beneficios': cIngresosBeneficios ? 'COMPLETED' : (cRiesgos ? 'ACTIVE' : 'LOCKED'),
+    'prestamos': cPrestamos ? 'COMPLETED' : (cIngresosBeneficios ? 'ACTIVE' : 'LOCKED'),
+    'depreciacion': cDepreciacion ? 'COMPLETED' : (cPrestamos ? 'ACTIVE' : 'LOCKED'),
+    'evaluacion': cEvaluacion ? 'COMPLETED' : (cDepreciacion ? 'ACTIVE' : 'LOCKED'),
+    'programacion': cProgramacion ? 'COMPLETED' : (cEvaluacion ? 'ACTIVE' : 'LOCKED'),
   };
 
   return statuses;
@@ -117,9 +174,9 @@ function useMgaSectionStatuses(project: Project) {
 
 function useMgaMainStageStatuses(subStatuses: Record<MgaLayoutTabId, SectionStatus>) {
   const cIdentificacion = subStatuses['alternativas'] === 'COMPLETED';
-  const cPreparacion = false; // Add logic when more tabs are implemented
-  const cEvaluacion = false;
-  const cProgramacion = false;
+  const cPreparacion = subStatuses['depreciacion'] === 'COMPLETED';
+  const cEvaluacion = subStatuses['evaluacion'] === 'COMPLETED';
+  const cProgramacion = subStatuses['programacion'] === 'COMPLETED';
   const cPresentar = false;
 
   const statuses: Record<MgaMainStageId, SectionStatus> = {
@@ -146,6 +203,24 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <ObjetivosTab project={project} skipInitialFetch />;
     case 'alternativas':
       return <AlternativasTab project={project} />;
+    case 'necesidades':
+      return <NecesidadesTab project={project} />;
+    case 'analisis-tecnico':
+      return <AnalisisTecnicoTab project={project} />;
+    case 'localizacion':
+      return <LocalizacionTab project={project} />;
+    case 'riesgos':
+      return <RiesgosTab project={project} />;
+    case 'ingresos-beneficios':
+      return <IngresosBeneficiosTab project={project} />;
+    case 'prestamos':
+      return <PrestamosTab project={project} />;
+    case 'depreciacion':
+      return <DepreciacionTab project={project} />;
+    case 'evaluacion':
+      return <EvaluacionTab project={project} />;
+    case 'programacion':
+      return <ProgramacionTab project={project} />;
     default:
       return <IdentificacionTab project={project} />;
   }
@@ -290,7 +365,13 @@ export default function MGALayout({
           aria-label="Secciones de identificación"
         >
           <ul className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-visible lg:p-3">
-            {SUB_SECTIONS.map((section) => {
+            {(
+              activeMainStage === 'identificacion' ? SUB_SECTIONS_IDENTIFICACION :
+              activeMainStage === 'preparacion' ? SUB_SECTIONS_PREPARACION :
+              activeMainStage === 'evaluacion' ? SUB_SECTIONS_EVALUACION :
+              activeMainStage === 'programacion' ? SUB_SECTIONS_PROGRAMACION :
+              SUB_SECTIONS_IDENTIFICACION
+            ).map((section) => {
               const isActive = activeTab === section.id;
               const status = sectionStatuses[section.id];
               const isLocked = status === 'LOCKED';

@@ -490,14 +490,26 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                     className="p-2 border rounded bg-white"
                   />
                   <input spellCheck={true}
-                    type="text"
+                    type="number"
+                    min="0"
+                    maxLength={22}
+                    inputMode="numeric"
+                    onKeyDown={(e) => {
+                      if (['e', 'E', '+', '-'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="Monto"
                     value={deliverableDraft.amount}
-                    onChange={(e) => setDeliverableDraft((d) => ({ ...d, amount: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 22) setDeliverableDraft((d) => ({ ...d, amount: val }));
+                    }}
                     className="p-2 border rounded bg-white"
                   />
                   <input spellCheck={true}
                     type="text"
+                    maxLength={500}
                     placeholder="Nombre del entregable"
                     value={deliverableDraft.name}
                     onChange={(e) => setDeliverableDraft((d) => ({ ...d, name: e.target.value }))}
@@ -594,10 +606,21 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                     className="p-2 border rounded bg-white"
                   />
                   <input spellCheck={true}
-                    type="text"
+                    type="number"
+                    min="0"
+                    maxLength={22}
+                    inputMode="numeric"
+                    onKeyDown={(e) => {
+                      if (['e', 'E', '+', '-'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="Cantidad"
                     value={activityDraft.quantity}
-                    onChange={(e) => setActivityDraft((d) => ({ ...d, quantity: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 22) setActivityDraft((d) => ({ ...d, quantity: val }));
+                    }}
                     className="p-2 border rounded bg-white"
                   />
                   <input spellCheck={true}
@@ -609,6 +632,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                   />
                   <input spellCheck={true}
                     type="text"
+                    maxLength={500}
                     placeholder="Nombre de la actividad"
                     value={activityDraft.name}
                     onChange={(e) => setActivityDraft((d) => ({ ...d, name: e.target.value }))}

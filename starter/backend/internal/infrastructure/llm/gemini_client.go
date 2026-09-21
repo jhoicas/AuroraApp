@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -32,7 +33,10 @@ type GeminiClient struct {
 
 func NewGeminiClient(apiKey, model string) *GeminiClient {
 	if strings.TrimSpace(model) == "" {
-		model = DefaultGeminiModel
+		model = os.Getenv("GEMINI_MODEL")
+		if strings.TrimSpace(model) == "" {
+			model = "gemini-1.5-flash"
+		}
 	}
 	return &GeminiClient{
 		apiKey: strings.TrimSpace(apiKey),
@@ -114,7 +118,8 @@ func (c *GeminiClient) ChatWithModel(systemPrompt string, messages []Message, mo
 		return "", err
 	}
 
-	url := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiGenerateBaseURL, model, c.apiKey)
+	cleanModel := strings.TrimPrefix(model, "models/")
+	url := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiGenerateBaseURL, cleanModel, c.apiKey)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", err

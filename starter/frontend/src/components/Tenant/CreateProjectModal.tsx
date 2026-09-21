@@ -427,17 +427,17 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
     }
 
     try {
+      const idenPayload = {
+        proceso_id: parseInt(proceso, 10),
+        proceso: parseInt(proceso, 10),
+        objeto: objeto.trim(),
+        localizaciones: localizaciones,
+        tipo_inversion: tipoInversion,
+        tipologia: tipologiaProyecto,
+      };
+
       if (editProject) {
         // Modo Edición
-        const idenPayload = {
-          proceso_id: parseInt(proceso, 10),
-          proceso: parseInt(proceso, 10),
-          objeto: objeto.trim(),
-          localizaciones: localizaciones,
-          tipo_inversion: tipoInversion,
-          tipologia: tipologiaProyecto,
-        };
-
         const currentProject = useProjectStore.getState().currentProject;
         const currentMgaData = currentProject?.mga_formulation_data || {};
         const currentIden = currentMgaData.identificacion || {};
@@ -494,13 +494,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           mga_formulation_data: {
             identificacion: {
               contexto_inicial: preCreationContext,
-              proceso: parseInt(proceso, 10),
-              proceso_id: parseInt(proceso, 10),
-              objeto: objeto.trim(),
-              localizaciones: localizaciones,
-              tipo_inversion: tipoInversion,
-              tipologia: tipologiaProyecto,
-            }
+              ...idenPayload
+            },
+            planDesarrollo: {},
           }
         } as any);
         handleClose();
@@ -961,8 +957,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
               disabled={isLoading}
               className="inline-flex items-center gap-1 rounded bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
             >
-              <span className="material-symbols-outlined text-base">add</span>
-              {isLoading ? 'Creando…' : 'Crear proyecto'}
+              <span className="material-symbols-outlined text-base">{editProject ? 'save' : 'add'}</span>
+              {isLoading ? (editProject ? 'Actualizando…' : 'Creando…') : (editProject ? 'Actualizar proyecto' : 'Crear proyecto')}
             </button>
           </div>
         </form>

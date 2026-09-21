@@ -240,7 +240,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       label: p.producto.trim(),
       code: p.codigo_del_producto.trim(),
       indicatorCode: p.codigo_del_indicador_de_producto.trim(),
-      indicatorLabel: p.indicador_de_producto.trim()
+      indicatorLabel: p.indicador_de_producto.trim(),
+      hint: `${p.descripcion || ''} ${p.codigo_del_programa || ''} ${p.nombre_del_programa || ''}`.trim()
     })),
     [catalogProducts]
   );
@@ -869,7 +870,15 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           <AIAssistedField
             label="Producto principal (Opcional)"
             prefilledSuggestions={projectSuggestions?.producto_principal}
-            onApplySuggestion={(sug) => sug && setProductoPrincipal(sug)}
+            onApplySuggestion={(sug) => {
+              if (!sug) return;
+              const nQuery = sug.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              const prod = catalogProducts.find(p => {
+                const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return nName.includes(nQuery) || nQuery.includes(nName);
+              });
+              if (prod) setProductoPrincipal(prod.codigo_del_producto);
+            }}
             htmlFor="project-producto-principal"
             required
             guidance="El producto principal es el bien o servicio público que el proyecto entregará. Se habilita tras seleccionar el sector."
@@ -900,13 +909,9 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
                   if (prod) {
                     setSelectedProductData(prod);
                     setIsProductModalOpen(true);
-                  } else if (!productoPrincipal && catalogProducts.length > 0) {
-                    // Si no hay seleccionado, mostrar el primero disponible de sugerencia
-                    setSelectedProductData(catalogProducts[0]);
-                    setIsProductModalOpen(true);
                   }
                 }}
-                disabled={!sectorId || isLoadingProducts || catalogProducts.length === 0}
+                disabled={!sectorId || isLoadingProducts || !productoPrincipal}
                 className="shrink-0 rounded border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100"
               >
                 Ver detalle

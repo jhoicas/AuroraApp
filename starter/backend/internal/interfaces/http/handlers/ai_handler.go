@@ -269,8 +269,13 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	// 3. Generación Adaptativa
 	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP.\nREGLA DEL CAMPO: %s\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", ctxStr, examplesStr, fieldRule, req.FieldHelpKey)
 	// Simular la llamada al LLM
-	suggestion := h.callLLM(prompt)
-
+	suggestion, err := h.callLLM(prompt)
+	if err != nil {
+		if strings.Contains(err.Error(), "⏳ Por favor, espera") {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "RATE_LIMIT_EXCEEDED"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error generando sugerencia: " + err.Error()})
+	}
 	// Loggear la petición en AI usage si es necesario
 	now := time.Now().UTC()
 	
@@ -290,18 +295,18 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	})
 }
 
-func (h *AIHandler) callLLM(prompt string) string {
+func (h *AIHandler) callLLM(prompt string) (string, error) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		return "Error: GEMINI_API_KEY no configurada."
+		return "", fmt.Errorf("GEMINI_API_KEY no configurada")
 	}
 	client := llm.NewGeminiClient(apiKey, "")
 	messages := []llm.Message{{Role: "user", Content: prompt}}
 	resp, err := client.Chat("", messages)
 	if err != nil {
-		return "Error generando sugerencia: " + err.Error()
+		return "", err
 	}
-	return resp
+	return resp, nil
 }
 
 func min(a, b int) int {

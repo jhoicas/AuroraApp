@@ -202,19 +202,28 @@ export default function AIAssistedField({
         {activeSuggestions && activeSuggestions.length > 0 && (
           <span className="ml-1 inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1">
             ✨
-            {activeSuggestions.map((sug, i) => (
-              <span key={i} className="inline-flex items-center">
-                <span className="truncate max-w-[200px]" title={sug}>{sug}</span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); onAutoFill?.(sug); }}
-                  className="ml-1 font-semibold hover:underline text-[#006162]"
-                >
-                  [Usar]
-                </button>
-                {i < activeSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
-              </span>
-            ))}
+            {activeSuggestions.map((sug, i) => {
+              if (sug === "ESPERANDO_CUOTA") {
+                return (
+                  <span key={i} className="inline-flex items-center text-amber-600 font-medium ml-1">
+                    ⏳ Límite alcanzado. Esperando para procesar sugerencia...
+                  </span>
+                );
+              }
+              return (
+                <span key={i} className="inline-flex items-center">
+                  <span className="truncate max-w-[200px]" title={sug}>{sug}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); onAutoFill?.(sug); }}
+                    className="ml-1 font-semibold hover:underline text-[#006162]"
+                  >
+                    [Usar]
+                  </button>
+                  {i < activeSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
+                </span>
+              );
+            })}
           </span>
         )}
       </div>

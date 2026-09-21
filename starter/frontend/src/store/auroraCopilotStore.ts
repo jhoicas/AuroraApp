@@ -119,8 +119,7 @@ async function processSuggestQueue() {
   isProcessingSuggestQueue = true;
 
   while (suggestQueue.length > 0) {
-    const task = suggestQueue.shift();
-    if (!task) continue;
+    const task = suggestQueue[0];
 
     try {
       const res = await api.post<{ suggestion: string }>('/ai/mga/suggest-field', {
@@ -128,8 +127,20 @@ async function processSuggestQueue() {
         project_context: task.projectContext,
       });
       useAuroraCopilotStore.getState().setMgaFieldSuggestion(task.fieldHelpKey, res.data.suggestion);
-    } catch (e) {
+      suggestQueue.shift();
+    } catch (e: any) {
+      const status = e.response?.status;
+      const errorMsg = e.response?.data?.error;
+      
+      if (status === 429 || errorMsg === 'RATE_LIMIT_EXCEEDED') {
+        useAuroraCopilotStore.getState().setMgaFieldSuggestion(task.fieldHelpKey, "ESPERANDO_CUOTA");
+        console.warn(`[Aurora] Rate limit exceeded. Pausing queue for 60 seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+        continue;
+      }
+
       console.warn(`[Aurora] Error fetching suggestion for ${task.fieldHelpKey}`, e);
+      suggestQueue.shift();
     }
     
     // Pequeño retraso entre peticiones para no saturar

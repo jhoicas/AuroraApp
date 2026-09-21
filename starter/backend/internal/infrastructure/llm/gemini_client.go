@@ -120,21 +120,47 @@ func (c *GeminiClient) ChatWithModel(systemPrompt string, messages []Message, mo
 
 	cleanModel := strings.TrimPrefix(model, "models/")
 	url := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiGenerateBaseURL, cleanModel, c.apiKey)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
+	var raw []byte
+	var lastErr error
+	var statusCode int
 
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("gemini api error (%d): %s", resp.StatusCode, string(raw))
+	for attempt := 1; attempt <= 3; attempt++ {
+		// Creamos el request de nuevo en cada intento porque el body (Reader) se consume
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		
+		raw, _ = io.ReadAll(resp.Body)
+		statusCode = resp.StatusCode
+		resp.Body.Close()
+
+		if statusCode == http.StatusServiceUnavailable || statusCode == http.StatusTooManyRequests {
+			lastErr = fmt.Errorf("gemini api error (%d): %s", statusCode, string(raw))
+			if attempt < 3 {
+				time.Sleep(1500 * time.Millisecond)
+				continue
+			}
+			break
+		}
+		
+		if statusCode >= 400 {
+			return "", fmt.Errorf("gemini api error (%d): %s", statusCode, string(raw))
+		}
+		
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		return "", lastErr
 	}
 
 	var parsed geminiGenerateResponse

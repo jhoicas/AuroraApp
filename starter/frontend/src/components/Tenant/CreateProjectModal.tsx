@@ -125,16 +125,22 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
         const identificacion = rawMga?.identificacion || rawMga?.PlanDesarrollo || {};
 
-        setProceso(identificacion.proceso || (editProject as any).proceso || (editProject as any).proceso_id || '');
-        setObjeto(identificacion.objeto || (editProject as any).objeto || '');
+        const foundProceso = identificacion.proceso || (editProject as any).proceso || (editProject as any).proceso_id || '';
+        setProceso(foundProceso ? String(foundProceso) : '');
+        
+        setObjeto(identificacion.objeto || (editProject as any).objeto || editProject.name || '');
         
         const rawLocations = (editProject as any).locations || (editProject as any).localizaciones || identificacion.localizaciones || [];
-        setLocalizaciones(Array.isArray(rawLocations) ? rawLocations : (editProject as any).locations || []);
+        setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
         
         setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
         setTipologiaProyecto(rawMga?.tipologia ?? '');
-        setSectorId(editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '');
-        setProductoPrincipal(editProject.product_code || (editProject as any).productCode || '');
+        
+        const foundSector = editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '';
+        setSectorId(foundSector ? String(foundSector) : '');
+        
+        const foundProduct = editProject.product_code || (editProject as any).productCode || '';
+        setProductoPrincipal(foundProduct ? String(foundProduct) : '');
       } else {
         setProceso('');
         setObjeto('');
@@ -304,7 +310,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
   useEffect(() => {
     if (!sectorId || !selectedSector) {
-      setProductoPrincipal('');
+      if (!editProject) setProductoPrincipal('');
       return;
     }
     void fetchCatalogProducts({

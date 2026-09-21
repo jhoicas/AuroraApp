@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Home } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectStore } from '../../../store/projectStore';
+import CreateProjectModal from '../CreateProjectModal';
 import type { MgaAuditTabId } from './FormulationAuditPanel';
 import IdentificacionTab from './IdentificacionTab';
 import PlanDesarrolloTab from './PlanDesarrolloTab';

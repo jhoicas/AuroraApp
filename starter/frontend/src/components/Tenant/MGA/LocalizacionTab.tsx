@@ -98,7 +98,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                       projectContext={fieldProjectContext}
                       reactiveContext={{ alternativa: alt.description }}
                       currentValue={val.specific}
-                      onAutoFill={(v) => updateItem(alt.id, 'specific', v)}
+                      onAutoFill={(v) =
+            maxLength={200}> updateItem(alt.id, 'specific', v)}
                     >
                       <input spellCheck={true}
                         type="text"

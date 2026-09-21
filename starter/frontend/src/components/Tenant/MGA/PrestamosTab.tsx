@@ -130,7 +130,8 @@ export default function PrestamosTab({ project }: { project: Project }) {
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.entidad}
-                      onAutoFill={(v) => updateItem(item.id, 'entidad', v)}
+                      onAutoFill={(v) =
+            maxLength={250}> updateItem(item.id, 'entidad', v)}
                     >
                       <input spellCheck={true}
                         type="text"

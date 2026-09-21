@@ -277,7 +277,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	}
 
 	if req.MaxLength > 0 {
-		prompt += fmt.Sprintf("\nREGLA DE LONGITUD: Tu respuesta final NO debe superar los %d caracteres bajo ninguna circunstancia. Sé preciso y conciso.", req.MaxLength)
+		prompt += fmt.Sprintf("\nREGLA CRÍTICA Y ESTRICTA: Tu respuesta FINAL NO DEBE SUPERAR los %d caracteres en total (incluyendo espacios). Resume la idea. Si te pasas, el sistema fallará.", req.MaxLength)
 	}
 
 	// Simular la llamada al LLM

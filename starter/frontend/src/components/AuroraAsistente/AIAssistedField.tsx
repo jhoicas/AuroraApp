@@ -242,7 +242,12 @@ export default function AIAssistedField({
                   <span className="truncate max-w-[300px]" title={displayValue}>{displayValue}</span>
                   <button
                     type="button"
-                    onClick={(e) => { e.preventDefault(); onApplySuggestion?.(applyValue); onAutoFill?.(applyValue); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const finalValue = maxLength ? applyValue.substring(0, maxLength) : applyValue;
+                      onApplySuggestion?.(finalValue);
+                      onAutoFill?.(finalValue);
+                    }}
                     className="ml-1 font-semibold hover:underline text-[#006162]"
                   >
                     [Usar]

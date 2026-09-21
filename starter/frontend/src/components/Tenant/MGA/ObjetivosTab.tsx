@@ -235,7 +235,8 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               projectContext={fieldProjectContext}
               reactiveContext={{ generalObjective }}
               currentValue={generalObjective}
-              onAutoFill={(v) => handleGeneralObjectiveChange(v)}
+              onAutoFill={(v) =
+            maxLength={250}> handleGeneralObjectiveChange(v)}
             >
               <textarea spellCheck={true}
                 id={`mga-general-objective-${project.id}`}
@@ -369,7 +370,8 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
                             reactiveContext={{ draftValue, causeDescription: rel.causeDescription }}
                             currentValue={draftValue}
                             className="min-w-[280px]"
-                            onAutoFill={(val) => handleDraftObjectiveChange(rel.id, val)}
+                            onAutoFill={(val) =
+            maxLength={2000}> handleDraftObjectiveChange(rel.id, val)}
                           >
                             <textarea spellCheck={true}
                               id={`mga-specific-${rel.id}`}

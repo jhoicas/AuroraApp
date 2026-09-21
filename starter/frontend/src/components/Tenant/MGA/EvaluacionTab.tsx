@@ -86,7 +86,8 @@ export default function EvaluacionTab({ project }: { project: Project }) {
                 projectContext={fieldProjectContext}
                 reactiveContext={{ resumen }}
                 currentValue={resumen}
-                onAutoFill={(v) => setResumen(v)}
+                onAutoFill={(v) =
+            maxLength={2500}> setResumen(v)}
               >
                 <textarea spellCheck={true}
                   id={`eval-resumen-${project.id}`}

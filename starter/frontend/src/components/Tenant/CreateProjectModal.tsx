@@ -174,7 +174,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
   // Reactividad: refrescar sugerencias cuando el usuario edita el formulario
   useEffect(() => {
-    if (step !== 'form' || editProject) return;
+    if (step !== 'form') return;
     
     const handler = setTimeout(() => {
       // Mapear localizaciones al formato de texto esperado para mayor claridad al LLM
@@ -211,10 +211,10 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       if (Object.keys(currentFormData).length > 0) {
         void suggestProjectSetup(currentFormData);
       }
-    }, 3000);
+    }, 1000);
 
     return () => clearTimeout(handler);
-  }, [proceso, objeto, localizaciones, sectorId, productoPrincipal, step, editProject, regions, procesos, sectors, catalogProducts, suggestProjectSetup]);
+  }, [proceso, objeto, localizaciones, sectorId, productoPrincipal, step, regions, procesos, sectors, catalogProducts, suggestProjectSetup]);
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   // ─── Sectores filtrados por tipología ──────────────────
@@ -889,7 +889,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
             label="Producto principal"
-            prefilledSuggestions={projectSuggestions?.producto_principal}
+            prefilledSuggestions={projectSuggestions?.producto_principal || (projectSuggestions as any)?.producto || (projectSuggestions as any)?.productos}
             onApplySuggestion={(sug) => {
               if (!sug) return;
               const nQuery = sug.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

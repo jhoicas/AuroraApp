@@ -36,6 +36,12 @@ type AIAssistedFieldProps = {
   prefilledSuggestions?: string[];
   /** Callback a ejecutar cuando se usa una sugerencia prellenada. */
   onApplySuggestion?: (value: string) => void;
+  /** Longitud máxima de la respuesta sugerida por la IA. */
+  maxLength?: number;
+  /** Indica si el campo es un select/dropdown (requiere formato CODIGO|||Explicacion). */
+  isList?: boolean;
+  /** Opciones del catálogo si isList es true. */
+  options?: { label: string; value: string }[];
 };
 
 /**
@@ -59,6 +65,9 @@ export default function AIAssistedField({
   onAutoFill,
   prefilledSuggestions,
   onApplySuggestion,
+  maxLength,
+  isList,
+  options,
 }: AIAssistedFieldProps) {
   const tipId = useId();
   const [open, setOpen] = useState(false);
@@ -170,7 +179,7 @@ export default function AIAssistedField({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (fieldHelpKey && projectContext && reactiveContext) {
-                      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
+                      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext }, maxLength, isList, options);
                       setOpen(false);
                     }
                   }}
@@ -203,6 +212,14 @@ export default function AIAssistedField({
           <span className="ml-1 inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1">
             ✨
             {activeSuggestions.map((sug, i) => {
+              if (sug === "CARGANDO") {
+                return (
+                  <span key={i} className="inline-flex items-center text-teal-600 font-medium ml-1 italic animate-pulse">
+                    <span className="material-symbols-outlined text-[14px] mr-1 animate-spin">sync</span>
+                    Generando sugerencia...
+                  </span>
+                );
+              }
               if (sug === "ESPERANDO_CUOTA") {
                 return (
                   <span key={i} className="inline-flex items-center text-amber-600 font-medium ml-1">
@@ -210,12 +227,22 @@ export default function AIAssistedField({
                   </span>
                 );
               }
+
+              let displayValue = sug;
+              let applyValue = sug;
+
+              if (sug.includes('|||')) {
+                const parts = sug.split('|||');
+                applyValue = parts[0].trim();
+                displayValue = parts.slice(1).join('|||').trim();
+              }
+
               return (
                 <span key={i} className="inline-flex items-center">
-                  <span className="truncate max-w-[200px]" title={sug}>{sug}</span>
+                  <span className="truncate max-w-[300px]" title={displayValue}>{displayValue}</span>
                   <button
                     type="button"
-                    onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); onAutoFill?.(sug); }}
+                    onClick={(e) => { e.preventDefault(); onApplySuggestion?.(applyValue); onAutoFill?.(applyValue); }}
                     className="ml-1 font-semibold hover:underline text-[#006162]"
                   >
                     [Usar]
@@ -231,7 +258,7 @@ export default function AIAssistedField({
         onFocusCapture={() => {
           // Trigger bajo demanda cuando se hace Focus y está vacío
           if (!currentValue && fieldHelpKey && projectContext && reactiveContext && !storeSuggestions) {
-            suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
+            suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext }, maxLength, isList, options);
           }
         }}
       >

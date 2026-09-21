@@ -37,8 +37,11 @@ type PaginatedAIMessagesResponse struct {
 
 // SuggestFieldRequest payload para el motor de sugerencias MGA.
 type SuggestFieldRequest struct {
-	FieldHelpKey   string                 `json:"field_help_key" validate:"required"`
-	ProjectContext map[string]interface{} `json:"project_context" validate:"required"`
+	FieldHelpKey   string                   `json:"field_help_key" validate:"required"`
+	ProjectContext map[string]interface{}   `json:"project_context" validate:"required"`
+	MaxLength      int                      `json:"max_length,omitempty"`
+	IsList         bool                     `json:"is_list,omitempty"`
+	ListOptions    []map[string]interface{} `json:"list_options,omitempty"`
 }
 
 // SuggestFieldResponse respuesta del motor de sugerencias MGA.

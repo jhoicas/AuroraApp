@@ -267,7 +267,19 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	}
 
 	// 3. Generación Adaptativa
-	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP.\nREGLA DEL CAMPO: %s\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", ctxStr, examplesStr, fieldRule, req.FieldHelpKey)
+	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP.\nREGLA DEL CAMPO: %s", ctxStr, examplesStr, fieldRule)
+	
+	if req.IsList {
+		optionsStr := fmt.Sprintf("%v", req.ListOptions)
+		prompt += fmt.Sprintf("\nDebes elegir la opción más adecuada de este catálogo: %s. REGLA ESTRICTA DE FORMATO: Devuelve la respuesta utilizando EXCLUSIVAMENTE este formato: CODIGO|||Explicación detallada y amigable para el usuario de por qué se eligió esta opción (no menciones el código en la explicación).", optionsStr)
+	} else {
+		prompt += fmt.Sprintf("\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", req.FieldHelpKey)
+	}
+
+	if req.MaxLength > 0 {
+		prompt += fmt.Sprintf("\nREGLA DE LONGITUD: Tu respuesta final NO debe superar los %d caracteres bajo ninguna circunstancia. Sé preciso y conciso.", req.MaxLength)
+	}
+
 	// Simular la llamada al LLM
 	suggestion, err := h.callLLM(prompt)
 	if err != nil {

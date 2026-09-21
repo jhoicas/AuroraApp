@@ -109,6 +109,9 @@ export function dispatchAutoFill(fieldId: string, value: string): boolean {
 type SuggestQueueTask = {
   fieldHelpKey: string;
   projectContext: Record<string, any>;
+  maxLength?: number;
+  isList?: boolean;
+  listOptions?: { label: string; value: string }[];
 };
 
 let suggestQueue: SuggestQueueTask[] = [];
@@ -125,10 +128,15 @@ async function processSuggestQueue() {
       const res = await api.post<{ suggestion: string }>('/ai/mga/suggest-field', {
         field_help_key: task.fieldHelpKey,
         project_context: task.projectContext,
+        max_length: task.maxLength,
+        is_list: task.isList,
+        list_options: task.listOptions,
       });
+      useAuroraCopilotStore.getState().clearMgaFieldSuggestion(task.fieldHelpKey, "CARGANDO");
       useAuroraCopilotStore.getState().setMgaFieldSuggestion(task.fieldHelpKey, res.data.suggestion);
       suggestQueue.shift();
     } catch (e: any) {
+      useAuroraCopilotStore.getState().clearMgaFieldSuggestion(task.fieldHelpKey, "CARGANDO");
       const status = e.response?.status;
       const errorMsg = e.response?.data?.error;
       
@@ -190,8 +198,9 @@ type AuroraCopilotState = {
   askFieldHelp: (fieldId: string, projectContext: ProjectContext) => void;
   
   mgaFieldSuggestions: Record<string, string[]>;
-  suggestMgaField: (fieldHelpKey: string, projectContext: Record<string, any>) => void;
+  suggestMgaField: (fieldHelpKey: string, projectContext: Record<string, any>, maxLength?: number, isList?: boolean, listOptions?: { label: string; value: string }[]) => void;
   setMgaFieldSuggestion: (fieldHelpKey: string, suggestion: string) => void;
+  clearMgaFieldSuggestion: (fieldHelpKey: string, suggestionToRemove: string) => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -249,14 +258,20 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     return s;
   }),
 
-  suggestMgaField: (fieldHelpKey, projectContext) => {
+  clearMgaFieldSuggestion: (fieldHelpKey, suggestionToRemove) => set((s) => {
+    const current = s.mgaFieldSuggestions[fieldHelpKey] || [];
+    return { mgaFieldSuggestions: { ...s.mgaFieldSuggestions, [fieldHelpKey]: current.filter((x) => x !== suggestionToRemove) } };
+  }),
+
+  suggestMgaField: (fieldHelpKey, projectContext, maxLength, isList, listOptions) => {
     // Si ya tenemos suficientes sugerencias, no encolamos (por ahora, supongamos max 2)
     const current = useAuroraCopilotStore.getState().mgaFieldSuggestions[fieldHelpKey];
-    if (current && current.length >= 2) return;
+    if (current && current.length >= 2 && !current.includes("CARGANDO")) return;
 
     // Agregar a la cola solo si no está ya encolado el mismo field
     if (!suggestQueue.some((t) => t.fieldHelpKey === fieldHelpKey)) {
-      suggestQueue.push({ fieldHelpKey, projectContext });
+      useAuroraCopilotStore.getState().setMgaFieldSuggestion(fieldHelpKey, "CARGANDO");
+      suggestQueue.push({ fieldHelpKey, projectContext, maxLength, isList, listOptions });
       void processSuggestQueue();
     }
   },

@@ -3,6 +3,7 @@ import { HelpCircle } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function AnalisisTecnicoTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<Record<string, string>>({});
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   useEffect(() => {
     if (formulation.analisisTecnico?.items) {
@@ -51,17 +58,28 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
         ) : (
           alternatives.map(alt => (
             <div key={alt.id} className="border rounded p-4 bg-gray-50 space-y-2">
-              <label className="font-semibold block mb-1 text-gray-700">
-                Alternativa: {alt.description}
-              </label>
-              <textarea spellCheck={true}
-                rows={5}
-                maxLength={2500}
-                value={items[alt.id] || ''}
-                onChange={(e) => setItems(prev => ({ ...prev, [alt.id]: e.target.value }))}
-                className="w-full p-2 border rounded bg-white"
-                placeholder="Describa el análisis técnico..."
-              />
+              <AIAssistedField
+                label={`Análisis Técnico - Alternativa: ${alt.description.substring(0, 50)}...`}
+                htmlFor={`analisis-tecnico-${alt.id}`}
+                compact
+                guidance="Elabore el análisis técnico de la alternativa seleccionada, detallando la viabilidad técnica."
+                askPrompt={`¿Cómo redacto el análisis técnico para la alternativa "${alt.description}" del proyecto "${project.name}"?`}
+                fieldHelpKey="analisis_tecnico"
+                projectContext={fieldProjectContext}
+                reactiveContext={{ alternativa: alt.description }}
+                currentValue={items[alt.id] || ''}
+                onAutoFill={(v) => setItems(prev => ({ ...prev, [alt.id]: v }))}
+              >
+                <textarea spellCheck={true}
+                  id={`analisis-tecnico-${alt.id}`}
+                  rows={5}
+                  maxLength={2500}
+                  value={items[alt.id] || ''}
+                  onChange={(e) => setItems(prev => ({ ...prev, [alt.id]: e.target.value }))}
+                  className="w-full p-2 border rounded bg-white mt-1"
+                  placeholder="Describa el análisis técnico..."
+                />
+              </AIAssistedField>
             </div>
           ))
         )}

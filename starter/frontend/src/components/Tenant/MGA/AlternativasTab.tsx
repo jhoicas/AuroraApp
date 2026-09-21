@@ -5,6 +5,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { MgaAlternative } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
+import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type AlternativasTabProps = {
   project: Project;
@@ -32,6 +33,14 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
   const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const { alternatives } = getFormulation(project.id);
+
+  const fieldProjectContext: ProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+    procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
+    objeto: (project as any)?.objeto || undefined,
+  };
 
   const resetForm = () => {
     setDraft(EMPTY_DRAFT);
@@ -117,6 +126,11 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           required
           guidance="Describa cada alternativa de manera diferenciada: qué acción se propone, cómo atiende las causas y por qué es viable según MGA."
           askPrompt={`¿Qué alternativas de solución debo plantear para el proyecto "${project.name}" y cómo las redacto según MGA?`}
+          fieldHelpKey="alternativa_solucion"
+          projectContext={fieldProjectContext}
+          reactiveContext={draft}
+          currentValue={draft.description}
+          onAutoFill={(v) => setDraft((d) => ({ ...d, description: v }))}
         >
           <textarea spellCheck={true}
             id={`alt-desc-${project.id}`}
@@ -124,7 +138,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
             maxLength={250}
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-            className="w-full p-2 border rounded bg-white"
+            className="w-full p-2 border rounded bg-white mt-1"
             placeholder="Describa la alternativa…"
           />
         </AIAssistedField>

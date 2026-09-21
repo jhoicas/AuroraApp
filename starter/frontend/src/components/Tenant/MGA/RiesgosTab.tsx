@@ -3,6 +3,7 @@ import { HelpCircle, PlusCircle, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function RiesgosTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function RiesgosTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<any[]>([]);
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   useEffect(() => {
     if (formulation.riesgos?.items) {
@@ -110,15 +117,29 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       ))}
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <textarea spellCheck={true}
-                      rows={2}
-                      maxLength={2500}
-                      value={item.descripcion}
-                      onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Descripción"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Descripción del riesgo"
+                      htmlFor={`riesgo-desc-${item.id}`}
+                      compact
+                      guidance="Detalla el riesgo identificado."
+                      askPrompt={`¿Cómo describo un riesgo para la alternativa seleccionada del proyecto "${project.name}"?`}
+                      fieldHelpKey="descripcion_riesgo"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.descripcion}
+                      onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
+                    >
+                      <textarea spellCheck={true}
+                        id={`riesgo-desc-${item.id}`}
+                        rows={2}
+                        maxLength={2500}
+                        value={item.descripcion}
+                        onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Descripción"
+                      />
+                    </AIAssistedField>
                   </td>
                   <td className="p-2 border">
                     <select
@@ -144,25 +165,53 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       <option value="Bajo">Bajo</option>
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <textarea spellCheck={true}
-                      rows={2}
-                      maxLength={250}
-                      value={item.efectos}
-                      onChange={(e) => updateItem(item.id, 'efectos', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Efectos"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Efectos del riesgo"
+                      htmlFor={`riesgo-efectos-${item.id}`}
+                      compact
+                      guidance="Identifica las consecuencias si el riesgo se materializa."
+                      askPrompt={`¿Cuáles podrían ser los efectos si se materializa este riesgo en el proyecto "${project.name}"?`}
+                      fieldHelpKey="efectos_riesgo"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.efectos}
+                      onAutoFill={(v) => updateItem(item.id, 'efectos', v)}
+                    >
+                      <textarea spellCheck={true}
+                        id={`riesgo-efectos-${item.id}`}
+                        rows={2}
+                        maxLength={250}
+                        value={item.efectos}
+                        onChange={(e) => updateItem(item.id, 'efectos', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Efectos"
+                      />
+                    </AIAssistedField>
                   </td>
-                  <td className="p-2 border">
-                    <textarea spellCheck={true}
-                      rows={2}
-                      maxLength={250}
-                      value={item.medida}
-                      onChange={(e) => updateItem(item.id, 'medida', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Medida de mitigación"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Medida de mitigación"
+                      htmlFor={`riesgo-medida-${item.id}`}
+                      compact
+                      guidance="Propone la medida para mitigar el riesgo."
+                      askPrompt={`¿Qué medidas de mitigación puedo aplicar para este riesgo en el proyecto "${project.name}"?`}
+                      fieldHelpKey="medida_mitigacion"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.medida}
+                      onAutoFill={(v) => updateItem(item.id, 'medida', v)}
+                    >
+                      <textarea spellCheck={true}
+                        id={`riesgo-medida-${item.id}`}
+                        rows={2}
+                        maxLength={250}
+                        value={item.medida}
+                        onChange={(e) => updateItem(item.id, 'medida', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Medida de mitigación"
+                      />
+                    </AIAssistedField>
                   </td>
                 </tr>
               ))

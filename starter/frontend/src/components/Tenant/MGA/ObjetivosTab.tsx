@@ -233,6 +233,8 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               validationValue={generalObjective}
               fieldHelpKey="general_objective"
               projectContext={fieldProjectContext}
+              reactiveContext={{ generalObjective }}
+              currentValue={generalObjective}
               onAutoFill={(v) => handleGeneralObjectiveChange(v)}
             >
               <textarea spellCheck={true}
@@ -362,7 +364,12 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
                             askPrompt={`Para la causa "${rel.causeDescription.slice(0, 80)}…", ¿cómo redacto el objetivo específico?${MGA_INFINITIVE_ASK_SUFFIX}`}
                             validationRule="infinitive-verb"
                             validationValue={draftValue}
+                            fieldHelpKey={`specific_objective_${rel.id}`}
+                            projectContext={fieldProjectContext}
+                            reactiveContext={{ draftValue, causeDescription: rel.causeDescription }}
+                            currentValue={draftValue}
                             className="min-w-[280px]"
+                            onAutoFill={(val) => handleDraftObjectiveChange(rel.id, val)}
                           >
                             <textarea spellCheck={true}
                               id={`mga-specific-${rel.id}`}

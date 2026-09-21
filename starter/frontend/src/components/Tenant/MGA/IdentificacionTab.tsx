@@ -156,6 +156,12 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const effectGroups = useMemo(() => groupEffectsByParent(effects), [effects]);
   const causeGroups = useMemo(() => groupCausesByParent(causeRelations), [causeRelations]);
 
+  const reactiveContext = {
+    problemDescription,
+    situacionExistente,
+    magnitudProblema
+  };
+
   const handleSaveIdentification = useMemo(
     () =>
       debounce(async () => {
@@ -325,6 +331,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               htmlFor={`effect-${effect.id}`}
               fieldHelpKey={`effect-${isIndirect ? 'indirect' : 'direct'}-${effect.id}`}
               projectContext={fieldProjectContext}
+              reactiveContext={reactiveContext}
+              currentValue={editTarget.draft}
               askPrompt={`Sugiere una redacción para este efecto ${isIndirect ? 'indirecto' : 'directo'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'effect', id: effect.id, draft: val })}
             >
@@ -393,6 +401,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               htmlFor={`cause-${relation.id}`}
               fieldHelpKey={`cause-${isIndirect ? 'indirect' : 'direct'}-${relation.id}`}
               projectContext={fieldProjectContext}
+              reactiveContext={reactiveContext}
+              currentValue={editTarget.draft}
               askPrompt={`Sugiere una redacción para esta causa ${isIndirect ? 'indirecta' : 'directa'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'cause', id: relation.id, draft: val })}
             >
@@ -502,11 +512,12 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             <AIAssistedField
               label="Problema central"
               htmlFor={`mga-problem-${project.id}`}
-              required
-              guidance="El problema central es la situación negativa que el proyecto busca atenuar. Debe ser verificable, sin incluir soluciones, y coherente con el árbol de problemas MGA."
-              askPrompt={`¿Cómo redacto el problema central del proyecto "${project.name}" según la metodología MGA del DNP?`}
-              fieldHelpKey="problem_description"
+              guidance="Identifique la situación negativa que afecta a la población. Debe ser real, verificable y redactarse como una condición, no como ausencia de solución."
+              askPrompt={`Ayúdame a redactar el problema central del proyecto "${project.name}" (Sector: ${project.sector})`}
+              fieldHelpKey="problema_central"
               projectContext={fieldProjectContext}
+              reactiveContext={reactiveContext}
+              currentValue={problemDescription}
               onAutoFill={(v) => patchCurrentProject({ problem_description: v })}
             >
               <textarea spellCheck={true}
@@ -593,6 +604,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             askPrompt={`¿Cómo redacto la situación existente del proyecto "${project.name}"?`}
             fieldHelpKey="situacion_existente"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={situacionExistente}
             onAutoFill={(v) => patchCurrentProject({ situacion_existente: v })}
           >
             <textarea spellCheck={true}
@@ -615,6 +628,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             askPrompt={`¿Qué indicadores y métricas debo usar para la magnitud del problema del proyecto "${project.name}"?`}
             fieldHelpKey="magnitud_problema"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={magnitudProblema}
             onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v })}
           >
             <textarea spellCheck={true}

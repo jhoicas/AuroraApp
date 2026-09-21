@@ -162,15 +162,28 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
             />
           </div>
           <div>
-            <label className="font-semibold text-gray-600 block mb-1">Fuente</label>
-            <input spellCheck={true}
-              type="text"
-              maxLength={500}
-              value={panel.source}
-              onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
-              className="w-full p-2 border rounded bg-white"
-              placeholder="Ej. DANE, censo, encuesta…"
-            />
+            <AIAssistedField
+              label="Fuente"
+              htmlFor={`pop-source-${populationType}-${project.id}`}
+              compact
+              guidance="Identifica la fuente utilizada para establecer la población."
+              askPrompt={`¿Qué fuente de información puedo usar para la ${label} del proyecto "${project.name}"?`}
+              fieldHelpKey="fuente_informacion_poblacion"
+              projectContext={fieldProjectContext}
+              reactiveContext={panel}
+              currentValue={panel.source}
+              onAutoFill={(v) => setPanel((p) => ({ ...p, source: v }))}
+            >
+              <input spellCheck={true}
+                type="text"
+                id={`pop-source-${populationType}-${project.id}`}
+                maxLength={500}
+                value={panel.source}
+                onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
+                className="w-full p-2 border rounded bg-white mt-1"
+                placeholder="Ej. DANE, censo, encuesta…"
+              />
+            </AIAssistedField>
           </div>
         </div>
 
@@ -203,13 +216,18 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           compact
           guidance="Describa la zona geográfica donde se ubica la población: barrios, veredas, corregimientos o áreas de influencia del proyecto."
           askPrompt={`¿Cómo describo la localización de la ${label} del proyecto "${project.name}" en formulación MGA?`}
+          fieldHelpKey="localizacion_poblacion"
+          projectContext={fieldProjectContext}
+          reactiveContext={panel}
+          currentValue={panel.localization}
+          onAutoFill={(v) => setPanel((p) => ({ ...p, localization: v }))}
         >
           <textarea spellCheck={true}
             id={`pop-loc-${populationType}-${project.id}`}
             rows={2}
             value={panel.localization}
             onChange={(e) => setPanel((p) => ({ ...p, localization: e.target.value }))}
-            className="w-full p-2 border rounded bg-white"
+            className="w-full p-2 border rounded bg-white mt-1"
           />
         </AIAssistedField>
 
@@ -221,6 +239,8 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           askPrompt={`¿Qué características demográficas debo registrar para la ${label} del proyecto "${project.name}"?`}
           fieldHelpKey={populationType === 'afectada' ? 'poblacion_afectada' : 'poblacion_objetivo'}
           projectContext={fieldProjectContext}
+          reactiveContext={panel}
+          currentValue={panel.demographicNotes}
           onAutoFill={(v) => setPanel((p) => ({ ...p, demographicNotes: v }))}
         >
           <textarea spellCheck={true}
@@ -228,7 +248,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
             rows={3}
             value={panel.demographicNotes}
             onChange={(e) => setPanel((p) => ({ ...p, demographicNotes: e.target.value }))}
-            className="w-full p-2 border rounded bg-white"
+            className="w-full p-2 border rounded bg-white mt-1"
           />
         </AIAssistedField>
 

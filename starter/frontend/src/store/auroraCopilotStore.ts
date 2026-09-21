@@ -106,6 +106,39 @@ export function dispatchAutoFill(fieldId: string, value: string): boolean {
   return false;
 }
 
+type SuggestQueueTask = {
+  fieldHelpKey: string;
+  projectContext: Record<string, any>;
+};
+
+let suggestQueue: SuggestQueueTask[] = [];
+let isProcessingSuggestQueue = false;
+
+async function processSuggestQueue() {
+  if (isProcessingSuggestQueue || suggestQueue.length === 0) return;
+  isProcessingSuggestQueue = true;
+
+  while (suggestQueue.length > 0) {
+    const task = suggestQueue.shift();
+    if (!task) continue;
+
+    try {
+      const res = await api.post<{ suggestion: string }>('/ai/mga/suggest-field', {
+        field_help_key: task.fieldHelpKey,
+        project_context: task.projectContext,
+      });
+      useAuroraCopilotStore.getState().setMgaFieldSuggestion(task.fieldHelpKey, res.data.suggestion);
+    } catch (e) {
+      console.warn(`[Aurora] Error fetching suggestion for ${task.fieldHelpKey}`, e);
+    }
+    
+    // Pequeño retraso entre peticiones para no saturar
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
+
+  isProcessingSuggestQueue = false;
+}
+
 type AuroraCopilotState = {
   isOpen: boolean;
   messages: CopilotMessage[];
@@ -141,10 +174,13 @@ type AuroraCopilotState = {
   clearChat: () => void;
   setDraftInput: (value: string) => void;
   appendToDraft: (text: string) => void;
-  /** Abre el asistente flotante e inyecta un prompt en el input. */
   askAurora: (prompt: string) => void;
   /** Genera ayuda contextual local para un campo MGA y la muestra como mensaje. */
   askFieldHelp: (fieldId: string, projectContext: ProjectContext) => void;
+  
+  mgaFieldSuggestions: Record<string, string[]>;
+  suggestMgaField: (fieldHelpKey: string, projectContext: Record<string, any>) => void;
+  setMgaFieldSuggestion: (fieldHelpKey: string, suggestion: string) => void;
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -192,6 +228,27 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   ideationSessionId: null,
   ideationComplete: false,
   ideationLoading: false,
+  mgaFieldSuggestions: {},
+
+  setMgaFieldSuggestion: (fieldHelpKey, suggestion) => set((s) => {
+    const current = s.mgaFieldSuggestions[fieldHelpKey] || [];
+    if (!current.includes(suggestion)) {
+      return { mgaFieldSuggestions: { ...s.mgaFieldSuggestions, [fieldHelpKey]: [...current, suggestion] } };
+    }
+    return s;
+  }),
+
+  suggestMgaField: (fieldHelpKey, projectContext) => {
+    // Si ya tenemos suficientes sugerencias, no encolamos (por ahora, supongamos max 2)
+    const current = useAuroraCopilotStore.getState().mgaFieldSuggestions[fieldHelpKey];
+    if (current && current.length >= 2) return;
+
+    // Agregar a la cola solo si no está ya encolado el mismo field
+    if (!suggestQueue.some((t) => t.fieldHelpKey === fieldHelpKey)) {
+      suggestQueue.push({ fieldHelpKey, projectContext });
+      void processSuggestQueue();
+    }
+  },
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen, error: null })),
   open: () => set({ isOpen: true, error: null }),

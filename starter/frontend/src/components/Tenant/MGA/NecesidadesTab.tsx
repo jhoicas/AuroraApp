@@ -3,6 +3,7 @@ import { HelpCircle, PlusCircle, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function NecesidadesTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -117,25 +118,53 @@ export default function NecesidadesTab({ project }: { project: Project }) {
                       ))}
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <input spellCheck={true}
-                      type="text"
-                      maxLength={100}
-                      value={item.bienServicio}
-                      onChange={(e) => updateItem(item.id, 'bienServicio', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Bien/Servicio"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Bien o Servicio"
+                      htmlFor={`necesidad-bien-${item.id}`}
+                      compact
+                      guidance="Identifica y redacta el bien y/o servicio según manual MGA."
+                      askPrompt={`¿Qué bien o servicio debo registrar para la alternativa seleccionada en el proyecto "${project.name}"?`}
+                      fieldHelpKey="bien_servicio"
+                      projectContext={{ projectName: project.name }}
+                      reactiveContext={item}
+                      currentValue={item.bienServicio}
+                      onAutoFill={(v) => updateItem(item.id, 'bienServicio', v)}
+                    >
+                      <input spellCheck={true}
+                        type="text"
+                        id={`necesidad-bien-${item.id}`}
+                        maxLength={100}
+                        value={item.bienServicio}
+                        onChange={(e) => updateItem(item.id, 'bienServicio', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Bien/Servicio"
+                      />
+                    </AIAssistedField>
                   </td>
-                  <td className="p-2 border">
-                    <input spellCheck={true}
-                      type="text"
-                      maxLength={50}
-                      value={item.unidadMedida}
-                      onChange={(e) => updateItem(item.id, 'unidadMedida', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Unidad"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Unidad de medida"
+                      htmlFor={`necesidad-unidad-${item.id}`}
+                      compact
+                      guidance="Indica la unidad de medida según el bien y/o servicio."
+                      askPrompt={`¿Cuál es la unidad de medida correcta en MGA para el bien/servicio "${item.bienServicio || 'seleccionado'}"?`}
+                      fieldHelpKey="unidad_medida"
+                      projectContext={{ projectName: project.name }}
+                      reactiveContext={item}
+                      currentValue={item.unidadMedida}
+                      onAutoFill={(v) => updateItem(item.id, 'unidadMedida', v)}
+                    >
+                      <input spellCheck={true}
+                        type="text"
+                        id={`necesidad-unidad-${item.id}`}
+                        maxLength={50}
+                        value={item.unidadMedida}
+                        onChange={(e) => updateItem(item.id, 'unidadMedida', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Unidad"
+                      />
+                    </AIAssistedField>
                   </td>
                   <td className="p-2 border">
                     <input spellCheck={true}

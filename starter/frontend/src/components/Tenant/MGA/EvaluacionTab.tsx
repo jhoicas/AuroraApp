@@ -3,6 +3,7 @@ import { HelpCircle } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function EvaluacionTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function EvaluacionTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [resumen, setResumen] = useState(formulation.evaluacion?.resumen || '');
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   const alternatives = formulation.alternatives.filter(a => a.proceeds_to_preparation);
 
@@ -69,17 +76,28 @@ export default function EvaluacionTab({ project }: { project: Project }) {
             </div>
 
             <div>
-              <label className="font-semibold block mb-1 text-gray-700">
-                Conclusión / Resumen de Evaluación
-              </label>
-              <textarea spellCheck={true}
-                rows={4}
-                maxLength={2500}
-                value={resumen}
-                onChange={(e) => setResumen(e.target.value)}
-                className="w-full p-2 border rounded bg-white"
-                placeholder="Escriba las conclusiones de la evaluación..."
-              />
+              <AIAssistedField
+                label="Conclusión / Resumen de Evaluación"
+                htmlFor={`eval-resumen-${project.id}`}
+                compact
+                guidance="Escribe las conclusiones de la evaluación económica y social."
+                askPrompt={`¿Cómo redacto las conclusiones de la evaluación económica para el proyecto "${project.name}"?`}
+                fieldHelpKey="resumen_evaluacion"
+                projectContext={fieldProjectContext}
+                reactiveContext={{ resumen }}
+                currentValue={resumen}
+                onAutoFill={(v) => setResumen(v)}
+              >
+                <textarea spellCheck={true}
+                  id={`eval-resumen-${project.id}`}
+                  rows={4}
+                  maxLength={2500}
+                  value={resumen}
+                  onChange={(e) => setResumen(e.target.value)}
+                  className="w-full p-2 border rounded bg-white mt-1"
+                  placeholder="Escriba las conclusiones de la evaluación..."
+                />
+              </AIAssistedField>
             </div>
           </div>
         )}

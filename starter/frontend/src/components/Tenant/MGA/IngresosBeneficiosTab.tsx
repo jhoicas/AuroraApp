@@ -3,6 +3,7 @@ import { HelpCircle, PlusCircle, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function IngresosBeneficiosTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<any[]>([]);
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   useEffect(() => {
     if (formulation.ingresosBeneficios?.items) {
@@ -112,15 +119,29 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
                       ))}
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <input spellCheck={true}
-                      type="text"
-                      maxLength={250}
-                      value={item.bienServicio}
-                      onChange={(e) => updateItem(item.id, 'bienServicio', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Bien o servicio"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Bien o servicio"
+                      htmlFor={`ingreso-bien-${item.id}`}
+                      compact
+                      guidance="Describe el bien o servicio que genera el ingreso/beneficio."
+                      askPrompt={`¿Qué bien o servicio genera ingresos o beneficios para la alternativa seleccionada en el proyecto "${project.name}"?`}
+                      fieldHelpKey="bien_servicio"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.bienServicio}
+                      onAutoFill={(v) => updateItem(item.id, 'bienServicio', v)}
+                    >
+                      <input spellCheck={true}
+                        type="text"
+                        id={`ingreso-bien-${item.id}`}
+                        maxLength={250}
+                        value={item.bienServicio}
+                        onChange={(e) => updateItem(item.id, 'bienServicio', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Bien o servicio"
+                      />
+                    </AIAssistedField>
                   </td>
                   <td className="p-2 border">
                     <select
@@ -144,15 +165,29 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
                       <option value="Porcentaje">Porcentaje</option>
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <textarea spellCheck={true}
-                      rows={2}
-                      maxLength={2500}
-                      value={item.descripcion}
-                      onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Descripción"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Descripción"
+                      htmlFor={`ingreso-desc-${item.id}`}
+                      compact
+                      guidance="Proporciona detalles adicionales sobre el ingreso o beneficio."
+                      askPrompt={`¿Cómo describo el ingreso o beneficio para la alternativa seleccionada en el proyecto "${project.name}"?`}
+                      fieldHelpKey="descripcion_ingreso_beneficio"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.descripcion}
+                      onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
+                    >
+                      <textarea spellCheck={true}
+                        id={`ingreso-desc-${item.id}`}
+                        rows={2}
+                        maxLength={2500}
+                        value={item.descripcion}
+                        onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Descripción"
+                      />
+                    </AIAssistedField>
                   </td>
                   <td className="p-2 border">
                     <input spellCheck={true}

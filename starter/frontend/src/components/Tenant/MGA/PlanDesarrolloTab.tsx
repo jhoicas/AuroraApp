@@ -61,6 +61,13 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     }
   }, [formulation.planDesarrollo]);
 
+  const reactiveContext = {
+    depPlan, depEstrategia, depPrograma,
+    munPlan, munEstrategia, munPrograma,
+    etnicoComunidad, etnicoInstrumentos,
+    otrosPlan, otrosEstrategia, otrosPrograma
+  };
+
   const handleToggle = (id: string) => {
     setOpenAccordion(openAccordion === id ? '' : id);
   };
@@ -227,6 +234,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="dep-plan"
             fieldHelpKey="plan_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={depPlan}
             onAutoFill={(v) => setDepPlan(v)}
           >
             <textarea spellCheck={true} 
@@ -245,6 +254,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="dep-estrategia"
             fieldHelpKey="estrategia_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={depEstrategia}
             onAutoFill={(v) => setDepEstrategia(v)}
           >
             <textarea spellCheck={true} 
@@ -263,6 +274,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="dep-programa"
             fieldHelpKey="programa_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={depPrograma}
             onAutoFill={(v) => setDepPrograma(v)}
           >
             <textarea spellCheck={true} 
@@ -291,6 +304,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="mun-plan"
             fieldHelpKey="plan_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={munPlan}
             onAutoFill={(v) => setMunPlan(v)}
           >
             <textarea spellCheck={true} 
@@ -309,6 +324,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="mun-estrategia"
             fieldHelpKey="estrategia_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={munEstrategia}
             onAutoFill={(v) => setMunEstrategia(v)}
           >
             <textarea spellCheck={true} 
@@ -327,6 +344,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="mun-programa"
             fieldHelpKey="programa_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={munPrograma}
             onAutoFill={(v) => setMunPrograma(v)}
           >
             <textarea spellCheck={true} 
@@ -369,6 +388,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="etnico-instrumentos"
             fieldHelpKey="instrumentos_etnicos"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={etnicoInstrumentos}
             onAutoFill={(v) => setEtnicoInstrumentos(v)}
           >
             <textarea spellCheck={true} 
@@ -397,6 +418,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="otros-plan"
             fieldHelpKey="plan_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={otrosPlan}
             onAutoFill={(v) => setOtrosPlan(v)}
           >
             <textarea spellCheck={true} 
@@ -415,6 +438,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="otros-estrategia"
             fieldHelpKey="estrategia_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={otrosEstrategia}
             onAutoFill={(v) => setOtrosEstrategia(v)}
           >
             <textarea spellCheck={true} 
@@ -433,6 +458,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             htmlFor="otros-programa"
             fieldHelpKey="programa_desarrollo"
             projectContext={fieldProjectContext}
+            reactiveContext={reactiveContext}
+            currentValue={otrosPrograma}
             onAutoFill={(v) => setOtrosPrograma(v)}
           >
             <textarea spellCheck={true} 

@@ -180,6 +180,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             askPrompt={`¿Cómo redacto los intereses del actor "${draft.actor || 'participante'}" en la formulación MGA del proyecto "${project.name}"?`}
             fieldHelpKey="intereses_participante"
             projectContext={fieldProjectContext}
+            reactiveContext={draft}
+            currentValue={draft.interests}
             onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
           >
               <textarea spellCheck={true}
@@ -201,6 +203,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             askPrompt={`¿Qué contribuciones puede aportar "${draft.entity || 'esta entidad'}" al proyecto "${project.name}" según MGA?`}
             fieldHelpKey="contribucion_participante"
             projectContext={fieldProjectContext}
+            reactiveContext={draft}
+            currentValue={draft.contribution}
             onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
           >
               <textarea spellCheck={true}
@@ -299,6 +303,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           askPrompt={`¿Cómo puedo redactar el análisis de consulta y coordinación entre los participantes para el proyecto "${project.name}"?`}
           fieldHelpKey="analisis_participantes"
           projectContext={fieldProjectContext}
+          reactiveContext={{ analisis_participantes: project.mga_formulation_data?.analisis_participantes, participants }}
+          currentValue={project.mga_formulation_data?.analisis_participantes as string | undefined}
           onAutoFill={(v) => patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: v } })}
         >
             <textarea spellCheck={true}

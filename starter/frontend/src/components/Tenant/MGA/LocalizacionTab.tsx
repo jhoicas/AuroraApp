@@ -3,6 +3,7 @@ import { HelpCircle } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function LocalizacionTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<Record<string, { type: string; specific: string }>>({});
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   useEffect(() => {
     if (formulation.localizacion?.items) {
@@ -81,15 +88,28 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-gray-600 mb-1">Localización específica</label>
-                    <input spellCheck={true}
-                      type="text"
-                      maxLength={200}
-                      value={val.specific}
-                      onChange={(e) => updateItem(alt.id, 'specific', e.target.value)}
-                      className="w-full p-2 border rounded bg-white"
-                      placeholder="Ej. Barrio Centro..."
-                    />
+                    <AIAssistedField
+                      label="Localización específica"
+                      htmlFor={`loc-specific-${alt.id}`}
+                      compact
+                      guidance="Describa la localización específica de la alternativa (ej. barrio, vereda)."
+                      askPrompt={`¿Cómo defino la localización específica para la alternativa "${alt.description}" del proyecto "${project.name}"?`}
+                      fieldHelpKey="localizacion_especifica"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={{ alternativa: alt.description }}
+                      currentValue={val.specific}
+                      onAutoFill={(v) => updateItem(alt.id, 'specific', v)}
+                    >
+                      <input spellCheck={true}
+                        type="text"
+                        id={`loc-specific-${alt.id}`}
+                        maxLength={200}
+                        value={val.specific}
+                        onChange={(e) => updateItem(alt.id, 'specific', e.target.value)}
+                        className="w-full p-2 border rounded bg-white mt-1"
+                        placeholder="Ej. Barrio Centro..."
+                      />
+                    </AIAssistedField>
                   </div>
                 </div>
               </div>

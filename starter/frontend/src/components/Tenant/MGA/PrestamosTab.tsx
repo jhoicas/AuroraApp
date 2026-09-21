@@ -3,6 +3,7 @@ import { HelpCircle, PlusCircle, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function PrestamosTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -13,6 +14,12 @@ export default function PrestamosTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<any[]>([]);
+
+  const fieldProjectContext = {
+    projectName: project.name,
+    sector: project.sector || undefined,
+    productCode: project.product_code || undefined,
+  };
 
   useEffect(() => {
     if (formulation.prestamos?.items) {
@@ -112,15 +119,29 @@ export default function PrestamosTab({ project }: { project: Project }) {
                       ))}
                     </select>
                   </td>
-                  <td className="p-2 border">
-                    <input spellCheck={true}
-                      type="text"
-                      maxLength={250}
-                      value={item.entidad}
-                      onChange={(e) => updateItem(item.id, 'entidad', e.target.value)}
-                      className="w-full p-1 border rounded bg-white text-xs"
-                      placeholder="Entidad"
-                    />
+                  <td className="p-2 border relative group">
+                    <AIAssistedField
+                      label="Entidad financiera"
+                      htmlFor={`prestamo-entidad-${item.id}`}
+                      compact
+                      guidance="Indica la entidad financiera con la cual se adquiriría el préstamo."
+                      askPrompt={`¿Qué entidad financiera es recomendable o común para el préstamo del proyecto "${project.name}" en el sector ${project.sector}?`}
+                      fieldHelpKey="entidad_financiera"
+                      projectContext={fieldProjectContext}
+                      reactiveContext={item}
+                      currentValue={item.entidad}
+                      onAutoFill={(v) => updateItem(item.id, 'entidad', v)}
+                    >
+                      <input spellCheck={true}
+                        type="text"
+                        id={`prestamo-entidad-${item.id}`}
+                        maxLength={250}
+                        value={item.entidad}
+                        onChange={(e) => updateItem(item.id, 'entidad', e.target.value)}
+                        className="w-full p-1 border rounded bg-white text-xs mt-1"
+                        placeholder="Entidad"
+                      />
+                    </AIAssistedField>
                   </td>
                   <td className="p-2 border">
                     <input spellCheck={true}

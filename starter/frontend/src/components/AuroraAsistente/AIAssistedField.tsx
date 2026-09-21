@@ -28,6 +28,10 @@ type AIAssistedFieldProps = {
   projectContext?: ProjectContext;
   /** Callback para insertar el valor sugerido directamente en el campo. */
   onAutoFill?: (value: string) => void;
+  /** Contexto reactivo para disparar sugerencias automáticas (debounce) */
+  reactiveContext?: Record<string, any>;
+  /** Valor actual del input. Si está vacío y el reactiveContext cambia, pide sugerencia. */
+  currentValue?: string;
   /** Textos sugeridos por la IA en fases previas (ej: ideación). */
   prefilledSuggestions?: string[];
   /** Callback a ejecutar cuando se usa una sugerencia prellenada. */
@@ -50,6 +54,8 @@ export default function AIAssistedField({
   compact = false,
   fieldHelpKey,
   projectContext,
+  reactiveContext,
+  currentValue,
   onAutoFill,
   prefilledSuggestions,
   onApplySuggestion,
@@ -59,6 +65,21 @@ export default function AIAssistedField({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
   const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
+  const suggestMgaField = useAuroraCopilotStore((s) => s.suggestMgaField);
+  const storeSuggestions = useAuroraCopilotStore((s) => fieldHelpKey ? s.mgaFieldSuggestions[fieldHelpKey] : null);
+
+  // Auto-suggestion debounce
+  useEffect(() => {
+    if (!reactiveContext || !fieldHelpKey || currentValue) return;
+
+    const handler = setTimeout(() => {
+      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext });
+    }, 1000);
+
+    return () => clearTimeout(handler);
+  }, [reactiveContext, fieldHelpKey, currentValue, suggestMgaField, projectContext]);
+
+  const activeSuggestions = prefilledSuggestions || storeSuggestions;
 
   // Register auto-fill callback so the chat ActionCard can dispatch back
   useEffect(() => {
@@ -172,20 +193,20 @@ export default function AIAssistedField({
           )}
         </div>
         
-        {prefilledSuggestions && prefilledSuggestions.length > 0 && (
+        {activeSuggestions && activeSuggestions.length > 0 && (
           <span className="ml-1 inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1">
             ✨
-            {prefilledSuggestions.map((sug, i) => (
+            {activeSuggestions.map((sug, i) => (
               <span key={i} className="inline-flex items-center">
                 <span className="truncate max-w-[200px]" title={sug}>{sug}</span>
                 <button
                   type="button"
-                  onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); }}
+                  onClick={(e) => { e.preventDefault(); onApplySuggestion?.(sug); onAutoFill?.(sug); }}
                   className="ml-1 font-semibold hover:underline text-[#006162]"
                 >
                   [Usar]
                 </button>
-                {i < prefilledSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
+                {i < activeSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
               </span>
             ))}
           </span>

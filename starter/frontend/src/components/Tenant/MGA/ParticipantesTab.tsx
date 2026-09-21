@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { HelpCircle, Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import type { Project } from '../../../store/projectStore';
+import { useProjectStore } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { MgaParticipant } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
@@ -19,6 +20,16 @@ const EMPTY_DRAFT = {
   contribution: '',
 };
 
+const ACTOR_OPTIONS = [
+  'Departamental',
+  'Embajada',
+  'Empresas Industriales y Comerciales del Estado (EICE)',
+  'Localidad',
+  'Municipal',
+  'Nacional',
+  'Otro'
+];
+
 export default function ParticipantesTab({ project }: ParticipantesTabProps) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,6 +42,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
   const removeParticipant = useProjectMgaStore((s) => s.removeParticipant);
   const saveParticipantes = useProjectMgaStore((s) => s.saveParticipantes);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
+  const patchProject = useProjectStore((s) => s.patchProject);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -121,23 +133,28 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
       <div className="grid gap-3 sm:grid-cols-2 border rounded p-4 bg-gray-50">
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Actor</label>
-          <input spellCheck={true}
-            type="text"
+          <select
             value={draft.actor}
-            onChange={(e) => setDraft((d) => ({ ...d, actor: e.target.value }))}
+            onChange={(e) => setDraft((d) => ({ ...d, actor: e.target.value, entity: '' }))}
             className="w-full p-2 border rounded bg-white"
-            placeholder="Ej. Comunidad, entidad pública…"
-          />
+          >
+            <option value="">Seleccione un actor...</option>
+            {ACTOR_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Entidad</label>
-          <input spellCheck={true}
-            type="text"
+          <select
             value={draft.entity}
             onChange={(e) => setDraft((d) => ({ ...d, entity: e.target.value }))}
             className="w-full p-2 border rounded bg-white"
-            placeholder="Nombre de la entidad"
-          />
+            disabled={!draft.actor}
+          >
+            <option value="">Seleccione una entidad...</option>
+            {draft.actor && <option value="Entidad Genérica">Entidad Genérica</option>}
+          </select>
         </div>
         <div>
           <label className="font-semibold text-gray-600 block mb-1">Posición</label>
@@ -263,6 +280,29 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             )}
           </tbody>
         </table>
+      </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-medium text-[#2980b9] mb-2 border-b pb-2">02 - Análisis de los participantes</h2>
+        <p className="text-gray-600 mb-4">Indicar el tipo de consulta y coordinación que se ha dado o se dará entre los participantes.</p>
+        <AIAssistedField
+          label="Análisis de consulta y coordinación"
+          htmlFor={`mga-analisis-participantes-${project.id}`}
+          guidance="Describa cómo se ha coordinado con los actores involucrados, acuerdos logrados, mesas de trabajo, etc."
+          askPrompt={`¿Cómo puedo redactar el análisis de consulta y coordinación entre los participantes para el proyecto "${project.name}"?`}
+          fieldHelpKey="analisis_participantes"
+          projectContext={fieldProjectContext}
+          onAutoFill={(v) => patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: v } })}
+        >
+          <textarea spellCheck={true}
+            id={`mga-analisis-participantes-${project.id}`}
+            value={project.mga_formulation_data?.analisis_participantes || ''}
+            onChange={(e) => void patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: e.target.value } })}
+            className="min-h-[120px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
+            placeholder="Describa el tipo de consulta y coordinación…"
+          />
+        </AIAssistedField>
       </div>
 
       <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">

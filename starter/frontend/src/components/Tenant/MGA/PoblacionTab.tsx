@@ -143,8 +143,14 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Número total</label>
             <input spellCheck={true}
-              type="text"
+              type="number"
+              min="0"
               inputMode="numeric"
+              onKeyDown={(e) => {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               value={panel.total_number}
               onChange={(e) => setPanel((p) => ({ ...p, total_number: e.target.value }))}
               className="w-full p-2 border rounded bg-white"

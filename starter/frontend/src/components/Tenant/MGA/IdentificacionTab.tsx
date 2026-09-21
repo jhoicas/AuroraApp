@@ -522,19 +522,19 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 type="button"
                 disabled={isSaving}
                 onClick={() => void handleAddDirectEffect()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-aurora-dark disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
               >
                 <Plus className="h-4 w-4" aria-hidden />
-                Efecto directo
+                + Efecto directo
               </button>
               <button
                 type="button"
                 disabled={isSaving}
                 onClick={() => void handleAddDirectCause()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-aurora-dark disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
               >
                 <Plus className="h-4 w-4" aria-hidden />
-                Causa directa
+                + Causa directa
               </button>
             </div>
           </div>
@@ -546,7 +546,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             'Efectos',
             'Efecto indirecto',
             effectGroups,
-            (item, index) => renderEffectCard(item, `Efecto Directo ${index + 1}`),
+            (item) => renderEffectCard(item, 'Efecto Directo'),
             (item) => renderEffectCard(item, 'Efecto Indirecto', true),
             (parentId) => void handleAddIndirectEffect(parentId),
             'No hay efectos registrados. Use [+] Efecto directo desde el problema central.',
@@ -557,7 +557,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             'Causas',
             'Causa indirecta',
             causeGroups,
-            (item, index) => renderCauseCard(item, `Causa Directa ${index + 1}`),
+            (item) => renderCauseCard(item, 'Causa Directa'),
             (item) => renderCauseCard(item, 'Causa Indirecta', true),
             (parentId) => void handleAddIndirectCause(parentId),
             'No hay causas registradas. Use [+] Causa directa desde el problema central.',

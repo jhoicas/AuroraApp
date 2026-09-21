@@ -48,7 +48,6 @@ const SUB_SECTIONS: MgaSubSection[] = [
   { id: 'participantes', label: 'Participantes' },
   { id: 'poblacion', label: 'Población' },
   { id: 'objetivos', label: 'Objetivos' },
-  { id: 'cadena-valor', label: 'Cadena de Valor' },
   { id: 'alternativas', label: 'Alternativas' },
 ];
 
@@ -101,7 +100,6 @@ function useMgaSectionStatuses(project: Project) {
   const cParticipantes = !!formulation.completedSections['participantes'];
   const cPoblacion = !!formulation.completedSections['poblacion'];
   const cObjetivos = !!formulation.completedSections['objetivos'];
-  const cCadenaValor = !!formulation.completedSections['cadena-valor'];
   const cAlternativas = !!formulation.completedSections['alternativas'];
 
   const statuses: Record<MgaLayoutTabId, SectionStatus> = {
@@ -110,8 +108,8 @@ function useMgaSectionStatuses(project: Project) {
     'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
     'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
     'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion ? 'ACTIVE' : 'LOCKED'),
-    'cadena-valor': cCadenaValor ? 'COMPLETED' : (cObjetivos ? 'ACTIVE' : 'LOCKED'),
-    'alternativas': cAlternativas ? 'COMPLETED' : (cCadenaValor ? 'ACTIVE' : 'LOCKED'),
+    'cadena-valor': 'LOCKED',
+    'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos ? 'ACTIVE' : 'LOCKED'),
   };
 
   return statuses;
@@ -146,8 +144,6 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <PoblacionTab project={project} />;
     case 'objetivos':
       return <ObjetivosTab project={project} skipInitialFetch />;
-    case 'cadena-valor':
-      return <CadenaValorTab project={project} />;
     case 'alternativas':
       return <AlternativasTab project={project} />;
     default:

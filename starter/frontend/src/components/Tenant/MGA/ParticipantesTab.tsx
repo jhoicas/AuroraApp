@@ -283,7 +283,6 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           </tbody>
         </table>
       </div>
-      </div>
 
       <div className="mt-8">
         <h2 className="text-lg font-medium text-[#2980b9] mb-2 border-b pb-2">02 - Análisis de los participantes</h2>

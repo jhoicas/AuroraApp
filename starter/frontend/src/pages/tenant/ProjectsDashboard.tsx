@@ -100,14 +100,7 @@ export default function ProjectsDashboard() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => navigate('/tenant/projects/create-assistant')}
-            className="h-14 px-6 bg-white border-2 border-[#006162] text-[#006162] hover:bg-teal-50 rounded-lg font-semibold text-base inline-flex items-center justify-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined">auto_awesome</span>
-            Crear con Asistente IA
-          </button>
+
           <button
             type="button"
             onClick={() => setModalOpen(true)}

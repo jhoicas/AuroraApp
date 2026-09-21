@@ -241,7 +241,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       code: p.codigo_del_producto.trim(),
       indicatorCode: p.codigo_del_indicador_de_producto.trim(),
       indicatorLabel: p.indicador_de_producto.trim(),
-      hint: `${p.descripcion || ''} ${p.codigo_del_programa || ''} ${p.nombre_del_programa || ''}`.trim()
+      hint: Object.values(p).filter(v => v !== null && v !== undefined && v !== '').join(" ").trim()
     })),
     [catalogProducts]
   );
@@ -868,7 +868,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
-            label="Producto principal (Opcional)"
+            label="Producto principal"
             prefilledSuggestions={projectSuggestions?.producto_principal}
             onApplySuggestion={(sug) => {
               if (!sug) return;

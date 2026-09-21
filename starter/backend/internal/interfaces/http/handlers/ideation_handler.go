@@ -394,5 +394,21 @@ func (h *IdeationHandler) resolveIdsFromSuggestions(
 		}
 	}
 
+	// ── Resolver Producto Principal: texto sugerido → código real ────────
+	var validProducts []string
+	for _, prodSug := range raw.ProductoPrincipal {
+		if ps := strings.TrimSpace(prodSug); ps != "" {
+			var product models.CatalogProduct
+			err := h.db.WithContext(c.Context()).
+				Where("LOWER(producto) LIKE ? OR LOWER(descripcion) LIKE ?", "%"+strings.ToLower(ps)+"%", "%"+strings.ToLower(ps)+"%").
+				First(&product).Error
+
+			if err == nil && product.CodigoProducto != "" {
+				validProducts = append(validProducts, product.Producto)
+			}
+		}
+	}
+	suggestions.ProductoPrincipal = validProducts
+
 	return suggestions
 }

@@ -431,6 +431,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         // Modo Edición
         const idenPayload = {
           proceso_id: parseInt(proceso, 10),
+          proceso: parseInt(proceso, 10),
           objeto: objeto.trim(),
           localizaciones: localizaciones,
           tipo_inversion: tipoInversion,
@@ -444,6 +445,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         // Parcheamos el estado local de forma síncrona
         patchCurrentProject({ 
           name: generatedName, 
+          description: objeto.trim(),
           sector: selectedSector?.name ?? '', 
           sector_id: sectorId, 
           product_code: productoPrincipal || undefined,
@@ -459,11 +461,16 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         // Hacemos el PATCH al backend. Los datos de MGA van en mga_formulation_data.identificacion
         await patchProject(editProject.id, {
           name: generatedName,
+          description: objeto.trim(),
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
           mga_formulation_data: {
-            identificacion: idenPayload
+            ...currentMgaData,
+            identificacion: {
+              ...currentIden,
+              ...idenPayload
+            }
           }
         });
         
@@ -475,6 +482,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         // Modo Creación
         const project = await createProject({
           name: generatedName,
+          description: objeto.trim(),
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
@@ -485,7 +493,13 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           tipologia: tipologiaProyecto,
           mga_formulation_data: {
             identificacion: {
-              contexto_inicial: preCreationContext
+              contexto_inicial: preCreationContext,
+              proceso: parseInt(proceso, 10),
+              proceso_id: parseInt(proceso, 10),
+              objeto: objeto.trim(),
+              localizaciones: localizaciones,
+              tipo_inversion: tipoInversion,
+              tipologia: tipologiaProyecto,
             }
           }
         } as any);

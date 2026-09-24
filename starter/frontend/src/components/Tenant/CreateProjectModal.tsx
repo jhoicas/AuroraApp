@@ -191,8 +191,8 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       }).filter(l => l.departamento || l.municipio);
 
       const pName = procesos.find(p => String(p.id) === proceso)?.name || '';
-      const sName = sectors.find(s => s.id === sectorId)?.name || '';
-      const prodName = catalogProducts.find(p => p.codigo_del_producto === productoPrincipal)?.producto || '';
+      const sName = selectedSector?.name || sectors.find(s => s.id === sectorId)?.name || '';
+      const prodName = filteredProducts.find(p => p.codigo_del_producto === productoPrincipal)?.producto || '';
 
       const currentFormData = {
         proceso: pName,
@@ -232,17 +232,27 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
 
   // ─── Sector seleccionado y código ──────────────────
-  const selectedSector: CatalogSector | undefined = useMemo(
-    () => sectors.find((s) => s.id === sectorId),
-    [sectors, sectorId],
-  );
+  const selectedSector: CatalogSector | undefined = useMemo(() => {
+    if (!sectorId) return undefined;
+    const sId = sectorId.trim().toLowerCase();
+    return (
+      sectors.find((s) => s.id === sectorId) ||
+      sectors.find((s) => s.code?.trim().toLowerCase() === sId) ||
+      sectors.find((s) => s.name?.trim().toLowerCase() === sId)
+    );
+  }, [sectors, sectorId]);
 
   const selectedSectorCode = useMemo(
     () => selectedSector?.code?.trim() ?? '',
     [selectedSector],
   );
 
-  // ─── Paso A: Reaccionar al cambio de Sector y Resetear ────────────────────
+  const selectedSectorName = useMemo(
+    () => selectedSector?.name?.trim() ?? '',
+    [selectedSector],
+  );
+
+  // ─── Paso B: Limpieza de Estado (Reset al cambiar Sector) ────────────────────
   const prevSectorIdRef = useRef<string>(sectorId);
   useEffect(() => {
     if (prevSectorIdRef.current !== sectorId) {
@@ -272,32 +282,67 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
   // ─── Cargar Productos por Sector ──────────────────
   useEffect(() => {
-    if (!sectorId || !selectedSector?.code) {
+    if (!sectorId || !selectedSectorCode) {
       if (!editProject) setProductoPrincipal('');
       return;
     }
     void fetchCatalogProducts({
       page: 1,
       limit: CATALOG_FULL_LIST_LIMIT,
-      search: selectedSector.code,
+      search: selectedSectorCode,
     });
-  }, [sectorId, selectedSector?.code, fetchCatalogProducts, editProject]);
+  }, [sectorId, selectedSectorCode, fetchCatalogProducts, editProject]);
 
-  // ─── Paso B: Filtrado en Tiempo Real (Sector -> Productos) ────────────────
+  // ─── Paso A: Filtrado en Tiempo Real (Sector -> Productos) ────────────────
   const filteredProducts = useMemo(() => {
-    if (!selectedSectorCode) return [];
+    if (!sectorId || !selectedSector) return [];
+
     const targetCode = selectedSectorCode.trim();
-    const targetNum = Number(targetCode);
+    const targetName = selectedSectorName.trim().toLowerCase();
+    const numTargetCode = targetCode !== '' ? Number(targetCode) : NaN;
+    const isCodeNumeric = !isNaN(numTargetCode);
+
     return catalogProducts.filter((p) => {
       const pSector = (p.sector ?? '').trim();
-      if (!pSector) return false;
-      if (pSector === targetCode) return true;
-      if (!isNaN(targetNum) && Number(pSector) === targetNum) return true;
+      const pSectorName = (p.nombre_del_sector || (p as any).nombre_sector || '').trim().toLowerCase();
+
+      // Criterio 1: p.sector === sectorCode
+      if (targetCode !== '' && pSector === targetCode) {
+        return true;
+      }
+
+      // Criterio 2: Number(p.sector) === Number(sectorCode) (descartando ceros a la izquierda)
+      if (isCodeNumeric && pSector !== '') {
+        const numPSector = Number(pSector);
+        if (!isNaN(numPSector) && numPSector === numTargetCode) {
+          return true;
+        }
+      }
+
+      // Criterio 3: p.nombre_sector?.toLowerCase() === sectorName?.toLowerCase()
+      if (targetName !== '' && pSectorName !== '' && pSectorName === targetName) {
+        return true;
+      }
+
       return false;
     });
-  }, [catalogProducts, selectedSectorCode]);
+  }, [catalogProducts, sectorId, selectedSector, selectedSectorCode, selectedSectorName]);
 
-  // ─── Paso C: Opciones para SearchableCombobox de Producto ─────────────────
+  // Validación reactiva: si el producto seleccionado no existe en el sector actual, limpiarlo
+  useEffect(() => {
+    if (!sectorId) {
+      if (productoPrincipal) setProductoPrincipal('');
+      return;
+    }
+    if (productoPrincipal && !isLoadingProducts && filteredProducts.length > 0) {
+      const exists = filteredProducts.some((p) => p.codigo_del_producto === productoPrincipal);
+      if (!exists) {
+        setProductoPrincipal('');
+      }
+    }
+  }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts]);
+
+  // ─── Paso C: Opciones para SearchableCombobox de Producto (Exclusivamente filteredProducts) ───
   const productOptions: ComboboxOption[] = useMemo(
     () =>
       filteredProducts.map((p) => ({
@@ -314,18 +359,34 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
     [filteredProducts],
   );
 
-  // Sincronizar selectedProductData con el producto principal seleccionado
+  // Sincronizar selectedProductData con el producto principal seleccionado (exclusivo de filteredProducts)
   useEffect(() => {
-    if (!productoPrincipal) {
+    if (!productoPrincipal || !sectorId) {
       setSelectedProductData(null);
       return;
     }
     const found =
-      filteredProducts.find((p) => p.codigo_del_producto === productoPrincipal) ||
-      catalogProducts.find((p) => p.codigo_del_producto === productoPrincipal) ||
-      null;
+      filteredProducts.find((p) => p.codigo_del_producto === productoPrincipal) || null;
     setSelectedProductData(found);
-  }, [productoPrincipal, filteredProducts, catalogProducts]);
+  }, [productoPrincipal, sectorId, filteredProducts]);
+
+  // Sugerencias IA de productos filtradas estrictamente al sector seleccionado
+  const productSuggestionsList = useMemo(() => {
+    if (!sectorId || filteredProducts.length === 0) return undefined;
+    const raw = projectSuggestions?.producto_principal || (projectSuggestions as any)?.producto || (projectSuggestions as any)?.productos;
+    if (!raw) return undefined;
+    const list: string[] = Array.isArray(raw) ? raw : [raw];
+    const filtered = list.filter((sug) => {
+      if (!sug) return false;
+      const nQuery = String(sug).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return filteredProducts.some((p) => {
+        const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const nCode = p.codigo_del_producto.trim().toLowerCase();
+        return nName.includes(nQuery) || nQuery.includes(nName) || nCode === nQuery;
+      });
+    });
+    return filtered.length > 0 ? filtered : undefined;
+  }, [sectorId, filteredProducts, projectSuggestions]);
 
   // ─── Nombre auto-generado ──────────────────
   const procesoName = useMemo(
@@ -921,16 +982,14 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
           {/* ── Producto principal (habilitado tras sector) ── */}
           <AIAssistedField
             label="Producto principal"
-            prefilledSuggestions={projectSuggestions?.producto_principal || (projectSuggestions as any)?.producto || (projectSuggestions as any)?.productos}
+            prefilledSuggestions={productSuggestionsList}
             onApplySuggestion={(sug) => {
-              if (!sug) return;
+              if (!sug || !sectorId) return;
               const nQuery = sug.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
               const prod = filteredProducts.find(p => {
-                const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
-                return nName.includes(nQuery) || nQuery.includes(nName);
-              }) || catalogProducts.find(p => {
                 const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                return nName.includes(nQuery) || nQuery.includes(nName);
+                const nCode = p.codigo_del_producto.trim().toLowerCase();
+                return nName.includes(nQuery) || nQuery.includes(nName) || nCode === nQuery;
               });
               if (prod) setProductoPrincipal(prod.codigo_del_producto);
             }}
@@ -961,7 +1020,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
               <button
                 type="button"
                 onClick={() => {
-                  const prod = catalogProducts.find(p => p.codigo_del_producto === productoPrincipal);
+                  const prod = filteredProducts.find(p => p.codigo_del_producto === productoPrincipal);
                   if (prod) {
                     setSelectedProductData(prod);
                     setIsProductModalOpen(true);

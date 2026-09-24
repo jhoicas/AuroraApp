@@ -138,6 +138,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         
         const foundSector = editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '';
         setSectorId(foundSector ? String(foundSector) : '');
+        prevSectorIdRef.current = foundSector ? String(foundSector) : '';
         
         const foundProduct = editProject.product_code || (editProject as any).productCode || '';
         setProductoPrincipal(foundProduct ? String(foundProduct) : '');
@@ -148,6 +149,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         setTipoInversion('Territorial');
         setTipologiaProyecto('');
         setSectorId('');
+        prevSectorIdRef.current = '';
         setProductoPrincipal('');
       }
       
@@ -229,7 +231,27 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
 
-  // ─── Combobox Options ──────────────────
+  // ─── Sector seleccionado y código ──────────────────
+  const selectedSector: CatalogSector | undefined = useMemo(
+    () => sectors.find((s) => s.id === sectorId),
+    [sectors, sectorId],
+  );
+
+  const selectedSectorCode = useMemo(
+    () => selectedSector?.code?.trim() ?? '',
+    [selectedSector],
+  );
+
+  // ─── Paso A: Reaccionar al cambio de Sector y Resetear ────────────────────
+  const prevSectorIdRef = useRef<string>(sectorId);
+  useEffect(() => {
+    if (prevSectorIdRef.current !== sectorId) {
+      prevSectorIdRef.current = sectorId;
+      setProductoPrincipal('');
+    }
+  }, [sectorId]);
+
+  // ─── Combobox Options: Procesos & Sectores ──────────────────
   const procesoOptions: ComboboxOption[] = useMemo(
     () => procesos.map((p) => ({ value: String(p.id), label: p.name, code: String(p.id) })),
     [procesos]
@@ -238,18 +260,6 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const sectorOptions: ComboboxOption[] = useMemo(
     () => filteredSectors.map((s) => ({ value: s.id, label: s.name, code: s.code })),
     [filteredSectors]
-  );
-
-  const productOptions: ComboboxOption[] = useMemo(
-    () => catalogProducts.map((p) => ({
-      value: p.codigo_del_producto,
-      label: p.producto.trim(),
-      code: p.codigo_del_producto.trim(),
-      indicatorCode: p.codigo_del_indicador_de_producto.trim(),
-      indicatorLabel: p.indicador_de_producto.trim(),
-      hint: Object.values(p).filter(v => v !== null && v !== undefined && v !== '').join(" ").trim()
-    })),
-    [catalogProducts]
   );
 
   // ─── Cargar datos al abrir ──────────────────
@@ -262,17 +272,60 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
 
   // ─── Cargar Productos por Sector ──────────────────
   useEffect(() => {
-    if (sectorId) {
-      const selectedSector = sectors.find((s) => s.id === sectorId);
-      if (selectedSector?.code) {
-        void fetchCatalogProducts({
-          page: 1,
-          limit: CATALOG_FULL_LIST_LIMIT,
-          search: selectedSector.code,
-        });
-      }
+    if (!sectorId || !selectedSector?.code) {
+      if (!editProject) setProductoPrincipal('');
+      return;
     }
-  }, [sectorId, sectors, fetchCatalogProducts]);
+    void fetchCatalogProducts({
+      page: 1,
+      limit: CATALOG_FULL_LIST_LIMIT,
+      search: selectedSector.code,
+    });
+  }, [sectorId, selectedSector?.code, fetchCatalogProducts, editProject]);
+
+  // ─── Paso B: Filtrado en Tiempo Real (Sector -> Productos) ────────────────
+  const filteredProducts = useMemo(() => {
+    if (!selectedSectorCode) return [];
+    const targetCode = selectedSectorCode.trim();
+    const targetNum = Number(targetCode);
+    return catalogProducts.filter((p) => {
+      const pSector = (p.sector ?? '').trim();
+      if (!pSector) return false;
+      if (pSector === targetCode) return true;
+      if (!isNaN(targetNum) && Number(pSector) === targetNum) return true;
+      return false;
+    });
+  }, [catalogProducts, selectedSectorCode]);
+
+  // ─── Paso C: Opciones para SearchableCombobox de Producto ─────────────────
+  const productOptions: ComboboxOption[] = useMemo(
+    () =>
+      filteredProducts.map((p) => ({
+        value: p.codigo_del_producto,
+        label: p.codigo_del_producto ? `${p.codigo_del_producto.trim()} - ${p.producto.trim()}` : p.producto.trim(),
+        code: p.codigo_del_producto.trim(),
+        indicatorCode: p.codigo_del_indicador_de_producto?.trim(),
+        indicatorLabel: p.indicador_de_producto?.trim(),
+        hint: Object.values(p)
+          .filter((v) => v !== null && v !== undefined && v !== '')
+          .join(' ')
+          .trim(),
+      })),
+    [filteredProducts],
+  );
+
+  // Sincronizar selectedProductData con el producto principal seleccionado
+  useEffect(() => {
+    if (!productoPrincipal) {
+      setSelectedProductData(null);
+      return;
+    }
+    const found =
+      filteredProducts.find((p) => p.codigo_del_producto === productoPrincipal) ||
+      catalogProducts.find((p) => p.codigo_del_producto === productoPrincipal) ||
+      null;
+    setSelectedProductData(found);
+  }, [productoPrincipal, filteredProducts, catalogProducts]);
 
   // ─── Nombre auto-generado ──────────────────
   const procesoName = useMemo(
@@ -283,12 +336,6 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   const generatedName = useMemo(
     () => generateProjectName(procesoName, objeto, localizaciones, regions),
     [procesoName, objeto, localizaciones, regions],
-  );
-
-  // ─── Productos del sector seleccionado ──────────────────
-  const selectedSector: CatalogSector | undefined = useMemo(
-    () => sectors.find((s) => s.id === sectorId),
-    [sectors, sectorId],
   );
 
   const fieldProjectContext: ProjectContext = useMemo(() => {
@@ -307,18 +354,6 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       municipio: mainMun?.name,
     };
   }, [generatedName, procesoName, objeto, selectedSector, productoPrincipal, selectedProductData, localizaciones, regions]);
-
-  useEffect(() => {
-    if (!sectorId || !selectedSector) {
-      if (!editProject) setProductoPrincipal('');
-      return;
-    }
-    void fetchCatalogProducts({
-      page: 1,
-      limit: CATALOG_FULL_LIST_LIMIT,
-      search: selectedSector.code,
-    });
-  }, [sectorId, selectedSector, fetchCatalogProducts]);
 
   // ─── Handlers de localización ──────────────────
   const updateLocation = useCallback(
@@ -379,6 +414,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       setTipoInversion('Territorial');
       setTipologiaProyecto('');
       setSectorId('');
+      prevSectorIdRef.current = '';
       setProductoPrincipal('');
     }
     setFormError(null);
@@ -889,7 +925,10 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
             onApplySuggestion={(sug) => {
               if (!sug) return;
               const nQuery = sug.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-              const prod = catalogProducts.find(p => {
+              const prod = filteredProducts.find(p => {
+                const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+                return nName.includes(nQuery) || nQuery.includes(nName);
+              }) || catalogProducts.find(p => {
                 const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                 return nName.includes(nQuery) || nQuery.includes(nName);
               });
@@ -913,6 +952,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
                         : 'Selecciona un producto'
                   }
                   disabled={!sectorId || isLoadingProducts}
+                  loading={isLoadingProducts}
                   options={productOptions}
                   value={productoPrincipal}
                   onChange={setProductoPrincipal}

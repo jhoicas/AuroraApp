@@ -130,8 +130,8 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
           projectContext={fieldProjectContext}
           reactiveContext={draft}
           currentValue={draft.description}
-          onAutoFill={(v) =
-            maxLength={250}> setDraft((d) => ({ ...d, description: v }))}
+          onAutoFill={(v) => setDraft((d) => ({ ...d, description: v }))}
+          maxLength={250}
         >
           <textarea spellCheck={true}
             id={`alt-desc-${project.id}`}

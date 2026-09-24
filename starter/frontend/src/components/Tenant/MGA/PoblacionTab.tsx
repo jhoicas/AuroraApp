@@ -172,8 +172,8 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
               projectContext={fieldProjectContext}
               reactiveContext={panel}
               currentValue={panel.source}
-              onAutoFill={(v) =
-            maxLength={500}> setPanel((p) => ({ ...p, source: v }))}
+              onAutoFill={(v) => setPanel((p) => ({ ...p, source: v }))}
+              maxLength={500}
             >
               <input spellCheck={true}
                 type="text"

@@ -129,8 +129,8 @@ export default function NecesidadesTab({ project }: { project: Project }) {
                       projectContext={{ projectName: project.name }}
                       reactiveContext={item}
                       currentValue={item.bienServicio}
-                      onAutoFill={(v) =
-            maxLength={100}> updateItem(item.id, 'bienServicio', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'bienServicio', v)}
+                      maxLength={100}
                     >
                       <input spellCheck={true}
                         type="text"
@@ -154,8 +154,8 @@ export default function NecesidadesTab({ project }: { project: Project }) {
                       projectContext={{ projectName: project.name }}
                       reactiveContext={item}
                       currentValue={item.unidadMedida}
-                      onAutoFill={(v) =
-            maxLength={50}> updateItem(item.id, 'unidadMedida', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'unidadMedida', v)}
+                      maxLength={50}
                     >
                       <input spellCheck={true}
                         type="text"

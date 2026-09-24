@@ -182,8 +182,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             reactiveContext={draft}
             currentValue={draft.interests}
-            onAutoFill={(v) =
-            maxLength={200}> setDraft((d) => ({ ...d, interests: v }))}
+            onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
             maxLength={200}
           >
               <textarea spellCheck={true}
@@ -207,8 +206,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             projectContext={fieldProjectContext}
             reactiveContext={draft}
             currentValue={draft.contribution}
-            onAutoFill={(v) =
-            maxLength={2000}> setDraft((d) => ({ ...d, contribution: v }))}
+            onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
             maxLength={2000}
           >
               <textarea spellCheck={true}
@@ -309,8 +307,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           projectContext={fieldProjectContext}
           reactiveContext={{ analisis_participantes: project.mga_formulation_data?.analisis_participantes, participants }}
           currentValue={project.mga_formulation_data?.analisis_participantes as string | undefined}
-          onAutoFill={(v) =
-            maxLength={2500}> patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: v } })}
+          onAutoFill={(v) => patchProject(project.id, { mga_formulation_data: { ...project.mga_formulation_data, analisis_participantes: v } })}
+          maxLength={2500}
         >
             <textarea spellCheck={true}
               id={`mga-analisis-participantes-${project.id}`}

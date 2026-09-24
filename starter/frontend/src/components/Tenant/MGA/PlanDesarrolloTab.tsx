@@ -236,8 +236,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={depPlan}
-            onAutoFill={(v) =
-            maxLength={1500}> setDepPlan(v)}
+            onAutoFill={(v) => setDepPlan(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="dep-plan"
@@ -257,8 +257,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={depEstrategia}
-            onAutoFill={(v) =
-            maxLength={1500}> setDepEstrategia(v)}
+            onAutoFill={(v) => setDepEstrategia(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="dep-estrategia"
@@ -278,8 +278,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={depPrograma}
-            onAutoFill={(v) =
-            maxLength={1500}> setDepPrograma(v)}
+            onAutoFill={(v) => setDepPrograma(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="dep-programa"
@@ -309,8 +309,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={munPlan}
-            onAutoFill={(v) =
-            maxLength={1500}> setMunPlan(v)}
+            onAutoFill={(v) => setMunPlan(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="mun-plan"
@@ -330,8 +330,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={munEstrategia}
-            onAutoFill={(v) =
-            maxLength={1500}> setMunEstrategia(v)}
+            onAutoFill={(v) => setMunEstrategia(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="mun-estrategia"
@@ -351,8 +351,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={munPrograma}
-            onAutoFill={(v) =
-            maxLength={1500}> setMunPrograma(v)}
+            onAutoFill={(v) => setMunPrograma(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="mun-programa"
@@ -396,8 +396,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={etnicoInstrumentos}
-            onAutoFill={(v) =
-            maxLength={500}> setEtnicoInstrumentos(v)}
+            onAutoFill={(v) => setEtnicoInstrumentos(v)}
+            maxLength={500}
           >
             <textarea spellCheck={true} 
               id="etnico-instrumentos"
@@ -427,8 +427,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={otrosPlan}
-            onAutoFill={(v) =
-            maxLength={1500}> setOtrosPlan(v)}
+            onAutoFill={(v) => setOtrosPlan(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="otros-plan"
@@ -448,8 +448,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={otrosEstrategia}
-            onAutoFill={(v) =
-            maxLength={1500}> setOtrosEstrategia(v)}
+            onAutoFill={(v) => setOtrosEstrategia(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="otros-estrategia"
@@ -469,8 +469,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={otrosPrograma}
-            onAutoFill={(v) =
-            maxLength={1500}> setOtrosPrograma(v)}
+            onAutoFill={(v) => setOtrosPrograma(v)}
+            maxLength={1500}
           >
             <textarea spellCheck={true} 
               id="otros-programa"

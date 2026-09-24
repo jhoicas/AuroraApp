@@ -68,8 +68,8 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
                 projectContext={fieldProjectContext}
                 reactiveContext={{ alternativa: alt.description }}
                 currentValue={items[alt.id] || ''}
-                onAutoFill={(v) =
-            maxLength={2500}> setItems(prev => ({ ...prev, [alt.id]: v }))}
+                onAutoFill={(v) => setItems(prev => ({ ...prev, [alt.id]: v }))}
+                maxLength={2500}
               >
                 <textarea spellCheck={true}
                   id={`analisis-tecnico-${alt.id}`}

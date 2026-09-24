@@ -130,8 +130,8 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.bienServicio}
-                      onAutoFill={(v) =
-            maxLength={250}> updateItem(item.id, 'bienServicio', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'bienServicio', v)}
+                      maxLength={250}
                     >
                       <input spellCheck={true}
                         type="text"
@@ -177,8 +177,8 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.descripcion}
-                      onAutoFill={(v) =
-            maxLength={2500}> updateItem(item.id, 'descripcion', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
+                      maxLength={2500}
                     >
                       <textarea spellCheck={true}
                         id={`ingreso-desc-${item.id}`}

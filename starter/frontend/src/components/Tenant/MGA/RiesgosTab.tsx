@@ -128,8 +128,8 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.descripcion}
-                      onAutoFill={(v) =
-            maxLength={2500}> updateItem(item.id, 'descripcion', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
+                      maxLength={2500}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-desc-${item.id}`}
@@ -177,8 +177,8 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.efectos}
-                      onAutoFill={(v) =
-            maxLength={250}> updateItem(item.id, 'efectos', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'efectos', v)}
+                      maxLength={250}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-efectos-${item.id}`}
@@ -202,8 +202,8 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       projectContext={fieldProjectContext}
                       reactiveContext={item}
                       currentValue={item.medida}
-                      onAutoFill={(v) =
-            maxLength={250}> updateItem(item.id, 'medida', v)}
+                      onAutoFill={(v) => updateItem(item.id, 'medida', v)}
+                      maxLength={250}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-medida-${item.id}`}

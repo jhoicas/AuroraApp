@@ -77,6 +77,9 @@ func main() {
 
 	log.Printf("usuario seed OK: %s | rol=%s | id=%s", user.Email, constants.RoleSuperAdmin, user.ID)
 	log.Printf("roles OK: %s, %s", constants.RoleSuperAdmin, constants.RoleTenantAdmin)
+
+	// Catálogos relacionales MGA (actores, entidades, posiciones).
+	runMgaCatalogSeed(db)
 }
 
 func findRoleByCode(db *gorm.DB, code string) (models.Role, error) {

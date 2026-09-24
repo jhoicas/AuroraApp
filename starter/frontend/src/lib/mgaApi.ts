@@ -39,17 +39,40 @@ export type MgaEffect = {
   updated_at: string;
 };
 
+export type MgaCatalogActor = {
+  id: number;
+  name: string;
+};
+
+export type MgaCatalogEntity = {
+  id: number;
+  actor_id: number;
+  name: string;
+};
+
+export type MgaCatalogPosition = {
+  id: number;
+  name: string;
+};
+
 export type MgaParticipant = {
   id: string;
   tenant_id: string;
   project_id: string;
-  actor: string;
-  entity: string;
-  position: string;
+  actor_id: number;
+  entity_id: number | null;
+  position_id: number;
+  otro_participante?: string | null;
   interests: string;
   contribution: string;
   created_at: string;
   updated_at: string;
+  /** Alias numérico opcional para compatibilidad */
+  actor?: number;
+  /** Alias numérico opcional para compatibilidad */
+  entity?: number | null;
+  /** Alias numérico opcional para compatibilidad */
+  position?: number;
 };
 
 export type MgaPopulation = {
@@ -138,11 +161,18 @@ export type UpdateMgaEffectPayload = {
 };
 
 export type CreateMgaParticipantPayload = {
-  actor: string;
-  entity: string;
-  position: string;
+  actor_id: number;
+  entity_id?: number | null;
+  position_id: number;
+  otro_participante?: string | null;
   interests: string;
   contribution: string;
+  /** Compatibilidad: alias numérico */
+  actor?: number;
+  /** Compatibilidad: alias numérico */
+  entity?: number | null;
+  /** Compatibilidad: alias numérico */
+  position?: number;
 };
 
 export type UpdateMgaParticipantPayload = Partial<CreateMgaParticipantPayload>;
@@ -264,13 +294,36 @@ export async function deleteMgaEffect(projectId: string, effectId: string): Prom
   await api.delete(`/projects/${projectId}/mga/effects/${effectId}`);
 }
 
+export async function getMgaActors(): Promise<MgaCatalogActor[]> {
+  const { data } = await api.get<MgaCatalogActor[]>('/mga/catalogs/actors');
+  return data;
+}
+
+export async function getMgaEntitiesByActor(actorId: number): Promise<MgaCatalogEntity[]> {
+  const { data } = await api.get<MgaCatalogEntity[]>(`/mga/catalogs/actors/${actorId}/entities`);
+  return data;
+}
+
+export async function getMgaPositions(): Promise<MgaCatalogPosition[]> {
+  const { data } = await api.get<MgaCatalogPosition[]>('/mga/catalogs/positions');
+  return data;
+}
+
 export async function createMgaParticipant(
   projectId: string,
   payload: CreateMgaParticipantPayload,
 ): Promise<MgaParticipant> {
+  const body = {
+    actor_id: payload.actor_id ?? (typeof payload.actor === 'number' ? payload.actor : 0),
+    entity_id: payload.entity_id !== undefined ? payload.entity_id : (payload.entity ?? null),
+    position_id: payload.position_id ?? (typeof payload.position === 'number' ? payload.position : 0),
+    otro_participante: payload.otro_participante ?? null,
+    interests: payload.interests,
+    contribution: payload.contribution,
+  };
   const { data } = await api.post<MgaParticipant>(
     `/projects/${projectId}/mga/participants`,
-    payload,
+    body,
   );
   return data;
 }
@@ -280,9 +333,20 @@ export async function updateMgaParticipant(
   participantId: string,
   payload: UpdateMgaParticipantPayload,
 ): Promise<MgaParticipant> {
+  const body: Record<string, unknown> = {};
+  if (payload.actor_id !== undefined) body.actor_id = payload.actor_id;
+  else if (typeof payload.actor === 'number') body.actor_id = payload.actor;
+  if (payload.entity_id !== undefined) body.entity_id = payload.entity_id;
+  else if (payload.entity !== undefined) body.entity_id = payload.entity;
+  if (payload.position_id !== undefined) body.position_id = payload.position_id;
+  else if (typeof payload.position === 'number') body.position_id = payload.position;
+  if (payload.otro_participante !== undefined) body.otro_participante = payload.otro_participante;
+  if (payload.interests !== undefined) body.interests = payload.interests;
+  if (payload.contribution !== undefined) body.contribution = payload.contribution;
+
   const { data } = await api.put<MgaParticipant>(
     `/projects/${projectId}/mga/participants/${participantId}`,
-    payload,
+    body,
   );
   return data;
 }

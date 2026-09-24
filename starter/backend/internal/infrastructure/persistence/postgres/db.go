@@ -97,6 +97,15 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.MgaEffect{}); err != nil {
 		log.Printf("automigrate MgaEffect: %v", err)
 	}
+	if err := db.AutoMigrate(&models.MgaCatalogActor{}); err != nil {
+		log.Printf("automigrate MgaCatalogActor: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaCatalogPosition{}); err != nil {
+		log.Printf("automigrate MgaCatalogPosition: %v", err)
+	}
+	if err := db.AutoMigrate(&models.MgaCatalogEntity{}); err != nil {
+		log.Printf("automigrate MgaCatalogEntity: %v", err)
+	}
 	if err := db.AutoMigrate(&models.MgaParticipant{}); err != nil {
 		log.Printf("automigrate MgaParticipant: %v", err)
 	}
@@ -149,6 +158,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureBudgetItemsSchema(db)
 	ensureMgaSchema(db)
 	ensureMgaExtendedSchema(db)
+	ensureMgaCatalogSchema(db)
 	ensureProjectEdtSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
@@ -1099,9 +1109,10 @@ func ensureMgaExtendedSchema(db *gorm.DB) {
 		`ALTER TABLE mga_effects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS tenant_id UUID`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS project_id UUID`,
-		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS actor TEXT`,
-		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS entity TEXT`,
-		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS position VARCHAR(100)`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS actor_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS entity_id INTEGER`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS position_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS otro_participante TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS interests TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS contribution TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
@@ -1127,6 +1138,34 @@ func ensureMgaExtendedSchema(db *gorm.DB) {
 		`ALTER TABLE mga_alternatives ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
 	}
 	execSchemaStatements(db, "ensure mga extended schema", statements)
+}
+
+// ensureMgaCatalogSchema crea y migra las tablas de catálogos globales MGA
+// (actores, entidades y posiciones) en bases de datos que requieren DDL explícito.
+func ensureMgaCatalogSchema(db *gorm.DB) {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS mga_catalog_actors (
+			id INTEGER PRIMARY KEY,
+			name VARCHAR(200) NOT NULL UNIQUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS mga_catalog_positions (
+			id INTEGER PRIMARY KEY,
+			name VARCHAR(200) NOT NULL UNIQUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS mga_catalog_entities (
+			id INTEGER PRIMARY KEY,
+			actor_id INTEGER NOT NULL REFERENCES mga_catalog_actors(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			name VARCHAR(500) NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_catalog_entities_actor_id ON mga_catalog_entities (actor_id)`,
+	}
+	execSchemaStatements(db, "ensure mga catalog schema", statements)
 }
 
 func ensureProjectEdtSchema(db *gorm.DB) {

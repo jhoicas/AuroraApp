@@ -58,6 +58,9 @@ func main() {
 	// Paso 6 — Catálogo DNP (solo lectura)
 	router.RegisterCatalogRoutes(app, db, cfg.JWTSecret)
 
+	// Paso 7 — Catálogos relacionales MGA (actores, entidades, posiciones)
+	router.RegisterMgaCatalogRoutes(app, db, cfg.JWTSecret)
+
 	// Legacy starter routes (se migrarán en pasos posteriores)
 	adminGroup := app.Group("/api/admin")
 	adminGroup.Post("/catalog/upload", legacyhandlers.ImportCatalogExcel)

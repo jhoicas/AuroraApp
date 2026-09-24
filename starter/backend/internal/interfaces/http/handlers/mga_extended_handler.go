@@ -172,18 +172,34 @@ func (h *MgaHandler) CreateParticipant(c *fiber.Ctx) error {
 		return err
 	}
 
+	// Validación condicional: actor 6 (Otro) requiere otro_participante.
+	if req.ActorID == 6 {
+		if req.OtroParticipante == nil || strings.TrimSpace(*req.OtroParticipante) == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "otro_participante es obligatorio cuando el actor es Otro (id=6)"})
+		}
+		req.EntityID = nil
+	} else if req.EntityID == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "entity_id es obligatorio para este actor"})
+	}
+
 	now := time.Now().UTC()
+	var otroTrimmed *string
+	if req.OtroParticipante != nil {
+		v := strings.TrimSpace(*req.OtroParticipante)
+		otroTrimmed = &v
+	}
 	participant := &models.MgaParticipant{
-		ID:           uuid.New(),
-		TenantID:     tenantID,
-		ProjectID:    projectID,
-		Actor:        strings.TrimSpace(req.Actor),
-		Entity:       strings.TrimSpace(req.Entity),
-		Position:     strings.TrimSpace(req.Position),
-		Interests:    strings.TrimSpace(req.Interests),
-		Contribution: strings.TrimSpace(req.Contribution),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:               uuid.New(),
+		TenantID:         tenantID,
+		ProjectID:        projectID,
+		ActorID:          req.ActorID,
+		EntityID:         req.EntityID,
+		PositionID:       req.PositionID,
+		OtroParticipante: otroTrimmed,
+		Interests:        strings.TrimSpace(req.Interests),
+		Contribution:     strings.TrimSpace(req.Contribution),
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	if err := h.repo.CreateParticipant(c.Context(), participant); err != nil {
@@ -217,20 +233,28 @@ func (h *MgaHandler) UpdateParticipant(c *fiber.Ctx) error {
 		return err
 	}
 
-	if req.Actor != nil {
-		participant.Actor = strings.TrimSpace(*req.Actor)
+	if req.ActorID != nil {
+		participant.ActorID = *req.ActorID
 	}
-	if req.Entity != nil {
-		participant.Entity = strings.TrimSpace(*req.Entity)
+	if req.EntityID != nil {
+		participant.EntityID = req.EntityID
 	}
-	if req.Position != nil {
-		participant.Position = strings.TrimSpace(*req.Position)
+	if req.PositionID != nil {
+		participant.PositionID = *req.PositionID
+	}
+	if req.OtroParticipante != nil {
+		v := strings.TrimSpace(*req.OtroParticipante)
+		participant.OtroParticipante = &v
 	}
 	if req.Interests != nil {
 		participant.Interests = strings.TrimSpace(*req.Interests)
 	}
 	if req.Contribution != nil {
 		participant.Contribution = strings.TrimSpace(*req.Contribution)
+	}
+	// Si el actor actualizado es Otro, limpiar entity_id.
+	if participant.ActorID == 6 {
+		participant.EntityID = nil
 	}
 	participant.UpdatedAt = time.Now().UTC()
 
@@ -595,16 +619,17 @@ func toMgaEffectResponse(effect models.MgaEffect) dto.MgaEffectResponse {
 
 func toMgaParticipantResponse(participant models.MgaParticipant) dto.MgaParticipantResponse {
 	return dto.MgaParticipantResponse{
-		ID:           participant.ID.String(),
-		TenantID:     participant.TenantID.String(),
-		ProjectID:    participant.ProjectID.String(),
-		Actor:        participant.Actor,
-		Entity:       participant.Entity,
-		Position:     participant.Position,
-		Interests:    participant.Interests,
-		Contribution: participant.Contribution,
-		CreatedAt:    participant.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:    participant.UpdatedAt.UTC().Format(time.RFC3339),
+		ID:               participant.ID.String(),
+		TenantID:         participant.TenantID.String(),
+		ProjectID:        participant.ProjectID.String(),
+		ActorID:          participant.ActorID,
+		EntityID:         participant.EntityID,
+		PositionID:       participant.PositionID,
+		OtroParticipante: participant.OtroParticipante,
+		Interests:        participant.Interests,
+		Contribution:     participant.Contribution,
+		CreatedAt:        participant.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:        participant.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

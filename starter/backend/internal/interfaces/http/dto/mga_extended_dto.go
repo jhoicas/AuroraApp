@@ -33,32 +33,82 @@ type MgaEffectResponse struct {
 // --- Participantes ---
 
 type CreateMgaParticipantRequest struct {
-	Actor        string `json:"actor" validate:"required,min=2,max=500"`
-	Entity       string `json:"entity" validate:"required,min=2,max=500"`
-	Position     string `json:"position" validate:"required,min=2,max=100"`
-	Interests    string `json:"interests" validate:"required,min=2,max=5000"`
-	Contribution string `json:"contribution" validate:"required,min=2,max=5000"`
+	ActorID          int     `json:"actor_id" validate:"required,gt=0"`
+	EntityID         *int    `json:"entity_id" validate:"omitempty,gt=0"`
+	PositionID       int     `json:"position_id" validate:"required,gt=0"`
+	OtroParticipante *string `json:"otro_participante" validate:"omitempty,min=2,max=500"`
+	Interests        string  `json:"interests" validate:"required,min=2,max=5000"`
+	Contribution     string  `json:"contribution" validate:"required,min=2,max=5000"`
 }
 
 type UpdateMgaParticipantRequest struct {
-	Actor        *string `json:"actor" validate:"omitempty,min=2,max=500"`
-	Entity       *string `json:"entity" validate:"omitempty,min=2,max=500"`
-	Position     *string `json:"position" validate:"omitempty,min=2,max=100"`
-	Interests    *string `json:"interests" validate:"omitempty,min=2,max=5000"`
-	Contribution *string `json:"contribution" validate:"omitempty,min=2,max=5000"`
+	ActorID          *int    `json:"actor_id" validate:"omitempty,gt=0"`
+	EntityID         *int    `json:"entity_id" validate:"omitempty,gt=0"`
+	PositionID       *int    `json:"position_id" validate:"omitempty,gt=0"`
+	OtroParticipante *string `json:"otro_participante" validate:"omitempty,min=2,max=500"`
+	Interests        *string `json:"interests" validate:"omitempty,min=2,max=5000"`
+	Contribution     *string `json:"contribution" validate:"omitempty,min=2,max=5000"`
 }
 
 type MgaParticipantResponse struct {
-	ID           string `json:"id"`
-	TenantID     string `json:"tenant_id"`
-	ProjectID    string `json:"project_id"`
-	Actor        string `json:"actor"`
-	Entity       string `json:"entity"`
-	Position     string `json:"position"`
-	Interests    string `json:"interests"`
-	Contribution string `json:"contribution"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	ID               string  `json:"id"`
+	TenantID         string  `json:"tenant_id"`
+	ProjectID        string  `json:"project_id"`
+	ActorID          int     `json:"actor_id"`
+	EntityID         *int    `json:"entity_id"`
+	PositionID       int     `json:"position_id"`
+	OtroParticipante *string `json:"otro_participante"`
+	Interests        string  `json:"interests"`
+	Contribution     string  `json:"contribution"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
+}
+
+// --- Catálogos Globales MGA ---
+
+type MgaCatalogActorResponse struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type MgaCatalogEntityResponse struct {
+	ID      int    `json:"id"`
+	ActorID int    `json:"actor_id"`
+	Name    string `json:"name"`
+}
+
+type MgaCatalogPositionResponse struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type CreateMgaCatalogActorRequest struct {
+	ID   int    `json:"id" validate:"required,gt=0"`
+	Name string `json:"name" validate:"required,min=2,max=200"`
+}
+
+type UpdateMgaCatalogActorRequest struct {
+	Name string `json:"name" validate:"required,min=2,max=200"`
+}
+
+type CreateMgaCatalogEntityRequest struct {
+	ID      int    `json:"id" validate:"required,gt=0"`
+	ActorID int    `json:"actor_id" validate:"required,gt=0"`
+	Name    string `json:"name" validate:"required,min=2,max=500"`
+}
+
+type UpdateMgaCatalogEntityRequest struct {
+	ActorID int    `json:"actor_id" validate:"required,gt=0"`
+	Name    string `json:"name" validate:"required,min=2,max=500"`
+}
+
+type CreateMgaCatalogPositionRequest struct {
+	ID   int    `json:"id" validate:"required,gt=0"`
+	Name string `json:"name" validate:"required,min=2,max=200"`
+}
+
+type UpdateMgaCatalogPositionRequest struct {
+	Name string `json:"name" validate:"required,min=2,max=200"`
 }
 
 // --- Población ---

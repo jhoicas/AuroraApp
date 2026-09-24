@@ -107,3 +107,81 @@ export const adminToggleMunicipio = async (id: number): Promise<boolean> => {
   const { data } = await api.delete<{ status: string; is_active: boolean }>(`/admin/locations/municipios/${id}`);
   return data.is_active;
 };
+
+// ─────────────────────────── Catálogos MGA ───────────────────────────
+
+export interface AdminMgaActor {
+  id: number;
+  name: string;
+}
+
+export interface AdminMgaEntity {
+  id: number;
+  actor_id: number;
+  name: string;
+}
+
+export interface AdminMgaPosition {
+  id: number;
+  name: string;
+}
+
+export const adminListMgaActors = async (): Promise<AdminMgaActor[]> => {
+  const { data } = await api.get<AdminMgaActor[]>('/admin/mga/catalogs/actors');
+  return data;
+};
+
+export const adminCreateMgaActor = async (payload: { id: number; name: string }): Promise<AdminMgaActor> => {
+  const { data } = await api.post<AdminMgaActor>('/admin/mga/catalogs/actors', payload);
+  return data;
+};
+
+export const adminUpdateMgaActor = async (id: number, name: string): Promise<void> => {
+  await api.put(`/admin/mga/catalogs/actors/${id}`, { name });
+};
+
+export const adminDeleteMgaActor = async (id: number): Promise<void> => {
+  await api.delete(`/admin/mga/catalogs/actors/${id}`);
+};
+
+export const adminListMgaEntities = async (): Promise<AdminMgaEntity[]> => {
+  const { data } = await api.get<AdminMgaEntity[]>('/admin/mga/catalogs/entities');
+  return data;
+};
+
+export const adminListMgaEntitiesByActor = async (actorId: number): Promise<AdminMgaEntity[]> => {
+  const { data } = await api.get<AdminMgaEntity[]>(`/admin/mga/catalogs/actors/${actorId}/entities`);
+  return data;
+};
+
+export const adminCreateMgaEntity = async (payload: { id: number; actor_id: number; name: string }): Promise<AdminMgaEntity> => {
+  const { data } = await api.post<AdminMgaEntity>('/admin/mga/catalogs/entities', payload);
+  return data;
+};
+
+export const adminUpdateMgaEntity = async (id: number, payload: { actor_id?: number; name: string }): Promise<void> => {
+  await api.put(`/admin/mga/catalogs/entities/${id}`, payload);
+};
+
+export const adminDeleteMgaEntity = async (id: number): Promise<void> => {
+  await api.delete(`/admin/mga/catalogs/entities/${id}`);
+};
+
+export const adminListMgaPositions = async (): Promise<AdminMgaPosition[]> => {
+  const { data } = await api.get<AdminMgaPosition[]>('/admin/mga/catalogs/positions');
+  return data;
+};
+
+export const adminCreateMgaPosition = async (payload: { id: number; name: string }): Promise<AdminMgaPosition> => {
+  const { data } = await api.post<AdminMgaPosition>('/admin/mga/catalogs/positions', payload);
+  return data;
+};
+
+export const adminUpdateMgaPosition = async (id: number, name: string): Promise<void> => {
+  await api.put(`/admin/mga/catalogs/positions/${id}`, { name });
+};
+
+export const adminDeleteMgaPosition = async (id: number): Promise<void> => {
+  await api.delete(`/admin/mga/catalogs/positions/${id}`);
+};
+

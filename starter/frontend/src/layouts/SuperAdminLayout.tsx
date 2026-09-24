@@ -25,7 +25,16 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/locations', label: 'Localizaciones MGA' },
 ] as const;
 
+const mgaCatalogSubLinks = [
+  { to: '/admin/catalogs/mga-actors', label: 'Actores MGA' },
+  { to: '/admin/catalogs/mga-entities', label: 'Entidades MGA' },
+  { to: '/admin/catalogs/mga-positions', label: 'Posiciones MGA' },
+] as const;
+
 function headerTitle(pathname: string): string {
+  if (pathname.includes('/admin/catalogs/mga-actors')) return 'Actores MGA';
+  if (pathname.includes('/admin/catalogs/mga-entities')) return 'Entidades MGA';
+  if (pathname.includes('/admin/catalogs/mga-positions')) return 'Posiciones MGA';
   if (pathname.includes('/admin/catalogs/sectors')) return 'Sectores';
   if (pathname.includes('/admin/catalogs/programs')) return 'Programas';
   if (pathname.includes('/admin/catalogs/products')) return 'Productos';
@@ -64,12 +73,20 @@ export default function SuperAdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const catalogsActive = pathname.startsWith('/admin/catalogs') || pathname.startsWith('/admin/catalogo');
+  const mgaCatalogsActive = pathname.startsWith('/admin/catalogs/mga-');
+  const catalogsActive =
+    (pathname.startsWith('/admin/catalogs') || pathname.startsWith('/admin/catalogo')) &&
+    !mgaCatalogsActive;
   const [catalogsOpen, setCatalogsOpen] = useState(catalogsActive);
+  const [mgaCatalogsOpen, setMgaCatalogsOpen] = useState(mgaCatalogsActive);
 
   useEffect(() => {
     if (catalogsActive) setCatalogsOpen(true);
   }, [catalogsActive]);
+
+  useEffect(() => {
+    if (mgaCatalogsActive) setMgaCatalogsOpen(true);
+  }, [mgaCatalogsActive]);
 
   return (
     <div className="flex h-screen bg-[#f9f9ff] font-body">
@@ -108,6 +125,38 @@ export default function SuperAdminLayout() {
             {catalogsOpen && (
               <div className="mt-1 space-y-0.5 border-l-2 border-[#94f2f0] ml-5">
                 {catalogSubLinks.map((item) => (
+                  <NavLink key={item.to} to={item.to} className={catalogSubClass}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setMgaCatalogsOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
+                mgaCatalogsActive
+                  ? 'bg-[#e7eeff] text-[#006162] border-l-4 border-[#006162] font-bold'
+                  : 'text-[#3f4949] hover:bg-[#f0f3ff] hover:text-[#006162]'
+              }`}
+              aria-expanded={mgaCatalogsOpen}
+            >
+              <span className="material-symbols-outlined">group_work</span>
+              <span className="text-lg font-semibold flex-1 text-left">Catálogos MGA</span>
+              <span
+                className={`material-symbols-outlined text-[20px] transition-transform ${
+                  mgaCatalogsOpen ? 'rotate-180' : ''
+                }`}
+              >
+                expand_more
+              </span>
+            </button>
+            {mgaCatalogsOpen && (
+              <div className="mt-1 space-y-0.5 border-l-2 border-[#94f2f0] ml-5">
+                {mgaCatalogSubLinks.map((item) => (
                   <NavLink key={item.to} to={item.to} className={catalogSubClass}>
                     {item.label}
                   </NavLink>

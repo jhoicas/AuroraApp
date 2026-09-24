@@ -16,8 +16,11 @@ type MgaParticipant struct {
 	TenantID           uuid.UUID      `gorm:"column:tenant_id;type:uuid;not null;index" json:"tenant_id"`
 	ProjectID          uuid.UUID      `gorm:"column:project_id;type:uuid;not null;index" json:"project_id"`
 	ActorID            int            `gorm:"column:actor_id;not null" json:"actor_id"`
+	Actor              string         `gorm:"column:actor;type:text;not null;default:''" json:"actor"`
 	EntityID           *int           `gorm:"column:entity_id" json:"entity_id"`
+	Entity             string         `gorm:"column:entity;type:text;default:''" json:"entity"`
 	PositionID         int            `gorm:"column:position_id;not null" json:"position_id"`
+	Position           string         `gorm:"column:position;type:varchar(100);not null;default:''" json:"position"`
 	OtroParticipante   *string        `gorm:"column:otro_participante;type:text" json:"otro_participante"`
 	Interests          string         `gorm:"column:interests;type:text;not null" json:"interests"`
 	Contribution       string         `gorm:"column:contribution;type:text;not null" json:"contribution"`
@@ -25,10 +28,10 @@ type MgaParticipant struct {
 	UpdatedAt          time.Time      `gorm:"column:updated_at;not null" json:"updated_at"`
 	DeletedAt          gorm.DeletedAt `gorm:"column:deleted_at;index" json:"-"`
 
-	Tenant   Tenant             `gorm:"foreignKey:TenantID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	Project  Project            `gorm:"foreignKey:ProjectID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	Actor    MgaCatalogActor    `gorm:"foreignKey:ActorID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
-	Position MgaCatalogPosition `gorm:"foreignKey:PositionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
+	Tenant      Tenant              `gorm:"foreignKey:TenantID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Project     Project             `gorm:"foreignKey:ProjectID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	ActorRel    *MgaCatalogActor    `gorm:"foreignKey:ActorID;references:ID" json:"-"`
+	PositionRel *MgaCatalogPosition `gorm:"foreignKey:PositionID;references:ID" json:"-"`
 }
 
 func (MgaParticipant) TableName() string {

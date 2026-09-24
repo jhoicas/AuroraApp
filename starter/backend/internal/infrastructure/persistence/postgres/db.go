@@ -1110,14 +1110,26 @@ func ensureMgaExtendedSchema(db *gorm.DB) {
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS tenant_id UUID`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS project_id UUID`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS actor_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS actor TEXT DEFAULT ''`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS entity_id INTEGER`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS entity TEXT DEFAULT ''`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS position_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS position VARCHAR(100) DEFAULT ''`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS otro_participante TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS interests TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS contribution TEXT`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
 		`ALTER TABLE mga_participants ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`DO $$ BEGIN
+			ALTER TABLE mga_participants ALTER COLUMN actor DROP NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE mga_participants ALTER COLUMN entity DROP NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
+		`DO $$ BEGIN
+			ALTER TABLE mga_participants ALTER COLUMN position DROP NOT NULL;
+		EXCEPTION WHEN others THEN NULL; END $$`,
 		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS tenant_id UUID`,
 		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS project_id UUID`,
 		`ALTER TABLE mga_populations ADD COLUMN IF NOT EXISTS population_type VARCHAR(50)`,

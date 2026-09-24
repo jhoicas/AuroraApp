@@ -384,7 +384,7 @@ func (r *MgaRepository) UpdateParticipant(ctx context.Context, participant *mode
 	return r.db.WithContext(ctx).
 		Model(&models.MgaParticipant{}).
 		Where("id = ? AND project_id = ? AND tenant_id = ?", participant.ID, participant.ProjectID, participant.TenantID).
-		Select("actor_id", "entity_id", "position_id", "otro_participante", "interests", "contribution", "updated_at").
+		Select("actor_id", "actor", "entity_id", "entity", "position_id", "position", "otro_participante", "interests", "contribution", "updated_at").
 		Updates(participant).Error
 }
 

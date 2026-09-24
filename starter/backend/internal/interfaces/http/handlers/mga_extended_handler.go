@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -188,13 +189,74 @@ func (h *MgaHandler) CreateParticipant(c *fiber.Ctx) error {
 		v := strings.TrimSpace(*req.OtroParticipante)
 		otroTrimmed = &v
 	}
+
+	// 1. Consultar nombre del actor desde mga_catalog_actors
+	var actorName string
+	if err := h.db.WithContext(c.Context()).
+		Model(&models.MgaCatalogActor{}).
+		Select("name").
+		Where("id = ?", req.ActorID).
+		Scan(&actorName).Error; err != nil || actorName == "" {
+		if req.Actor != nil && strings.TrimSpace(*req.Actor) != "" {
+			actorName = strings.TrimSpace(*req.Actor)
+		} else if req.ActorID == 6 {
+			actorName = "Otro"
+		} else {
+			actorName = fmt.Sprintf("Actor %d", req.ActorID)
+		}
+	}
+
+	// 2. Si entity_id existe, consultar nombre de la entidad desde mga_catalog_entities.
+	// Si actor_id == 6 ("Otro"), asignar a entity el valor de otro_participante.
+	var entityName string
+	if req.ActorID == 6 {
+		if otroTrimmed != nil && *otroTrimmed != "" {
+			entityName = *otroTrimmed
+		} else if req.Entity != nil && strings.TrimSpace(*req.Entity) != "" {
+			entityName = strings.TrimSpace(*req.Entity)
+		} else {
+			entityName = "Otro"
+		}
+	} else if req.EntityID != nil {
+		if err := h.db.WithContext(c.Context()).
+			Model(&models.MgaCatalogEntity{}).
+			Select("name").
+			Where("id = ?", *req.EntityID).
+			Scan(&entityName).Error; err != nil || entityName == "" {
+			if req.Entity != nil && strings.TrimSpace(*req.Entity) != "" {
+				entityName = strings.TrimSpace(*req.Entity)
+			} else {
+				entityName = fmt.Sprintf("Entidad %d", *req.EntityID)
+			}
+		}
+	} else if req.Entity != nil && strings.TrimSpace(*req.Entity) != "" {
+		entityName = strings.TrimSpace(*req.Entity)
+	}
+
+	// 3. Consultar nombre de la posición desde mga_catalog_positions
+	var positionName string
+	if err := h.db.WithContext(c.Context()).
+		Model(&models.MgaCatalogPosition{}).
+		Select("name").
+		Where("id = ?", req.PositionID).
+		Scan(&positionName).Error; err != nil || positionName == "" {
+		if req.Position != nil && strings.TrimSpace(*req.Position) != "" {
+			positionName = strings.TrimSpace(*req.Position)
+		} else {
+			positionName = fmt.Sprintf("Posición %d", req.PositionID)
+		}
+	}
+
 	participant := &models.MgaParticipant{
 		ID:               uuid.New(),
 		TenantID:         tenantID,
 		ProjectID:        projectID,
 		ActorID:          req.ActorID,
+		Actor:            actorName,
 		EntityID:         req.EntityID,
+		Entity:           entityName,
 		PositionID:       req.PositionID,
+		Position:         positionName,
 		OtroParticipante: otroTrimmed,
 		Interests:        strings.TrimSpace(req.Interests),
 		Contribution:     strings.TrimSpace(req.Contribution),
@@ -235,12 +297,44 @@ func (h *MgaHandler) UpdateParticipant(c *fiber.Ctx) error {
 
 	if req.ActorID != nil {
 		participant.ActorID = *req.ActorID
+		var actorName string
+		if err := h.db.WithContext(c.Context()).
+			Model(&models.MgaCatalogActor{}).
+			Select("name").
+			Where("id = ?", *req.ActorID).
+			Scan(&actorName).Error; err == nil && actorName != "" {
+			participant.Actor = actorName
+		} else if *req.ActorID == 6 {
+			participant.Actor = "Otro"
+		} else {
+			participant.Actor = fmt.Sprintf("Actor %d", *req.ActorID)
+		}
 	}
 	if req.EntityID != nil {
 		participant.EntityID = req.EntityID
+		var entityName string
+		if err := h.db.WithContext(c.Context()).
+			Model(&models.MgaCatalogEntity{}).
+			Select("name").
+			Where("id = ?", *req.EntityID).
+			Scan(&entityName).Error; err == nil && entityName != "" {
+			participant.Entity = entityName
+		} else {
+			participant.Entity = fmt.Sprintf("Entidad %d", *req.EntityID)
+		}
 	}
 	if req.PositionID != nil {
 		participant.PositionID = *req.PositionID
+		var positionName string
+		if err := h.db.WithContext(c.Context()).
+			Model(&models.MgaCatalogPosition{}).
+			Select("name").
+			Where("id = ?", *req.PositionID).
+			Scan(&positionName).Error; err == nil && positionName != "" {
+			participant.Position = positionName
+		} else {
+			participant.Position = fmt.Sprintf("Posición %d", *req.PositionID)
+		}
 	}
 	if req.OtroParticipante != nil {
 		v := strings.TrimSpace(*req.OtroParticipante)
@@ -252,9 +346,14 @@ func (h *MgaHandler) UpdateParticipant(c *fiber.Ctx) error {
 	if req.Contribution != nil {
 		participant.Contribution = strings.TrimSpace(*req.Contribution)
 	}
-	// Si el actor actualizado es Otro, limpiar entity_id.
+	// Si el actor actualizado es Otro, limpiar entity_id y asignar entity como otro_participante.
 	if participant.ActorID == 6 {
 		participant.EntityID = nil
+		if participant.OtroParticipante != nil && *participant.OtroParticipante != "" {
+			participant.Entity = *participant.OtroParticipante
+		} else {
+			participant.Entity = "Otro"
+		}
 	}
 	participant.UpdatedAt = time.Now().UTC()
 
@@ -623,8 +722,11 @@ func toMgaParticipantResponse(participant models.MgaParticipant) dto.MgaParticip
 		TenantID:         participant.TenantID.String(),
 		ProjectID:        participant.ProjectID.String(),
 		ActorID:          participant.ActorID,
+		Actor:            participant.Actor,
 		EntityID:         participant.EntityID,
+		Entity:           participant.Entity,
 		PositionID:       participant.PositionID,
+		Position:         participant.Position,
 		OtroParticipante: participant.OtroParticipante,
 		Interests:        participant.Interests,
 		Contribution:     participant.Contribution,

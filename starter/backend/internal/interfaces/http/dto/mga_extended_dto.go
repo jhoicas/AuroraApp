@@ -34,8 +34,11 @@ type MgaEffectResponse struct {
 
 type CreateMgaParticipantRequest struct {
 	ActorID          int     `json:"actor_id" validate:"required,gt=0"`
+	Actor            *string `json:"actor"`
 	EntityID         *int    `json:"entity_id" validate:"omitempty,gt=0"`
+	Entity           *string `json:"entity"`
 	PositionID       int     `json:"position_id" validate:"required,gt=0"`
+	Position         *string `json:"position"`
 	OtroParticipante *string `json:"otro_participante" validate:"omitempty,min=2,max=500"`
 	Interests        string  `json:"interests" validate:"required,min=2,max=5000"`
 	Contribution     string  `json:"contribution" validate:"required,min=2,max=5000"`
@@ -43,8 +46,11 @@ type CreateMgaParticipantRequest struct {
 
 type UpdateMgaParticipantRequest struct {
 	ActorID          *int    `json:"actor_id" validate:"omitempty,gt=0"`
+	Actor            *string `json:"actor"`
 	EntityID         *int    `json:"entity_id" validate:"omitempty,gt=0"`
+	Entity           *string `json:"entity"`
 	PositionID       *int    `json:"position_id" validate:"omitempty,gt=0"`
+	Position         *string `json:"position"`
 	OtroParticipante *string `json:"otro_participante" validate:"omitempty,min=2,max=500"`
 	Interests        *string `json:"interests" validate:"omitempty,min=2,max=5000"`
 	Contribution     *string `json:"contribution" validate:"omitempty,min=2,max=5000"`
@@ -55,8 +61,11 @@ type MgaParticipantResponse struct {
 	TenantID         string  `json:"tenant_id"`
 	ProjectID        string  `json:"project_id"`
 	ActorID          int     `json:"actor_id"`
+	Actor            string  `json:"actor"`
 	EntityID         *int    `json:"entity_id"`
+	Entity           string  `json:"entity"`
 	PositionID       int     `json:"position_id"`
+	Position         string  `json:"position"`
 	OtroParticipante *string `json:"otro_participante"`
 	Interests        string  `json:"interests"`
 	Contribution     string  `json:"contribution"`

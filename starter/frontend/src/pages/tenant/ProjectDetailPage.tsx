@@ -7,6 +7,7 @@ import FormulationAuditPanel, {
   type MgaAuditTabId,
 } from '../../components/Tenant/MGA/FormulationAuditPanel';
 import MgaPdfExportButton from '../../components/Tenant/MGA/MgaPdfExportButton';
+import TechnicalDocumentValleExportButton from '../../components/Tenant/MGA/TechnicalDocumentValleExportButton';
 import { useAuth } from '../../context/AuthContext';
 import { useProjectStore } from '../../store/projectStore';
 
@@ -108,6 +109,10 @@ export default function ProjectDetailPage() {
                 <span className="material-symbols-outlined text-base">fact_check</span>
                 Validar y Enviar
               </button>
+              <TechnicalDocumentValleExportButton
+                projectId={currentProject.id}
+                projectName={currentProject.name}
+              />
               <MgaPdfExportButton
                 project={currentProject}
                 formuladorLabel={user?.full_name || user?.email || 'Usuario'}

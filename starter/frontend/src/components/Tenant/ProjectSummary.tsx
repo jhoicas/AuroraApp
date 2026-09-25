@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useProjectStore } from '../../store/projectStore';
 import { formatMoney } from './BudgetManager';
 import MgaPdfExportButton from './MGA/MgaPdfExportButton';
+import TechnicalDocumentValleExportButton from './MGA/TechnicalDocumentValleExportButton';
 
 export default function ProjectSummary() {
   const project = useProjectStore((s) => s.currentProject);
@@ -31,6 +32,10 @@ export default function ProjectSummary() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-end gap-3">
+        <TechnicalDocumentValleExportButton
+          projectId={project.id}
+          projectName={project.name}
+        />
         <MgaPdfExportButton
           project={project}
           formuladorLabel={user?.full_name || user?.email || 'Usuario'}

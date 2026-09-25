@@ -21,6 +21,39 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Exportación de Documento Técnico (Decreto 1278 de 2023 Valle del Cauca)
+
+- **Objetivo:** Implementar en el backend (Go) el servicio y endpoint de generación del "Documento Técnico del Proyecto de Inversión" exigido por el Artículo 13, literal e) del Decreto 1278 de 2023 del Valle del Cauca con los 12 títulos exactos requeridos, y habilitar su descarga en el frontend (React).
+- **Archivos creados / modificados:**
+  - `starter/backend/go.mod` y `go.sum`: Añadida dependencia `github.com/jung-kurt/gofpdf v1.16.2`.
+  - `starter/backend/internal/application/project/technical_document_valle_service.go` [NUEVO]: Servicio de generación de PDF con maquetación institucional del Valle del Cauca, traducción de caracteres Unicode/ISO-8859-1 y los 12 títulos exactos:
+    1. Nombre del proyecto
+    2. Contribución al plan nacional y plan departamental de desarrollo
+    3. Problema, oportunidad o necesidad
+    4. Descripción de la situación existente y antecedentes
+    5. Justificación
+    6. Objetivos (general y específicos)
+    7. Árbol de problemas y árbol de soluciones
+    8. Población afectada y objetivo
+    9. Descripción de la alternativa seleccionada
+    10. Productos y componentes de la inversión
+    11. Cronograma de actividades
+    12. Localización del proyecto
+  - `starter/backend/internal/application/project/technical_document_valle_service_test.go` [NUEVO]: Pruebas unitarias para validar la correcta generación del buffer PDF con las 12 secciones.
+  - `starter/backend/internal/interfaces/http/handlers/project_export_handler.go` [NUEVO]: Handler HTTP que verifica pertenencia al tenant, recupera proyecto (con Preload de Tenant), bundle MGA completo y cadena EDT completa, retornando el PDF binario con headers de descarga.
+  - `starter/backend/internal/interfaces/http/router/projects.go`: Registro de rutas `GET /:id/export/technical-document-valle` tanto en `/api/v1/projects` como en `/api/v1/tenant/projects`.
+  - `starter/frontend/src/lib/mgaApi.ts`: Exportación de la función `downloadTechnicalDocumentValle(projectId, projectName)` que consume el endpoint y dispara la descarga en el navegador como Blob.
+  - `starter/frontend/src/components/Tenant/MGA/TechnicalDocumentValleExportButton.tsx` [NUEVO]: Botón diferenciado con contorno y acento verde esmeralda e ícono de documento legal (`FileText`) con texto `"Descargar Documento Técnico (Dec. 1278)"`.
+  - `starter/frontend/src/components/Tenant/MGA/TechnicalDocumentValleExportButton.test.tsx` [NUEVO]: Pruebas de render y llamada al API para el botón.
+  - `starter/frontend/src/pages/tenant/ProjectDetailPage.tsx`: Integración del botón en la barra superior de acciones del proyecto.
+  - `starter/frontend/src/components/Tenant/ProjectSummary.tsx`: Integración del botón en la barra de exportación del resumen.
+  - `starter/frontend/src/components/Tenant/MGA/MgaFormulationShell.tsx`: Integración del botón en las acciones del banner de la shell de formulación MGA.
+- **Validación ejecutada:**
+  - `go test -v ./internal/application/project/...` -> PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Compilación limpia (Exit Code 0).
+  - `npx vitest run src/components/Tenant/MGA/TechnicalDocumentValleExportButton.test.tsx` -> 2 passed (Exit Code 0).
+  - `cd starter/frontend && npx tsc --noEmit` -> Verificación de tipos limpia (Exit Code 0).
+
 ### 2026-09-25 - Antigravity - Unidad de Medida en Resumen de Producto del Catálogo DNP
 
 - **Objetivo:** Mostrar la columna/campo `unidad_de_medida` en la tarjeta de resumen ("Producto seleccionado") cuando un usuario selecciona un Producto en la vista del Catálogo DNP (`/tenant/catalog`).

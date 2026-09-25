@@ -15,11 +15,22 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	mh := handlers.NewMgaHandler(db)
 	peh := handlers.NewProjectEdtHandler(db)
 	fah := handlers.NewFormulationAuditHandler(db)
+	pex := handlers.NewProjectExportHandler(db)
 
 	projects := app.Group("/api/v1/projects",
 		httpmw.RequireAuth(jwtSecret),
 		httpmw.RequireTenant(),
 	)
+
+	// Ruta de exportación de Documento Técnico Valle del Cauca (Decreto 1278 de 2023)
+	projects.Get("/:id/export/technical-document-valle", pex.ExportTechnicalDocumentValle)
+
+	// Grupo complementario para compatibilidad estricta con /api/v1/tenant/projects
+	tenantProjects := app.Group("/api/v1/tenant/projects",
+		httpmw.RequireAuth(jwtSecret),
+		httpmw.RequireTenant(),
+	)
+	tenantProjects.Get("/:id/export/technical-document-valle", pex.ExportTechnicalDocumentValle)
 
 	projects.Post("/", ph.Create)
 	projects.Get("/", ph.List)

@@ -441,3 +441,28 @@ export async function updateMgaIndicator(
 export async function deleteMgaIndicator(projectId: string, indicatorId: string): Promise<void> {
   await api.delete(`/projects/${projectId}/mga/indicators/${indicatorId}`);
 }
+
+export async function downloadTechnicalDocumentValle(
+  projectId: string,
+  projectName?: string,
+): Promise<void> {
+  const response = await api.get(`/projects/${projectId}/export/technical-document-valle`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const cleanName = (projectName || 'proyecto')
+    .trim()
+    .replace(/[^\w\s-áéíóúñÁÉÍÓÚÑ]/g, '')
+    .replace(/\s+/g, '_')
+    .slice(0, 60);
+  const filename = `Documento_Tecnico_Valle_${cleanName}.pdf`;
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+

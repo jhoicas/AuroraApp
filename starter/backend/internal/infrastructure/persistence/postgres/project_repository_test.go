@@ -525,3 +525,115 @@ func TestGetInvestmentPipelineReport(t *testing.T) {
 	assert.Equal(t, float64(0), report.SectorDistribution[2].TotalBudget)
 	assert.Equal(t, float64(0), report.SectorDistribution[2].Percentage)
 }
+
+func TestGetAuditRadarReport(t *testing.T) {
+	db := newTestDB(t)
+	repo := NewProjectRepository(db)
+	ctx := context.Background()
+
+	tenantID := uuid.New()
+	otherTenantID := uuid.New()
+	creatorID := uuid.New()
+
+	longText := "Este es un texto descriptivo suficientemente largo que supera con holgura el umbral mínimo exigido de cien caracteres para justificar la situación y magnitud del problema territorial conforme a MGA."
+
+	// 1. Proyecto Completo / Listo (sin bloqueos)
+	pReady := models.Project{
+		ID:                 uuid.New(),
+		TenantID:           tenantID,
+		CreatorID:          creatorID,
+		Name:               "Proyecto Completo",
+		ProblemDescription: "Deficiencia severa en el suministro de agua potable.",
+		GeneralObjective:   "Construir sistema de acueducto con cobertura del 100%.",
+		SituacionExistente: longText,
+		MagnitudProblema:   longText,
+		Status:             "IN_FORMULATION",
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+	require.NoError(t, db.Create(&pReady).Error)
+
+	nodeID := uuid.New()
+	delivID := uuid.New()
+	require.NoError(t, db.Create(&models.ProjectDeliverable{
+		ID:               delivID,
+		TenantID:         tenantID,
+		ProjectID:        pReady.ID,
+		ProjectEdtNodeID: nodeID,
+		Code:             "DEL-01",
+		Name:             "Obra principal",
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}).Error)
+	require.NoError(t, db.Create(&models.ProjectActivity{
+		ID:                   uuid.New(),
+		TenantID:             tenantID,
+		ProjectID:            pReady.ID,
+		ProjectDeliverableID: delivID,
+		Code:                 "ACT-01",
+		Name:                 "Excavación",
+		TotalCost:            50_000_000,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
+	}).Error)
+
+	// 2. Proyecto Bloqueado (con errores en todas las 5 reglas)
+	pBlocked := models.Project{
+		ID:                 uuid.New(),
+		TenantID:           tenantID,
+		CreatorID:          creatorID,
+		Name:               "Proyecto Incompleto",
+		ProblemDescription: "",
+		GeneralObjective:   "",
+		SituacionExistente: "Breve",
+		MagnitudProblema:   "Breve",
+		Status:             "DRAFT",
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+	require.NoError(t, db.Create(&pBlocked).Error)
+
+	// 3. Proyecto Aprobado (debe ser excluido del radar de auditoría activa)
+	pApproved := models.Project{
+		ID:                 uuid.New(),
+		TenantID:           tenantID,
+		CreatorID:          creatorID,
+		Name:               "Proyecto Ya Aprobado",
+		ProblemDescription: "",
+		GeneralObjective:   "",
+		Status:             "APPROVED",
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+	require.NoError(t, db.Create(&pApproved).Error)
+
+	// 4. Proyecto de otro Tenant (aislamiento)
+	pOther := models.Project{
+		ID:                 uuid.New(),
+		TenantID:           otherTenantID,
+		CreatorID:          creatorID,
+		Name:               "Proyecto Otro Tenant",
+		ProblemDescription: "",
+		Status:             "DRAFT",
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+	require.NoError(t, db.Create(&pOther).Error)
+
+	// Ejecutar reporte de radar
+	radar, err := repo.GetAuditRadarReport(ctx, tenantID)
+	require.NoError(t, err)
+	require.NotNil(t, radar)
+
+	assert.Equal(t, int64(2), radar.TotalAudited, "Solo se auditan los 2 proyectos activos del tenant")
+	assert.Equal(t, int64(1), radar.ReadyProjects, "1 proyecto listo sin bloqueos")
+	assert.Equal(t, int64(1), radar.BlockedProjects, "1 proyecto bloqueado")
+
+	require.Len(t, radar.TopErrors, 5)
+	for _, issue := range radar.TopErrors {
+		// pBlocked incumple todas las reglas (1 de 2 proyectos = 50.0%)
+		assert.Equal(t, int64(1), issue.Count)
+		assert.InDelta(t, 50.0, issue.Percentage, 0.1)
+	}
+}
+

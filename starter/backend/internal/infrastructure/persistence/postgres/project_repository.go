@@ -382,3 +382,119 @@ func mapProjectStatusToFunnel(status string) string {
 	}
 }
 
+// GetAuditRadarReport genera el diagnóstico de calidad y radar de auditoría MGA para el Banco de Proyectos.
+func (r *ProjectRepository) GetAuditRadarReport(ctx context.Context, tenantID uuid.UUID) (*dto.AuditRadarReportResponse, error) {
+	var projects []models.Project
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND deleted_at IS NULL AND UPPER(TRIM(status)) NOT IN ('APPROVED', 'APROBADO', 'VIABLE', 'VIABILIZADO', 'READY', 'FINALIZADO')", tenantID).
+		Find(&projects).Error
+	if err != nil {
+		return nil, err
+	}
+
+	totalAudited := int64(len(projects))
+	if totalAudited == 0 {
+		return &dto.AuditRadarReportResponse{
+			TotalAudited:    0,
+			ReadyProjects:   0,
+			BlockedProjects: 0,
+			TopErrors:       []dto.AuditRadarIssue{},
+		}, nil
+	}
+
+	// Consultar costos de actividades por proyecto para evaluar la cadena de valor
+	type projectActivitySum struct {
+		ProjectID uuid.UUID `gorm:"column:project_id"`
+		TotalCost float64   `gorm:"column:total_cost"`
+	}
+	var actSums []projectActivitySum
+	_ = r.db.WithContext(ctx).Table("project_activities").
+		Select("project_id, COALESCE(SUM(total_cost), 0) as total_cost").
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Group("project_id").
+		Scan(&actSums).Error
+
+	activityCostMap := make(map[uuid.UUID]float64, len(actSums))
+	for _, a := range actSums {
+		activityCostMap[a.ProjectID] = a.TotalCost
+	}
+
+	var countProblem int64
+	var countObjective int64
+	var countSituacion int64
+	var countMagnitud int64
+	var countCadenaValor int64
+
+	var readyProjects int64
+	var blockedProjects int64
+
+	for _, p := range projects {
+		isBlocked := false
+
+		// 1. Falta descripción del problema central
+		if len(strings.TrimSpace(p.ProblemDescription)) == 0 {
+			countProblem++
+			isBlocked = true
+		}
+
+		// 2. Falta objetivo general
+		if len(strings.TrimSpace(p.GeneralObjective)) == 0 {
+			countObjective++
+			isBlocked = true
+		}
+
+		// 3. Situación existente incompleta (< 100 caracteres)
+		if len(strings.TrimSpace(p.SituacionExistente)) < 100 {
+			countSituacion++
+			isBlocked = true
+		}
+
+		// 4. Magnitud del problema sin justificar (< 100 caracteres)
+		if len(strings.TrimSpace(p.MagnitudProblema)) < 100 {
+			countMagnitud++
+			isBlocked = true
+		}
+
+		// 5. Cadenas de valor vacías o sin costear
+		if activityCostMap[p.ID] <= 0 {
+			countCadenaValor++
+			isBlocked = true
+		}
+
+		if isBlocked {
+			blockedProjects++
+		} else {
+			readyProjects++
+		}
+	}
+
+	issues := []dto.AuditRadarIssue{
+		{Issue: "Falta descripción del problema central", Count: countProblem},
+		{Issue: "Falta objetivo general", Count: countObjective},
+		{Issue: "Situación existente incompleta", Count: countSituacion},
+		{Issue: "Magnitud del problema sin justificar", Count: countMagnitud},
+		{Issue: "Cadenas de valor vacías o sin costear", Count: countCadenaValor},
+	}
+
+	for i := range issues {
+		if totalAudited > 0 {
+			issues[i].Percentage = math.Round((float64(issues[i].Count)/float64(totalAudited))*10000) / 100
+		}
+	}
+
+	sort.Slice(issues, func(i, j int) bool {
+		if issues[i].Count == issues[j].Count {
+			return issues[i].Issue < issues[j].Issue
+		}
+		return issues[i].Count > issues[j].Count
+	})
+
+	return &dto.AuditRadarReportResponse{
+		TotalAudited:    totalAudited,
+		ReadyProjects:   readyProjects,
+		BlockedProjects: blockedProjects,
+		TopErrors:       issues,
+	}, nil
+}
+
+

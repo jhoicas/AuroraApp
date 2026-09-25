@@ -4,7 +4,10 @@ import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../test/server';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import ReportsPage from './ReportsPage';
-import type { InvestmentPipelineReportResponse } from '../../lib/api';
+import type {
+  InvestmentPipelineReportResponse,
+  AuditRadarReportResponse,
+} from '../../lib/api';
 
 const mockReport: InvestmentPipelineReportResponse = {
   kpis: {
@@ -38,17 +41,37 @@ const mockReport: InvestmentPipelineReportResponse = {
   ],
 };
 
-describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', () => {
+const mockRadarReport: AuditRadarReportResponse = {
+  total_audited: 4,
+  ready_projects: 1,
+  blocked_projects: 3,
+  top_errors: [
+    { issue: 'Situación existente incompleta', count: 3, percentage: 75.0 },
+    { issue: 'Falta descripción del problema central', count: 2, percentage: 50.0 },
+    { issue: 'Cadenas de valor vacías o sin costear', count: 2, percentage: 50.0 },
+    { issue: 'Falta objetivo general', count: 1, percentage: 25.0 },
+    { issue: 'Magnitud del problema sin justificar', count: 1, percentage: 25.0 },
+  ],
+};
+
+function setupMockHandlers() {
+  server.use(
+    http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
+      return HttpResponse.json(mockReport);
+    }),
+    http.get(apiUrl('/tenant/reports/audit-radar'), () => {
+      return HttpResponse.json(mockRadarReport);
+    }),
+  );
+}
+
+describe('ReportsPage — Pipeline de Inversión y Radar de Calidad MGA', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it('renderiza la cabecera ejecutiva y carga los datos del informe', async () => {
-    server.use(
-      http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
-        return HttpResponse.json(mockReport);
-      }),
-    );
+    setupMockHandlers();
 
     renderWithProviders(<ReportsPage />);
 
@@ -62,7 +85,7 @@ describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', ()
       expect(screen.getByText('Presupuesto Estructurado')).toBeInTheDocument();
       expect(screen.getByText('Proyectos en Portafolio')).toBeInTheDocument();
       expect(screen.getByText('Costo Promedio / Proyecto')).toBeInTheDocument();
-      expect(screen.getByText('Listos para Viabilidad')).toBeInTheDocument();
+      expect(screen.getAllByText('Listos para Viabilidad').length).toBeGreaterThan(0);
     });
 
     // Validar cantidad de proyectos
@@ -71,11 +94,7 @@ describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', ()
   });
 
   it('renderiza los pasos del embudo de ciclo de vida (funnel)', async () => {
-    server.use(
-      http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
-        return HttpResponse.json(mockReport);
-      }),
-    );
+    setupMockHandlers();
 
     renderWithProviders(<ReportsPage />);
 
@@ -91,11 +110,7 @@ describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', ()
   });
 
   it('renderiza la distribución presupuestal por sector DNP y la tabla resumen', async () => {
-    server.use(
-      http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
-        return HttpResponse.json(mockReport);
-      }),
-    );
+    setupMockHandlers();
 
     renderWithProviders(<ReportsPage />);
 
@@ -114,14 +129,36 @@ describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', ()
     expect(screen.getByText('Totales Consolidados')).toBeInTheDocument();
   });
 
+  it('renderiza el Radar de Calidad y Auditoría MGA con tarjetas de estado y ranking de errores', async () => {
+    setupMockHandlers();
+
+    renderWithProviders(<ReportsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)'),
+      ).toBeInTheDocument();
+    });
+
+    // Tarjetas de estado contrastantes
+    expect(screen.getByText('Sin errores críticos bloqueantes')).toBeInTheDocument();
+    expect(screen.getByText('Proyectos Bloqueados')).toBeInTheDocument();
+    expect(screen.getByText('Requieren subsanación técnica')).toBeInTheDocument();
+    expect(screen.getByText('Tasa de Aptitud Directiva')).toBeInTheDocument();
+
+    // Ranking de errores comunes
+    expect(
+      screen.getByText('Top Errores Comunes en Formulación (Cuellos de Botella)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Situación existente incompleta')).toBeInTheDocument();
+    expect(screen.getByText('Falta descripción del problema central')).toBeInTheDocument();
+    expect(screen.getByText('Cadenas de valor vacías o sin costear')).toBeInTheDocument();
+    expect(screen.getByText('75.0%')).toBeInTheDocument();
+  });
+
   it('permite imprimir el reporte invocando window.print', async () => {
     const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
-
-    server.use(
-      http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
-        return HttpResponse.json(mockReport);
-      }),
-    );
+    setupMockHandlers();
 
     renderWithProviders(<ReportsPage />);
 
@@ -133,9 +170,12 @@ describe('ReportsPage — Pipeline de Inversión y Distribución Financiera', ()
     expect(printSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('muestra mensaje de error si el endpoint falla', async () => {
+  it('muestra mensaje de error si algún endpoint falla', async () => {
     server.use(
       http.get(apiUrl('/tenant/reports/investment-pipeline'), () => {
+        return HttpResponse.json({ error: 'Database timeout' }, { status: 500 });
+      }),
+      http.get(apiUrl('/tenant/reports/audit-radar'), () => {
         return HttpResponse.json({ error: 'Database timeout' }, { status: 500 });
       }),
     );

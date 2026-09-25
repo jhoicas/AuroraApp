@@ -212,3 +212,23 @@ export async function getInvestmentPipelineReport(): Promise<InvestmentPipelineR
   return data;
 }
 
+// --- Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos) ---
+export interface AuditRadarIssue {
+  issue: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AuditRadarReportResponse {
+  total_audited: number;
+  ready_projects: number;
+  blocked_projects: number;
+  top_errors: AuditRadarIssue[];
+}
+
+export async function getAuditRadarReport(): Promise<AuditRadarReportResponse> {
+  const { data } = await api.get<AuditRadarReportResponse>('/tenant/reports/audit-radar');
+  return data;
+}
+
+

@@ -437,3 +437,20 @@ func (h *ProjectHandler) GetInvestmentPipelineReport(c *fiber.Ctx) error {
 	return c.JSON(report)
 }
 
+// GetAuditRadarReport GET /api/v1/tenant/reports/audit-radar
+func (h *ProjectHandler) GetAuditRadarReport(c *fiber.Ctx) error {
+	_, tenantID, err := httpmw.IdentityFromContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	repo := postgres.NewProjectRepository(h.db)
+	report, err := repo.GetAuditRadarReport(c.Context(), tenantID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate audit radar report: " + err.Error()})
+	}
+
+	return c.JSON(report)
+}
+
+

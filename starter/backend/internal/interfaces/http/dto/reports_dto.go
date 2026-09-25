@@ -31,3 +31,19 @@ type InvestmentPipelineReportResponse struct {
 	StatusFunnel       []StatusFunnelStage      `json:"status_funnel"`
 	SectorDistribution []SectorDistributionItem `json:"sector_distribution"`
 }
+
+// AuditRadarIssue error o cuello de botella detectado en la formulación de proyectos.
+type AuditRadarIssue struct {
+	Issue      string  `json:"issue"`
+	Count      int64   `json:"count"`
+	Percentage float64 `json:"percentage"`
+}
+
+// AuditRadarReportResponse diagnóstico de calidad y radar de auditoría MGA para el Banco de Proyectos.
+type AuditRadarReportResponse struct {
+	TotalAudited    int64             `json:"total_audited"`
+	ReadyProjects   int64             `json:"ready_projects"`
+	BlockedProjects int64             `json:"blocked_projects"`
+	TopErrors       []AuditRadarIssue `json:"top_errors"`
+}
+

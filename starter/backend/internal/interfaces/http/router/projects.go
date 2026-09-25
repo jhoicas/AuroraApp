@@ -38,12 +38,14 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 		httpmw.RequireTenant(),
 	)
 	tenantReports.Get("/investment-pipeline", ph.GetInvestmentPipelineReport)
+	tenantReports.Get("/audit-radar", ph.GetAuditRadarReport)
 
 	reports := app.Group("/api/v1/reports",
 		httpmw.RequireAuth(jwtSecret),
 		httpmw.RequireTenant(),
 	)
 	reports.Get("/investment-pipeline", ph.GetInvestmentPipelineReport)
+	reports.Get("/audit-radar", ph.GetAuditRadarReport)
 
 	projects.Post("/", ph.Create)
 	projects.Get("/", ph.List)

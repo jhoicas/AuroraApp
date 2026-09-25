@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   getInvestmentPipelineReport,
+  getAuditRadarReport,
   type InvestmentPipelineReportResponse,
+  type AuditRadarReportResponse,
 } from '../../lib/api';
 
 function formatCOP(amount: number): string {
@@ -74,6 +76,7 @@ const FUNNEL_CONFIG: Record<
 
 export default function ReportsPage() {
   const [data, setData] = useState<InvestmentPipelineReportResponse | null>(null);
+  const [radarData, setRadarData] = useState<AuditRadarReportResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,10 +89,14 @@ export default function ReportsPage() {
     }
     setError(null);
     try {
-      const response = await getInvestmentPipelineReport();
-      setData(response);
+      const [pipelineRes, radarRes] = await Promise.all([
+        getInvestmentPipelineReport(),
+        getAuditRadarReport(),
+      ]);
+      setData(pipelineRes);
+      setRadarData(radarRes);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al consultar el reporte de inversión';
+      const msg = err instanceof Error ? err.message : 'Error al consultar los reportes gerenciales';
       setError(msg);
     } finally {
       setLoading(false);
@@ -545,6 +552,157 @@ export default function ReportsPage() {
               </table>
             </div>
           </section>
+
+          {/* Sección Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos) */}
+          {radarData && (
+            <section
+              aria-labelledby="radar-heading"
+              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#006162]">troubleshoot</span>
+                    <h3 id="radar-heading" className="text-lg font-bold text-gray-900">
+                      Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)
+                    </h3>
+                  </div>
+                  <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+                    Diagnóstico preventivo de formulación y cuellos de botella para viabilización territorial.
+                  </p>
+                </div>
+
+                <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shrink-0">
+                  Activos auditados: <strong className="text-gray-800">{radarData.total_audited}</strong> proyectos
+                </div>
+              </div>
+
+              {/* Tarjetas de Estado: Listos vs Bloqueados */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Proyectos Listos */}
+                <div className="bg-emerald-50/60 border border-emerald-200 p-5 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      Listos para Viabilidad
+                    </span>
+                    <div className="text-3xl font-extrabold text-emerald-700 mt-1">
+                      {radarData.ready_projects}
+                    </div>
+                    <div className="text-xs text-emerald-600 font-medium mt-0.5">
+                      Sin errores críticos bloqueantes
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-2xl">verified</span>
+                  </div>
+                </div>
+
+                {/* Proyectos Bloqueados */}
+                <div className="bg-rose-50/60 border border-rose-200 p-5 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-rose-800">
+                      Proyectos Bloqueados
+                    </span>
+                    <div className="text-3xl font-extrabold text-rose-700 mt-1">
+                      {radarData.blocked_projects}
+                    </div>
+                    <div className="text-xs text-rose-600 font-medium mt-0.5">
+                      Requieren subsanación técnica
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-2xl">block</span>
+                  </div>
+                </div>
+
+                {/* Tasa de Aptitud Directiva */}
+                <div className="bg-teal-50/60 border border-teal-200 p-5 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-teal-800">
+                      Tasa de Aptitud Directiva
+                    </span>
+                    <div className="text-3xl font-extrabold text-[#006162] mt-1">
+                      {radarData.total_audited > 0
+                        ? `${Math.round((radarData.ready_projects / radarData.total_audited) * 100)}%`
+                        : '0%'}
+                    </div>
+                    <div className="text-xs text-teal-600 font-medium mt-0.5">
+                      De {radarData.total_audited} iniciativas activas
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-teal-100 text-[#006162] flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-2xl">pie_chart</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ranking de Errores Comunes (Cuellos de Botella) */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                    Top Errores Comunes en Formulación (Cuellos de Botella)
+                  </h4>
+                  <span className="text-xs text-gray-500">
+                    Calculado en tiempo real según reglas MGA
+                  </span>
+                </div>
+
+                {radarData.top_errors.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">
+                    No se registran datos de auditoría en los proyectos activos.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {radarData.top_errors.map((item, idx) => (
+                      <div
+                        key={`error-${item.issue}-${idx}`}
+                        className="p-3.5 rounded-lg border border-gray-100 bg-gray-50/60 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {item.issue}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xs text-gray-500 font-medium">
+                              {item.count} {item.count === 1 ? 'proyecto afectado' : 'proyectos afectados'}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-rose-100 text-rose-800">
+                              {item.percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Barra horizontal de progreso para evidenciar el cuello de botella */}
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-500 ${
+                              item.percentage > 50
+                                ? 'bg-rose-500'
+                                : item.percentage > 25
+                                ? 'bg-amber-500'
+                                : 'bg-[#006162]'
+                            }`}
+                            style={{ width: `${Math.min(Math.max(item.percentage, item.count > 0 ? 3 : 0), 100)}%` }}
+                            role="progressbar"
+                            aria-valuenow={item.percentage}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label={`Impacto de ${item.issue}`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

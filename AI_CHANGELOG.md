@@ -21,6 +21,43 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)
+
+- **Objetivo:** Implementar la sección "Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)" en el dashboard de reportes (`/tenant/reports`), conectando un nuevo endpoint analítico en Go con la interfaz interactiva en React para diagnosticar en tiempo real cuellos de botella y proyectos bloqueados vs listos para viabilidad territorial.
+- **Backend (Go):**
+  - `starter/backend/internal/interfaces/http/dto/reports_dto.go`: Creados DTOs `AuditRadarReportResponse` y `AuditRadarIssue`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/project_repository.go`:
+    - Implementado `GetAuditRadarReport(ctx, tenantID)` evaluando proyectos activos (excluyendo viabilizados/aprobados).
+    - Evalúa las 5 reglas críticas de formulación MGA:
+      1. Falta descripción del problema central (`problem_description`).
+      2. Falta objetivo general (`general_objective`).
+      3. Situación existente incompleta (`< 100 caracteres`).
+      4. Magnitud del problema sin justificar (`< 100 caracteres`).
+      5. Cadenas de valor vacías o sin costear (cruce con `project_activities.total_cost <= 0`).
+    - Clasifica proyectos en `ReadyProjects` (0 bloqueos) y `BlockedProjects` (al menos 1 bloqueo).
+    - Ordena el ranking `top_errors` descendentemente por frecuencia con porcentaje sobre proyectos auditados.
+  - `starter/backend/internal/interfaces/http/handlers/project_handler.go`:
+    - Agregado el handler `GetAuditRadarReport(c *fiber.Ctx) error`.
+  - `starter/backend/internal/interfaces/http/router/projects.go`:
+    - Expuesto `GET /api/v1/tenant/reports/audit-radar` (y `/api/v1/reports/audit-radar`) protegido con `RequireAuth` y `RequireTenant`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/project_repository_test.go`:
+    - Añadida prueba unitaria `TestGetAuditRadarReport` validando exclusión de aprobados, aislamiento de tenant y conteo exacto de proyectos listos vs bloqueados.
+- **Frontend (React / TypeScript):**
+  - `starter/frontend/src/lib/api.ts`:
+    - Exportadas interfaces `AuditRadarReportResponse`, `AuditRadarIssue` y función `getAuditRadarReport()`.
+  - `starter/frontend/src/pages/tenant/ReportsPage.tsx`:
+    - Carga en paralelo (`Promise.all`) del pipeline de inversión y el radar de calidad.
+    - Tarjetas de estado contrastantes: *Listos para Viabilidad* (esmeralda), *Proyectos Bloqueados* (rose/rojo) y *Tasa de Aptitud Directiva*.
+    - Ranking de Cuellos de Botella: lista visual numerada con barras de progreso progresivas, badges de porcentaje y conteos de proyectos afectados.
+  - `starter/frontend/src/pages/tenant/ReportsPage.test.tsx`:
+    - Actualizado test suite con MSW mockeando `/tenant/reports/audit-radar` y validando tarjetas de estado y ranking de errores.
+- **Validaciones:**
+  - `cd starter/backend && go build ./...` (Exit code 0).
+  - `cd starter/backend && go test ./...` (Exit code 0).
+  - `cd starter/frontend && npx tsc --noEmit` (Exit code 0).
+  - `cd starter/frontend && npm run build` (Exit code 0).
+  - `npx vitest run src/pages/tenant/ReportsPage.test.tsx` (6/6 tests pasados).
+
 ### 2026-09-25 - Antigravity - Pipeline de Inversión y Distribución Financiera (Visión Directiva)
 
 - **Objetivo:** Implementar el módulo "Pipeline de Inversión y Distribución Financiera (Visión Directiva)" en la ruta `/tenant/reports`, conectando un endpoint analítico en Go con un dashboard interactivo gerencial en React.

@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import {
   useAuroraCopilotStore,
   registerAutoFillCallback,
@@ -267,7 +276,11 @@ export default function AIAssistedField({
           }
         }}
       >
-        {children}
+        {isValidElement(children) && maxLength != null
+          ? cloneElement(children as ReactElement<{ maxLength?: number }>, {
+              maxLength: (children.props as { maxLength?: number }).maxLength ?? maxLength,
+            })
+          : children}
       </div>
       {validationMessage && (
         <p role="alert" className="mt-1 text-xs text-amber-700 font-medium">

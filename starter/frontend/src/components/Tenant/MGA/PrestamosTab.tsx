@@ -131,12 +131,12 @@ export default function PrestamosTab({ project }: { project: Project }) {
                       reactiveContext={item}
                       currentValue={item.entidad}
                       onAutoFill={(v) => updateItem(item.id, 'entidad', v)}
-                      maxLength={250}
+                      maxLength={500}
                     >
                       <input spellCheck={true}
                         type="text"
                         id={`prestamo-entidad-${item.id}`}
-                        maxLength={250}
+                        maxLength={500}
                         value={item.entidad}
                         onChange={(e) => updateItem(item.id, 'entidad', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"
@@ -148,14 +148,14 @@ export default function PrestamosTab({ project }: { project: Project }) {
                     <input spellCheck={true}
                       type="number"
                       min="0"
-                      maxLength={22}
+                      maxLength={5}
                       inputMode="numeric"
                       onKeyDown={(e) => {
                         if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
                       }}
                       value={item.tasa}
                       onChange={(e) => {
-                        if (e.target.value.length <= 22) updateItem(item.id, 'tasa', e.target.value);
+                        if (e.target.value.length <= 5) updateItem(item.id, 'tasa', e.target.value);
                       }}
                       className="w-full p-1 border rounded bg-white text-xs text-right"
                       placeholder="%"
@@ -165,14 +165,14 @@ export default function PrestamosTab({ project }: { project: Project }) {
                     <input spellCheck={true}
                       type="number"
                       min="0"
-                      maxLength={13}
+                      maxLength={2}
                       inputMode="numeric"
                       onKeyDown={(e) => {
                         if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
                       }}
                       value={item.plazo}
                       onChange={(e) => {
-                        if (e.target.value.length <= 13) updateItem(item.id, 'plazo', e.target.value);
+                        if (e.target.value.length <= 2) updateItem(item.id, 'plazo', e.target.value);
                       }}
                       className="w-full p-1 border rounded bg-white text-xs text-center"
                       placeholder="Meses"

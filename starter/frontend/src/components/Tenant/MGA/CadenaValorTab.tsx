@@ -393,6 +393,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                   />
                   <input spellCheck={true}
                     type="text"
+                    maxLength={400}
                     placeholder="Nombre del nodo"
                     value={nodeDraft.name}
                     onChange={(e) => setNodeDraft((d) => ({ ...d, name: e.target.value }))}

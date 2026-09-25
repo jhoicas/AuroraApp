@@ -380,13 +380,13 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             reactiveContext={draft}
             currentValue={draft.interests}
             onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
-            maxLength={5000}
+            maxLength={200}
           >
             <textarea
               spellCheck={true}
               id={`participant-interests-${project.id}`}
               rows={2}
-              maxLength={5000}
+              maxLength={200}
               value={draft.interests}
               onChange={(e) => setDraft((d) => ({ ...d, interests: e.target.value }))}
               placeholder="Intereses del participante en el proyecto..."
@@ -408,13 +408,13 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             reactiveContext={draft}
             currentValue={draft.contribution}
             onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
-            maxLength={5000}
+            maxLength={2000}
           >
             <textarea
               spellCheck={true}
               id={`participant-contribution-${project.id}`}
               rows={2}
-              maxLength={5000}
+              maxLength={2000}
               value={draft.contribution}
               onChange={(e) => setDraft((d) => ({ ...d, contribution: e.target.value }))}
               placeholder="Aportes o contribuciones que brindará..."

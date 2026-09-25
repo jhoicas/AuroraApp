@@ -144,14 +144,14 @@ export default function DepreciacionTab({ project }: { project: Project }) {
                     <input spellCheck={true}
                       type="number"
                       min="0"
-                      maxLength={22}
+                      maxLength={2}
                       inputMode="numeric"
                       onKeyDown={(e) => {
                         if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
                       }}
                       value={item.vidaUtil}
                       onChange={(e) => {
-                        if (e.target.value.length <= 22) updateItem(item.id, 'vidaUtil', e.target.value);
+                        if (e.target.value.length <= 2) updateItem(item.id, 'vidaUtil', e.target.value);
                       }}
                       className="w-full p-1 border rounded bg-white text-xs text-center"
                       placeholder="Años"

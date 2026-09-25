@@ -130,12 +130,12 @@ export default function NecesidadesTab({ project }: { project: Project }) {
                       reactiveContext={item}
                       currentValue={item.bienServicio}
                       onAutoFill={(v) => updateItem(item.id, 'bienServicio', v)}
-                      maxLength={100}
+                      maxLength={500}
                     >
                       <input spellCheck={true}
                         type="text"
                         id={`necesidad-bien-${item.id}`}
-                        maxLength={100}
+                        maxLength={500}
                         value={item.bienServicio}
                         onChange={(e) => updateItem(item.id, 'bienServicio', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"

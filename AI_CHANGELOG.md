@@ -21,6 +21,25 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Validación Estricta de Longitud de Caracteres (`maxLength`) End-to-End
+
+- **Objetivo:** Implementar validación estricta de longitud de caracteres de extremo a extremo: en elementos HTML del frontend, payload de la API y prompt del modelo en el backend.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/dto/ai_dto.go`: Verificado campo `MaxLength int json:"max_length,omitempty"`.
+  - `starter/backend/internal/interfaces/http/handlers/ai_handler.go`: Inyectada la regla exacta y estricta en el System Prompt cuando `req.MaxLength > 0`: `"REGLA CRÍTICA Y ESTRICTA: El texto que generes debe tener una longitud estrictamente MENOR a %d caracteres en total (incluyendo espacios). Si te excedes, el sistema de base de datos fallará. Sé conciso."`.
+  - `starter/frontend/src/components/AuroraAsistente/AIAssistedField.tsx`: Asegurado el paso explícito de `maxLength` al elemento hijo (`textarea`/`input`) mediante clonado con preservación de propiedades y reenvío de `maxLength` al store de IA.
+  - `starter/frontend/src/components/Tenant/MGA/ParticipantesTab.tsx`: Ajustado `maxLength={200}` para intereses y `maxLength={2000}` para contribuciones.
+  - `starter/frontend/src/components/Tenant/MGA/NecesidadesTab.tsx`: Actualizado `maxLength={500}` para bien/servicio.
+  - `starter/frontend/src/components/Tenant/MGA/AnalisisTecnicoTab.tsx`: Actualizado `maxLength={2000}` para resumen de la alternativa.
+  - `starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx`: Actualizado `maxLength={400}` para nombre del nodo/producto.
+  - `starter/frontend/src/components/Tenant/MGA/RiesgosTab.tsx`: Actualizado `maxLength={500}` en descripción, efectos y medidas de mitigación.
+  - `starter/frontend/src/components/Tenant/MGA/IngresosBeneficiosTab.tsx`: Actualizado `maxLength={400}` en descripción del beneficio.
+  - `starter/frontend/src/components/Tenant/MGA/PrestamosTab.tsx`: Actualizado `maxLength={500}` en entidad/concepto, `maxLength={5}` en tasa y `maxLength={2}` en plazo en años.
+  - `starter/frontend/src/components/Tenant/MGA/DepreciacionTab.tsx`: Actualizado `maxLength={2}` en vida útil (años).
+- **Validaciones ejecutadas:**
+  - `cd starter/backend && go build ./...` (Exit Code 0).
+  - `cd starter/frontend && npx tsc --noEmit` (Exit Code 0).
+
 ### 2026-09-25 - Antigravity - Corrección Tipado TS2322 en Mocks de Test y Soporte Resiliente de Progress
 
 - **Objetivo:** Resolver el error de compilación `TS2322` en `src/store/projectStore.test.ts` que bloqueaba el pipeline de build de producción (`tsc -b && vite build`) tras la introducción del campo `progress` en el modelo `Project`.

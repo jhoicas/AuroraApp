@@ -69,12 +69,12 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
                 reactiveContext={{ alternativa: alt.description }}
                 currentValue={items[alt.id] || ''}
                 onAutoFill={(v) => setItems(prev => ({ ...prev, [alt.id]: v }))}
-                maxLength={2500}
+                maxLength={2000}
               >
                 <textarea spellCheck={true}
                   id={`analisis-tecnico-${alt.id}`}
                   rows={5}
-                  maxLength={2500}
+                  maxLength={2000}
                   value={items[alt.id] || ''}
                   onChange={(e) => setItems(prev => ({ ...prev, [alt.id]: e.target.value }))}
                   className="w-full p-2 border rounded bg-white mt-1"

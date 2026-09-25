@@ -129,12 +129,12 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       reactiveContext={item}
                       currentValue={item.descripcion}
                       onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
-                      maxLength={2500}
+                      maxLength={500}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-desc-${item.id}`}
                         rows={2}
-                        maxLength={2500}
+                        maxLength={500}
                         value={item.descripcion}
                         onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"
@@ -178,12 +178,12 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       reactiveContext={item}
                       currentValue={item.efectos}
                       onAutoFill={(v) => updateItem(item.id, 'efectos', v)}
-                      maxLength={250}
+                      maxLength={500}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-efectos-${item.id}`}
                         rows={2}
-                        maxLength={250}
+                        maxLength={500}
                         value={item.efectos}
                         onChange={(e) => updateItem(item.id, 'efectos', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"
@@ -203,12 +203,12 @@ export default function RiesgosTab({ project }: { project: Project }) {
                       reactiveContext={item}
                       currentValue={item.medida}
                       onAutoFill={(v) => updateItem(item.id, 'medida', v)}
-                      maxLength={250}
+                      maxLength={500}
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-medida-${item.id}`}
                         rows={2}
-                        maxLength={250}
+                        maxLength={500}
                         value={item.medida}
                         onChange={(e) => updateItem(item.id, 'medida', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"

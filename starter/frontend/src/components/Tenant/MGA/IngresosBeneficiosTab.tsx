@@ -178,12 +178,12 @@ export default function IngresosBeneficiosTab({ project }: { project: Project })
                       reactiveContext={item}
                       currentValue={item.descripcion}
                       onAutoFill={(v) => updateItem(item.id, 'descripcion', v)}
-                      maxLength={2500}
+                      maxLength={400}
                     >
                       <textarea spellCheck={true}
                         id={`ingreso-desc-${item.id}`}
                         rows={2}
-                        maxLength={2500}
+                        maxLength={400}
                         value={item.descripcion}
                         onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
                         className="w-full p-1 border rounded bg-white text-xs mt-1"

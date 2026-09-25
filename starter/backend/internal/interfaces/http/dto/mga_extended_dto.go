@@ -6,14 +6,14 @@ import "encoding/json"
 
 type CreateMgaEffectRequest struct {
 	EffectType  string  `json:"effect_type" validate:"required,oneof=directo indirecto"`
-	Description string  `json:"description" validate:"required,min=2,max=5000"`
+	Description string  `json:"description" validate:"max=5000"`
 	ParentID    *string `json:"parent_id" validate:"omitempty,uuid"`
 	SortOrder   *int    `json:"sort_order" validate:"omitempty,gte=0"`
 }
 
 type UpdateMgaEffectRequest struct {
 	EffectType  *string `json:"effect_type" validate:"omitempty,oneof=directo indirecto"`
-	Description *string `json:"description" validate:"omitempty,min=2,max=5000"`
+	Description *string `json:"description" validate:"omitempty,max=5000"`
 	ParentID    *string `json:"parent_id" validate:"omitempty,uuid"`
 	SortOrder   *int    `json:"sort_order" validate:"omitempty,gte=0"`
 }

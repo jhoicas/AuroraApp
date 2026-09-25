@@ -243,11 +243,14 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     }
     setError(null);
     try {
-      await addEffect(project.id, {
+      const created = await addEffect(project.id, {
         effect_type: 'directo',
-        description: 'Nuevo efecto directo — describa la consecuencia inmediata.',
+        description: '',
         sort_order: effects.length,
       });
+      if (created) {
+        setEditTarget({ kind: 'effect', id: created.id, draft: '' });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el efecto directo');
     }
@@ -260,12 +263,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     }
     setError(null);
     try {
-      await addEffect(project.id, {
+      const created = await addEffect(project.id, {
         effect_type: 'indirecto',
-        description: 'Nuevo efecto indirecto — describa la consecuencia de mediano o largo plazo.',
+        description: '',
         parent_id: parentId,
         sort_order: effects.length,
       });
+      if (created) {
+        setEditTarget({ kind: 'effect', id: created.id, draft: '' });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el efecto indirecto');
     }
@@ -274,12 +280,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const handleAddDirectCause = async () => {
     setError(null);
     try {
-      await addCause(project.id, {
+      const created = await addCause(project.id, {
         cause_type: 'directa',
-        description: 'Nueva causa directa — describa el factor inmediato.',
+        description: '',
         sort_order: causeRelations.length,
-        specific_objective: 'Redacte el objetivo específico asociado.',
+        specific_objective: '',
       });
+      if (created) {
+        setEditTarget({ kind: 'cause', id: created.id, draft: '' });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la causa directa');
     }
@@ -288,24 +297,27 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const handleAddIndirectCause = async (parentId: string) => {
     setError(null);
     try {
-      await addCause(project.id, {
+      const created = await addCause(project.id, {
         cause_type: 'indirecta',
-        description: 'Nueva causa indirecta — describa el factor estructural.',
+        description: '',
         parent_id: parentId,
         sort_order: causeRelations.length,
-        specific_objective: 'Redacte el objetivo específico asociado.',
+        specific_objective: '',
       });
+      if (created) {
+        setEditTarget({ kind: 'cause', id: created.id, draft: '' });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la causa indirecta');
     }
   };
 
-  const saveEffectEdit = async (effect: MgaEffect) => {
-    if (!editTarget || editTarget.kind !== 'effect' || editTarget.id !== effect.id) return;
+  const saveEffectEdit = async (effect: MgaEffect, explicitDraft?: string) => {
+    const draft = explicitDraft !== undefined ? explicitDraft : (editTarget?.kind === 'effect' && editTarget.id === effect.id ? editTarget.draft : effect.description);
     setError(null);
     try {
       await editEffect(project.id, effect.id, {
-        description: editTarget.draft.trim(),
+        description: (draft ?? '').trim(),
       });
       setEditTarget(null);
     } catch (err) {
@@ -313,12 +325,12 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     }
   };
 
-  const saveCauseEdit = async (relation: CauseObjectiveRelation) => {
-    if (!editTarget || editTarget.kind !== 'cause' || editTarget.id !== relation.id) return;
+  const saveCauseEdit = async (relation: CauseObjectiveRelation, explicitDraft?: string) => {
+    const draft = explicitDraft !== undefined ? explicitDraft : (editTarget?.kind === 'cause' && editTarget.id === relation.id ? editTarget.draft : relation.causeDescription);
     setError(null);
     try {
       await updateCauseRelation(project.id, relation.id, {
-        causeDescription: editTarget.draft,
+        causeDescription: draft ?? '',
       });
       setEditTarget(null);
     } catch (err) {
@@ -355,7 +367,9 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   }, []);
 
   const renderEffectCard = (effect: MgaEffect, label: string, isIndirect = false) => {
-    const isEditing = editTarget?.kind === 'effect' && editTarget.id === effect.id;
+    const isTargetEditing = editTarget?.kind === 'effect' && editTarget.id === effect.id;
+    const isEditing = isTargetEditing || (!effect.description?.trim() && !editTarget);
+    const draftValue = isTargetEditing ? editTarget.draft : (effect.description ?? '');
 
     return (
       <div
@@ -384,7 +398,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               fieldHelpKey={`effect-${isIndirect ? 'indirect' : 'direct'}-${effect.id}`}
               projectContext={fieldProjectContext}
               reactiveContext={reactiveContext}
-              currentValue={editTarget.draft}
+              currentValue={draftValue}
               askPrompt={`Sugiere una redacción para este efecto ${isIndirect ? 'indirecto' : 'directo'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'effect', id: effect.id, draft: val })}
               maxLength={250}
@@ -393,18 +407,20 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 id={`effect-${effect.id}`}
                 rows={3}
                 maxLength={250}
-                value={editTarget.draft}
+                placeholder={isIndirect ? 'Describa el efecto indirecto...' : 'Describa el efecto directo...'}
+                value={draftValue}
                 onChange={(e) =>
                   setEditTarget({ kind: 'effect', id: effect.id, draft: e.target.value })
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary mt-1"
+                autoFocus={!effect.description?.trim()}
               />
             </AIAssistedField>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => void saveEffectEdit(effect)}
+                onClick={() => void saveEffectEdit(effect, draftValue)}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 Guardar
@@ -419,14 +435,16 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             </div>
           </div>
         ) : (
-          <p className="pr-8 text-sm text-gray-700">{effect.description}</p>
+          <p className="pr-8 text-sm text-gray-700">{effect.description || <span className="italic text-gray-400">Sin descripción</span>}</p>
         )}
       </div>
     );
   };
 
   const renderCauseCard = (relation: CauseObjectiveRelation, label: string, isIndirect = false) => {
-    const isEditing = editTarget?.kind === 'cause' && editTarget.id === relation.id;
+    const isTargetEditing = editTarget?.kind === 'cause' && editTarget.id === relation.id;
+    const isEditing = isTargetEditing || (!relation.causeDescription?.trim() && !editTarget);
+    const draftValue = isTargetEditing ? editTarget.draft : (relation.causeDescription ?? '');
 
     return (
       <div
@@ -455,7 +473,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               fieldHelpKey={`cause-${isIndirect ? 'indirect' : 'direct'}-${relation.id}`}
               projectContext={fieldProjectContext}
               reactiveContext={reactiveContext}
-              currentValue={editTarget.draft}
+              currentValue={draftValue}
               askPrompt={`Sugiere una redacción para esta causa ${isIndirect ? 'indirecta' : 'directa'} del problema: ${problemDescription}`}
               onAutoFill={(val) => setEditTarget({ kind: 'cause', id: relation.id, draft: val })}
               maxLength={250}
@@ -464,18 +482,20 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 id={`cause-${relation.id}`}
                 rows={3}
                 maxLength={250}
-                value={editTarget.draft}
+                placeholder={isIndirect ? 'Describa la causa indirecta...' : 'Describa la causa directa...'}
+                value={draftValue}
                 onChange={(e) =>
                   setEditTarget({ kind: 'cause', id: relation.id, draft: e.target.value })
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary mt-1"
+                autoFocus={!relation.causeDescription?.trim()}
               />
             </AIAssistedField>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => void saveCauseEdit(relation)}
+                onClick={() => void saveCauseEdit(relation, draftValue)}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 Guardar
@@ -490,7 +510,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             </div>
           </div>
         ) : (
-          <p className="pr-8 text-sm text-gray-700">{relation.causeDescription}</p>
+          <p className="pr-8 text-sm text-gray-700">{relation.causeDescription || <span className="italic text-gray-400">Sin descripción</span>}</p>
         )}
       </div>
     );

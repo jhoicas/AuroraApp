@@ -136,9 +136,9 @@ type ProjectMgaState = {
     relationId: string,
     patch: Partial<Pick<CauseObjectiveRelation, 'causeDescription' | 'specificObjective' | 'causeType'>>,
   ) => Promise<void>;
-  addCause: (projectId: string, payload: CreateMgaCausePayload) => Promise<void>;
+  addCause: (projectId: string, payload: CreateMgaCausePayload) => Promise<CauseObjectiveRelation>;
   removeCause: (projectId: string, causeId: string) => Promise<void>;
-  addEffect: (projectId: string, payload: CreateMgaEffectPayload) => Promise<void>;
+  addEffect: (projectId: string, payload: CreateMgaEffectPayload) => Promise<MgaEffect>;
   editEffect: (projectId: string, effectId: string, payload: UpdateMgaEffectPayload) => Promise<void>;
   removeEffect: (projectId: string, effectId: string) => Promise<void>;
   addParticipant: (projectId: string, payload: CreateMgaParticipantPayload) => Promise<void>;
@@ -671,15 +671,17 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       const created = await createMgaCause(projectId, payload);
+      const relation = mapCauseToRelation(created);
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         return {
           byProjectId: patchFormulation(state, projectId, {
-            causeRelations: [...formulation.causeRelations, mapCauseToRelation(created)],
+            causeRelations: [...formulation.causeRelations, relation],
           }),
           isSaving: false,
         };
       });
+      return relation;
     } catch (err) {
       const message = extractError(err, 'No se pudo crear la causa');
       set({ isSaving: false, error: message });
@@ -720,6 +722,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
           isSaving: false,
         };
       });
+      return created;
     } catch (err) {
       const message = extractError(err, 'No se pudo crear el efecto');
       set({ isSaving: false, error: message });

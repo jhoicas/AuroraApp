@@ -21,6 +21,43 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Pipeline de Inversión y Distribución Financiera (Visión Directiva)
+
+- **Objetivo:** Implementar el módulo "Pipeline de Inversión y Distribución Financiera (Visión Directiva)" en la ruta `/tenant/reports`, conectando un endpoint analítico en Go con un dashboard interactivo gerencial en React.
+- **Backend (Go):**
+  - `starter/backend/internal/interfaces/http/dto/reports_dto.go`: Creados DTOs `InvestmentPipelineReportResponse`, `InvestmentPipelineKPIs`, `StatusFunnelStage` y `SectorDistributionItem`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/project_repository.go`:
+    - Implementado `GetInvestmentPipelineReport(ctx, tenantID)` con agregación estricta por `tenant_id`.
+    - Resuelve presupuestos consolidados comparando y maximizando montos entre EDT (`project_activities.total_cost`) y presupuestos preliminares (`budget_items.amount`).
+    - Agrupa por etapas del ciclo de vida MGA (`IDEATION`, `FORMULATION`, `AUDIT`, `VIABLE`, `APPROVED`) calculando cantidad y presupuesto acumulado.
+    - Agrupa por sector DNP asociando la tabla `sectores` con fallback al sector textual y mapeo por defecto a `"Sin Sector Asignado"` con código `"SIN_SECTOR"`.
+  - `starter/backend/internal/interfaces/http/handlers/project_handler.go`:
+    - Agregado el handler `GetInvestmentPipelineReport(c *fiber.Ctx) error`.
+  - `starter/backend/internal/interfaces/http/router/projects.go`:
+    - Registrado endpoint `GET /api/v1/tenant/reports/investment-pipeline` (y `/api/v1/reports/investment-pipeline`) protegido con `RequireAuth` y `RequireTenant`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/project_repository_test.go`:
+    - Agregado DDL de `sectores` al test suite y prueba unitaria completa `TestGetInvestmentPipelineReport`.
+- **Frontend (React / TypeScript):**
+  - `starter/frontend/src/lib/api.ts`:
+    - Definidas interfaces `InvestmentPipelineReportResponse`, `InvestmentPipelineKPIs`, `StatusFunnelStage` y `SectorDistributionItem`.
+    - Implementada función cliente `getInvestmentPipelineReport()`.
+  - `starter/frontend/src/pages/tenant/ReportsPage.tsx`:
+    - Creado panel de control directivo con diseño pulido:
+      - Cabecera con título, subtítulo, botón de actualización y botón de impresión optimizado para medios impresos (`window.print()`).
+      - Grilla de 4 tarjetas KPI: Presupuesto Estructurado (COP), Proyectos en Portafolio, Costo Promedio por Proyecto y Listos para Viabilidad.
+      - Embudo de Ciclo de Vida MGA: 5 etapas visuales numeradas con porcentajes, cantidad de proyectos y montos acumulados.
+      - Distribución por Sector DNP: Barras horizontales progresivas con código DNP, montos, conteo y porcentajes de absorción presupuestal.
+      - Resumen tabular consolidado con pie de tabla y totales generales.
+  - `starter/frontend/src/pages/tenant/ReportsPage.test.tsx`:
+    - Pruebas unitarias de renderizado, funnel, sectores, tabla, manejo de error e impresión con vitest y MSW.
+  - `starter/frontend/src/App.tsx`:
+    - Montado `ReportsPage` en la ruta `/tenant/reports`.
+- **Validaciones:**
+  - `cd starter/backend && go build ./...` (Exit code 0).
+  - `cd starter/backend && go test ./...` (Exit code 0).
+  - `cd starter/frontend && npx tsc --noEmit` (Exit code 0).
+  - `npx vitest run src/pages/tenant/ReportsPage.test.tsx` (5/5 tests pasados).
+
 ### 2026-09-25 - Antigravity - Incorporación de la Variable "Fase de Maduración" (Perfil, Prefactibilidad, Factibilidad)
 
 - **Objetivo:** Incorporar la variable "Fase de Maduración" al proceso de creación y estructuración de proyectos MGA, capturándola desde la interfaz de usuario (Wizard de Ideación y formulario manual) y transmitiéndola como contexto al backend y al System Prompt del Asistente de IA para regular su nivel de rigor presupuestal y técnico.

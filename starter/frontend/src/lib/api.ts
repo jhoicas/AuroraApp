@@ -177,3 +177,38 @@ export type {
 // --- Auditoría de formulación (Fase 4) ---
 export { getProjectAudit } from './formulationAuditApi';
 export type { AuditResult } from './formulationAuditApi';
+
+// --- Pipeline de Inversión y Distribución Financiera (Visión Directiva) ---
+export interface InvestmentPipelineKPIs {
+  total_budget: number;
+  total_projects: number;
+  average_project_cost: number;
+  viable_projects_count: number;
+}
+
+export interface StatusFunnelStage {
+  status: string;
+  label: string;
+  count: number;
+  total_budget: number;
+}
+
+export interface SectorDistributionItem {
+  sector_code: string;
+  sector_name: string;
+  project_count: number;
+  total_budget: number;
+  percentage: number;
+}
+
+export interface InvestmentPipelineReportResponse {
+  kpis: InvestmentPipelineKPIs;
+  status_funnel: StatusFunnelStage[];
+  sector_distribution: SectorDistributionItem[];
+}
+
+export async function getInvestmentPipelineReport(): Promise<InvestmentPipelineReportResponse> {
+  const { data } = await api.get<InvestmentPipelineReportResponse>('/tenant/reports/investment-pipeline');
+  return data;
+}
+

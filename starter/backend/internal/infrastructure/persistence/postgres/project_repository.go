@@ -2,8 +2,12 @@ package postgres
 
 import (
 	"context"
+	"math"
+	"sort"
+	"strings"
 
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/interfaces/http/dto"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -153,3 +157,228 @@ func (r *ProjectRepository) ListOwnedWithProgress(ctx context.Context, tenantID 
 	}
 	return results, total, nil
 }
+
+// GetInvestmentPipelineReport calcula el informe gerencial del pipeline de inversión y distribución sectorial.
+func (r *ProjectRepository) GetInvestmentPipelineReport(ctx context.Context, tenantID uuid.UUID) (*dto.InvestmentPipelineReportResponse, error) {
+	var projects []models.Project
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Find(&projects).Error
+	if err != nil {
+		return nil, err
+	}
+
+	orderedStages := []struct {
+		Status string
+		Label  string
+	}{
+		{Status: "IDEATION", Label: "Ideación"},
+		{Status: "FORMULATION", Label: "Formulación"},
+		{Status: "AUDIT", Label: "Auditoría"},
+		{Status: "VIABLE", Label: "Viabilidad"},
+		{Status: "APPROVED", Label: "Aprobado"},
+	}
+
+	funnelMap := make(map[string]*dto.StatusFunnelStage)
+	for _, stage := range orderedStages {
+		funnelMap[stage.Status] = &dto.StatusFunnelStage{
+			Status:      stage.Status,
+			Label:       stage.Label,
+			Count:       0,
+			TotalBudget: 0,
+		}
+	}
+
+	if len(projects) == 0 {
+		funnel := make([]dto.StatusFunnelStage, 0, len(orderedStages))
+		for _, stage := range orderedStages {
+			funnel = append(funnel, *funnelMap[stage.Status])
+		}
+		return &dto.InvestmentPipelineReportResponse{
+			KPIs: dto.InvestmentPipelineKPIs{
+				TotalBudget:         0,
+				TotalProjects:       0,
+				AverageProjectCost:  0,
+				ViableProjectsCount: 0,
+			},
+			StatusFunnel:       funnel,
+			SectorDistribution: []dto.SectorDistributionItem{},
+		}, nil
+	}
+
+	// 1. Obtener costos acumulados por proyecto de project_activities (EDT)
+	type projectSum struct {
+		ProjectID uuid.UUID `gorm:"column:project_id"`
+		Total     float64   `gorm:"column:total"`
+	}
+	var edtSums []projectSum
+	_ = r.db.WithContext(ctx).Table("project_activities").
+		Select("project_id, COALESCE(SUM(total_cost), 0) as total").
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Group("project_id").
+		Scan(&edtSums).Error
+
+	edtCostMap := make(map[uuid.UUID]float64, len(edtSums))
+	for _, s := range edtSums {
+		edtCostMap[s.ProjectID] = s.Total
+	}
+
+	// 2. Obtener costos acumulados por proyecto de budget_items
+	var budgetSums []projectSum
+	_ = r.db.WithContext(ctx).Table("budget_items").
+		Select("project_id, COALESCE(SUM(amount), 0) as total").
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Group("project_id").
+		Scan(&budgetSums).Error
+
+	budgetCostMap := make(map[uuid.UUID]float64, len(budgetSums))
+	for _, s := range budgetSums {
+		budgetCostMap[s.ProjectID] = s.Total
+	}
+
+	// 3. Resolver nombres y códigos de sectores desde la tabla sectores
+	var sectorIDs []uuid.UUID
+	for _, p := range projects {
+		if p.SectorID != nil && *p.SectorID != uuid.Nil {
+			sectorIDs = append(sectorIDs, *p.SectorID)
+		}
+	}
+	sectorMap := make(map[uuid.UUID]models.Sector)
+	if len(sectorIDs) > 0 {
+		var sectors []models.Sector
+		if err := r.db.WithContext(ctx).Where("id IN ?", sectorIDs).Find(&sectors).Error; err == nil {
+			for _, sec := range sectors {
+				sectorMap[sec.ID] = sec
+			}
+		}
+	}
+
+	type sectorAgg struct {
+		Code        string
+		Name        string
+		Count       int64
+		TotalBudget float64
+	}
+	sectorAggMap := make(map[string]*sectorAgg)
+
+	var totalBudget float64
+	var viableCount int64
+
+	for _, p := range projects {
+		// Presupuesto del proyecto: prioriza EDT si existe, o budget_items
+		edtCost := edtCostMap[p.ID]
+		bCost := budgetCostMap[p.ID]
+		cost := edtCost
+		if bCost > cost {
+			cost = bCost
+		}
+
+		totalBudget += cost
+
+		// Funnel stage
+		stageKey := mapProjectStatusToFunnel(p.Status)
+		if f, ok := funnelMap[stageKey]; ok {
+			f.Count++
+			f.TotalBudget += cost
+		}
+
+		// Viable / listo: Estados viabilizados o aprobados
+		statusUpper := strings.ToUpper(strings.TrimSpace(p.Status))
+		if statusUpper == "APPROVED" || statusUpper == "VIABLE" || statusUpper == "READY" || statusUpper == "SUBMITTED" {
+			viableCount++
+		}
+
+		// Sector DNP
+		var secCode, secName string
+		if p.SectorID != nil {
+			if s, ok := sectorMap[*p.SectorID]; ok {
+				secCode = strings.TrimSpace(s.Code)
+				secName = strings.TrimSpace(s.Name)
+			}
+		}
+		if secName == "" && strings.TrimSpace(p.Sector) != "" {
+			secName = strings.TrimSpace(p.Sector)
+		}
+		if secName == "" {
+			secName = "Sin Sector Asignado"
+			secCode = "SIN_SECTOR"
+		}
+
+		aggKey := secName
+		if _, exists := sectorAggMap[aggKey]; !exists {
+			sectorAggMap[aggKey] = &sectorAgg{
+				Code: secCode,
+				Name: secName,
+			}
+		}
+		sectorAggMap[aggKey].Count++
+		sectorAggMap[aggKey].TotalBudget += cost
+	}
+
+	// 4. Preparar embudo ordenado
+	funnel := make([]dto.StatusFunnelStage, 0, len(orderedStages))
+	for _, stage := range orderedStages {
+		f := funnelMap[stage.Status]
+		f.TotalBudget = math.Round(f.TotalBudget*100) / 100
+		funnel = append(funnel, *f)
+	}
+
+	// 5. Preparar distribución sectorial ordenada
+	distribution := make([]dto.SectorDistributionItem, 0, len(sectorAggMap))
+	for _, agg := range sectorAggMap {
+		pct := 0.0
+		if totalBudget > 0 {
+			pct = math.Round((agg.TotalBudget/totalBudget)*10000) / 100
+		}
+		distribution = append(distribution, dto.SectorDistributionItem{
+			SectorCode:   agg.Code,
+			SectorName:   agg.Name,
+			ProjectCount: agg.Count,
+			TotalBudget:  math.Round(agg.TotalBudget*100) / 100,
+			Percentage:   pct,
+		})
+	}
+
+	sort.Slice(distribution, func(i, j int) bool {
+		if distribution[i].TotalBudget == distribution[j].TotalBudget {
+			return distribution[i].ProjectCount > distribution[j].ProjectCount
+		}
+		return distribution[i].TotalBudget > distribution[j].TotalBudget
+	})
+
+	totalProjects := int64(len(projects))
+	avgCost := 0.0
+	if totalProjects > 0 {
+		avgCost = math.Round((totalBudget/float64(totalProjects))*100) / 100
+	}
+
+	return &dto.InvestmentPipelineReportResponse{
+		KPIs: dto.InvestmentPipelineKPIs{
+			TotalBudget:         math.Round(totalBudget*100) / 100,
+			TotalProjects:       totalProjects,
+			AverageProjectCost:  avgCost,
+			ViableProjectsCount: viableCount,
+		},
+		StatusFunnel:       funnel,
+		SectorDistribution: distribution,
+	}, nil
+}
+
+func mapProjectStatusToFunnel(status string) string {
+	s := strings.ToUpper(strings.TrimSpace(status))
+	switch s {
+	case "DRAFT", "BORRADOR", "IDEATION", "IDEACION", "IDEA", "PERFIL":
+		return "IDEATION"
+	case "IN_FORMULATION", "FORMULATION", "FORMULATING", "FORMULACION", "IN_PROGRESS", "EN_PROCESO", "PREFACTIBILIDAD", "FACTIBILIDAD":
+		return "FORMULATION"
+	case "SUBMITTED", "AUDIT", "AUDITING", "AUDITORIA", "IN_REVIEW", "EN_REVISION", "EVALUATING":
+		return "AUDIT"
+	case "VIABLE", "VIABILIZADO", "VIABILITY", "READY", "LISTO":
+		return "VIABLE"
+	case "APPROVED", "APROBADO", "FINISHED", "FINALIZADO":
+		return "APPROVED"
+	default:
+		return "IDEATION"
+	}
+}
+

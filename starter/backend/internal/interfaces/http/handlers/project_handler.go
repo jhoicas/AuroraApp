@@ -420,3 +420,20 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 	}
 	return resp
 }
+
+// GetInvestmentPipelineReport GET /api/v1/tenant/reports/investment-pipeline
+func (h *ProjectHandler) GetInvestmentPipelineReport(c *fiber.Ctx) error {
+	_, tenantID, err := httpmw.IdentityFromContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	repo := postgres.NewProjectRepository(h.db)
+	report, err := repo.GetInvestmentPipelineReport(c.Context(), tenantID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate investment pipeline report: " + err.Error()})
+	}
+
+	return c.JSON(report)
+}
+

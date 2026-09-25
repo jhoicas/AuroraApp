@@ -26,6 +26,7 @@ import ProjectCreationAssistant from './pages/tenant/ProjectCreationAssistant';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
 import CatalogPage from './pages/tenant/CatalogPage';
 import AiAssistantPage from './pages/tenant/AiAssistantPage';
+import ReportsPage from './pages/tenant/ReportsPage';
 import LandingPage from './pages/LandingPage';
 
 /** Solo disponible cuando Vite se arranca con VITE_E2E=true (suite Playwright). */
@@ -97,7 +98,7 @@ function App() {
               <Route path="formulation" element={<Navigate to="/tenant/projects" replace />} />
               <Route path="catalog" element={<CatalogPage />} />
               <Route path="ai" element={<AiAssistantPage />} />
-              <Route path="reports" element={<div className="p-4 text-gray-600">Reportes (próximamente)</div>} />
+              <Route path="reports" element={<ReportsPage />} />
               {import.meta.env.VITE_E2E === 'true' && (
                 <Route path="e2e-crash" element={<E2ECrashPage />} />
               )}

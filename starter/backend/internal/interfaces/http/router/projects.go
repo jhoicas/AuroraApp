@@ -32,6 +32,19 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	)
 	tenantProjects.Get("/:id/export/technical-document-valle", pex.ExportTechnicalDocumentValle)
 
+	// Grupo de reportes de tenant (Visión Directiva e inversión)
+	tenantReports := app.Group("/api/v1/tenant/reports",
+		httpmw.RequireAuth(jwtSecret),
+		httpmw.RequireTenant(),
+	)
+	tenantReports.Get("/investment-pipeline", ph.GetInvestmentPipelineReport)
+
+	reports := app.Group("/api/v1/reports",
+		httpmw.RequireAuth(jwtSecret),
+		httpmw.RequireTenant(),
+	)
+	reports.Get("/investment-pipeline", ph.GetInvestmentPipelineReport)
+
 	projects.Post("/", ph.Create)
 	projects.Get("/", ph.List)
 	projects.Get("/evaluations/summary", eh.ListTenantEvaluations)

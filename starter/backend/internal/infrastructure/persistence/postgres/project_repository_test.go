@@ -149,6 +149,11 @@ func newTestDB(t *testing.T) *gorm.DB {
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME
 		)`,
+		`CREATE TABLE sectores (
+			id TEXT PRIMARY KEY,
+			codigo TEXT NOT NULL,
+			nombre TEXT NOT NULL
+		)`,
 	}
 
 	for _, ddl := range ddls {
@@ -369,4 +374,154 @@ func TestCalculateProgressForProjects_BatchNoNPlusOne(t *testing.T) {
 	foundA, err := repo.FindOwnedWithProgress(ctx, projA.ID, tenantID)
 	require.NoError(t, err)
 	assert.Equal(t, 10, foundA.Progress)
+}
+
+func TestGetInvestmentPipelineReport(t *testing.T) {
+	db := newTestDB(t)
+	repo := NewProjectRepository(db)
+	ctx := context.Background()
+
+	tenantID := uuid.New()
+	otherTenantID := uuid.New()
+	creatorID := uuid.New()
+
+	sector1ID := uuid.New()
+	require.NoError(t, db.Exec("INSERT INTO sectores (id, codigo, nombre) VALUES (?, ?, ?)",
+		sector1ID.String(), "13", "Agricultura y Desarrollo Rural").Error)
+
+	sector2ID := uuid.New()
+	require.NoError(t, db.Exec("INSERT INTO sectores (id, codigo, nombre) VALUES (?, ?, ?)",
+		sector2ID.String(), "22", "Educación").Error)
+
+	// Proyecto 1: Tenant A, Sector 1, Status FORMULATING, Presupuesto via budget_items
+	p1 := models.Project{
+		ID:        uuid.New(),
+		TenantID:  tenantID,
+		CreatorID: creatorID,
+		Name:      "Proyecto Riego",
+		SectorID:  &sector1ID,
+		Status:    "FORMULATING",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&p1).Error)
+	require.NoError(t, db.Create(&models.BudgetItem{
+		ID:          uuid.New(),
+		TenantID:    tenantID,
+		ProjectID:   p1.ID,
+		Description: "Tuberías",
+		Amount:      100_000_000,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}).Error)
+
+	// Proyecto 2: Tenant A, Sector 2, Status VIABLE, Presupuesto via project_activities
+	p2 := models.Project{
+		ID:        uuid.New(),
+		TenantID:  tenantID,
+		CreatorID: creatorID,
+		Name:      "Proyecto Escuela",
+		SectorID:  &sector2ID,
+		Status:    "VIABLE",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&p2).Error)
+	nodeID := uuid.New()
+	delivID := uuid.New()
+	require.NoError(t, db.Create(&models.ProjectDeliverable{
+		ID:               delivID,
+		TenantID:         tenantID,
+		ProjectID:        p2.ID,
+		ProjectEdtNodeID: nodeID,
+		Code:             "ENT-01",
+		Name:             "Aulas construidas",
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}).Error)
+	require.NoError(t, db.Create(&models.ProjectActivity{
+		ID:                   uuid.New(),
+		TenantID:             tenantID,
+		ProjectID:            p2.ID,
+		ProjectDeliverableID: delivID,
+		Code:                 "ACT-01",
+		Name:                 "Cimentación",
+		Quantity:             1,
+		UnitCost:             300_000_000,
+		TotalCost:            300_000_000,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
+	}).Error)
+
+	// Proyecto 3: Tenant A, Sin sector, Status DRAFT, Sin costo
+	p3 := models.Project{
+		ID:        uuid.New(),
+		TenantID:  tenantID,
+		CreatorID: creatorID,
+		Name:      "Proyecto Idea",
+		Status:    "DRAFT",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&p3).Error)
+
+	// Proyecto 4: Otro Tenant (debe ser ignorado por aislamiento estricto)
+	pOther := models.Project{
+		ID:        uuid.New(),
+		TenantID:  otherTenantID,
+		CreatorID: creatorID,
+		Name:      "Proyecto Otro Tenant",
+		Status:    "APPROVED",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&pOther).Error)
+
+	// Ejecutar reporte
+	report, err := repo.GetInvestmentPipelineReport(ctx, tenantID)
+	require.NoError(t, err)
+	require.NotNil(t, report)
+
+	// Validar KPIs
+	assert.Equal(t, int64(3), report.KPIs.TotalProjects)
+	assert.Equal(t, float64(400_000_000), report.KPIs.TotalBudget)
+	assert.InDelta(t, float64(400_000_000)/3.0, report.KPIs.AverageProjectCost, 0.01)
+	assert.Equal(t, int64(1), report.KPIs.ViableProjectsCount)
+
+	// Validar Funnel (5 etapas)
+	require.Len(t, report.StatusFunnel, 5)
+	var ideacionCount, formCount, viableCount int64
+	var viableBudget float64
+	for _, stage := range report.StatusFunnel {
+		switch stage.Status {
+		case "IDEATION":
+			ideacionCount = stage.Count
+		case "FORMULATION":
+			formCount = stage.Count
+		case "VIABLE":
+			viableCount = stage.Count
+			viableBudget = stage.TotalBudget
+		}
+	}
+	assert.Equal(t, int64(1), ideacionCount)
+	assert.Equal(t, int64(1), formCount)
+	assert.Equal(t, int64(1), viableCount)
+	assert.Equal(t, float64(300_000_000), viableBudget)
+
+	// Validar Sector Distribution (ordenado de mayor a menor)
+	require.Len(t, report.SectorDistribution, 3)
+	// Primer sector debe ser Educación (300M, 75%)
+	assert.Equal(t, "Educación", report.SectorDistribution[0].SectorName)
+	assert.Equal(t, float64(300_000_000), report.SectorDistribution[0].TotalBudget)
+	assert.InDelta(t, 75.0, report.SectorDistribution[0].Percentage, 0.1)
+
+	// Segundo sector debe ser Agricultura (100M, 25%)
+	assert.Equal(t, "Agricultura y Desarrollo Rural", report.SectorDistribution[1].SectorName)
+	assert.Equal(t, float64(100_000_000), report.SectorDistribution[1].TotalBudget)
+	assert.InDelta(t, 25.0, report.SectorDistribution[1].Percentage, 0.1)
+
+	// Tercer sector debe ser Sin Sector Asignado (0M, 0%)
+	assert.Equal(t, "Sin Sector Asignado", report.SectorDistribution[2].SectorName)
+	assert.Equal(t, float64(0), report.SectorDistribution[2].TotalBudget)
+	assert.Equal(t, float64(0), report.SectorDistribution[2].Percentage)
 }

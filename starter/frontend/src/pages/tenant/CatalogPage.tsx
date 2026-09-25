@@ -265,7 +265,7 @@ export default function CatalogPage() {
                   {formatCatalogProductOptionTitle(selectedProduct)}
                 </p>
                 <p className="text-sm text-gray-600 line-clamp-3">{selectedProduct.descripcion}</p>
-                <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
                   <div>
                     <dt className="font-medium text-gray-500">Sector</dt>
                     <dd>{selectedSector?.name}</dd>
@@ -282,6 +282,10 @@ export default function CatalogPage() {
                       {selectedProduct.codigo_del_indicador_de_producto} —{' '}
                       {selectedProduct.indicador_de_producto}
                     </dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-500">Unidad de medida</dt>
+                    <dd>{selectedProduct.unidad_de_medida?.trim() || 'No especificada'}</dd>
                   </div>
                 </dl>
 

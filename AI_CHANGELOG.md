@@ -21,6 +21,18 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Unidad de Medida en Resumen de Producto del Catálogo DNP
+
+- **Objetivo:** Mostrar la columna/campo `unidad_de_medida` en la tarjeta de resumen ("Producto seleccionado") cuando un usuario selecciona un Producto en la vista del Catálogo DNP (`/tenant/catalog`).
+- **Archivos modificados:**
+  - `starter/frontend/src/pages/tenant/CatalogPage.tsx`:
+    - Se ajustó la cuadrícula de detalles de `<dl>` a `grid-cols-1 sm:grid-cols-2 md:grid-cols-4`.
+    - Se añadió el bloque para "Unidad de medida" mostrando `selectedProduct.unidad_de_medida` con fallback `"No especificada"`.
+- **Validación ejecutada:**
+  - `npx tsc --noEmit` -> Exit Code 0 (limpio).
+  - `npx tsc -b` -> Exit Code 0 (limpio).
+
+
 ### 2026-09-25 - Antigravity - Conexión de Catálogo DNP con Creación Asistida de Proyectos
 
 - **Objetivo:** Conectar la vista del Catálogo DNP (`/tenant/catalog`) con el flujo de Creación Asistida de Proyectos en `/tenant/projects`, preseleccionando el Sector y Producto y abriendo automáticamente el asistente de ideación con Aurora y el formulario final estructurado.

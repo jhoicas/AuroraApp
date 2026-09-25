@@ -21,6 +21,26 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Corrección Overflow en Tabla de Información Básica (PDF Dec. 1278)
+
+- **Objetivo:** Corregir el desbordamiento visual de texto en las celdas de la tabla de metadatos básicos (Sección 1: "Nombre del proyecto") y demás tablas del PDF del Documento Técnico del Valle del Cauca (`technical_document_valle_service.go`).
+- **Archivos modificados:**
+  - `starter/backend/internal/application/project/technical_document_valle_service.go`:
+    - Implementada función auxiliar `TruncateTextToFit(pdf *gofpdf.Fpdf, text string, maxWidth float64, txt func(string) string) string` que mide el ancho en milímetros del texto traducido con la fuente activa (`pdf.GetStringWidth`), recortando carácter a carácter (por runas seguras) y añadiendo `"..."` si supera `maxWidth - padding`.
+    - Redistribuidos los anchos de columna de la tabla de metadatos de 45/45/45/45 a:
+      - Columna 1 (Etiqueta BPIN / Prog): `40mm`
+      - Columna 2 (Valor BPIN / Prog): `35mm`
+      - Columna 3 (Etiqueta Sector / Prod): `38mm`
+      - Columna 4 (Valor Sector / Prod): `67mm` (ampliando el espacio para sectores largos)
+      - Fila "Objeto a entregar": `40mm` / `140mm`
+    - Aplicado `TruncateTextToFit` en los valores de la tabla de información básica, así como en las tablas de población, nodos EDT y actividades presupuestales.
+  - `starter/backend/internal/application/project/technical_document_valle_service_test.go`:
+    - Añadida prueba `TestTruncateTextToFit` para validar que textos cortos se mantengan intactos, textos largos se trunquen con `"..."` respetando el ancho máximo, y la manipulación de runas sea segura con caracteres y tildes en español.
+- **Validación ejecutada:**
+  - `cd starter/backend && go test -v ./internal/application/project/...` -> PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+
 ### 2026-09-25 - Antigravity - Exportación de Documento Técnico (Decreto 1278 de 2023 Valle del Cauca)
 
 - **Objetivo:** Implementar en el backend (Go) el servicio y endpoint de generación del "Documento Técnico del Proyecto de Inversión" exigido por el Artículo 13, literal e) del Decreto 1278 de 2023 del Valle del Cauca con los 12 títulos exactos requeridos, y habilitar su descarga en el frontend (React).

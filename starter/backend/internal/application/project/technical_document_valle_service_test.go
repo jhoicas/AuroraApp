@@ -9,6 +9,7 @@ import (
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 	"gorm.io/datatypes"
 )
 
@@ -178,9 +179,48 @@ func TestTechnicalDocumentValleService_GenerateValleDocumentPDF(t *testing.T) {
 	}
 }
 
+func TestTruncateTextToFit(t *testing.T) {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	txt := func(s string) string { return tr(s) }
+
+	pdf.SetFont("Arial", "", 8)
+
+	// Caso 1: Texto corto no se trunca
+	shortText := "Transporte"
+	maxWidth := 67.0
+	res := appproject.TruncateTextToFit(pdf, shortText, maxWidth, txt)
+	if res != shortText {
+		t.Fatalf("expected '%s', got '%s'", shortText, res)
+	}
+
+	// Caso 2: Texto largo se trunca y termina con "..."
+	longText := "AGRICULTURA Y DESARROLLO RURAL CON ÉNFASIS EN PRODUCCIÓN SOSTENIBLE Y SEGURIDAD ALIMENTARIA"
+	resLong := appproject.TruncateTextToFit(pdf, longText, 40.0, txt)
+	if resLong == longText {
+		t.Fatalf("expected truncation, but got original text")
+	}
+	if !bytes.HasSuffix([]byte(resLong), []byte("...")) {
+		t.Fatalf("expected truncated text to end with '...', got: %s", resLong)
+	}
+	// El ancho del texto truncado traducido debe ser <= maxWidth - 2
+	measuredWidth := pdf.GetStringWidth(txt(resLong))
+	if measuredWidth > 40.0-2.0 {
+		t.Fatalf("truncated text width (%.2fmm) exceeds target (%.2fmm)", measuredWidth, 40.0-2.0)
+	}
+
+	// Caso 3: Seguridad con caracteres especiales y acentos en español
+	specialText := "ATENCIÓN A POBLACIÓN VULNERABLE, NIÑEZ Y COMUNIDADES ÉTNICAS DE LA REGIÓN PACÍFICO"
+	resSpecial := appproject.TruncateTextToFit(pdf, specialText, 30.0, txt)
+	if !bytes.HasSuffix([]byte(resSpecial), []byte("...")) {
+		t.Fatalf("expected special text to end with '...', got: %s", resSpecial)
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
+

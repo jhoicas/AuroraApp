@@ -123,6 +123,41 @@ func formatCurrency(val float64) string {
 	return res
 }
 
+// TruncateTextToFit recorta un texto carácter por carácter (runas) y añade "..." si supera maxWidth - padding.
+// Evita desbordamientos en celdas de tabla manteniendo fija la altura de fila.
+func TruncateTextToFit(pdf *gofpdf.Fpdf, text string, maxWidth float64, txt func(string) string) string {
+	padding := 2.0
+	targetWidth := maxWidth - padding
+	if targetWidth <= 0 {
+		return text
+	}
+
+	translated := text
+	if txt != nil {
+		translated = txt(text)
+	}
+
+	if pdf.GetStringWidth(translated) <= targetWidth {
+		return text
+	}
+
+	runes := []rune(text)
+	ellipsis := "..."
+	for len(runes) > 0 {
+		runes = runes[:len(runes)-1]
+		candidate := string(runes) + ellipsis
+		meas := candidate
+		if txt != nil {
+			meas = txt(candidate)
+		}
+		if pdf.GetStringWidth(meas) <= targetWidth {
+			return candidate
+		}
+	}
+
+	return ellipsis
+}
+
 func (s *TechnicalDocumentValleService) GenerateValleDocumentPDF(
 	project *models.Project,
 	bundle *postgres.MgaFullFormulation,
@@ -305,28 +340,44 @@ func (s *TechnicalDocumentValleService) GenerateValleDocumentPDF(
 		prodStr = *project.ProductCode
 	}
 
-	pdf.CellFormat(45, 5, txt("Código BPIN / Radicado:"), "1", 0, "L", true, 0, "")
+	wLbl1 := 40.0
+	wVal1 := 35.0
+	wLbl2 := 38.0
+	wVal2 := 67.0
+
+	// Configurar la fuente para calcular el ancho exacto del texto del valor
 	pdf.SetFont("Arial", "", 8)
-	pdf.CellFormat(45, 5, txt(bpinStr), "1", 0, "L", false, 0, "")
-	pdf.SetFont("Arial", "B", 8)
-	pdf.CellFormat(45, 5, txt("Sector DNP:"), "1", 0, "L", true, 0, "")
-	pdf.SetFont("Arial", "", 8)
-	pdf.CellFormat(45, 5, txt(sectorStr), "1", 1, "L", false, 0, "")
+	bpinDisplay := TruncateTextToFit(pdf, bpinStr, wVal1, txt)
+	sectorDisplay := TruncateTextToFit(pdf, sectorStr, wVal2, txt)
+	progDisplay := TruncateTextToFit(pdf, progStr, wVal1, txt)
+	prodDisplay := TruncateTextToFit(pdf, prodStr, wVal2, txt)
 
 	pdf.SetFont("Arial", "B", 8)
-	pdf.CellFormat(45, 5, txt("Código Programa DNP:"), "1", 0, "L", true, 0, "")
+	pdf.CellFormat(wLbl1, 5, txt("Código BPIN / Radicado:"), "1", 0, "L", true, 0, "")
 	pdf.SetFont("Arial", "", 8)
-	pdf.CellFormat(45, 5, txt(progStr), "1", 0, "L", false, 0, "")
+	pdf.CellFormat(wVal1, 5, txt(bpinDisplay), "1", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 8)
-	pdf.CellFormat(45, 5, txt("Código Producto DNP:"), "1", 0, "L", true, 0, "")
+	pdf.CellFormat(wLbl2, 5, txt("Sector DNP:"), "1", 0, "L", true, 0, "")
 	pdf.SetFont("Arial", "", 8)
-	pdf.CellFormat(45, 5, txt(prodStr), "1", 1, "L", false, 0, "")
+	pdf.CellFormat(wVal2, 5, txt(sectorDisplay), "1", 1, "L", false, 0, "")
+
+	pdf.SetFont("Arial", "B", 8)
+	pdf.CellFormat(wLbl1, 5, txt("Código Programa DNP:"), "1", 0, "L", true, 0, "")
+	pdf.SetFont("Arial", "", 8)
+	pdf.CellFormat(wVal1, 5, txt(progDisplay), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Arial", "B", 8)
+	pdf.CellFormat(wLbl2, 5, txt("Código Producto DNP:"), "1", 0, "L", true, 0, "")
+	pdf.SetFont("Arial", "", 8)
+	pdf.CellFormat(wVal2, 5, txt(prodDisplay), "1", 1, "L", false, 0, "")
 
 	if formWrapper.Objeto != "" {
-		pdf.SetFont("Arial", "B", 8)
-		pdf.CellFormat(45, 5, txt("Objeto a entregar:"), "1", 0, "L", true, 0, "")
+		wObjVal := 180.0 - wLbl1
 		pdf.SetFont("Arial", "", 8)
-		pdf.CellFormat(135, 5, txt(formWrapper.Objeto), "1", 1, "L", false, 0, "")
+		objDisplay := TruncateTextToFit(pdf, formWrapper.Objeto, wObjVal, txt)
+		pdf.SetFont("Arial", "B", 8)
+		pdf.CellFormat(wLbl1, 5, txt("Objeto a entregar:"), "1", 0, "L", true, 0, "")
+		pdf.SetFont("Arial", "", 8)
+		pdf.CellFormat(wObjVal, 5, txt(objDisplay), "1", 1, "L", false, 0, "")
 	}
 	pdf.Ln(2)
 
@@ -618,10 +669,13 @@ func (s *TechnicalDocumentValleService) GenerateValleDocumentPDF(
 				locStr = "Área de influencia del proyecto"
 			}
 
+			srcDisplay := TruncateTextToFit(pdf, srcStr, 55, txt)
+			locDisplay := TruncateTextToFit(pdf, locStr, 50, txt)
+
 			pdf.CellFormat(40, 5, txt(tipoLabel), "1", 0, "L", false, 0, "")
 			pdf.CellFormat(35, 5, txt(numStr), "1", 0, "R", false, 0, "")
-			pdf.CellFormat(55, 5, txt(srcStr), "1", 0, "L", false, 0, "")
-			pdf.CellFormat(50, 5, txt(locStr), "1", 1, "L", false, 0, "")
+			pdf.CellFormat(55, 5, txt(srcDisplay), "1", 0, "L", false, 0, "")
+			pdf.CellFormat(50, 5, txt(locDisplay), "1", 1, "L", false, 0, "")
 		}
 		pdf.Ln(2)
 	} else {
@@ -713,9 +767,10 @@ func (s *TechnicalDocumentValleService) GenerateValleDocumentPDF(
 
 		pdf.SetFont("Arial", "", 8)
 		for _, node := range edtChain.EdtNodes {
+			nodeDisplay := TruncateTextToFit(pdf, node.Name, 125, txt)
 			pdf.CellFormat(30, 5, txt(node.Code), "1", 0, "L", false, 0, "")
 			pdf.CellFormat(25, 5, txt(fmt.Sprintf("Nivel %d", node.Level)), "1", 0, "C", false, 0, "")
-			pdf.CellFormat(125, 5, txt(node.Name), "1", 1, "L", false, 0, "")
+			pdf.CellFormat(125, 5, txt(nodeDisplay), "1", 1, "L", false, 0, "")
 		}
 		pdf.Ln(2)
 	} else {
@@ -758,11 +813,8 @@ func (s *TechnicalDocumentValleService) GenerateValleDocumentPDF(
 			costoTotalStr := formatCurrency(act.TotalCost)
 
 			pdf.CellFormat(25, 4.8, txt(act.Code), "1", 0, "L", false, 0, "")
-			actName := act.Name
-			if len(actName) > 48 {
-				actName = actName[:45] + "..."
-			}
-			pdf.CellFormat(80, 4.8, txt(actName), "1", 0, "L", false, 0, "")
+			actNameDisplay := TruncateTextToFit(pdf, act.Name, 80, txt)
+			pdf.CellFormat(80, 4.8, txt(actNameDisplay), "1", 0, "L", false, 0, "")
 			pdf.CellFormat(20, 4.8, txt(cantStr), "1", 0, "R", false, 0, "")
 			pdf.CellFormat(27, 4.8, txt(costoUnitStr), "1", 0, "R", false, 0, "")
 			pdf.CellFormat(28, 4.8, txt(costoTotalStr), "1", 1, "R", false, 0, "")

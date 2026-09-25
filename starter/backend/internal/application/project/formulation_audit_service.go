@@ -57,12 +57,16 @@ type FormulationAuditService struct {
 func NewFormulationAuditService(
 	projects ProjectReader,
 	mga MgaFormulationCounter,
-	edt EdtActivityReader,
+	edt ...EdtActivityReader,
 ) *FormulationAuditService {
+	var edtReader EdtActivityReader
+	if len(edt) > 0 {
+		edtReader = edt[0]
+	}
 	return &FormulationAuditService{
 		projects: projects,
 		mga:      mga,
-		edt:      edt,
+		edt:      edtReader,
 	}
 }
 

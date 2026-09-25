@@ -41,6 +41,7 @@ export type CreationContext = {
   }[];
   tipoInversion?: string;
   tipologia?: string;
+  faseMaduracion?: string;
 };
 
 /** Ruta backend para la entrevista de creación asistida de proyecto MGA. */
@@ -176,10 +177,12 @@ type AuroraCopilotState = {
   ideationSessionId: string | null;
   ideationComplete: boolean;
   ideationLoading: boolean;
+  ideationFaseMaduracion: string;
+  setIdeationFaseMaduracion: (fase: string) => void;
   addPreCreationContext: (text: string) => void;
   clearPreCreationContext: () => void;
   suggestProjectSetup: (currentFormData?: Record<string, any>) => Promise<void>;
-  sendIdeationMessage: (message: string) => Promise<void>;
+  sendIdeationMessage: (message: string, faseMaduracion?: string) => Promise<void>;
   resetIdeation: () => void;
   toggleOpen: () => void;
   open: () => void;
@@ -221,6 +224,7 @@ function mapCreationContextToApi(ctx: CreationContext) {
     ...(ctx.productCodes?.length ? { product_codes: ctx.productCodes } : {}),
     ...(ctx.programCodes?.length ? { program_codes: ctx.programCodes } : {}),
     ...(ctx.odsCodes?.length ? { ods_codes: ctx.odsCodes } : {}),
+    ...(ctx.faseMaduracion ? { fase_maduracion: ctx.faseMaduracion } : {}),
   };
 }
 
@@ -248,7 +252,10 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
   ideationSessionId: null,
   ideationComplete: false,
   ideationLoading: false,
+  ideationFaseMaduracion: 'Perfil',
   mgaFieldSuggestions: {},
+
+  setIdeationFaseMaduracion: (fase) => set({ ideationFaseMaduracion: fase }),
 
   setMgaFieldSuggestion: (fieldHelpKey, suggestion) => set((s) => {
     const current = s.mgaFieldSuggestions[fieldHelpKey] || [];
@@ -288,6 +295,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     ideationSessionId: null,
     ideationComplete: false,
     ideationLoading: false,
+    ideationFaseMaduracion: 'Perfil',
     projectSuggestions: null,
     preCreationContext: [],
   }),
@@ -310,7 +318,7 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
     }
   },
 
-  sendIdeationMessage: async (message) => {
+  sendIdeationMessage: async (message, faseMaduracion) => {
     const trimmed = message.trim();
     if (!trimmed) return;
 
@@ -328,8 +336,10 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
 
     try {
       const sessionId = get().ideationSessionId;
+      const currentFase = faseMaduracion || get().ideationFaseMaduracion || 'Perfil';
       const { data } = await api.post<IdeationChatResponse>('/ai/ideation/chat', {
         message: trimmed,
+        fase_maduracion: currentFase,
         ...(sessionId ? { session_id: sessionId } : {}),
       });
 
@@ -492,7 +502,8 @@ export const useAuroraCopilotStore = create<AuroraCopilotState>((set, get) => ({
       isOpen: false,
     });
 
-    const opener = `¡Hola Aurora! Quiero formular este proyecto: ${idea}`;
+    const faseText = context.faseMaduracion ? ` en fase de ${context.faseMaduracion}` : '';
+    const opener = `¡Hola Aurora! Quiero formular este proyecto${faseText}: ${idea}`;
     await get().sendMessage(opener, ROUTE_PROJECT_CREATION);
   },
 

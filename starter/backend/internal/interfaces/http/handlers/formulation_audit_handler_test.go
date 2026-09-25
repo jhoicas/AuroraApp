@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -58,6 +59,14 @@ func (m *auditMgaCounter) CountSpecificObjectives(_ context.Context, _, _ uuid.U
 	return m.objectives, nil
 }
 
+func (m *auditMgaCounter) CountTargetPopulations(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	return 1, nil
+}
+
+func (m *auditMgaCounter) CountAlternatives(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	return 1, nil
+}
+
 func newFormulationAuditApp(svc *appproject.FormulationAuditService, id identity) *fiber.App {
 	h := NewFormulationAuditHandlerWithDeps(svc)
 	app := newTestApp()
@@ -72,6 +81,7 @@ func TestGetAuditReport_Passed(t *testing.T) {
 			GeneralObjective:   "Objetivo",
 			SituacionExistente: strings.Repeat("Situación territorial detallada. ", 5),
 			MagnitudProblema:   strings.Repeat("Magnitud e indicadores de referencia. ", 5),
+			MgaFormulationData: datatypes.JSON([]byte(`{"localizaciones":[{"regionId":1,"departamentoId":76,"municipioId":1}]}`)),
 		}},
 		&auditMgaCounter{causes: 1, objectives: 1},
 	)

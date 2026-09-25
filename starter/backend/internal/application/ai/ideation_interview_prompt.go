@@ -41,8 +41,14 @@ func IsIdeationInterviewRoute(routeContext string) bool {
 // BuildIdeationInterviewSystemPrompt construye el system prompt de la
 // entrevista adaptativa MGA. turnNumber indica el turno actual (1-based);
 // cuando alcanza MaxIdeationTurns, el LLM es forzado a cerrar.
-func BuildIdeationInterviewSystemPrompt(ragContext string, turnNumber int) string {
+// faseMaduracion opcional modula el nivel de rigor metodológico (Perfil, Prefactibilidad, Factibilidad).
+func BuildIdeationInterviewSystemPrompt(ragContext string, turnNumber int, faseMaduracion ...string) string {
 	var b strings.Builder
+
+	fase := "Perfil"
+	if len(faseMaduracion) > 0 && strings.TrimSpace(faseMaduracion[0]) != "" {
+		fase = strings.TrimSpace(faseMaduracion[0])
+	}
 
 	b.WriteString(`Eres un asesor experto en formulación de proyectos de inversión pública bajo la Metodología General Ajustada (MGA) de Colombia.
 
@@ -57,6 +63,11 @@ REGLAS ESTRICTAS:
 - Sé conciso y empático. No repitas información que el usuario ya proporcionó.
 - Responde siempre en español.
 - No inventes datos. No asumas ubicaciones ni soluciones que el usuario no haya mencionado.
+
+### FASE DE MADURACIÓN DEL PROYECTO ###
+Fase actual indicada: ` + fase + `
+Regla de maduración:
+Si el proyecto está en fase de "Perfil", permite estimaciones presupuestales aproximadas. Si está en fase de "Factibilidad", exige rigor absoluto, mencionando que se requieren diseños y presupuestos de obra detallados ítem por ítem en la cadena de valor.
 
 ` + Decreto1278AuditRulesPrompt + `
 `)

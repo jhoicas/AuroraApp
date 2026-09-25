@@ -17,6 +17,7 @@ export type Project = {
   general_objective?: string;
   situacion_existente?: string;
   magnitud_problema?: string;
+  fase_maduracion?: string;
 	status: string;
 	progress?: number;
 	mga_formulation_data?: Record<string, any> | null;
@@ -52,6 +53,7 @@ export type CreateProjectPayload = {
   }[];
   tipo_inversion: string;
   tipologia: string;
+  fase_maduracion?: string;
 };
 
 export type UpdateProjectDetailsPayload = {
@@ -195,6 +197,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       if (payload.product_code?.trim()) {
         body.product_code = payload.product_code.trim();
+      }
+      if (payload.fase_maduracion?.trim()) {
+        body.fase_maduracion = payload.fase_maduracion.trim();
       }
 
       const { data } = await api.post<Project>('/projects', body);

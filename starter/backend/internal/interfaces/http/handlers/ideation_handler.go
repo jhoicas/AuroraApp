@@ -106,8 +106,8 @@ func (h *IdeationHandler) Chat(c *fiber.Ctx) error {
 	// ── RAG: vector search global ─────────────────────────────────
 	ragContext := h.buildIdeationRAG(c, req.Message)
 
-	// ── System prompt con conciencia de turno ─────────────────────
-	system := appai.BuildIdeationInterviewSystemPrompt(ragContext, currentTurn)
+	// ── System prompt con conciencia de turno y fase de maduración ────
+	system := appai.BuildIdeationInterviewSystemPrompt(ragContext, currentTurn, req.FaseMaduracion)
 
 	// ── Construir mensajes para el LLM ────────────────────────────
 	messages := buildLLMMessagesFromHistory(history, req.Message)

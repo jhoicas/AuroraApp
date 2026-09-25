@@ -40,9 +40,14 @@ func BuildProjectCreationRAGQuery(
 
 // BuildProjectCreationSystemPrompt genera el system prompt de entrevista iterativa.
 // Si ragContext está vacío, activa modo degradado (metodología MGA estándar, sin bloque KG).
-func BuildProjectCreationSystemPrompt(ragContext, catalogSummary string) string {
+func BuildProjectCreationSystemPrompt(ragContext, catalogSummary string, faseMaduracion ...string) string {
 	rag := strings.TrimSpace(ragContext)
 	catalog := strings.TrimSpace(catalogSummary)
+
+	fase := "Perfil"
+	if len(faseMaduracion) > 0 && strings.TrimSpace(faseMaduracion[0]) != "" {
+		fase = strings.TrimSpace(faseMaduracion[0])
+	}
 
 	var b strings.Builder
 	b.WriteString(`Eres Aurora, asistente experta en la Metodología General Ajustada (MGA) de Colombia.
@@ -56,6 +61,11 @@ REGLAS DE LA ENTREVISTA:
    - Al menos 2 causas directas del árbol de problemas
    - Al menos 2 efectos directos del árbol de problemas
 3. Cuando la información mínima esté completa, resume lo recopilado y sugiere generar el proyecto con una action card mga_generate_project.
+
+### FASE DE MADURACIÓN DEL PROYECTO ###
+Fase actual indicada: ` + fase + `
+Regla de maduración:
+Si el proyecto está en fase de "Perfil", permite estimaciones presupuestales aproximadas. Si está en fase de "Factibilidad", exige rigor absoluto, mencionando que se requieren diseños y presupuestos de obra detallados ítem por ítem en la cadena de valor.
 
 ` + Decreto1278AuditRulesPrompt + `
 
@@ -119,8 +129,12 @@ Responde siempre en español.`)
 func FormatCreationCatalogSummary(
 	ideaSummary, sectorCode, sectorName string,
 	productCodes, programCodes, odsCodes []string,
+	faseMaduracion ...string,
 ) string {
 	var lines []string
+	if len(faseMaduracion) > 0 && strings.TrimSpace(faseMaduracion[0]) != "" {
+		lines = append(lines, fmt.Sprintf("- Fase de Maduración: %s", strings.TrimSpace(faseMaduracion[0])))
+	}
 	if t := strings.TrimSpace(ideaSummary); t != "" {
 		lines = append(lines, fmt.Sprintf("- Idea inicial: %s", t))
 	}

@@ -113,20 +113,26 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	}
 
 	now := time.Now().UTC()
+	fase := strings.TrimSpace(req.FaseMaduracion)
+	if fase == "" {
+		fase = "PERFIL"
+	}
+
 	project := models.Project{
-		ID:          uuid.New(),
-		TenantID:    tenantID,
-		CreatorID:   userID,
-		Name:        req.Name,
-		Description: req.Description,
-		CodeBPIN:    req.CodeBPIN,
-		Sector:      req.Sector,
-		SectorID:    sectorID,
-		ProgramCode: req.ProgramCode,
-		ProductCode: req.ProductCode,
-		Status:      constants.ProjectStatusInFormulation,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:             uuid.New(),
+		TenantID:       tenantID,
+		CreatorID:      userID,
+		Name:           req.Name,
+		Description:    req.Description,
+		CodeBPIN:       req.CodeBPIN,
+		Sector:         req.Sector,
+		SectorID:       sectorID,
+		ProgramCode:    req.ProgramCode,
+		ProductCode:    req.ProductCode,
+		FaseMaduracion: fase,
+		Status:         constants.ProjectStatusInFormulation,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
 	if req.MgaFormulationData != nil {
@@ -331,6 +337,9 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	if req.MagnitudProblema != nil {
 		project.MagnitudProblema = *req.MagnitudProblema
 	}
+	if req.FaseMaduracion != nil {
+		project.FaseMaduracion = *req.FaseMaduracion
+	}
 	if req.MgaFormulationData != nil {
 		var existingMap map[string]interface{}
 		if len(project.MgaFormulationData) > 0 {
@@ -390,6 +399,7 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 		GeneralObjective:   p.GeneralObjective,
 		SituacionExistente: p.SituacionExistente,
 		MagnitudProblema:   p.MagnitudProblema,
+		FaseMaduracion:     p.FaseMaduracion,
 		Status:             p.Status,
 		Progress:           prog,
 		Avance:             prog,

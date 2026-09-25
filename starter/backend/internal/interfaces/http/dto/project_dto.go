@@ -17,6 +17,7 @@ type CreateProjectRequest struct {
 	Localizaciones []LocationSelectionDTO `json:"localizaciones" binding:"required,min=1" validate:"required,min=1,dive"`
 	TipoInversion  string                 `json:"tipo_inversion" binding:"required" validate:"required"`
 	Tipologia      string                 `json:"tipologia" binding:"required" validate:"required"`
+	FaseMaduracion string                 `json:"fase_maduracion,omitempty" validate:"omitempty,max=50"`
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 
@@ -51,6 +52,7 @@ type ProjectResponse struct {
 	GeneralObjective   string  `json:"general_objective,omitempty"`
 	SituacionExistente string  `json:"situacion_existente,omitempty"`
 	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
+	FaseMaduracion     string  `json:"fase_maduracion,omitempty"`
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 	Status             string                     `json:"status"`
 	Progress           int                        `json:"progress"`
@@ -70,6 +72,7 @@ type PatchProjectRequest struct {
 	GeneralObjective   *string                 `json:"general_objective,omitempty" validate:"omitempty,max=10000"`
 	SituacionExistente *string                 `json:"situacion_existente,omitempty" validate:"omitempty,max=10000"`
 	MagnitudProblema   *string                 `json:"magnitud_problema,omitempty" validate:"omitempty,max=10000"`
+	FaseMaduracion     *string                 `json:"fase_maduracion,omitempty" validate:"omitempty,max=50"`
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 

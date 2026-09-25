@@ -2,8 +2,9 @@ package dto
 
 // IdeationChatRequest payload para el chat de ideación adaptativa pre-creación.
 type IdeationChatRequest struct {
-	Message   string `json:"message" validate:"required,min=1,max=8000"`
-	SessionID string `json:"session_id" validate:"omitempty,max=64"`
+	Message        string `json:"message" validate:"required,min=1,max=8000"`
+	SessionID      string `json:"session_id" validate:"omitempty,max=64"`
+	FaseMaduracion string `json:"fase_maduracion,omitempty" validate:"omitempty,max=50"`
 }
 
 // IdeationChatResponse respuesta del endpoint de ideación adaptativa.

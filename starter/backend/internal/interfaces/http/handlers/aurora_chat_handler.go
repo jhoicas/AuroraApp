@@ -53,8 +53,12 @@ func NewAuroraChatHandlerWithDeps(
 	gemini LLMClient,
 	telemetry *services.TelemetryService,
 	cfg *config.Config,
-	db *gorm.DB,
+	db ...*gorm.DB,
 ) *AuroraChatHandler {
+	var gormDB *gorm.DB
+	if len(db) > 0 {
+		gormDB = db[0]
+	}
 	return &AuroraChatHandler{
 		repo:      repo,
 		chatRepo:  chatRepo,
@@ -63,7 +67,7 @@ func NewAuroraChatHandlerWithDeps(
 		gemini:    gemini,
 		telemetry: telemetry,
 		cfg:       cfg,
-		db:        db,
+		db:        gormDB,
 	}
 }
 
@@ -289,7 +293,7 @@ func (h *AuroraChatHandler) chatProjectCreation(
 	sessionID string,
 	req dto.AuroraChatRequest,
 ) error {
-	idea, sectorCode, sectorName, productCodes, programCodes, odsCodes := extractCreationContext(req)
+	idea, sectorCode, sectorName, productCodes, programCodes, odsCodes, faseMaduracion := extractCreationContext(req)
 	ragQuery := appai.BuildProjectCreationRAGQuery(
 		idea, sectorCode, sectorName, productCodes, programCodes, odsCodes, req.Message,
 	)
@@ -307,9 +311,9 @@ func (h *AuroraChatHandler) chatProjectCreation(
 	}
 
 	catalogSummary := appai.FormatCreationCatalogSummary(
-		idea, sectorCode, sectorName, productCodes, programCodes, odsCodes,
+		idea, sectorCode, sectorName, productCodes, programCodes, odsCodes, faseMaduracion,
 	)
-	system := appai.BuildProjectCreationSystemPrompt(ragContext, catalogSummary)
+	system := appai.BuildProjectCreationSystemPrompt(ragContext, catalogSummary, faseMaduracion)
 
 	history, err := h.chatRepo.ListBySession(c.Context(), userID, sessionID, 40)
 	if err != nil {
@@ -360,12 +364,13 @@ func extractProjectContext(req dto.AuroraChatRequest) (problem, situacion, magni
 func extractCreationContext(req dto.AuroraChatRequest) (
 	ideaSummary, sectorCode, sectorName string,
 	productCodes, programCodes, odsCodes []string,
+	faseMaduracion string,
 ) {
 	if req.CreationContext == nil {
-		return "", "", "", nil, nil, nil
+		return "", "", "", nil, nil, nil, ""
 	}
 	ctx := req.CreationContext
-	return ctx.IdeaSummary, ctx.SectorCode, ctx.SectorName, ctx.ProductCodes, ctx.ProgramCodes, ctx.OdsCodes
+	return ctx.IdeaSummary, ctx.SectorCode, ctx.SectorName, ctx.ProductCodes, ctx.ProgramCodes, ctx.OdsCodes, ctx.FaseMaduracion
 }
 
 func (h *AuroraChatHandler) persistAndRespondChat(

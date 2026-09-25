@@ -21,6 +21,52 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Incorporación de la Variable "Fase de Maduración" (Perfil, Prefactibilidad, Factibilidad)
+
+- **Objetivo:** Incorporar la variable "Fase de Maduración" al proceso de creación y estructuración de proyectos MGA, capturándola desde la interfaz de usuario (Wizard de Ideación y formulario manual) y transmitiéndola como contexto al backend y al System Prompt del Asistente de IA para regular su nivel de rigor presupuestal y técnico.
+- **Backend (Go):**
+  - `starter/backend/internal/domain/models/project.go`:
+    - Agregado el campo `FaseMaduracion string` con mapeo GORM `column:fase_maduracion;type:varchar(50);default:'PERFIL'` y serialización JSON `fase_maduracion`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/db.go`:
+    - Actualizado `ensureProjectsSchema` para agregar la columna `fase_maduracion VARCHAR(50) DEFAULT 'PERFIL'` tanto en el DDL inicial como en la migración idempotente `ALTER TABLE`.
+  - `starter/backend/internal/interfaces/http/dto/project_dto.go`:
+    - Agregado `FaseMaduracion string` a `CreateProjectRequest`, `PatchProjectRequest` y `ProjectResponse`.
+  - `starter/backend/internal/interfaces/http/dto/ideation_dto.go`:
+    - Agregado `FaseMaduracion string json:"fase_maduracion,omitempty"` a `IdeationChatRequest`.
+  - `starter/backend/internal/interfaces/http/dto/aurora_chat_dto.go`:
+    - Agregado `FaseMaduracion string json:"fase_maduracion,omitempty"` a `AuroraChatCreationContext`.
+  - `starter/backend/internal/interfaces/http/handlers/project_handler.go`:
+    - Mapeo y persistencia de `FaseMaduracion` en `Create`, `Patch` y respuesta `toProjectResponse`.
+  - `starter/backend/internal/application/ai/ideation_interview_prompt.go`:
+    - Actualizado `BuildIdeationInterviewSystemPrompt` para recibir `faseMaduracion ...string` e inyectar la regla dinámica:
+      `Si el proyecto está en fase de "Perfil", permite estimaciones presupuestales aproximadas. Si está en fase de "Factibilidad", exige rigor absoluto, mencionando que se requieren diseños y presupuestos de obra detallados ítem por ítem en la cadena de valor.`
+  - `starter/backend/internal/application/ai/project_creation_prompt.go`:
+    - Actualizado `BuildProjectCreationSystemPrompt` y `FormatCreationCatalogSummary` para reflejar la fase de maduración en el prompt y el resumen de catálogos.
+  - `starter/backend/internal/interfaces/http/handlers/ideation_handler.go` & `aurora_chat_handler.go`:
+    - Propagación de `FaseMaduracion` desde las peticiones HTTP hacia los prompts del LLM.
+  - `starter/backend/internal/application/ai/ideation_interview_prompt_test.go`:
+    - Añadidas pruebas unitarias `TestBuildIdeationInterviewSystemPrompt_FaseMaduracion` cubriendo las distintas fases y el comportamiento predeterminado.
+- **Frontend (React / TypeScript):**
+  - `starter/frontend/src/store/projectStore.ts`:
+    - Añadido `fase_maduracion?: string` a las interfaces `Project` y `CreateProjectPayload`, propagándolo en el body de `createProject`.
+  - `starter/frontend/src/store/auroraCopilotStore.ts`:
+    - Añadido `ideationFaseMaduracion: string` y su acción `setIdeationFaseMaduracion(fase: string)`.
+    - Actualizado `sendIdeationMessage(message, faseMaduracion?)` para enviar `fase_maduracion` en el body hacia `/ai/ideation/chat`.
+    - Añadido `faseMaduracion` a `CreationContext` y a `mapCreationContextToApi`.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`:
+    - En modo Wizard (`step === 'wizard'`): Integrado selector interactivo de fase en la cabecera del chat con tres opciones ('Perfil', 'Prefactibilidad', 'Factibilidad') y descripciones del nivel de rigor correspondiente.
+    - En modo Formulario (`step === 'form'`): Integrado selector desplegable de Fase de Maduración.
+    - Sincronización y persistencia tanto en creación como en edición de proyectos MGA.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`:
+    - Añadido selector de "Fase de Maduración" en el panel lateral de contexto y soporte de prop `preselectedFaseMaduracion`.
+  - `starter/frontend/src/lib/auroraActionDispatcher.ts`:
+    - Incluido `fase_maduracion` al generar proyectos desde action cards `mga_generate_project`.
+- **Validación ejecutada:**
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/backend && go test ./...` -> Exit Code 0 (100% de tests passing).
+
+
 ### 2026-09-25 - Antigravity - Integración de Reglas de Auditoría y Anexos del Decreto 1278 en el Asistente de Ideación
 
 - **Objetivo:** Enseñar al Asesor Conversacional de IA (Asistente de Ideación) a evaluar continuamente la naturaleza del proyecto y advertir proactivamente sobre los anexos documentales obligatorios exigidos por el Decreto 1278 de 2023 del Valle del Cauca (TIC, Comunidades Étnicas e Infraestructura Física) antes de finalizar la ideación.

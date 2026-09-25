@@ -25,8 +25,9 @@ type AuroraChatCreationContext struct {
 	SectorCode   string   `json:"sector_code" validate:"omitempty,max=64"`
 	SectorName   string   `json:"sector_name" validate:"omitempty,max=255"`
 	ProductCodes []string `json:"product_codes" validate:"omitempty,dive,max=64"`
-	ProgramCodes []string `json:"program_codes" validate:"omitempty,dive,max=64"`
-	OdsCodes     []string `json:"ods_codes" validate:"omitempty,dive,max=32"`
+	ProgramCodes   []string `json:"program_codes" validate:"omitempty,dive,max=64"`
+	OdsCodes       []string `json:"ods_codes" validate:"omitempty,dive,max=32"`
+	FaseMaduracion string   `json:"fase_maduracion,omitempty" validate:"omitempty,max=64"`
 }
 
 type AuroraChatRequest struct {

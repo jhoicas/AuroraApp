@@ -40,17 +40,20 @@ const EMPTY_LOCATION: LocationSelection = {
 export type ProjectCreationAssistantProps = {
   preselectedSectorCode?: string;
   preselectedProductCode?: string;
+  preselectedFaseMaduracion?: string;
 };
 
 export default function ProjectCreationAssistant({
   preselectedSectorCode: propSectorCode,
   preselectedProductCode: propProductCode,
+  preselectedFaseMaduracion: propFaseMaduracion,
 }: ProjectCreationAssistantProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as {
     preselectedSectorCode?: string;
     preselectedProductCode?: string;
+    preselectedFaseMaduracion?: string;
   } | null;
 
   const preselectedSectorCode = propSectorCode ?? locationState?.preselectedSectorCode;
@@ -105,6 +108,9 @@ export default function ProjectCreationAssistant({
 
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
+  const [faseMaduracion, setFaseMaduracion] = useState(
+    propFaseMaduracion ?? locationState?.preselectedFaseMaduracion ?? 'Perfil'
+  );
 
   // MGA name fields
   const [proceso, setProceso] = useState('');
@@ -341,6 +347,7 @@ export default function ProjectCreationAssistant({
     objeto: objeto.trim(),
     localizaciones: localizaciones,
     tipoInversion: 'Territorial',
+    faseMaduracion: faseMaduracion,
   });
 
   const handleStartInterview = async () => {
@@ -444,6 +451,27 @@ export default function ProjectCreationAssistant({
                 </div>
               </AIAssistedField>
             )}
+
+            {/* ── Fase de Maduración ── */}
+            <div>
+              <label htmlFor="creation-fase-maduracion" className="block text-sm font-semibold text-gray-800 mb-1">
+                Fase de Maduración <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="creation-fase-maduracion"
+                value={faseMaduracion}
+                onChange={(e) => setFaseMaduracion(e.target.value)}
+                disabled={inputsLocked}
+                className={inputClass}
+              >
+                <option value="Perfil">Perfil (Fase 1: Estimaciones gruesas)</option>
+                <option value="Prefactibilidad">Prefactibilidad (Fase 2: Alternativas y análisis)</option>
+                <option value="Factibilidad">Factibilidad (Fase 3: Estudios e ingeniería de detalle)</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Ajusta el nivel de exigencia y rigor metodológico con el que Aurora orientará la estructuración.
+              </p>
+            </div>
 
             {/* ── Proceso MGA ── */}
             <div>

@@ -112,6 +112,7 @@ export default function CreateProjectModal({
   );
   const [tipoInversion, setTipoInversion] = useState(editProject?.mga_formulation_data?.tipo_inversion ?? 'Territorial');
   const [tipologiaProyecto, setTipologiaProyecto] = useState(editProject?.mga_formulation_data?.tipologia ?? '');
+  const [faseMaduracion, setFaseMaduracion] = useState(editProject?.fase_maduracion ?? 'Perfil');
   const [sectorId, setSectorId] = useState(editProject?.sector_id ?? '');
   const [productoPrincipal, setProductoPrincipal] = useState(editProject?.product_code ?? '');
   const [formError, setFormError] = useState<string | null>(null);
@@ -143,6 +144,7 @@ export default function CreateProjectModal({
         
         setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
         setTipologiaProyecto(identificacion.tipologia || rawMga?.tipologia || '');
+        setFaseMaduracion(editProject.fase_maduracion || 'Perfil');
         
         const foundSector = editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '';
         setSectorId(foundSector ? String(foundSector) : '');
@@ -156,6 +158,7 @@ export default function CreateProjectModal({
         setLocalizaciones([{ ...EMPTY_LOCATION }]);
         setTipoInversion('Territorial');
         setTipologiaProyecto('');
+        setFaseMaduracion('Perfil');
         
         let initialSectorId = '';
         if (preselectedSectorCode) {
@@ -181,7 +184,7 @@ export default function CreateProjectModal({
           const contextHint = (preselectedSectorCode && preselectedProductCode)
             ? ` Tengo seleccionado el Sector ${preselectedSectorCode} y el Producto ${preselectedProductCode} del Catálogo DNP.`
             : '';
-          void sendIdeationMessage(`Hola Aurora, quiero estructurar un nuevo proyecto de inversión pública.${contextHint}`);
+          void sendIdeationMessage(`Hola Aurora, quiero estructurar un nuevo proyecto de inversión pública en fase de ${faseMaduracion}.${contextHint}`, faseMaduracion);
         }, 100);
       } else {
         setStep('form');
@@ -517,6 +520,7 @@ export default function CreateProjectModal({
       setLocalizaciones([{ ...EMPTY_LOCATION }]);
       setTipoInversion('Territorial');
       setTipologiaProyecto('');
+      setFaseMaduracion('Perfil');
       setSectorId('');
       prevSectorIdRef.current = '';
       setProductoPrincipal('');
@@ -586,6 +590,7 @@ export default function CreateProjectModal({
         patchCurrentProject({ 
           name: generatedName, 
           description: objeto.trim(),
+          fase_maduracion: faseMaduracion,
           sector: selectedSector?.name ?? '', 
           sector_id: sectorId, 
           product_code: productoPrincipal || undefined,
@@ -602,6 +607,7 @@ export default function CreateProjectModal({
         await patchProject(editProject.id, {
           name: generatedName,
           description: objeto.trim(),
+          fase_maduracion: faseMaduracion,
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
@@ -623,6 +629,7 @@ export default function CreateProjectModal({
         const project = await createProject({
           name: generatedName,
           description: objeto.trim(),
+          fase_maduracion: faseMaduracion,
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
@@ -673,6 +680,37 @@ export default function CreateProjectModal({
 
         {step === 'wizard' ? (
           <div className="px-6 py-6 flex flex-col h-[60vh]">
+            {/* Selector de Fase de Maduración */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Fase de Maduración</span>
+                <span className="text-xs text-slate-600">
+                  {faseMaduracion === 'Perfil' && 'Fase 1: Estimaciones presupuestales aproximadas'}
+                  {faseMaduracion === 'Prefactibilidad' && 'Fase 2: Alternativas y análisis técnico'}
+                  {faseMaduracion === 'Factibilidad' && 'Fase 3: Estudios e ingeniería de detalle ítem por ítem'}
+                </span>
+              </div>
+              <div className="inline-flex rounded-lg bg-white p-1 border border-slate-200 shrink-0 shadow-2xs">
+                {(['Perfil', 'Prefactibilidad', 'Factibilidad'] as const).map((fase) => (
+                  <button
+                    key={fase}
+                    type="button"
+                    onClick={() => {
+                      setFaseMaduracion(fase);
+                      useAuroraCopilotStore.getState().setIdeationFaseMaduracion(fase);
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      faseMaduracion === fase
+                        ? 'bg-[#006162] text-white shadow-xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    {fase}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
               {ideationMessages.map((msg) => (
                 <div
@@ -717,7 +755,7 @@ export default function CreateProjectModal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !ideationLoading && ideationInput.trim()) {
                     e.preventDefault();
-                    void sendIdeationMessage(ideationInput);
+                    void sendIdeationMessage(ideationInput, faseMaduracion);
                     setIdeationInput('');
                   }
                 }}
@@ -727,7 +765,7 @@ export default function CreateProjectModal({
                 type="button"
                 disabled={ideationLoading || !ideationInput.trim()}
                 onClick={() => {
-                  void sendIdeationMessage(ideationInput);
+                  void sendIdeationMessage(ideationInput, faseMaduracion);
                   setIdeationInput('');
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#006162] text-white disabled:opacity-50 disabled:bg-gray-400 hover:bg-[#004d40] transition-colors"
@@ -948,6 +986,29 @@ export default function CreateProjectModal({
           </div>
 
           <hr className="border-gray-100" />
+
+          {/* ── Fase de maduración ── */}
+          <div>
+            <label htmlFor="project-fase-maduracion" className="block text-sm font-medium text-gray-700 mb-1">
+              Fase de Maduración <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="project-fase-maduracion"
+              value={faseMaduracion}
+              onChange={(e) => {
+                setFaseMaduracion(e.target.value);
+                useAuroraCopilotStore.getState().setIdeationFaseMaduracion(e.target.value);
+              }}
+              className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            >
+              <option value="Perfil">Perfil (Fase 1: Estimaciones gruesas)</option>
+              <option value="Prefactibilidad">Prefactibilidad (Fase 2: Alternativas y análisis)</option>
+              <option value="Factibilidad">Factibilidad (Fase 3: Estudios e ingeniería de detalle)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Define el nivel de exigencia técnica y presupuestal exigido para el proyecto.
+            </p>
+          </div>
 
           {/* ── Tipo de inversión ── */}
           <div>

@@ -26,6 +26,32 @@ func TestBuildIdeationInterviewSystemPrompt_ContainsDecreto1278Rules(t *testing.
 	}
 }
 
+func TestBuildIdeationInterviewSystemPrompt_FaseMaduracion(t *testing.T) {
+	// Test Default / Perfil
+	promptDefault := BuildIdeationInterviewSystemPrompt("", 1)
+	if !strings.Contains(promptDefault, "Fase actual indicada: Perfil") {
+		t.Errorf("expected default phase Perfil, got prompt: %s", promptDefault)
+	}
+	if !strings.Contains(promptDefault, `Si el proyecto está en fase de "Perfil", permite estimaciones presupuestales aproximadas.`) {
+		t.Errorf("expected Perfil rule in prompt")
+	}
+	if !strings.Contains(promptDefault, `Si está en fase de "Factibilidad", exige rigor absoluto, mencionando que se requieren diseños y presupuestos de obra detallados ítem por ítem en la cadena de valor.`) {
+		t.Errorf("expected Factibilidad rule in prompt")
+	}
+
+	// Test Explicit Factibilidad
+	promptFact := BuildIdeationInterviewSystemPrompt("", 1, "Factibilidad")
+	if !strings.Contains(promptFact, "Fase actual indicada: Factibilidad") {
+		t.Errorf("expected phase Factibilidad, got: %s", promptFact)
+	}
+
+	// Test Explicit Prefactibilidad
+	promptPre := BuildIdeationInterviewSystemPrompt("", 1, "Prefactibilidad")
+	if !strings.Contains(promptPre, "Fase actual indicada: Prefactibilidad") {
+		t.Errorf("expected phase Prefactibilidad, got: %s", promptPre)
+	}
+}
+
 func TestBuildIdeationInterviewSystemPrompt_TurnHandling(t *testing.T) {
 	// Intermediate turn
 	promptTurn2 := BuildIdeationInterviewSystemPrompt("", 2)

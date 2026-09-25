@@ -516,6 +516,17 @@ describe('COPILOT_CATALOG_ROUTES', () => {
       edt: '/admin/catalogs/edt',
       deliverables: '/admin/catalogs/deliverables',
       activities: '/admin/catalogs/activities',
+      pnd: '/admin/catalogs/pnd',
+      full: '/admin/catalog',
     });
+  });
+
+  it('gestiona la fase de maduracion de ideación por defecto y mediante su setter', () => {
+    const store = useAuroraCopilotStore.getState();
+    expect(store.ideationFaseMaduracion).toBe('Perfil');
+    store.setIdeationFaseMaduracion('Factibilidad');
+    expect(useAuroraCopilotStore.getState().ideationFaseMaduracion).toBe('Factibilidad');
+    store.resetIdeation();
+    expect(useAuroraCopilotStore.getState().ideationFaseMaduracion).toBe('Perfil');
   });
 });

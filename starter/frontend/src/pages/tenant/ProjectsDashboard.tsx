@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -36,6 +36,7 @@ function formatDate(iso: string): string {
 export default function ProjectsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const projects = useProjectStore((s) => s.projects);
   const isLoading = useProjectStore((s) => s.isLoading);
   const error = useProjectStore((s) => s.error);
@@ -45,6 +46,23 @@ export default function ProjectsDashboard() {
   const clearError = useProjectStore((s) => s.clearError);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [preselectedSectorCode, setPreselectedSectorCode] = useState<string | undefined>();
+  const [preselectedProductCode, setPreselectedProductCode] = useState<string | undefined>();
+
+  useEffect(() => {
+    const state = location.state as {
+      openIdeation?: boolean;
+      preselectedSectorCode?: string;
+      preselectedProductCode?: string;
+    } | null;
+
+    if (state?.openIdeation) {
+      setPreselectedSectorCode(state.preselectedSectorCode);
+      setPreselectedProductCode(state.preselectedProductCode);
+      setModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     void fetchProjects();
@@ -282,7 +300,16 @@ export default function ProjectsDashboard() {
         </button>
       </div>
 
-      <CreateProjectModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateProjectModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setPreselectedSectorCode(undefined);
+          setPreselectedProductCode(undefined);
+        }}
+        preselectedSectorCode={preselectedSectorCode}
+        preselectedProductCode={preselectedProductCode}
+      />
     </div>
   );
 }

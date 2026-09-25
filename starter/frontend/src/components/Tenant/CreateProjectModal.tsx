@@ -23,6 +23,8 @@ type CreateProjectModalProps = {
   open: boolean;
   onClose: () => void;
   editProject?: import('../../store/projectStore').Project;
+  preselectedSectorCode?: string;
+  preselectedProductCode?: string;
 };
 
 // ─── Constantes MGA ────────────────────────────────────────────────
@@ -47,7 +49,13 @@ const EMPTY_LOCATION: LocationSelection = {
 
 // ─── Componente principal ──────────────────────────────────────────
 
-export default function CreateProjectModal({ open, onClose, editProject }: CreateProjectModalProps) {
+export default function CreateProjectModal({
+  open,
+  onClose,
+  editProject,
+  preselectedSectorCode,
+  preselectedProductCode,
+}: CreateProjectModalProps) {
   const navigate = useNavigate();
   const createProject = useProjectStore((s) => s.createProject);
   const patchProject = useProjectStore((s) => s.patchProject);
@@ -148,9 +156,20 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         setLocalizaciones([{ ...EMPTY_LOCATION }]);
         setTipoInversion('Territorial');
         setTipologiaProyecto('');
-        setSectorId('');
-        prevSectorIdRef.current = '';
-        setProductoPrincipal('');
+        
+        let initialSectorId = '';
+        if (preselectedSectorCode) {
+          const targetCode = preselectedSectorCode.trim().toLowerCase();
+          const match = sectors.find(
+            (s) => s.code?.trim().toLowerCase() === targetCode || s.id === preselectedSectorCode
+          );
+          if (match) {
+            initialSectorId = match.id;
+          }
+        }
+        setSectorId(initialSectorId);
+        prevSectorIdRef.current = initialSectorId;
+        setProductoPrincipal(preselectedProductCode ?? '');
       }
       
       if (!editProject) {
@@ -159,13 +178,32 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
         setIdeationInput('');
         // Enviar un mensaje inicial automático para que el LLM arranque la entrevista
         setTimeout(() => {
-          void sendIdeationMessage('Hola Aurora, quiero estructurar un nuevo proyecto de inversión pública.');
+          const contextHint = (preselectedSectorCode && preselectedProductCode)
+            ? ` Tengo seleccionado el Sector ${preselectedSectorCode} y el Producto ${preselectedProductCode} del Catálogo DNP.`
+            : '';
+          void sendIdeationMessage(`Hola Aurora, quiero estructurar un nuevo proyecto de inversión pública.${contextHint}`);
         }, 100);
       } else {
         setStep('form');
       }
     }
-  }, [editProject, open]);
+  }, [editProject, open, preselectedSectorCode, preselectedProductCode, sectors]);
+
+  // Si los sectores terminan de cargar después de abrir el modal con un sector preseleccionado
+  useEffect(() => {
+    if (!open || editProject || !preselectedSectorCode || sectors.length === 0) return;
+    const targetCode = preselectedSectorCode.trim().toLowerCase();
+    const foundSector = sectors.find(
+      (s) => s.code?.trim().toLowerCase() === targetCode || s.id === preselectedSectorCode
+    );
+    if (foundSector) {
+      setSectorId(foundSector.id);
+      prevSectorIdRef.current = foundSector.id;
+      if (preselectedProductCode) {
+        setProductoPrincipal(preselectedProductCode);
+      }
+    }
+  }, [open, editProject, preselectedSectorCode, preselectedProductCode, sectors]);
 
   useEffect(() => {
     if (projectSuggestions && !editProject) {
@@ -257,9 +295,12 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   useEffect(() => {
     if (prevSectorIdRef.current !== sectorId) {
       prevSectorIdRef.current = sectorId;
+      if (preselectedProductCode && (productoPrincipal === preselectedProductCode || productoPrincipal === '')) {
+        return;
+      }
       setProductoPrincipal('');
     }
-  }, [sectorId]);
+  }, [sectorId, preselectedProductCode, productoPrincipal]);
 
   // ─── Combobox Options: Procesos & Sectores ──────────────────
   const procesoOptions: ComboboxOption[] = useMemo(
@@ -283,7 +324,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   // ─── Cargar Productos por Sector ──────────────────
   useEffect(() => {
     if (!sectorId || !selectedSectorCode) {
-      if (!editProject) setProductoPrincipal('');
+      if (!editProject && !preselectedProductCode) setProductoPrincipal('');
       return;
     }
     void fetchCatalogProducts({
@@ -291,7 +332,7 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
       limit: CATALOG_FULL_LIST_LIMIT,
       search: selectedSectorCode,
     });
-  }, [sectorId, selectedSectorCode, fetchCatalogProducts, editProject]);
+  }, [sectorId, selectedSectorCode, fetchCatalogProducts, editProject, preselectedProductCode]);
 
   // ─── Paso A: Filtrado en Tiempo Real (Sector -> Productos) ────────────────
   const filteredProducts = useMemo(() => {
@@ -331,16 +372,18 @@ export default function CreateProjectModal({ open, onClose, editProject }: Creat
   // Validación reactiva: si el producto seleccionado no existe en el sector actual, limpiarlo
   useEffect(() => {
     if (!sectorId) {
-      if (productoPrincipal) setProductoPrincipal('');
+      if (productoPrincipal && !preselectedProductCode) setProductoPrincipal('');
       return;
     }
     if (productoPrincipal && !isLoadingProducts && filteredProducts.length > 0) {
-      const exists = filteredProducts.some((p) => p.codigo_del_producto === productoPrincipal);
-      if (!exists) {
+      const exists = filteredProducts.some(
+        (p) => p.codigo_del_producto?.trim() === productoPrincipal.trim()
+      );
+      if (!exists && productoPrincipal !== preselectedProductCode) {
         setProductoPrincipal('');
       }
     }
-  }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts]);
+  }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts, preselectedProductCode]);
 
   // ─── Paso C: Opciones para SearchableCombobox de Producto (Exclusivamente filteredProducts) ───
   const productOptions: ComboboxOption[] = useMemo(

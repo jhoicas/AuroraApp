@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ActionCard from '../../components/AuroraCopilot/ActionCard';
 import AssistantMarkdown from '../../components/AuroraAsistente/AssistantMarkdown';
 import SearchableCombobox, {
@@ -37,8 +37,25 @@ const EMPTY_LOCATION: LocationSelection = {
   municipioId: null,
 };
 
-export default function ProjectCreationAssistant() {
+export type ProjectCreationAssistantProps = {
+  preselectedSectorCode?: string;
+  preselectedProductCode?: string;
+};
+
+export default function ProjectCreationAssistant({
+  preselectedSectorCode: propSectorCode,
+  preselectedProductCode: propProductCode,
+}: ProjectCreationAssistantProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as {
+    preselectedSectorCode?: string;
+    preselectedProductCode?: string;
+  } | null;
+
+  const preselectedSectorCode = propSectorCode ?? locationState?.preselectedSectorCode;
+  const preselectedProductCode = propProductCode ?? locationState?.preselectedProductCode;
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -294,6 +311,24 @@ export default function ProjectCreationAssistant() {
   const handleRemoveProduct = (code: string) => {
     setSelectedProductCodes((prev) => prev.filter((c) => c !== code));
   };
+
+  useEffect(() => {
+    if (!sectorId && preselectedSectorCode && sectors.length > 0) {
+      const target = preselectedSectorCode.trim().toLowerCase();
+      const match = sectors.find(
+        (s) => s.code?.trim().toLowerCase() === target || s.id === preselectedSectorCode
+      );
+      if (match) {
+        handleSectorChange(match.id);
+      }
+    }
+  }, [preselectedSectorCode, sectors, sectorId, handleSectorChange]);
+
+  useEffect(() => {
+    if (preselectedProductCode && !selectedProductCodes.includes(preselectedProductCode)) {
+      setSelectedProductCodes((prev) => [...prev, preselectedProductCode]);
+    }
+  }, [preselectedProductCode, selectedProductCodes]);
 
   const buildCreationContext = (): CreationContext => ({
     ideaSummary: ideaSummary.trim(),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchableCombobox, {
   type ComboboxOption,
@@ -11,10 +11,6 @@ import {
   type CatalogSector,
   type Product,
 } from '../../store/catalogStore';
-import { useProjectStore } from '../../store/projectStore';
-
-const inputClass =
-  'w-full h-12 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-[#006162] focus:ring-4 focus:ring-[#006162]/10 transition-all disabled:bg-gray-50 disabled:text-gray-400';
 
 /**
  * Catálogo DNP tenant: wizard en cascada Sector → Programa → Producto
@@ -37,18 +33,9 @@ export default function CatalogPage() {
   const clearPrograms = useCatalogStore((s) => s.clearPrograms);
   const clearProducts = useCatalogStore((s) => s.clearProducts);
 
-  const createProject = useProjectStore((s) => s.createProject);
-  const projectError = useProjectStore((s) => s.error);
-  const clearProjectError = useProjectStore((s) => s.clearError);
-  const isCreating = useProjectStore((s) => s.isLoading);
-
   const [sectorId, setSectorId] = useState('');
   const [programCode, setProgramCode] = useState('');
   const [productId, setProductId] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [projectName, setProjectName] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
@@ -160,53 +147,17 @@ export default function CatalogPage() {
     [filteredProducts],
   );
 
-  const openModal = () => {
-    if (!selectedSector || !selectedProgram || !selectedProduct) return;
-    clearProjectError();
-    setFormError(null);
-    setProjectName(
-      `${selectedProduct.producto}`.slice(0, 120).trim() ||
-        `Proyecto ${selectedProduct.codigo_del_producto}`,
-    );
-    setModalOpen(true);
-  };
-
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault();
-    const name = projectName.trim();
-    if (name.length < 3) {
-      setFormError('El nombre debe tener al menos 3 caracteres.');
-      return;
-    }
-    if (!selectedSector || !selectedProgram || !selectedProduct) {
-      setFormError('Seleccione sector, programa y producto.');
-      return;
-    }
-
-    setSubmitting(true);
-    setFormError(null);
-    try {
-      const project = await createProject({
-        name,
-        sector: selectedSector.name,
-        sector_id: selectedSector.id,
-        program_code: selectedProgram.code,
-        product_code: selectedProduct.codigo_del_producto,
-        description: `Clasificación DNP · Sector ${selectedSector.code} · Programa ${selectedProgram.code} · Producto ${selectedProduct.codigo_del_producto}`,
-        code_bpin: selectedProduct.codigo_del_producto,
-        proceso_id: 1,
-        objeto: "Creado desde el catálogo de productos",
-        localizaciones: [{ regionId: null, departamentoId: null, municipioId: null }],
-        tipo_inversion: "Territorial",
-        tipologia: "General - Esquemas SUIFP's",
-      });
-      setModalOpen(false);
-      navigate(`/tenant/projects/${project.id}`);
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'No se pudo crear el proyecto');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleFormularProyecto = () => {
+    if (!selectedSector || !selectedProduct) return;
+    const sectorCode = selectedSector.code || (selectedSector as any).codigo || '';
+    const productCode = selectedProduct.codigo_del_producto || (selectedProduct as any).codigo_producto || '';
+    navigate('/tenant/projects', {
+      state: {
+        openIdeation: true,
+        preselectedSectorCode: sectorCode,
+        preselectedProductCode: productCode,
+      },
+    });
   };
 
   return (
@@ -225,12 +176,12 @@ export default function CatalogPage() {
 
       <section className="px-6 py-8 md:px-10">
         <div className="max-w-4xl mx-auto space-y-6">
-          {(catalogError || projectError) && (
+          {catalogError && (
             <div
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
             >
-              {catalogError || projectError}
+              {catalogError}
             </div>
           )}
 
@@ -336,7 +287,7 @@ export default function CatalogPage() {
 
                 <button
                   type="button"
-                  onClick={openModal}
+                  onClick={handleFormularProyecto}
                   className="w-full sm:w-auto h-12 px-6 inline-flex items-center justify-center gap-2 bg-[#006162] hover:bg-[#004f50] text-white font-semibold rounded-lg shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] transition-all"
                 >
                   <span className="material-symbols-outlined">rocket_launch</span>
@@ -355,94 +306,6 @@ export default function CatalogPage() {
           </div>
         </div>
       </section>
-
-      {modalOpen && selectedSector && selectedProgram && selectedProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-project-title"
-        >
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 id="create-project-title" className="text-lg font-bold text-gray-900">
-                  Nombre del Proyecto
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Se creará en su entidad con la clasificación DNP seleccionada.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-                aria-label="Cerrar"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={(e) => void handleCreate(e)} className="space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-gray-700">Nombre</span>
-                <input
-                  type="text"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  className={inputClass}
-                  placeholder="Ej. Construcción de acueducto rural…"
-                  autoFocus
-                  required
-                  minLength={3}
-                  maxLength={500}
-                />
-              </label>
-
-              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600 space-y-1">
-                <p>
-                  <strong>Sector:</strong> {selectedSector.code} — {selectedSector.name}
-                </p>
-                <p>
-                  <strong>Programa:</strong> {selectedProgram.code} — {selectedProgram.name}
-                </p>
-                <p>
-                  <strong>Producto:</strong> {formatCatalogProductOptionTitle(selectedProduct)}
-                </p>
-              </div>
-
-              {(formError || projectError) && (
-                <p role="alert" className="text-sm text-red-700">
-                  {formError || projectError}
-                </p>
-              )}
-
-              <div className="flex flex-wrap justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="h-11 px-4 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  disabled={submitting || isCreating}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || isCreating}
-                  className="h-11 px-5 rounded-lg bg-[#006162] text-white font-semibold hover:bg-[#004f50] disabled:opacity-60 inline-flex items-center gap-2"
-                >
-                  {(submitting || isCreating) && (
-                    <span className="material-symbols-outlined animate-spin text-base">
-                      progress_activity
-                    </span>
-                  )}
-                  Crear proyecto
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

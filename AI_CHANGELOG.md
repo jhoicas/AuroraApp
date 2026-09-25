@@ -21,6 +21,30 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Conexión de Catálogo DNP con Creación Asistida de Proyectos
+
+- **Objetivo:** Conectar la vista del Catálogo DNP (`/tenant/catalog`) con el flujo de Creación Asistida de Proyectos en `/tenant/projects`, preseleccionando el Sector y Producto y abriendo automáticamente el asistente de ideación con Aurora y el formulario final estructurado.
+- **Archivos modificados:**
+  - `starter/frontend/src/pages/tenant/CatalogPage.tsx`:
+    - El botón "Formular Proyecto con este Producto" ahora redirige a `/tenant/projects` con `state: { openIdeation: true, preselectedSectorCode, preselectedProductCode }`.
+    - Se limpiaron estados, funciones y modales locales redundantes para unificar la creación de proyectos en el flujo guiado estándar.
+  - `starter/frontend/src/pages/tenant/ProjectsDashboard.tsx`:
+    - Detecta `state.openIdeation` mediante `useLocation`, extrae los códigos preseleccionados y abre automáticamente `CreateProjectModal`.
+    - Limpia el historial con `window.history.replaceState` para evitar reaperturas accidentales al refrescar la página.
+  - `starter/frontend/src/pages/tenant/ProjectCreationAssistant.tsx`:
+    - Acepta props y estado de router para `preselectedSectorCode` y `preselectedProductCode`.
+    - Preselecciona el sector y producto cuando están disponibles en el catálogo.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx`:
+    - Acepta `preselectedSectorCode` y `preselectedProductCode` como props opcionales.
+    - Autocompleta `sectorId` (mapeando código de sector a su UUID en el catálogo) y `productoPrincipal`.
+    - Inyecta el contexto del sector y producto en el mensaje inicial del asistente de ideación de Aurora.
+    - Protege la selección de producto contra borrado accidental durante la carga reactiva de productos por sector.
+- **Validación ejecutada:**
+  - `npx tsc --noEmit` -> Exit Code 0 (limpio).
+  - `npx tsc -b` -> Exit Code 0 (limpio).
+  - Backend `go build ./...` -> Exit Code 0 (limpio).
+
+
 ### 2026-09-25 - Antigravity - Eliminación de Textos por Defecto en Árbol de Problemas (UX)
 
 - **Objetivo:** Eliminar los textos por defecto ("Nueva causa directa...", "Nuevo efecto directo...", etc.) al crear nodos en el Árbol de Problemas, permitiendo que las tarjetas se abran con el `<textarea>` y `<AIAssistedField>` vacíos y listos para recibir input o asistencia de IA.

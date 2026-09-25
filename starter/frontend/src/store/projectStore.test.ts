@@ -20,6 +20,7 @@ const project = (overrides: Partial<Project> = {}): Project => ({
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   ...overrides,
+  progress: overrides.progress ?? 0,
 });
 
 const budgetItem = (id: string) => ({

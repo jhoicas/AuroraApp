@@ -21,6 +21,19 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Corrección Tipado TS2322 en Mocks de Test y Soporte Resiliente de Progress
+
+- **Objetivo:** Resolver el error de compilación `TS2322` en `src/store/projectStore.test.ts` que bloqueaba el pipeline de build de producción (`tsc -b && vite build`) tras la introducción del campo `progress` en el modelo `Project`.
+- **Archivos modificados:**
+  - `starter/frontend/src/store/projectStore.test.ts`: Se actualizó la función fábrica `project` para inicializar por defecto `progress: overrides.progress ?? 0`, asegurando total compatibilidad con la interfaz.
+  - `starter/frontend/src/store/projectStore.ts`: Se definió `progress?: number` en el tipo `Project` para mayor resiliencia en casos donde el progreso aún no haya sido provisto o instanciado.
+- **Validaciones ejecutadas:**
+  - `cd starter/frontend && npx tsc -b` completado con Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` completado con Exit Code 0.
+  - `cd starter/frontend && npm run build` (`tsc -b && vite build`) completado con Exit Code 0.
+  - `npx vitest run src/store/projectStore.test.ts` (30/30 pruebas superadas).
+  - `npx vitest run src/pages/tenant/ProjectsDashboard.test.tsx` (26/26 pruebas superadas).
+
 ### 2026-09-16 - Antigravity - Integración de Autollenado AI en Campos MGA
 
 - **Objetivo:** Finalizar la integración del componente `AIAssistedField` en los formularios MGA restantes para sugerencias de autollenado contextual guiadas por Aurora Copilot.

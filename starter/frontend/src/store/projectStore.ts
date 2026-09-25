@@ -18,7 +18,7 @@ export type Project = {
   situacion_existente?: string;
   magnitud_problema?: string;
 	status: string;
-	progress: number;
+	progress?: number;
 	mga_formulation_data?: Record<string, any> | null;
 	created_at: string;
 	updated_at: string;

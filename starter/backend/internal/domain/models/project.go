@@ -27,6 +27,7 @@ type Project struct {
 	MagnitudProblema   string         `gorm:"column:magnitud_problema;type:text" json:"magnitud_problema,omitempty"`
 	MgaFormulationData datatypes.JSON `gorm:"type:jsonb;column:mga_formulation_data;default:'{}'" json:"mga_formulation_data"`
 	Status             string         `gorm:"column:status;type:varchar(50);not null;default:'DRAFT';index" json:"status"`
+	Progress           int            `gorm:"-" json:"progress"`
 	CreatedAt          time.Time      `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt          time.Time      `gorm:"column:updated_at;not null" json:"updated_at"`
 	DeletedAt          gorm.DeletedAt `gorm:"column:deleted_at;index" json:"-"`

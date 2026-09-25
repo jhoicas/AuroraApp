@@ -33,18 +33,6 @@ function formatDate(iso: string): string {
   }
 }
 
-function statusProgress(status: string): number {
-  const map: Record<string, number> = {
-    DRAFT: 15,
-    IN_FORMULATION: 45,
-    SUBMITTED: 70,
-    APPROVED: 100,
-    REJECTED: 100,
-    ARCHIVED: 100,
-  };
-  return map[status] ?? 30;
-}
-
 export default function ProjectsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -230,7 +218,7 @@ export default function ProjectsDashboard() {
       {projects.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {projects.map((project) => {
-            const progress = statusProgress(project.status);
+            const progress = project.progress ?? 0;
             return (
               <div
                 key={project.id}
@@ -259,7 +247,7 @@ export default function ProjectsDashboard() {
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-4">
                     <div
                       className="bg-[#006162] h-full rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
+                      style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                     />
                   </div>
                   <Link

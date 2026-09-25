@@ -32,6 +32,7 @@ const project = (overrides: Partial<Project> = {}): Project =>
     sector: 'Agua potable',
     code_bpin: '2024-001',
     status: 'IN_FORMULATION',
+    progress: 30,
     created_at: '2026-03-11T10:00:00Z',
     ...overrides,
   }) as Project;
@@ -239,8 +240,25 @@ describe('ProjectsDashboard', () => {
     await user.click(await screen.findByRole('button', { name: /Crear nuevo proyecto/ }));
     const modal = await screen.findByRole('dialog');
 
-    await user.click(within(modal).getByRole('button', { name: 'Cancelar' }));
+    const closeBtn = within(modal).getByRole('button', { name: /Cerrar|Cancelar/i });
+    await user.click(closeBtn);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('muestra el avance visual y numérico estrictamente de project.progress (asumiendo 0 si es null)', async () => {
+    serveDashboard(
+      [
+        project({ id: 'p-prog-1', name: 'Proyecto con 80%', progress: 80 }),
+        project({ id: 'p-prog-2', name: 'Proyecto sin avance', progress: (null as unknown as number) }),
+      ],
+      [],
+    );
+
+    renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+
+    expect(await screen.findByText('Proyecto con 80%')).toBeInTheDocument();
+    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
   it('tolera nombres largos, fechas inválidas y estados fuera del catálogo', async () => {

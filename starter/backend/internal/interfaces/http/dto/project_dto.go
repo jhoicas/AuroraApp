@@ -53,9 +53,14 @@ type ProjectResponse struct {
 	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 	Status             string                     `json:"status"`
+	Progress           int                        `json:"progress"`
+	Avance             int                        `json:"avance"`
 	CreatedAt          string                     `json:"created_at"`
 	UpdatedAt          string                     `json:"updated_at"`
 }
+
+// ProjectDTO es un alias de ProjectResponse para compatibilidad.
+type ProjectDTO = ProjectResponse
 
 // PatchProjectRequest permite actualización parcial asíncrona de campos.
 type PatchProjectRequest struct {

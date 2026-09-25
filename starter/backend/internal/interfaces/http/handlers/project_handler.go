@@ -145,7 +145,10 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create project"})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(toProjectResponse(project))
+	repo := postgres.NewProjectRepository(h.db)
+	prog, _ := repo.CalculateProgress(c.Context(), project.ID)
+
+	return c.Status(fiber.StatusCreated).JSON(toProjectResponse(project, prog))
 }
 
 func (h *ProjectHandler) List(c *fiber.Ctx) error {
@@ -178,9 +181,23 @@ func (h *ProjectHandler) List(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list projects"})
 	}
 
+	repo := postgres.NewProjectRepository(h.db)
+	projectIDs := make([]uuid.UUID, len(projects))
+	for i, p := range projects {
+		projectIDs[i] = p.ID
+	}
+	progressMap, err := repo.CalculateProgressForProjects(c.Context(), projectIDs)
+	if err != nil {
+		log.Printf("[ProjectHandler.List] warning: could not calculate progress: %v", err)
+	}
+
 	data := make([]dto.ProjectResponse, 0, len(projects))
 	for _, p := range projects {
-		data = append(data, toProjectResponse(p))
+		prog := 0
+		if progressMap != nil {
+			prog = progressMap[p.ID]
+		}
+		data = append(data, toProjectResponse(p, prog))
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
@@ -216,7 +233,10 @@ func (h *ProjectHandler) GetByID(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load project"})
 	}
 
-	return c.JSON(toProjectResponse(*project))
+	repo := postgres.NewProjectRepository(h.db)
+	prog, _ := repo.CalculateProgress(c.Context(), project.ID)
+
+	return c.JSON(toProjectResponse(*project, prog))
 }
 
 func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
@@ -261,7 +281,9 @@ func (h *ProjectHandler) UpdateDetails(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update project details"})
 	}
 
-	return c.JSON(toProjectResponse(*project))
+	prog, _ := repo.CalculateProgress(c.Context(), project.ID)
+
+	return c.JSON(toProjectResponse(*project, prog))
 }
 
 func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
@@ -342,10 +364,18 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("failed to patch project: %v", err)})
 	}
 
-	return c.JSON(toProjectResponse(*project))
+	repo := postgres.NewProjectRepository(h.db)
+	prog, _ := repo.CalculateProgress(c.Context(), project.ID)
+
+	return c.JSON(toProjectResponse(*project, prog))
 }
 
-func toProjectResponse(p models.Project) dto.ProjectResponse {
+func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
+	prog := p.Progress
+	if len(progress) > 0 {
+		prog = progress[0]
+	}
+
 	resp := dto.ProjectResponse{
 		ID:                 p.ID.String(),
 		TenantID:           p.TenantID.String(),
@@ -361,6 +391,8 @@ func toProjectResponse(p models.Project) dto.ProjectResponse {
 		SituacionExistente: p.SituacionExistente,
 		MagnitudProblema:   p.MagnitudProblema,
 		Status:             p.Status,
+		Progress:           prog,
+		Avance:             prog,
 		CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),
 	}

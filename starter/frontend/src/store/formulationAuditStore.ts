@@ -8,6 +8,7 @@ type FormulationAuditStoreState = {
   error: string | null;
   lastProjectId: string | null;
   runAudit: (projectId: string) => Promise<AuditResult>;
+  toggleFindingResolved: (findingId: string) => void;
   clearAudit: () => void;
   clearError: () => void;
 };
@@ -40,6 +41,21 @@ export const useFormulationAuditStore = create<FormulationAuditStoreState>((set)
       set({ isAuditing: false, error: message });
       throw err;
     }
+  },
+
+  toggleFindingResolved: (findingId: string) => {
+    set((state) => {
+      if (!state.auditResult) return {};
+      const updatedFindings = state.auditResult.findings.map((f) =>
+        f.id === findingId ? { ...f, isResolved: !f.isResolved } : f
+      );
+      return {
+        auditResult: {
+          ...state.auditResult,
+          findings: updatedFindings,
+        },
+      };
+    });
   },
 
   clearAudit: () => set({ auditResult: null, error: null, lastProjectId: null }),

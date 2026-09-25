@@ -13,6 +13,7 @@ import AlternativasTab from './AlternativasTab';
 import NecesidadesTab from './NecesidadesTab';
 import AnalisisTecnicoTab from './AnalisisTecnicoTab';
 import LocalizacionTab from './LocalizacionTab';
+import CadenaValorTab from './CadenaValorTab';
 import RiesgosTab from './RiesgosTab';
 import IngresosBeneficiosTab from './IngresosBeneficiosTab';
 import PrestamosTab from './PrestamosTab';
@@ -35,6 +36,7 @@ export type MgaLayoutTabId =
   | 'necesidades'
   | 'analisis-tecnico'
   | 'localizacion'
+  | 'cadena-valor'
   | 'riesgos'
   | 'ingresos-beneficios'
   | 'prestamos'
@@ -74,6 +76,7 @@ const SUB_SECTIONS_PREPARACION: MgaSubSection[] = [
   { id: 'necesidades', label: 'Necesidades' },
   { id: 'analisis-tecnico', label: 'Análisis técnico' },
   { id: 'localizacion', label: 'Localización' },
+  { id: 'cadena-valor', label: 'Cadena de valor' },
   { id: 'riesgos', label: 'Riesgos' },
   { id: 'ingresos-beneficios', label: 'Ingresos y beneficios' },
   { id: 'prestamos', label: 'Préstamos' },
@@ -87,6 +90,14 @@ const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
 const SUB_SECTIONS_PROGRAMACION: MgaSubSection[] = [
   { id: 'programacion', label: 'Indicadores y Financiación' },
 ];
+
+export function getMainStageForTab(tab: MgaLayoutTabId): MgaMainStageId {
+  if (SUB_SECTIONS_IDENTIFICACION.some((s) => s.id === tab)) return 'identificacion';
+  if (SUB_SECTIONS_PREPARACION.some((s) => s.id === tab)) return 'preparacion';
+  if (SUB_SECTIONS_EVALUACION.some((s) => s.id === tab)) return 'evaluacion';
+  if (SUB_SECTIONS_PROGRAMACION.some((s) => s.id === tab)) return 'programacion';
+  return 'identificacion';
+}
 
 export type MGALayoutProps = {
   project: Project;
@@ -152,6 +163,7 @@ function useMgaSectionStatuses(project: Project) {
   const cNecesidades = !!formulation.completedSections.necesidades;
   const cAnalisisTecnico = !!formulation.completedSections.analisisTecnico;
   const cLocalizacion = !!formulation.completedSections.localizacion;
+  const cCadenaValor = !!formulation.completedSections['cadena-valor'];
   const cRiesgos = !!formulation.completedSections.riesgos;
   const cIngresosBeneficios = !!formulation.completedSections.ingresosBeneficios;
   const cPrestamos = !!formulation.completedSections.prestamos;
@@ -165,12 +177,12 @@ function useMgaSectionStatuses(project: Project) {
     'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
     'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
     'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
-    'cadena-valor': 'LOCKED',
     'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
     'necesidades': cNecesidades ? 'COMPLETED' : (cAlternativas ? 'ACTIVE' : 'LOCKED'),
     'analisis-tecnico': cAnalisisTecnico ? 'COMPLETED' : (cNecesidades ? 'ACTIVE' : 'LOCKED'),
     'localizacion': cLocalizacion ? 'COMPLETED' : (cAnalisisTecnico ? 'ACTIVE' : 'LOCKED'),
-    'riesgos': cRiesgos ? 'COMPLETED' : (cLocalizacion ? 'ACTIVE' : 'LOCKED'),
+    'cadena-valor': cCadenaValor ? 'COMPLETED' : (cLocalizacion ? 'ACTIVE' : 'LOCKED'),
+    'riesgos': cRiesgos ? 'COMPLETED' : (cCadenaValor ? 'ACTIVE' : 'LOCKED'),
     'ingresos-beneficios': cIngresosBeneficios ? 'COMPLETED' : (cRiesgos ? 'ACTIVE' : 'LOCKED'),
     'prestamos': cPrestamos ? 'COMPLETED' : (cIngresosBeneficios ? 'ACTIVE' : 'LOCKED'),
     'depreciacion': cDepreciacion ? 'COMPLETED' : (cPrestamos ? 'ACTIVE' : 'LOCKED'),
@@ -218,6 +230,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <AnalisisTecnicoTab project={project} />;
     case 'localizacion':
       return <LocalizacionTab project={project} />;
+    case 'cadena-valor':
+      return <CadenaValorTab project={project} />;
     case 'riesgos':
       return <RiesgosTab project={project} />;
     case 'ingresos-beneficios':
@@ -257,12 +271,9 @@ export default function MGALayout({
     project.name?.trim() ||
     'Proyecto sin título';
 
-  // We find the first non-completed stage or default to identificacion
-  const activeMainStage: MgaMainStageId = 
-    mainStageStatuses.identificacion !== 'COMPLETED' ? 'identificacion' :
-    mainStageStatuses.preparacion !== 'COMPLETED' ? 'preparacion' :
-    mainStageStatuses.evaluacion !== 'COMPLETED' ? 'evaluacion' :
-    mainStageStatuses.programacion !== 'COMPLETED' ? 'programacion' : 'presentar';
+  const targetStageFromTab = getMainStageForTab(activeTab);
+  const [userSelectedStage, setUserSelectedStage] = useState<MgaMainStageId | null>(null);
+  const activeMainStage: MgaMainStageId = userSelectedStage ?? targetStageFromTab;
 
   return (
     <div className="flex min-h-[32rem] flex-col overflow-hidden rounded-lg border border-outline-variant/40 bg-surface font-body text-gray-800 shadow-sm">
@@ -322,6 +333,17 @@ export default function MGALayout({
                 key={stage.id}
                 type="button"
                 disabled={isLocked}
+                onClick={() => {
+                  setUserSelectedStage(stage.id);
+                  const subList =
+                    stage.id === 'identificacion' ? SUB_SECTIONS_IDENTIFICACION :
+                    stage.id === 'preparacion' ? SUB_SECTIONS_PREPARACION :
+                    stage.id === 'evaluacion' ? SUB_SECTIONS_EVALUACION :
+                    stage.id === 'programacion' ? SUB_SECTIONS_PROGRAMACION : SUB_SECTIONS_IDENTIFICACION;
+                  if (subList[0]) {
+                    onChangeSubTab(subList[0].id);
+                  }
+                }}
                 className={btnClass}
                 aria-current={isActive ? 'page' : undefined}
               >

@@ -21,6 +21,53 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Refactorización y Potenciación del Simulacro de Auditoría Previa (Validador Estricto MGA)
+
+- **Objetivo:** Refactorizar el "Simulacro de Auditoría Previa" para convertirlo en un validador híbrido y estricto de requisitos mínimos de la Metodología General Ajustada (MGA - Colombia), evitando devoluciones formales ante el Banco de Programas y Proyectos de Inversión Pública (DNP / Gobernaciones).
+- **Backend (Go):**
+  - `starter/backend/internal/interfaces/http/dto/formulation_audit_dto.go`:
+    - Creado `AuditFinding` con campos: `ID` (string), `Message` (string), `Severity` ("CRITICAL" | "WARNING" | "SUCCESS"), `SectionKey` (string con tab/sección MGA correspondiente), `IsResolved` (bool).
+    - Actualizado `FormulationAuditResponse` para retornar `findings []AuditFinding` además de `blockers` y `warnings` para retrocompatibilidad.
+  - `starter/backend/internal/infrastructure/persistence/postgres/mga_repository.go`:
+    - Implementados métodos de conteo determinista: `CountTargetPopulations(ctx, projectID, tenantID)` y `CountAlternatives(ctx, projectID, tenantID)`.
+  - `starter/backend/internal/application/project/formulation_audit_service.go`:
+    - Implementada validación híbrida: controles deterministas de la "columna vertebral" MGA + análisis cualitativo y narrativo.
+    - Regla 1 (Árbol de problemas): El problema central debe tener al menos 1 causa (directa o indirecta) y al menos 1 efecto (directo o indirecto) -> `CRITICAL`.
+    - Regla 2 (Población y Localización): Al menos 1 población objetivo y localización geográfica definida (departamento, municipio o centro poblado) -> `CRITICAL`.
+    - Regla 3 (Objetivos y Alternativas): Cada objetivo específico debe asociarse a al menos una alternativa de solución formulada -> `CRITICAL`.
+    - Regla 4 (Cadena de Valor EDT y Costos): La EDT debe contener actividades y ninguna actividad puede tener cantidad <= 0 o costo unitario <= 0 -> `CRITICAL`.
+    - Regla 5 (Calidad narrativa): Diagnóstico de situación existente (min. 20 caracteres) y magnitud del problema (min. 10 caracteres) -> `WARNING`.
+    - Regla 6 (Verificados): Controles superados generan hallazgos tipo `SUCCESS`.
+  - `starter/backend/internal/interfaces/http/handlers/formulation_audit_handler.go`:
+    - Inyectado `postgres.NewProjectEdtRepository(db)` en `FormulationAuditService` para verificación presupuestal de actividades EDT.
+  - `starter/backend/internal/application/project/formulation_audit_service_test.go`:
+    - Cobertura completa de casos bloqueantes deterministas (árbol de problemas, población, localización, objetivos sin alternativas, EDT sin actividades o con costos en cero), proyecto inexistente y proyecto aprobado.
+- **Frontend (React / TypeScript / Zustand):**
+  - `starter/frontend/src/lib/formulationAuditApi.ts`:
+    - Actualizados tipos: `AuditSeverity` ('CRITICAL' | 'WARNING' | 'SUCCESS'), `AuditFinding` (`id`, `message`, `severity`, `sectionKey`, `isResolved`) y mapeo normalizado bidireccional (`snake_case` / `camelCase`).
+  - `starter/frontend/src/store/formulationAuditStore.ts`:
+    - Añadida acción `toggleFindingResolved(findingId: string)` para permitir el seguimiento interactivo del usuario sobre los hallazgos resueltos.
+  - `starter/frontend/src/components/Tenant/MGA/FormulationAuditPanel.tsx`:
+    - Agrupación visual en 3 paneles diferenciados:
+      1. **Hallazgos Críticos Bloqueantes (`CRITICAL`)**: Contenedor rojo de alta visibilidad, badge "BLOQUEANTE", contador de pendientes, descripción destacada.
+      2. **Advertencias Cualitativas (`WARNING`)**: Contenedor ámbar, badge "ADVERTENCIA MGA".
+      3. **Requisitos Estructurales Verificados (`SUCCESS`)**: Contenedor esmeralda, badge "VERIFICADO".
+    - Botón "Ir a gestionar" / "Corregir ↗" en cada hallazgo que enruta dinámicamente al Tab o Sub-tab MGA exacto indicado por el `SectionKey` o texto del hallazgo.
+    - Checkbox para marcar hallazgos como resueltos (`isResolved`).
+    - **Bloqueo de Viabilidad (Requisito 4)**: Implementado botón "Enviar a Viabilidad" que permanece `disabled` mientras existan hallazgos `CRITICAL`, desplegando tooltip restrictivo y alerta explicativa; cuando todos los hallazgos críticos están subsanados, se habilita y permite enviar el proyecto actualizando su estado a `EN_VIABILIDAD`.
+  - `starter/frontend/src/components/Tenant/MGA/MGALayout.tsx`:
+    - Integrado `CadenaValorTab` en `SUB_SECTIONS_PREPARACION` y en `renderWorkArea`.
+    - Sincronización automática de etapa principal (`activeMainStage`) según el sub-tab destino y navegación manual entre etapas.
+  - `starter/frontend/src/pages/tenant/ProjectDetailPage.tsx`:
+    - Estado reactivo en el botón "Validar y Enviar", señalando estado bloqueado si existen hallazgos críticos pendientes y conectando `onSentToViability` para refrescar el proyecto.
+  - `starter/frontend/src/components/Tenant/MGA/FormulationAuditPanel.test.tsx` [NUEVO]:
+    - Suite de 7 pruebas unitarias con Vitest y `@testing-library/react` verificando mapeo de tabs, agrupación por severidad, bloqueo estricto de viabilidad y toggle de resolución.
+- **Validación:**
+  - `cd starter/backend && go test -v ./internal/application/project/...` -> 100% PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx vitest run src/components/Tenant/MGA/FormulationAuditPanel.test.tsx` -> 7/7 PASS (Exit Code 0).
+  - `cd starter/frontend && npm run build` (`tsc -b && vite build`) -> Exit Code 0.
+
 ### 2026-09-25 - Antigravity - Corrección Overflow en Tabla de Información Básica (PDF Dec. 1278)
 
 - **Objetivo:** Corregir el desbordamiento visual de texto en las celdas de la tabla de metadatos básicos (Sección 1: "Nombre del proyecto") y demás tablas del PDF del Documento Técnico del Valle del Cauca (`technical_document_valle_service.go`).

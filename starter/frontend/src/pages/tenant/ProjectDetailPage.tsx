@@ -10,6 +10,7 @@ import MgaPdfExportButton from '../../components/Tenant/MGA/MgaPdfExportButton';
 import TechnicalDocumentValleExportButton from '../../components/Tenant/MGA/TechnicalDocumentValleExportButton';
 import { useAuth } from '../../context/AuthContext';
 import { useProjectStore } from '../../store/projectStore';
+import { useFormulationAuditStore } from '../../store/formulationAuditStore';
 
 type Tab = 'formulation' | 'budget' | 'summary';
 
@@ -23,6 +24,14 @@ export default function ProjectDetailPage() {
   const fetchBudget = useProjectStore((s) => s.fetchBudget);
   const clearCurrentProject = useProjectStore((s) => s.clearCurrentProject);
   const clearError = useProjectStore((s) => s.clearError);
+
+  const auditResult = useFormulationAuditStore((s) => s.auditResult);
+  const lastProjectId = useFormulationAuditStore((s) => s.lastProjectId);
+  const hasCriticalFindings = Boolean(
+    auditResult &&
+    lastProjectId === id &&
+    auditResult.findings.some((f) => f.severity === 'CRITICAL')
+  );
 
   const { user } = useAuth();
 
@@ -104,10 +113,21 @@ export default function ProjectDetailPage() {
                   setTab('formulation');
                   setAuditModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded border border-[#006162] bg-[#006162] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#004d4e]"
+                className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                  hasCriticalFindings
+                    ? 'border border-red-500 bg-red-50 text-red-700 hover:bg-red-100'
+                    : 'border border-[#006162] bg-[#006162] text-white hover:bg-[#004d4e]'
+                }`}
+                title={
+                  hasCriticalFindings
+                    ? 'Existen hallazgos críticos bloqueando el paso a viabilidad. Haga clic para revisar y corregir.'
+                    : 'Validar formulación y enviar a viabilidad'
+                }
               >
-                <span className="material-symbols-outlined text-base">fact_check</span>
-                Validar y Enviar
+                <span className="material-symbols-outlined text-base">
+                  {hasCriticalFindings ? 'warning' : 'fact_check'}
+                </span>
+                {hasCriticalFindings ? 'Auditoría (Bloqueado)' : 'Validar y Enviar'}
               </button>
               <TechnicalDocumentValleExportButton
                 projectId={currentProject.id}
@@ -233,6 +253,10 @@ export default function ProjectDetailPage() {
                 projectId={currentProject.id}
                 compact
                 onNavigateToTab={handleAuditNavigateToTab}
+                onSentToViability={() => {
+                  setAuditModalOpen(false);
+                  void fetchProjectById(currentProject.id);
+                }}
               />
             </div>
           </div>

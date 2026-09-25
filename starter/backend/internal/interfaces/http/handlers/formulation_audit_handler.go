@@ -17,8 +17,9 @@ type FormulationAuditHandler struct {
 
 func NewFormulationAuditHandler(db *gorm.DB) *FormulationAuditHandler {
 	mgaRepo := postgres.NewMgaRepository(db)
+	edtRepo := postgres.NewProjectEdtRepository(db)
 	return NewFormulationAuditHandlerWithDeps(
-		appproject.NewFormulationAuditService(postgres.NewProjectRepository(db), mgaRepo),
+		appproject.NewFormulationAuditService(postgres.NewProjectRepository(db), mgaRepo, edtRepo),
 	)
 }
 
@@ -46,8 +47,20 @@ func (h *FormulationAuditHandler) GetAuditReport(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "audit failed"})
 	}
 
+	dtoFindings := make([]dto.AuditFinding, 0, len(result.Findings))
+	for _, f := range result.Findings {
+		dtoFindings = append(dtoFindings, dto.AuditFinding{
+			ID:         f.ID,
+			Message:    f.Message,
+			Severity:   f.Severity,
+			SectionKey: f.SectionKey,
+			IsResolved: f.IsResolved,
+		})
+	}
+
 	return c.JSON(dto.FormulationAuditResponse{
 		Passed:   result.Passed,
+		Findings: dtoFindings,
 		Blockers: result.Blockers,
 		Warnings: result.Warnings,
 	})

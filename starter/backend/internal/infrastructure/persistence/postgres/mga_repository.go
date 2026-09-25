@@ -55,6 +55,24 @@ func (r *MgaRepository) CountDirectEffects(ctx context.Context, projectID, tenan
 	return count, err
 }
 
+func (r *MgaRepository) CountTargetPopulations(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaPopulation{}).
+		Where("project_id = ? AND tenant_id = ? AND LOWER(population_type) = ?", projectID, tenantID, "objetivo").
+		Count(&count).Error
+	return count, err
+}
+
+func (r *MgaRepository) CountAlternatives(ctx context.Context, projectID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MgaAlternative{}).
+		Where("project_id = ? AND tenant_id = ?", projectID, tenantID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *MgaRepository) ListCauses(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.MgaCause, error) {
 	causes := make([]models.MgaCause, 0)
 	err := r.db.WithContext(ctx).

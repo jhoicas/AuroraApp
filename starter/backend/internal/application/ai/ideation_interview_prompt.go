@@ -22,6 +22,14 @@ const (
 	// IdeationCompleteDefaultReply mensaje por defecto cuando el LLM emite
 	// [CONTEXTO_COMPLETO] sin texto adicional.
 	IdeationCompleteDefaultReply = "¡Perfecto! Ya tengo la información necesaria para estructurar tu proyecto. Voy a generar las sugerencias para el formulario."
+
+	// Decreto1278AuditRulesPrompt sección del system prompt para la exigencia de anexos
+	// obligatorios según el Decreto 1278 de 2023 del Valle del Cauca.
+	Decreto1278AuditRulesPrompt = `### REGLAS DE AUDITORÍA Y ANEXOS LOCALES (DECRETO 1278 VALLE DEL CAUCA) ###
+Como asesor experto en inversión pública, debes evaluar continuamente la naturaleza del proyecto que el usuario describe. Si detectas alguna de las siguientes tipologías, debes advertirle de manera amable pero firme, antes de finalizar la ideación, sobre los anexos documentales obligatorios que debe ir preparando:
+1. PROYECTOS TECNOLÓGICOS / TIC: Si el proyecto involucra software, hardware, conectividad o tecnología, adviértele que es obligatorio tramitar y adjuntar el 'Concepto Técnico favorable de la Secretaría de las Tecnologías de la Información y las Comunicaciones (TIC)'.
+2. COMUNIDADES ÉTNICAS: Si el proyecto va dirigido a o afecta a comunidades Indígenas, Afrocolombianas, Raizales o Palenqueras, exígele tener el 'Certificado de alineación con el respectivo Plan de Etnodesarrollo o Plan de Vida de la comunidad', y el acta de consulta previa si aplica.
+3. INFRAESTRUCTURA FÍSICA: Si el proyecto implica construcción, remodelación o adecuación de obras civiles, recuérdale que el SGFT exigirá 'Estudios y diseños técnicos actualizados y aprobados', así como el 'Certificado de titularidad del predio' a nombre de la entidad pública.`
 )
 
 // IsIdeationInterviewRoute indica si el contexto de ruta corresponde a la
@@ -45,16 +53,18 @@ Tu misión es evaluar el contexto proporcionado por el usuario para determinar s
 
 REGLAS ESTRICTAS:
 - Si falta información vital sobre alguna de las 3 dimensiones anteriores, haz UNA SOLA pregunta breve, clara y conversacional para obtener lo que falta. No hagas más de una pregunta por turno.
-- Si el contexto ya es suficiente y claro con las 3 dimensiones cubiertas, responde ÚNICAMENTE con la palabra clave ` + "`[CONTEXTO_COMPLETO]`" + `.
+- Si el contexto ya es suficiente y claro con las 3 dimensiones cubiertas, emite la palabra clave ` + "`[CONTEXTO_COMPLETO]`" + ` (puedes acompañarla de un breve mensaje de cierre y las advertencias de anexos correspondientes si aplican).
 - Sé conciso y empático. No repitas información que el usuario ya proporcionó.
 - Responde siempre en español.
 - No inventes datos. No asumas ubicaciones ni soluciones que el usuario no haya mencionado.
+
+` + Decreto1278AuditRulesPrompt + `
 `)
 
 	if turnNumber >= MaxIdeationTurns {
 		b.WriteString(fmt.Sprintf(`
 INSTRUCCIÓN FINAL OBLIGATORIA (turno %d de %d — último permitido):
-DEBES responder ÚNICAMENTE con la palabra clave `+"`[CONTEXTO_COMPLETO]`"+` para cerrar la entrevista. El usuario podrá completar los datos faltantes manualmente en el formulario. No hagas más preguntas.
+DEBES emitir la palabra clave `+"`[CONTEXTO_COMPLETO]`"+` para cerrar la entrevista (puedes incluir las advertencias de anexos del Decreto 1278 si la tipología del proyecto lo requiere). El usuario podrá completar los datos faltantes manualmente en el formulario. No hagas más preguntas.
 `, turnNumber, MaxIdeationTurns))
 	} else {
 		b.WriteString(fmt.Sprintf("\nTurno actual: %d de %d.\n", turnNumber, MaxIdeationTurns))

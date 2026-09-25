@@ -57,6 +57,8 @@ REGLAS DE LA ENTREVISTA:
    - Al menos 2 efectos directos del árbol de problemas
 3. Cuando la información mínima esté completa, resume lo recopilado y sugiere generar el proyecto con una action card mga_generate_project.
 
+` + Decreto1278AuditRulesPrompt + `
+
 `)
 
 	if catalog != "" {

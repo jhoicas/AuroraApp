@@ -21,6 +21,25 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Integración de Reglas de Auditoría y Anexos del Decreto 1278 en el Asistente de Ideación
+
+- **Objetivo:** Enseñar al Asesor Conversacional de IA (Asistente de Ideación) a evaluar continuamente la naturaleza del proyecto y advertir proactivamente sobre los anexos documentales obligatorios exigidos por el Decreto 1278 de 2023 del Valle del Cauca (TIC, Comunidades Étnicas e Infraestructura Física) antes de finalizar la ideación.
+- **Backend (Go):**
+  - `starter/backend/internal/application/ai/ideation_interview_prompt.go`:
+    - Definida la constante `Decreto1278AuditRulesPrompt` con la sección delimitada `### REGLAS DE AUDITORÍA Y ANEXOS LOCALES (DECRETO 1278 VALLE DEL CAUCA) ###` y las 3 tipologías exactas:
+      1. **Proyectos Tecnológicos / TIC**: Concepto Técnico favorable de la Secretaría TIC.
+      2. **Comunidades Étnicas**: Certificado de alineación con el Plan de Etnodesarrollo / Plan de Vida y acta de consulta previa si aplica.
+      3. **Infraestructura Física**: Estudios y diseños técnicos actualizados y aprobados + Certificado de titularidad del predio a nombre de la entidad pública.
+    - Actualizado `BuildIdeationInterviewSystemPrompt` para inyectar estas reglas manteniendo la fluidez conversacional y permitiendo emitir la señal `[CONTEXTO_COMPLETO]` acompañada de las advertencias pertinentes.
+  - `starter/backend/internal/application/ai/project_creation_prompt.go`:
+    - Inyectado `Decreto1278AuditRulesPrompt` en `BuildProjectCreationSystemPrompt` para mantener consistencia en cualquier variante del asistente de creación de proyectos.
+  - `starter/backend/internal/application/ai/ideation_interview_prompt_test.go` [NUEVO]:
+    - Creada suite de pruebas unitarias verificando la inclusión obligatoria de la sección del Decreto 1278 y las 3 tipologías, gestión de turnos, integración con RAG y preservación de advertencias al limpiar `[CONTEXTO_COMPLETO]`.
+- **Validación ejecutada:**
+  - `cd starter/backend && go test -v ./internal/application/ai/...` -> 100% PASS (Exit Code 0).
+  - `cd starter/backend && go test -v ./internal/application/...` -> 100% PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+
 ### 2026-09-25 - Antigravity - Refactorización y Potenciación del Simulacro de Auditoría Previa (Validador Estricto MGA)
 
 - **Objetivo:** Refactorizar el "Simulacro de Auditoría Previa" para convertirlo en un validador híbrido y estricto de requisitos mínimos de la Metodología General Ajustada (MGA - Colombia), evitando devoluciones formales ante el Banco de Programas y Proyectos de Inversión Pública (DNP / Gobernaciones).

@@ -21,6 +21,23 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Eliminación de Textos por Defecto en Árbol de Problemas (UX)
+
+- **Objetivo:** Eliminar los textos por defecto ("Nueva causa directa...", "Nuevo efecto directo...", etc.) al crear nodos en el Árbol de Problemas, permitiendo que las tarjetas se abran con el `<textarea>` y `<AIAssistedField>` vacíos y listos para recibir input o asistencia de IA.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/dto/mga_dto.go`: Modificada la validación de `Description` en `CreateMgaCauseRequest` y `UpdateMgaCauseRequest` a `max=5000` (eliminando `required,min=2`) para permitir la creación de nodos con descripción vacía desde la UI.
+  - `starter/backend/internal/interfaces/http/dto/mga_extended_dto.go`: Modificada la validación de `Description` en `CreateMgaEffectRequest` y `UpdateMgaEffectRequest` a `max=5000` para soportar creación con descripción vacía.
+  - `starter/frontend/src/store/projectMgaStore.ts`: Actualizados los métodos `addCause` y `addEffect` para retornar el nodo recién creado (`Promise<CauseObjectiveRelation>` y `Promise<MgaEffect>`).
+  - `starter/frontend/src/components/Tenant/MGA/IdentificacionTab.tsx`:
+    - En `handleAddDirectEffect`, `handleAddIndirectEffect`, `handleAddDirectCause` y `handleAddIndirectCause`, los payloads envían `description: ""` (y `specific_objective: ""`).
+    - Al crearse el nodo, se invoca automáticamente `setEditTarget` con el ID del nuevo nodo y `draft: ""`.
+    - En `renderEffectCard` y `renderCauseCard`, se muestra automáticamente el modo edición/textarea vacío (`placeholder` contextual y `autoFocus`) cuando la descripción está vacía o el nodo está siendo editado.
+- **Validación:**
+  - `npx tsc --noEmit` -> Exit Code 0 (limpio).
+  - `npx tsc -b` -> Exit Code 0 (limpio).
+  - Backend `go build ./...` -> Exit Code 0 (limpio).
+
+
 ### 2026-09-25 - Antigravity - Corrección TS6133 en IdentificacionTab
 
 - **Objetivo:** Eliminar variable declarada y no leída `isProblemTreeComplete` en `IdentificacionTab.tsx` que provocaba fallo de compilación TypeScript (`TS6133`) en el pipeline de build.

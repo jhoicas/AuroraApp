@@ -165,12 +165,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   );
 
   const hasCauses = directCauses.length > 0 && indirectCauses.length > 0;
-  const isProblemTreeComplete = Boolean(
-    problemDescription.trim() &&
-    hasCauses &&
-    directEffects.length > 0 &&
-    indirectEffects.length > 0
-  );
 
   const effectGroups = useMemo(() => groupEffectsByParent(effects), [effects]);
   const causeGroups = useMemo(() => groupCausesByParent(causeRelations), [causeRelations]);

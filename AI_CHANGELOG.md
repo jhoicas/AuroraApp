@@ -21,6 +21,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Corrección TS6133 en IdentificacionTab
+
+- **Objetivo:** Eliminar variable declarada y no leída `isProblemTreeComplete` en `IdentificacionTab.tsx` que provocaba fallo de compilación TypeScript (`TS6133`) en el pipeline de build.
+- **Archivos modificados:**
+  - `starter/frontend/src/components/Tenant/MGA/IdentificacionTab.tsx`: Se removió la declaración redundante de `isProblemTreeComplete`, manteniendo la validación detallada en `handleSaveSection` con `missingParts`.
+- **Validación ejecutada:**
+  - `npx tsc -b` -> Exit Code 0 (limpio).
+  - `npx tsc --noEmit` -> Exit Code 0 (limpio).
+
+
 ### 2026-09-25 - Antigravity - Reglas de Negocio Estrictas MGA (Marco Lógico) en Frontend y Prompts Backend
 
 - **Objetivo:** Implementar reglas metodológicas estrictas de la Metodología de Marco Lógico (MGA) en el frontend y en la construcción de los System Prompts de IA en el backend:

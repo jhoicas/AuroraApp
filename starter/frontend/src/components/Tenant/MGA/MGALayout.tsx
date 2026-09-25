@@ -131,12 +131,22 @@ type SectionStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
 
 function useMgaSectionStatuses(project: Project) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const { causeRelations, effects } = formulation;
+
+  const problemDesc = project.problem_description?.trim() || '';
+  const hasDirectCauses = causeRelations.some((c) => c.causeType === 'Causa directa' && c.causeDescription?.trim());
+  const hasIndirectCauses = causeRelations.some((c) => c.causeType === 'Causa indirecta' && c.causeDescription?.trim());
+  const hasDirectEffects = effects.some((e) => e.effect_type === 'directo' && e.description?.trim());
+  const hasIndirectEffects = effects.some((e) => e.effect_type === 'indirecto' && e.description?.trim());
+  const isProblemTreeComplete = Boolean(
+    problemDesc && hasDirectCauses && hasIndirectCauses && hasDirectEffects && hasIndirectEffects
+  );
 
   const cPlan = !!formulation.completedSections['plan-desarrollo']; 
-  const cIdentificacion = !!formulation.completedSections['problematica'];
+  const cIdentificacion = !!formulation.completedSections['problematica'] && isProblemTreeComplete;
   const cParticipantes = !!formulation.completedSections['participantes'];
   const cPoblacion = !!formulation.completedSections['poblacion'];
-  const cObjetivos = !!formulation.completedSections['objetivos'];
+  const cObjetivos = !!formulation.completedSections['objetivos'] && isProblemTreeComplete;
   const cAlternativas = !!formulation.completedSections['alternativas'];
 
   const cNecesidades = !!formulation.completedSections.necesidades;
@@ -154,9 +164,9 @@ function useMgaSectionStatuses(project: Project) {
     'identificacion': cIdentificacion ? 'COMPLETED' : (cPlan ? 'ACTIVE' : 'LOCKED'),
     'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
     'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
-    'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion ? 'ACTIVE' : 'LOCKED'),
+    'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
     'cadena-valor': 'LOCKED',
-    'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos ? 'ACTIVE' : 'LOCKED'),
+    'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
     'necesidades': cNecesidades ? 'COMPLETED' : (cAlternativas ? 'ACTIVE' : 'LOCKED'),
     'analisis-tecnico': cAnalisisTecnico ? 'COMPLETED' : (cNecesidades ? 'ACTIVE' : 'LOCKED'),
     'localizacion': cLocalizacion ? 'COMPLETED' : (cAnalisisTecnico ? 'ACTIVE' : 'LOCKED'),
@@ -385,11 +395,17 @@ export default function MGALayout({
                 btnClass += 'text-gray-700 hover:bg-primary/5 hover:text-primary';
               }
 
+              const isProblemTreeBlocked = (section.id === 'objetivos' || section.id === 'alternativas') && isLocked;
+              const lockTooltip = isProblemTreeBlocked
+                ? "Árbol de Problemas incompleto: registre Problema Central, Causas (directas e indirectas) y Efectos (directos e indirectos)"
+                : "Sección bloqueada";
+
               return (
                 <li key={section.id} className="min-w-[9.5rem] lg:min-w-0">
                   <button
                     type="button"
                     disabled={isLocked}
+                    title={isLocked ? lockTooltip : undefined}
                     onClick={() => onChangeSubTab(section.id)}
                     className={btnClass}
                     aria-current={isActive ? 'page' : undefined}
@@ -415,7 +431,19 @@ export default function MGALayout({
         {/* Columna derecha: área de trabajo con scroll */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mx-auto w-full max-w-6xl">{renderWorkArea(project, activeTab)}</div>
+            <div className="mx-auto w-full max-w-6xl">
+              {sectionStatuses[activeTab] === 'LOCKED' && (
+                <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <span>⚠️ Sección Bloqueada</span>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+                    Según la Metodología de Marco Lógico (MGA), para acceder a esta sección debe completar primero las etapas previas obligatorias (en particular el Árbol de Problemas con su Problema Central, Causas directas/indirectas y Efectos directos/indirectos en la pestaña Problemática).
+                  </p>
+                </div>
+              )}
+              {renderWorkArea(project, activeTab)}
+            </div>
           </div>
           {footerSlot && (
             <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-4 sm:px-6">

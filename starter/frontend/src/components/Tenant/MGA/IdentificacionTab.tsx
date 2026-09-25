@@ -32,16 +32,22 @@ function AuroraAssistButton({
   label,
   onClick,
   compact = false,
+  disabled = false,
+  title,
 }: {
   label: string;
   onClick: () => void;
   compact?: boolean;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
+      title={title}
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-md border border-primary/30 bg-white font-medium text-primary hover:bg-primary/5 ${
+      className={`inline-flex items-center gap-1 rounded-md border border-primary/30 bg-white font-medium text-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed ${
         compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1 text-xs'
       }`}
     >
@@ -139,22 +145,49 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     [clearCopilotError, openCopilot, sendMessage, projectContext],
   );
 
+  const { causeRelations, effects } = getFormulation(project.id);
+
+  const directCauses = useMemo(
+    () => causeRelations.filter((r) => r.causeType === 'Causa directa' && r.causeDescription?.trim() !== ''),
+    [causeRelations],
+  );
+  const indirectCauses = useMemo(
+    () => causeRelations.filter((r) => r.causeType === 'Causa indirecta' && r.causeDescription?.trim() !== ''),
+    [causeRelations],
+  );
+  const directEffects = useMemo(
+    () => effects.filter((e) => e.effect_type === 'directo' && e.description?.trim() !== ''),
+    [effects],
+  );
+  const indirectEffects = useMemo(
+    () => effects.filter((e) => e.effect_type === 'indirecto' && e.description?.trim() !== ''),
+    [effects],
+  );
+
+  const hasCauses = directCauses.length > 0 && indirectCauses.length > 0;
+  const isProblemTreeComplete = Boolean(
+    problemDescription.trim() &&
+    hasCauses &&
+    directEffects.length > 0 &&
+    indirectEffects.length > 0
+  );
+
+  const effectGroups = useMemo(() => groupEffectsByParent(effects), [effects]);
+  const causeGroups = useMemo(() => groupCausesByParent(causeRelations), [causeRelations]);
+
   const suggestWithAurora = useCallback(
     (focus: MgaCausesEffectsFocus, parentId?: string) => {
+      if (focus === 'effects' && !hasCauses) {
+        setError('Debe registrar primero las causas antes de identificar los efectos.');
+        return;
+      }
       requestAuroraAssist(
         buildMgaCausesEffectsPrompt(focus, project.name, parentId),
         MGA_CAUSES_EFFECTS_ROUTE,
       );
     },
-    [requestAuroraAssist, project.name],
+    [requestAuroraAssist, project.name, hasCauses],
   );
-
-
-
-  const { causeRelations, effects } = getFormulation(project.id);
-
-  const effectGroups = useMemo(() => groupEffectsByParent(effects), [effects]);
-  const causeGroups = useMemo(() => groupCausesByParent(causeRelations), [causeRelations]);
 
   const reactiveContext = {
     problemDescription,
@@ -183,6 +216,23 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   );
 
   const handleSaveSection = async () => {
+    setError(null);
+    setSuccessMessage(null);
+
+    const missingParts: string[] = [];
+    if (!problemDescription.trim()) missingParts.push('Problema Central');
+    if (directCauses.length === 0) missingParts.push('al menos una Causa Directa');
+    if (indirectCauses.length === 0) missingParts.push('al menos una Causa Indirecta');
+    if (directEffects.length === 0) missingParts.push('al menos un Efecto Directo');
+    if (indirectEffects.length === 0) missingParts.push('al menos un Efecto Indirecto');
+
+    if (missingParts.length > 0) {
+      setError(
+        `El Árbol de Problemas está incompleto. Según la metodología MGA, debe registrar obligatoriamente: ${missingParts.join(', ')} para poder guardar la problemática y continuar.`
+      );
+      return;
+    }
+
     try {
       await handleSaveIdentification();
       await saveProblematica(project.id);
@@ -193,6 +243,10 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   };
 
   const handleAddDirectEffect = async () => {
+    if (!hasCauses) {
+      setError('Debe registrar primero las causas antes de identificar los efectos.');
+      return;
+    }
     setError(null);
     try {
       await addEffect(project.id, {
@@ -206,6 +260,10 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   };
 
   const handleAddIndirectEffect = async (parentId: string) => {
+    if (!hasCauses) {
+      setError('Debe registrar primero las causas antes de identificar los efectos.');
+      return;
+    }
     setError(null);
     try {
       await addEffect(project.id, {
@@ -313,7 +371,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
         }`}
       >
         <NodeActions
-          disabled={isSaving}
+          disabled={isSaving || !hasCauses}
           onEdit={() => startEditEffect(effect)}
           onDelete={() => void handleDeleteEffect(effect.id)}
         />
@@ -453,14 +511,45 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     onAddIndirect: (parentId: string) => void,
     emptyMessage: string,
     auroraFocus: MgaCausesEffectsFocus,
+    disabled = false,
+    disabledMessage?: string,
   ) => (
-    <div className="flex min-h-[280px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className={`flex min-h-[280px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-opacity ${disabled ? 'opacity-70 bg-gray-50/80' : ''}`}>
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
-        <span className="font-semibold text-gray-800">{title}</span>
-        <AuroraAssistButton label="Sugerir con Aurora" onClick={() => suggestWithAurora(auroraFocus)} />
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-gray-800">{title}</span>
+          {disabled && (
+            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+              🔒 Bloqueado
+            </span>
+          )}
+        </div>
+        <AuroraAssistButton
+          label="Sugerir con Aurora"
+          disabled={disabled || isSaving}
+          title={disabled ? disabledMessage : undefined}
+          onClick={() => {
+            if (disabled) return;
+            suggestWithAurora(auroraFocus);
+          }}
+        />
       </div>
+      {disabled && disabledMessage && (
+        <div className="border-b border-amber-200 bg-amber-50/90 px-5 py-2 text-xs text-amber-800 flex items-center gap-1.5 font-medium">
+          <span>⚠️ {disabledMessage}</span>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-5">
-        {groups.length === 0 ? (
+        {disabled && groups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center text-gray-400 space-y-1">
+            <p className="text-sm font-medium text-gray-600">
+              {disabledMessage || 'Sección bloqueada'}
+            </p>
+            <p className="text-xs text-gray-400">
+              Registre primero al menos una causa directa y una indirecta para habilitar esta sección.
+            </p>
+          </div>
+        ) : groups.length === 0 ? (
           <p className="text-center text-sm text-gray-500">{emptyMessage}</p>
         ) : (
           <div className="space-y-4">
@@ -479,9 +568,10 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      disabled={isSaving}
-                      onClick={() => onAddIndirect(group.parent.id)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                      disabled={isSaving || disabled}
+                      onClick={() => !disabled && onAddIndirect(group.parent.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={disabled ? disabledMessage : undefined}
                     >
                       <Plus className="h-4 w-4" aria-hidden />
                       {indirectLabel}
@@ -489,7 +579,12 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                     <AuroraAssistButton
                       label="Aurora"
                       compact
-                      onClick={() => suggestWithAurora(auroraFocus, group.parent.id)}
+                      disabled={disabled || isSaving}
+                      title={disabled ? disabledMessage : undefined}
+                      onClick={() => {
+                        if (disabled) return;
+                        suggestWithAurora(auroraFocus, group.parent.id);
+                      }}
                     />
                   </div>
                 </div>
@@ -535,21 +630,34 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             </AIAssistedField>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <div className="flex flex-1 gap-2">
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={() => void handleAddDirectEffect()}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                  + Efecto directo
-                </button>
-                <AuroraAssistButton
-                  label="Aurora"
-                  compact
-                  onClick={() => suggestWithAurora('effects')}
-                />
+              <div className="flex flex-1 flex-col gap-1">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={isSaving || !hasCauses}
+                    onClick={() => void handleAddDirectEffect()}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!hasCauses ? 'Debe registrar primero las causas antes de identificar los efectos' : undefined}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                    + Efecto directo
+                  </button>
+                  <AuroraAssistButton
+                    label="Aurora"
+                    compact
+                    disabled={isSaving || !hasCauses}
+                    title={!hasCauses ? 'Debe registrar primero las causas antes de identificar los efectos' : undefined}
+                    onClick={() => {
+                      if (!hasCauses) return;
+                      suggestWithAurora('effects');
+                    }}
+                  />
+                </div>
+                {!hasCauses && (
+                  <p className="text-[11px] text-amber-600 font-medium leading-tight">
+                    Debe registrar primero las causas antes de identificar los efectos
+                  </p>
+                )}
               </div>
               <div className="flex flex-1 gap-2">
                 <button
@@ -571,19 +679,8 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
           </div>
         </div>
 
-        {/* Columna derecha — Efectos y Causas (60%) */}
+        {/* Columna derecha — Causas y Efectos (60%) */}
         <div className="flex w-full flex-col space-y-6 lg:w-[60%]">
-          {renderTreePanel(
-            'Efectos',
-            'Efecto indirecto',
-            effectGroups,
-            (item) => renderEffectCard(item, 'Efecto Directo'),
-            (item) => renderEffectCard(item, 'Efecto Indirecto', true),
-            (parentId) => void handleAddIndirectEffect(parentId),
-            'No hay efectos registrados. Use [+] Efecto directo desde el problema central.',
-            'effects',
-          )}
-
           {renderTreePanel(
             'Causas',
             'Causa indirecta',
@@ -593,6 +690,19 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             (parentId) => void handleAddIndirectCause(parentId),
             'No hay causas registradas. Use [+] Causa directa desde el problema central.',
             'causes',
+          )}
+
+          {renderTreePanel(
+            'Efectos',
+            'Efecto indirecto',
+            effectGroups,
+            (item) => renderEffectCard(item, 'Efecto Directo'),
+            (item) => renderEffectCard(item, 'Efecto Indirecto', true),
+            (parentId) => void handleAddIndirectEffect(parentId),
+            'No hay efectos registrados. Use [+] Efecto directo desde el problema central.',
+            'effects',
+            !hasCauses,
+            'Debe registrar primero las causas antes de identificar los efectos',
           )}
         </div>
       </div>

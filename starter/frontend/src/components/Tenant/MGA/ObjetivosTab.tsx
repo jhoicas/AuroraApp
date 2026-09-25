@@ -47,7 +47,16 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
   const saveObjetivos = useProjectMgaStore((s) => s.saveObjetivos);
 
   const formulation = getFormulation(project.id);
-  const { causeRelations, generalIndicators } = formulation;
+  const { causeRelations, generalIndicators, effects = [] } = formulation;
+
+  const problemDesc = project.problem_description?.trim() || '';
+  const hasDirectCauses = causeRelations.some((c) => c.causeType === 'Causa directa' && c.causeDescription?.trim());
+  const hasIndirectCauses = causeRelations.some((c) => c.causeType === 'Causa indirecta' && c.causeDescription?.trim());
+  const hasDirectEffects = effects.some((e) => e.effect_type === 'directo' && e.description?.trim());
+  const hasIndirectEffects = effects.some((e) => e.effect_type === 'indirecto' && e.description?.trim());
+  const isProblemTreeComplete = Boolean(
+    problemDesc && hasDirectCauses && hasIndirectCauses && hasDirectEffects && hasIndirectEffects
+  );
 
   const fieldProjectContext: ProjectContext = useMemo(
     () => ({
@@ -152,6 +161,13 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
     setMessage(null);
     setError(null);
 
+    if (!isProblemTreeComplete) {
+      setError(
+        'El Árbol de Problemas está incompleto. Según la metodología MGA, debe registrar obligatoriamente el Problema Central, Causas (directas e indirectas) y Efectos (directos e indirectos) en la sección de Problemática antes de guardar los Objetivos.'
+      );
+      return;
+    }
+
     const pendingEdits = causeRelations.filter((rel) => editingIds[rel.id]);
     try {
       for (const rel of pendingEdits) {
@@ -189,6 +205,17 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
         <HelpCircle className="w-5 h-5 text-[#3498db] cursor-pointer" aria-hidden />
       </div>
 
+      {!isProblemTreeComplete && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-800 space-y-1">
+          <div className="flex items-center gap-2 font-semibold">
+            <span>⚠️ Árbol de Problemas Incompleto</span>
+          </div>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Para formular los Objetivos según la Metodología de Marco Lógico (MGA), debe registrar primero el Problema Central, las Causas (directas e indirectas) y los Efectos (directos e indirectos) en la pestaña de Problemática.
+          </p>
+        </div>
+      )}
+
       {(error || mgaError) && (
         <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error ?? mgaError}
@@ -220,6 +247,9 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               <div className="p-3 bg-gray-100 border rounded text-gray-600 cursor-not-allowed">
                 {problemDescription.trim() || 'Sin problema central registrado.'}
               </div>
+              <p className="mt-1 text-[11px] text-gray-500 italic">
+                Regla MGA: El Objetivo General debe ser la redacción en positivo del Problema Central.
+              </p>
             </div>
 
             <AIAssistedField
@@ -319,6 +349,9 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
               <Check className="w-3 h-3" />
             </span>
             <span>02 - Relaciones entre las causas y los objetivos</span>
+            <span className="text-[11px] text-gray-500 font-normal hidden md:inline">
+              (Regla MGA: Las causas directas son directamente proporcionales a los objetivos específicos)
+            </span>
           </div>
           <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-400 text-gray-600">
             {acc2 ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}

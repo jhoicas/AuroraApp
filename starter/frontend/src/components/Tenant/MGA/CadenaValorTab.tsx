@@ -371,7 +371,12 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
 
               {/* Nodos EDT */}
               <section className="space-y-3">
-                <h3 className="font-bold text-gray-700">1. Nodos EDT</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-700">1. Nodos EDT / Productos</h3>
+                  <span className="text-[11px] text-gray-500 italic hidden sm:inline">
+                    Regla MGA: El producto entregado debe estar estrictamente relacionado con la solución a las causas del problema.
+                  </span>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-3 border rounded p-3 bg-gray-50">
                   <input spellCheck={true}
                     type="text"
@@ -583,7 +588,12 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
 
               {/* Actividades */}
               <section className="space-y-3">
-                <h3 className="font-bold text-gray-700">3. Actividades</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-700">3. Actividades</h3>
+                  <span className="text-[11px] text-gray-500 italic hidden sm:inline">
+                    Regla MGA: Las actividades sugeridas deben ser las acciones necesarias para mitigar o solucionar las causas indirectas.
+                  </span>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2 border rounded p-3 bg-gray-50">
                   <select
                     value={activityDraft.project_deliverable_id}

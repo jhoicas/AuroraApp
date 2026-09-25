@@ -21,6 +21,28 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Reglas de Negocio Estrictas MGA (Marco Lógico) en Frontend y Prompts Backend
+
+- **Objetivo:** Implementar reglas metodológicas estrictas de la Metodología de Marco Lógico (MGA) en el frontend y en la construcción de los System Prompts de IA en el backend:
+  1. Las causas directas son directamente proporcionales a los objetivos específicos.
+  2. Las causas indirectas deben estar relacionadas con las actividades del proyecto.
+  3. El problema central va directamente relacionado con el objetivo general del proyecto.
+  4. Las causas deben ser ingresadas ANTES que los efectos (bloqueo condicional y advertencias).
+  5. Las causas deben estar relacionadas al producto.
+  6. Las causas y efectos (directos e indirectos) deben estar registrados obligatoriamente para poder avanzar/guardar la problemática y acceder a Objetivos.
+- **Archivos modificados:**
+  - `starter/backend/internal/interfaces/http/dto/ai_dto.go`: Soportado campo `Field` adicional en `SuggestFieldRequest`.
+  - `starter/backend/internal/interfaces/http/handlers/ai_handler.go`: Inyectadas las reglas metodológicas exactas según el campo solicitado (`objetivo_general`, `objetivos_especificos`, `actividades`/`cadena_valor`, `productos`/`alternativa`).
+  - `starter/frontend/src/components/Tenant/MGA/IdentificacionTab.tsx`:
+    - Regla 4: Bloqueo de adición/asistencia de efectos directos e indirectos si faltan causas directas o indirectas, con mensaje explícito: *"Debe registrar primero las causas antes de identificar los efectos"*.
+    - Regla 6: Validación en `handleSaveSection` exigiendo Problema Central, Causas (Dir/Ind) y Efectos (Dir/Ind) completos antes de marcar la sección como finalizada.
+  - `starter/frontend/src/components/Tenant/MGA/MGALayout.tsx`: Bloqueo condicional de navegación hacia la pestaña `objetivos` y etapas posteriores si el Árbol de Problemas está incompleto, con tooltips y banner de aviso de sección bloqueada.
+  - `starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx`: Detección de completitud del árbol de problemas, banner informativo de advertencia metodológica y validación en guardado. Recordatorio de relación problema central - objetivo general y causas directas - objetivos específicos.
+  - `starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx`: Añadidas notas metodológicas para la relación de causas indirectas con actividades y de causas con productos.
+- **Validaciones ejecutadas:**
+  - `cd starter/frontend && npx tsc --noEmit` (Exit Code 0).
+  - `cd starter/backend && go build ./...` (Exit Code 0).
+
 ### 2026-09-25 - Antigravity - Validación Estricta de Longitud de Caracteres (`maxLength`) End-to-End
 
 - **Objetivo:** Implementar validación estricta de longitud de caracteres de extremo a extremo: en elementos HTML del frontend, payload de la API y prompt del modelo en el backend.

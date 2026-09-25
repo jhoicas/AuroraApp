@@ -228,14 +228,22 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
 	}
 
-	req.FieldHelpKey = strings.TrimSpace(req.FieldHelpKey)
+	fieldKey := strings.TrimSpace(req.FieldHelpKey)
+	if fieldKey == "" {
+		fieldKey = strings.TrimSpace(req.Field)
+	}
+	if fieldKey == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "field_help_key or field is required"})
+	}
+	req.FieldHelpKey = fieldKey
+
 	if err := dto.Validate(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	sector, _ := req.ProjectContext["sector"].(string)
 	projectName, _ := req.ProjectContext["projectName"].(string)
-	query := fmt.Sprintf("%s - %s: %s", sector, projectName, req.FieldHelpKey)
+	query := fmt.Sprintf("%s - %s: %s", sector, projectName, fieldKey)
 
 	vec, errEmb := h.embedder.Embed(query)
 	var examplesStr string
@@ -257,7 +265,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	ctxStr := fmt.Sprintf("%v", req.ProjectContext)
 
 	fieldRule := "Aplica los criterios estándar de la MGA."
-	switch req.FieldHelpKey {
+	switch fieldKey {
 	case "situacion_existente":
 		fieldRule = "Narra el contexto histórico y las condiciones actuales. Usa tono descriptivo."
 	case "magnitud_problema":
@@ -266,14 +274,39 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		fieldRule = "Redacta una única frase corta que exprese una condición negativa."
 	}
 
+	// Reglas Metodológicas MGA (Marco Lógico)
+	var methodologicalRule string
+	switch {
+	case fieldKey == "objetivo_general" || fieldKey == "general_objective":
+		methodologicalRule = "REGLA METODOLÓGICA: El Objetivo General DEBE ser la redacción en positivo del Problema Central del proyecto. Basa tu respuesta estrictamente en el problema central."
+	case fieldKey == "objetivos_especificos" || fieldKey == "objetivo_especifico" || fieldKey == "specific_objective" || strings.HasPrefix(fieldKey, "specific_objective"):
+		methodologicalRule = "REGLA METODOLÓGICA: Los Objetivos Específicos DEBEN ser directamente proporcionales a las Causas Directas identificadas. Crea un objetivo específico por cada causa directa."
+	case fieldKey == "actividades" || fieldKey == "actividad" || strings.Contains(fieldKey, "actividad") || strings.Contains(fieldKey, "cadena_valor"):
+		methodologicalRule = "REGLA METODOLÓGICA: Las actividades sugeridas DEBEN ser las acciones necesarias para mitigar o solucionar las Causas Indirectas del árbol de problemas."
+	case fieldKey == "productos" || fieldKey == "producto" || strings.Contains(fieldKey, "producto") || fieldKey == "alternativa" || fieldKey == "alternativa_solucion" || fieldKey == "bien_servicio":
+		methodologicalRule = "REGLA METODOLÓGICA: El bien o servicio (producto) entregado debe estar estrictamente relacionado con la solución a las Causas del problema."
+	}
+
 	// 3. Generación Adaptativa
 	prompt := fmt.Sprintf("Eres un experto estructurador del DNP (Colombia) en metodología MGA.\nCONTEXTO DEL PROYECTO ACTUAL: %v.\nEJEMPLOS DE PROYECTOS SIMILARES (Historial de Aurora): [%s]\nINSTRUCCIÓN: Si hay ejemplos similares relevantes, utilízalos como inspiración para mantener la misma línea técnica. Si no hay ejemplos, genéralo basándote en tu conocimiento del DNP.\nREGLA DEL CAMPO: %s", ctxStr, examplesStr, fieldRule)
+
+	if methodologicalRule != "" {
+		prompt += fmt.Sprintf("\n%s", methodologicalRule)
+	}
+
+	if fieldKey == "objetivo_general" || fieldKey == "general_objective" {
+		if prob, ok := req.ProjectContext["problemDescription"].(string); ok && prob != "" {
+			prompt += fmt.Sprintf("\nPROBLEMA CENTRAL REGISTRADO: %s", prob)
+		} else if prob2, ok2 := req.ProjectContext["problem_description"].(string); ok2 && prob2 != "" {
+			prompt += fmt.Sprintf("\nPROBLEMA CENTRAL REGISTRADO: %s", prob2)
+		}
+	}
 	
 	if req.IsList {
 		optionsStr := fmt.Sprintf("%v", req.ListOptions)
 		prompt += fmt.Sprintf("\nDebes elegir la opción más adecuada de este catálogo: %s. REGLA ESTRICTA DE FORMATO: Devuelve la respuesta utilizando EXCLUSIVAMENTE este formato: CODIGO|||Explicación detallada y amigable para el usuario de por qué se eligió esta opción (no menciones el código en la explicación).", optionsStr)
 	} else {
-		prompt += fmt.Sprintf("\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", req.FieldHelpKey)
+		prompt += fmt.Sprintf("\nREGLA ESTRICTA: Devuelve ÚNICAMENTE el texto sugerido para el campo '%s'. NO incluyas saludos, explicaciones, opciones alternativas, comillas, ni formato markdown. Escribe directamente el valor final a insertar.", fieldKey)
 	}
 
 	if req.MaxLength > 0 {

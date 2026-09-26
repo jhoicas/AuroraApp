@@ -431,6 +431,73 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	return c.JSON(toProjectResponse(*project, prog))
 }
 
+func parseAnyToIntPtr(v interface{}) *int {
+	if v == nil {
+		return nil
+	}
+	switch val := v.(type) {
+	case float64:
+		i := int(val)
+		return &i
+	case float32:
+		i := int(val)
+		return &i
+	case int:
+		return &val
+	case int64:
+		i := int(val)
+		return &i
+	case string:
+		clean := strings.TrimSpace(val)
+		if clean == "" {
+			return nil
+		}
+		if parsed, err := strconv.Atoi(clean); err == nil {
+			return &parsed
+		}
+	}
+	return nil
+}
+
+func parseLocationMap(m map[string]interface{}) (dto.LocationSelectionDTO, bool) {
+	reg := parseAnyToIntPtr(m["region_id"])
+	if reg == nil {
+		reg = parseAnyToIntPtr(m["regionId"])
+	}
+	dep := parseAnyToIntPtr(m["departamento_id"])
+	if dep == nil {
+		dep = parseAnyToIntPtr(m["departamentoId"])
+	}
+	mun := parseAnyToIntPtr(m["municipio_id"])
+	if mun == nil {
+		mun = parseAnyToIntPtr(m["municipioId"])
+	}
+	tipoAgrup := parseAnyToIntPtr(m["tipo_agrupacion_id"])
+	if tipoAgrup == nil {
+		tipoAgrup = parseAnyToIntPtr(m["tipoAgrupacionId"])
+	}
+	agrup := parseAnyToIntPtr(m["agrupacion_id"])
+	if agrup == nil {
+		agrup = parseAnyToIntPtr(m["agrupacionId"])
+	}
+
+	dtoItem := dto.LocationSelectionDTO{
+		RegionID:              reg,
+		RegionIDCamel:         reg,
+		DepartamentoID:        dep,
+		DepartamentoIDCamel:   dep,
+		MunicipioID:           mun,
+		MunicipioIDCamel:      mun,
+		TipoAgrupacionID:      tipoAgrup,
+		TipoAgrupacionIDCamel: tipoAgrup,
+		AgrupacionID:          agrup,
+		AgrupacionIDCamel:     agrup,
+	}
+
+	hasAny := reg != nil || dep != nil || mun != nil || tipoAgrup != nil || agrup != nil
+	return dtoItem, hasAny
+}
+
 func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 	prog := p.Progress
 	if len(progress) > 0 {
@@ -458,14 +525,152 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 		CreatedAt:          p.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          p.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-	
+
 	if p.MgaFormulationData != nil && len(p.MgaFormulationData) > 0 {
 		var mgaData map[string]interface{}
 		if err := json.Unmarshal(p.MgaFormulationData, &mgaData); err == nil {
+			var rawLocSlice []interface{}
+			if locs, ok := mgaData["localizaciones"].([]interface{}); ok && len(locs) > 0 {
+				rawLocSlice = locs
+			} else if iden, ok := mgaData["identificacion"].(map[string]interface{}); ok {
+				if idenLocs, ok := iden["localizaciones"].([]interface{}); ok && len(idenLocs) > 0 {
+					rawLocSlice = idenLocs
+				}
+			} else if plan, ok := mgaData["planDesarrollo"].(map[string]interface{}); ok {
+				if planLocs, ok := plan["localizaciones"].([]interface{}); ok && len(planLocs) > 0 {
+					rawLocSlice = planLocs
+				}
+			}
+
+			var locDTOs []dto.LocationSelectionDTO
+			var locMaps []map[string]interface{}
+
+			for _, rawItem := range rawLocSlice {
+				if itemMap, ok := rawItem.(map[string]interface{}); ok {
+					if parsedDto, hasAny := parseLocationMap(itemMap); hasAny {
+						locDTOs = append(locDTOs, parsedDto)
+						locMaps = append(locMaps, map[string]interface{}{
+							"region_id":          parsedDto.RegionID,
+							"regionId":           parsedDto.RegionID,
+							"departamento_id":    parsedDto.DepartamentoID,
+							"departamentoId":     parsedDto.DepartamentoID,
+							"municipio_id":       parsedDto.MunicipioID,
+							"municipioId":        parsedDto.MunicipioID,
+							"tipo_agrupacion_id": parsedDto.TipoAgrupacionID,
+							"tipoAgrupacionId":   parsedDto.TipoAgrupacionID,
+							"agrupacion_id":      parsedDto.AgrupacionID,
+							"agrupacionId":       parsedDto.AgrupacionID,
+						})
+					}
+				}
+			}
+
+			if len(locDTOs) > 0 {
+				resp.Localizaciones = locDTOs
+				first := locDTOs[0]
+				resp.RegionID = first.RegionID
+				resp.DepartamentoID = first.DepartamentoID
+				resp.MunicipioID = first.MunicipioID
+				resp.TipoAgrupacionID = first.TipoAgrupacionID
+				resp.AgrupacionID = first.AgrupacionID
+
+				mgaData["localizaciones"] = locMaps
+			} else {
+				baseReg := parseAnyToIntPtr(mgaData["region_id"])
+				if baseReg == nil {
+					baseReg = parseAnyToIntPtr(mgaData["regionId"])
+				}
+				baseDep := parseAnyToIntPtr(mgaData["departamento_id"])
+				if baseDep == nil {
+					baseDep = parseAnyToIntPtr(mgaData["departamentoId"])
+				}
+				baseMun := parseAnyToIntPtr(mgaData["municipio_id"])
+				if baseMun == nil {
+					baseMun = parseAnyToIntPtr(mgaData["municipioId"])
+				}
+				baseTipoAgrup := parseAnyToIntPtr(mgaData["tipo_agrupacion_id"])
+				baseAgrup := parseAnyToIntPtr(mgaData["agrupacion_id"])
+
+				if iden, ok := mgaData["identificacion"].(map[string]interface{}); ok {
+					if baseReg == nil {
+						baseReg = parseAnyToIntPtr(iden["region_id"])
+						if baseReg == nil {
+							baseReg = parseAnyToIntPtr(iden["regionId"])
+						}
+					}
+					if baseDep == nil {
+						baseDep = parseAnyToIntPtr(iden["departamento_id"])
+						if baseDep == nil {
+							baseDep = parseAnyToIntPtr(iden["departamentoId"])
+						}
+					}
+					if baseMun == nil {
+						baseMun = parseAnyToIntPtr(iden["municipio_id"])
+						if baseMun == nil {
+							baseMun = parseAnyToIntPtr(iden["municipioId"])
+						}
+					}
+					if baseTipoAgrup == nil {
+						baseTipoAgrup = parseAnyToIntPtr(iden["tipo_agrupacion_id"])
+					}
+					if baseAgrup == nil {
+						baseAgrup = parseAnyToIntPtr(iden["agrupacion_id"])
+					}
+				}
+
+				if locSingular, ok := mgaData["localizacion"].(map[string]interface{}); ok {
+					if baseReg == nil {
+						baseReg = parseAnyToIntPtr(locSingular["region_id"])
+					}
+					if baseDep == nil {
+						baseDep = parseAnyToIntPtr(locSingular["departamento_id"])
+					}
+					if baseMun == nil {
+						baseMun = parseAnyToIntPtr(locSingular["municipio_id"])
+					}
+				}
+
+				if baseReg != nil || baseDep != nil || baseMun != nil {
+					resp.RegionID = baseReg
+					resp.DepartamentoID = baseDep
+					resp.MunicipioID = baseMun
+					resp.TipoAgrupacionID = baseTipoAgrup
+					resp.AgrupacionID = baseAgrup
+
+					singleLoc := dto.LocationSelectionDTO{
+						RegionID:              baseReg,
+						RegionIDCamel:         baseReg,
+						DepartamentoID:        baseDep,
+						DepartamentoIDCamel:   baseDep,
+						MunicipioID:           baseMun,
+						MunicipioIDCamel:      baseMun,
+						TipoAgrupacionID:      baseTipoAgrup,
+						TipoAgrupacionIDCamel: baseTipoAgrup,
+						AgrupacionID:          baseAgrup,
+						AgrupacionIDCamel:     baseAgrup,
+					}
+					resp.Localizaciones = []dto.LocationSelectionDTO{singleLoc}
+					mgaData["localizaciones"] = []map[string]interface{}{
+						{
+							"region_id":          baseReg,
+							"regionId":           baseReg,
+							"departamento_id":    baseDep,
+							"departamentoId":     baseDep,
+							"municipio_id":       baseMun,
+							"municipioId":        baseMun,
+							"tipo_agrupacion_id": baseTipoAgrup,
+							"tipoAgrupacionId":   baseTipoAgrup,
+							"agrupacion_id":      baseAgrup,
+							"agrupacionId":       baseAgrup,
+						},
+					}
+				}
+			}
+
 			resp.MgaFormulationData = &mgaData
 		}
 	}
-	
+
 	if p.SectorID != nil {
 		s := p.SectorID.String()
 		resp.SectorID = &s

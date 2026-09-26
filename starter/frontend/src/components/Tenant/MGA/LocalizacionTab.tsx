@@ -32,7 +32,6 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LocalizacionRow[]>([]);
-  const [initialized, setInitialized] = useState(false);
   const isUserEditedRef = useRef(false);
 
   // Proyecto activo con prioridad al del store
@@ -58,27 +57,31 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     }
   }, [fetchLocations, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
 
+  // Helper de casteo ultra-seguro (string o number -> number | null)
+  const toNumOrNull = (val: unknown): number | null => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = Number(val);
+    return Number.isNaN(num) ? null : num;
+  };
+
   // Inicialización y sincronización con datos base del proyecto
   useEffect(() => {
     // Si el usuario ya interactuó o editó manualmente, respetamos sus cambios y no sobreescribimos
     if (isUserEditedRef.current) return;
 
-    // Si ya fue inicializado, verificar si actualmente solo tiene la fila vacía por defecto
-    // para permitir que se pre-pueble si los datos base llegaron después del montaje
-    if (initialized) {
-      const isSingleDefaultRow =
-        rows.length === 1 &&
-        rows[0].region_id === null &&
-        rows[0].departamento_id === null &&
-        rows[0].municipio_id === null;
-      if (!isSingleDefaultRow) {
-        return;
-      }
+    // Verificar si actualmente rows ya tiene datos cargados válidos
+    const hasValidCurrentRow =
+      rows.length > 0 &&
+      rows.some((r) => r.region_id !== null || r.departamento_id !== null || r.municipio_id !== null);
+
+    // Si ya tiene datos válidos y el usuario agregó filas adicionales, no sobreescribir
+    if (hasValidCurrentRow && rows.length > 1) {
+      return;
     }
 
     let initialRows: LocalizacionRow[] = [];
 
-    // 1. Verificar si ya existen localizaciones guardadas en la formulación MGA
+    // 1. Verificar si ya existen localizaciones guardadas en la formulación MGA o en el proyecto
     const existing =
       formulation.localizaciones ||
       (formulation.localizacion?.localizaciones as any[]) ||
@@ -86,81 +89,87 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       (activeProject?.mga_formulation_data?.localizaciones as any[]) ||
       ((activeProject?.mga_formulation_data?.identificacion as any)?.localizaciones as any[]) ||
       ((project.mga_formulation_data?.identificacion as any)?.localizaciones as any[]) ||
-      ((activeProject as any)?.localizaciones as any[]);
+      (activeProject?.localizaciones as any[]) ||
+      (project.localizaciones as any[]);
 
     if (existing && Array.isArray(existing) && existing.length > 0) {
-      initialRows = existing.map((loc: any) => ({
-        region_id: loc.region_id ?? loc.regionId ?? null,
-        departamento_id: loc.departamento_id ?? loc.departamentoId ?? null,
-        municipio_id: loc.municipio_id ?? loc.municipioId ?? null,
-        tipo_agrupacion_id: loc.tipo_agrupacion_id ?? loc.tipoAgrupacionId ?? null,
-        agrupacion_id: loc.agrupacion_id ?? loc.agrupacionId ?? null,
-      }));
-    } else {
-      // 2. Si el array de localizaciones de la MGA está vacío o es nulo,
-      // pre-poblar automáticamente con la localización base definida al crear el proyecto
-      const toNumOrNull = (val: unknown): number | null => {
-        if (val === null || val === undefined || val === '') return null;
-        const num = Number(val);
-        return Number.isNaN(num) ? null : num;
-      };
+      initialRows = existing
+        .map((loc: any) => ({
+          region_id: toNumOrNull(loc.region_id ?? loc.regionId),
+          departamento_id: toNumOrNull(loc.departamento_id ?? loc.departamentoId),
+          municipio_id: toNumOrNull(loc.municipio_id ?? loc.municipioId),
+          tipo_agrupacion_id: toNumOrNull(loc.tipo_agrupacion_id ?? loc.tipoAgrupacionId),
+          agrupacion_id: toNumOrNull(loc.agrupacion_id ?? loc.agrupacionId),
+        }))
+        .filter((r) => r.region_id !== null || r.departamento_id !== null || r.municipio_id !== null);
+    }
 
+    // 2. Si no hay localizaciones en array o quedaron vacías, pre-poblar con la localización base del proyecto
+    if (initialRows.length === 0) {
       const baseRegion = toNumOrNull(
-        (activeProject as any)?.region_id ??
-        (activeProject as any)?.regionId ??
-        (project as any)?.region_id ??
-        (project as any)?.regionId ??
+        activeProject?.region_id ??
+        activeProject?.regionId ??
+        project.region_id ??
+        project.regionId ??
+        currentProject?.region_id ??
+        currentProject?.regionId ??
         activeProject?.mga_formulation_data?.region_id ??
-        (activeProject?.mga_formulation_data as any)?.regionId ??
+        activeProject?.mga_formulation_data?.regionId ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.region_id ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.regionId ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.region_id ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.regionId ??
         project.mga_formulation_data?.region_id ??
-        (project.mga_formulation_data as any)?.regionId ??
+        project.mga_formulation_data?.regionId ??
         (project.mga_formulation_data?.identificacion as any)?.region_id ??
         (project.mga_formulation_data?.identificacion as any)?.regionId
       );
 
       const baseDepto = toNumOrNull(
-        (activeProject as any)?.departamento_id ??
-        (activeProject as any)?.departamentoId ??
-        (project as any)?.departamento_id ??
-        (project as any)?.departamentoId ??
+        activeProject?.departamento_id ??
+        activeProject?.departamentoId ??
+        project.departamento_id ??
+        project.departamentoId ??
+        currentProject?.departamento_id ??
+        currentProject?.departamentoId ??
         activeProject?.mga_formulation_data?.departamento_id ??
-        (activeProject?.mga_formulation_data as any)?.departamentoId ??
+        activeProject?.mga_formulation_data?.departamentoId ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.departamento_id ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.departamentoId ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.departamento_id ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.departamentoId ??
         project.mga_formulation_data?.departamento_id ??
-        (project.mga_formulation_data as any)?.departamentoId ??
+        project.mga_formulation_data?.departamentoId ??
         (project.mga_formulation_data?.identificacion as any)?.departamento_id ??
         (project.mga_formulation_data?.identificacion as any)?.departamentoId
       );
 
       const baseMun = toNumOrNull(
-        (activeProject as any)?.municipio_id ??
-        (activeProject as any)?.municipioId ??
-        (project as any)?.municipio_id ??
-        (project as any)?.municipioId ??
+        activeProject?.municipio_id ??
+        activeProject?.municipioId ??
+        project.municipio_id ??
+        project.municipioId ??
+        currentProject?.municipio_id ??
+        currentProject?.municipioId ??
         activeProject?.mga_formulation_data?.municipio_id ??
-        (activeProject?.mga_formulation_data as any)?.municipioId ??
+        activeProject?.mga_formulation_data?.municipioId ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.municipio_id ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.municipioId ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.municipio_id ??
         (activeProject?.mga_formulation_data?.localizacion as any)?.municipioId ??
         project.mga_formulation_data?.municipio_id ??
-        (project.mga_formulation_data as any)?.municipioId ??
+        project.mga_formulation_data?.municipioId ??
         (project.mga_formulation_data?.identificacion as any)?.municipio_id ??
         (project.mga_formulation_data?.identificacion as any)?.municipioId
       );
 
       const baseTipoAgrup = toNumOrNull(
-        (activeProject as any)?.tipo_agrupacion_id ??
-        (activeProject as any)?.tipoAgrupacionId ??
-        (project as any)?.tipo_agrupacion_id ??
-        (project as any)?.tipoAgrupacionId ??
+        activeProject?.tipo_agrupacion_id ??
+        activeProject?.tipoAgrupacionId ??
+        project.tipo_agrupacion_id ??
+        project.tipoAgrupacionId ??
+        currentProject?.tipo_agrupacion_id ??
+        currentProject?.tipoAgrupacionId ??
         activeProject?.mga_formulation_data?.tipo_agrupacion_id ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.tipo_agrupacion_id ??
         project.mga_formulation_data?.tipo_agrupacion_id ??
@@ -168,10 +177,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       );
 
       const baseAgrup = toNumOrNull(
-        (activeProject as any)?.agrupacion_id ??
-        (activeProject as any)?.agrupacionId ??
-        (project as any)?.agrupacion_id ??
-        (project as any)?.agrupacionId ??
+        activeProject?.agrupacion_id ??
+        activeProject?.agrupacionId ??
+        project.agrupacion_id ??
+        project.agrupacionId ??
+        currentProject?.agrupacion_id ??
+        currentProject?.agrupacionId ??
         activeProject?.mga_formulation_data?.agrupacion_id ??
         (activeProject?.mga_formulation_data?.identificacion as any)?.agrupacion_id ??
         project.mga_formulation_data?.agrupacion_id ??
@@ -191,28 +202,53 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       }
     }
 
-    // 3. Si sigue vacío, inyectar un primer registro vacío por defecto
+    // 3. Si sigue vacío, inyectar una fila vacía por defecto
     if (initialRows.length === 0) {
-      initialRows = [
-        {
-          region_id: null,
-          departamento_id: null,
-          municipio_id: null,
-          tipo_agrupacion_id: null,
-          agrupacion_id: null,
-        },
-      ];
+      if (rows.length === 0) {
+        setRows([
+          {
+            region_id: null,
+            departamento_id: null,
+            municipio_id: null,
+            tipo_agrupacion_id: null,
+            agrupacion_id: null,
+          },
+        ]);
+      }
+      return;
     }
 
     setRows(initialRows);
-    setInitialized(true);
   }, [
     formulation.localizaciones,
     formulation.localizacion,
-    project,
-    currentProject,
-    activeProject,
-    initialized,
+    project.id,
+    project.region_id,
+    project.departamento_id,
+    project.municipio_id,
+    (project as any).regionId,
+    (project as any).departamentoId,
+    (project as any).municipioId,
+    project.mga_formulation_data,
+    project.localizaciones,
+    currentProject?.id,
+    currentProject?.region_id,
+    currentProject?.departamento_id,
+    currentProject?.municipio_id,
+    (currentProject as any)?.regionId,
+    (currentProject as any)?.departamentoId,
+    (currentProject as any)?.municipioId,
+    currentProject?.mga_formulation_data,
+    currentProject?.localizaciones,
+    activeProject?.id,
+    activeProject?.region_id,
+    activeProject?.departamento_id,
+    activeProject?.municipio_id,
+    (activeProject as any)?.regionId,
+    (activeProject as any)?.departamentoId,
+    (activeProject as any)?.municipioId,
+    activeProject?.mga_formulation_data,
+    activeProject?.localizaciones,
     rows.length,
   ]);
 
@@ -333,17 +369,19 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       {/* Listado de Localizaciones */}
       <div className="space-y-4">
         {rows.map((row, index) => {
-          // Filtrado en cascada
-          const selectedRegion = regions.find((r) => r.id === row.region_id);
+          // Filtrado en cascada con normalización numérica
+          const selectedRegion = regions.find((r) => Number(r.id) === Number(row.region_id));
           const deptosDisponibles = selectedRegion?.departamentos ?? [];
 
-          const selectedDepto = deptosDisponibles.find((d) => d.id === row.departamento_id);
+          const selectedDepto = deptosDisponibles.find((d) => Number(d.id) === Number(row.departamento_id));
           const municipiosDisponibles = selectedDepto?.municipios ?? [];
 
           // Filtrado estricto de agrupaciones étnicas:
           // Depende estrictamente del Municipio seleccionado y del Tipo de Agrupación
           const agrupacionesDisponibles = agrupaciones.filter(
-            (a) => a.municipio_id === row.municipio_id && a.tipo_agrupacion_id === row.tipo_agrupacion_id
+            (a) =>
+              Number(a.municipio_id) === Number(row.municipio_id) &&
+              Number(a.tipo_agrupacion_id) === Number(row.tipo_agrupacion_id)
           );
 
           return (
@@ -380,14 +418,14 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     Región <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={row.region_id ?? ''}
+                    value={row.region_id !== null && row.region_id !== undefined ? String(row.region_id) : ''}
                     onChange={(e) => updateRow(index, 'region_id', e.target.value ? Number(e.target.value) : null)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
                     disabled={isLoadingLocations}
                   >
                     <option value="">Seleccione Región...</option>
                     {regions.map((reg: Region) => (
-                      <option key={reg.id} value={reg.id}>
+                      <option key={reg.id} value={String(reg.id)}>
                         {reg.name}
                       </option>
                     ))}
@@ -400,7 +438,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     Departamento <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={row.departamento_id ?? ''}
+                    value={row.departamento_id !== null && row.departamento_id !== undefined ? String(row.departamento_id) : ''}
                     onChange={(e) => updateRow(index, 'departamento_id', e.target.value ? Number(e.target.value) : null)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     disabled={!row.region_id || deptosDisponibles.length === 0}
@@ -409,7 +447,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                       {!row.region_id ? 'Seleccione primero región...' : 'Seleccione Departamento...'}
                     </option>
                     {deptosDisponibles.map((dep: Departamento) => (
-                      <option key={dep.id} value={dep.id}>
+                      <option key={dep.id} value={String(dep.id)}>
                         {dep.name}
                       </option>
                     ))}
@@ -422,7 +460,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     Municipio <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={row.municipio_id ?? ''}
+                    value={row.municipio_id !== null && row.municipio_id !== undefined ? String(row.municipio_id) : ''}
                     onChange={(e) => updateRow(index, 'municipio_id', e.target.value ? Number(e.target.value) : null)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     disabled={!row.departamento_id || municipiosDisponibles.length === 0}
@@ -431,7 +469,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                       {!row.departamento_id ? 'Seleccione primero departamento...' : 'Seleccione Municipio...'}
                     </option>
                     {municipiosDisponibles.map((mun: Municipio) => (
-                      <option key={mun.id} value={mun.id}>
+                      <option key={mun.id} value={String(mun.id)}>
                         {mun.name}
                       </option>
                     ))}
@@ -454,7 +492,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                         Tipo de Agrupación <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={row.tipo_agrupacion_id ?? ''}
+                        value={row.tipo_agrupacion_id !== null && row.tipo_agrupacion_id !== undefined ? String(row.tipo_agrupacion_id) : ''}
                         onChange={(e) =>
                           updateRow(index, 'tipo_agrupacion_id', e.target.value ? Number(e.target.value) : null)
                         }
@@ -462,7 +500,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                       >
                         <option value="">Seleccione Tipo de Agrupación...</option>
                         {tiposAgrupacion.map((t: TipoAgrupacion) => (
-                          <option key={t.id} value={t.id}>
+                          <option key={t.id} value={String(t.id)}>
                             {t.name}
                           </option>
                         ))}
@@ -475,7 +513,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                         Agrupación Étnica <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={row.agrupacion_id ?? ''}
+                        value={row.agrupacion_id !== null && row.agrupacion_id !== undefined ? String(row.agrupacion_id) : ''}
                         onChange={(e) =>
                           updateRow(index, 'agrupacion_id', e.target.value ? Number(e.target.value) : null)
                         }
@@ -490,7 +528,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                             : 'Seleccione Agrupación...'}
                         </option>
                         {agrupacionesDisponibles.map((a: Agrupacion) => (
-                          <option key={a.id} value={a.id}>
+                          <option key={a.id} value={String(a.id)}>
                             {a.name}
                           </option>
                         ))}

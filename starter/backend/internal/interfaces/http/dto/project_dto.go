@@ -68,8 +68,14 @@ type ProjectResponse struct {
 	GeneralObjective   string  `json:"general_objective,omitempty"`
 	SituacionExistente string  `json:"situacion_existente,omitempty"`
 	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
-	FaseMaduracion     string  `json:"fase_maduracion,omitempty"`
-	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
+	FaseMaduracion     string                     `json:"fase_maduracion,omitempty"`
+	RegionID           *int                       `json:"region_id,omitempty"`
+	DepartamentoID     *int                       `json:"departamento_id,omitempty"`
+	MunicipioID        *int                       `json:"municipio_id,omitempty"`
+	TipoAgrupacionID   *int                       `json:"tipo_agrupacion_id,omitempty"`
+	AgrupacionID       *int                       `json:"agrupacion_id,omitempty"`
+	Localizaciones     []LocationSelectionDTO     `json:"localizaciones,omitempty"`
+	MgaFormulationData *map[string]interface{}    `json:"mga_formulation_data,omitempty"`
 	Status             string                     `json:"status"`
 	Progress           int                        `json:"progress"`
 	Avance             int                        `json:"avance"`

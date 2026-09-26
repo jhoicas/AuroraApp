@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
@@ -243,6 +243,68 @@ describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
     expect((selects[0] as HTMLSelectElement).value).toBe('1');
     expect((selects[1] as HTMLSelectElement).value).toBe('76');
     expect((selects[2] as HTMLSelectElement).value).toBe('76001');
+  });
+
+  it('soporta valores string numéricos desde la API (ej: "1", "76", "76001")', () => {
+    const projectWithStrings: any = {
+      id: 'proj-strings-1',
+      tenant_id: 'tenant-1',
+      creator_id: 'user-1',
+      name: 'Proyecto Con Strings Numéricos',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      region_id: '1',
+      departamento_id: '76',
+      municipio_id: '76001',
+      mga_formulation_data: null,
+    };
+
+    render(<LocalizacionTab project={projectWithStrings} />);
+
+    const selects = screen.getAllByRole('combobox');
+    expect((selects[0] as HTMLSelectElement).value).toBe('1');
+    expect((selects[1] as HTMLSelectElement).value).toBe('76');
+    expect((selects[2] as HTMLSelectElement).value).toBe('76001');
+  });
+
+  it('reacciona correctamente cuando currentProject se hidrata asíncronamente después del montaje', async () => {
+    const initialProject: Project = {
+      id: 'proj-async-1',
+      tenant_id: 'tenant-1',
+      creator_id: 'user-1',
+      name: 'Proyecto Async',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      mga_formulation_data: null,
+    };
+
+    useProjectStore.setState({ currentProject: null });
+
+    render(<LocalizacionTab project={initialProject} />);
+
+    const initialSelects = screen.getAllByRole('combobox');
+    expect((initialSelects[0] as HTMLSelectElement).value).toBe('');
+
+    // Simulamos la hidratación asíncrona de currentProject desde el backend
+    act(() => {
+      useProjectStore.setState({
+        currentProject: {
+          ...initialProject,
+          region_id: 1,
+          departamento_id: 76,
+          municipio_id: 76001,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const hydratedSelects = screen.getAllByRole('combobox');
+      expect((hydratedSelects[0] as HTMLSelectElement).value).toBe('1');
+      expect((hydratedSelects[1] as HTMLSelectElement).value).toBe('76');
+      expect((hydratedSelects[2] as HTMLSelectElement).value).toBe('76001');
+    });
   });
 });
 

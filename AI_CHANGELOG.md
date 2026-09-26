@@ -21,6 +21,30 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Sincronización Definitiva Backend/Frontend de Localización Base MGA
+
+- **Objetivo:** Resolver el problema estructural de sincronización de localización base en la pestaña MGA, exponiendo las llaves geográficas directamente en el DTO del backend y asegurando reactividad a la hidratación asíncrona y normalización de tipos en el frontend.
+- **Backend (Go / Fiber / GORM):**
+  - [project_dto.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/dto/project_dto.go):
+    - Agregadas propiedades raíz `region_id`, `departamento_id`, `municipio_id`, `tipo_agrupacion_id`, `agrupacion_id` y `localizaciones` al struct de salida `ProjectResponse`.
+  - [project_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/project_handler.go):
+    - Actualizado `toProjectResponse` con extracción exhaustiva y tipado seguro (`parseAnyToIntPtr`, `parseLocationMap`) de localizaciones desde `mga_formulation_data` (`localizaciones`, `identificacion.localizaciones`, `planDesarrollo.localizaciones`, campos escalares o `localizacion` singular).
+    - Asigna directamente `resp.RegionID`, `resp.DepartamentoID`, `resp.MunicipioID`, etc., y sincroniza la colección `resp.Localizaciones`.
+- **Frontend (React / TypeScript / Zustand):**
+  - [projectStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectStore.ts):
+    - Actualizado el type `Project` para incluir `region_id`, `regionId`, `departamento_id`, `departamentoId`, `municipio_id`, `municipioId`, `tipo_agrupacion_id`, `agrupacion_id` y array `localizaciones`.
+  - [LocalizacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.tsx):
+    - Refactorizado el `useEffect` de hidratación: reacciona dinámicamente a las propiedades geográficas de `currentProject` y `project`, permitiendo que el estado se pre-pueble tan pronto se hidraten los datos asíncronos del backend sin bloquearse si al montar la vista el proyecto aún no tenía valores.
+    - Normalización numérica integral en comparaciones en cascada (`Number(r.id) === Number(row.region_id)`) y enlaces de valor string en elementos `<select>` y `<option>`, eliminando incompatibilidades entre numbers y strings.
+  - [LocalizacionTab.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.test.tsx):
+    - Añadidas pruebas unitarias para strings numéricos desde la API e hidratación asíncrona reactiva con `act()`.
+- **Validaciones:**
+  - `cd starter/backend && go build ./...`: Exit Code 0 (0 errores de compilación Go).
+  - `cd starter/backend && go test ./...`: Pruebas de handlers y dominio pasadas exitosamente (Exit Code 0).
+  - `cd starter/frontend && npx tsc --noEmit`: Exit Code 0.
+  - `cd starter/frontend && npx vitest run src/components/Tenant/MGA`: 5 archivos de prueba y 20 tests pasados al 100%.
+  - `cd starter/frontend && npm run build`: Bundle de producción compilado exitosamente en 5.45s.
+
 ### 2026-09-25 - Antigravity - Pre-población Automática de Localización Base en LocalizacionTab
 
 - **Objetivo:** Corregir la inicialización de datos en LocalizacionTab.tsx para pre-poblar automáticamente la Localización Principal/Base del proyecto con la Región, Departamento y Municipio definidos en la creación del proyecto cuando el array de localizaciones MGA está vacío o es nulo.

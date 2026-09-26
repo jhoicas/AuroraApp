@@ -18,6 +18,28 @@ export type Project = {
   situacion_existente?: string;
   magnitud_problema?: string;
   fase_maduracion?: string;
+  region_id?: number | null;
+  regionId?: number | null;
+  departamento_id?: number | null;
+  departamentoId?: number | null;
+  municipio_id?: number | null;
+  municipioId?: number | null;
+  tipo_agrupacion_id?: number | null;
+  tipoAgrupacionId?: number | null;
+  agrupacion_id?: number | null;
+  agrupacionId?: number | null;
+  localizaciones?: {
+    region_id?: number | null;
+    regionId?: number | null;
+    departamento_id?: number | null;
+    departamentoId?: number | null;
+    municipio_id?: number | null;
+    municipioId?: number | null;
+    tipo_agrupacion_id?: number | null;
+    tipoAgrupacionId?: number | null;
+    agrupacion_id?: number | null;
+    agrupacionId?: number | null;
+  }[];
 	status: string;
 	progress?: number;
 	mga_formulation_data?: Record<string, any> | null;

@@ -5,6 +5,7 @@ import type { Project } from '../../../store/projectStore';
 import {
   parsePopulationLocations,
   useProjectMgaStore,
+  debouncedPatchProject,
   type PopulationLocationsData,
 } from '../../../store/projectMgaStore';
 import type { MgaPopulationType } from '../../../lib/mgaApi';
@@ -18,6 +19,7 @@ type PoblacionTabProps = {
 
 type PopulationPanelState = {
   total_number: string;
+  population_type: string;
   source: string;
   municipalities: string;
   departments: string;
@@ -28,6 +30,7 @@ type PopulationPanelState = {
 function emptyPanel(): PopulationPanelState {
   return {
     total_number: '',
+    population_type: 'Personas',
     source: '',
     municipalities: '',
     departments: '',
@@ -44,8 +47,16 @@ function panelFromRecord(
   if (!record) return emptyPanel();
 
   const loc = parsePopulationLocations(record.locations);
+  const popType =
+    loc.population_type ||
+    loc.population_unit ||
+    (record as any).population_type ||
+    (record as any).population_unit ||
+    'Personas';
+
   return {
     total_number: record.total_number > 0 ? String(record.total_number) : '',
+    population_type: popType,
     source: record.source ?? '',
     municipalities: (loc.municipalities ?? []).join(', '),
     departments: (loc.departments ?? []).join(', '),
@@ -69,6 +80,8 @@ function buildLocations(panel: PopulationPanelState): PopulationLocationsData {
     departments: departments.length > 0 ? departments : undefined,
     localization: panel.localization.trim() || undefined,
     demographicNotes: panel.demographicNotes.trim() || undefined,
+    population_type: panel.population_type || 'Personas',
+    population_unit: panel.population_type || 'Personas',
   };
 }
 
@@ -117,10 +130,21 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
     }
     setError(null);
     try {
+      const locData = buildLocations(panel);
       await savePopulation(project.id, populationType, {
         total_number: total,
         source: panel.source.trim(),
-        locations: buildLocations(panel),
+        locations: locData,
+      });
+      debouncedPatchProject(project.id, {
+        poblacion: {
+          [populationType]: {
+            total_number: total,
+            population_type: panel.population_type,
+            source: panel.source.trim(),
+            ...locData,
+          },
+        },
       });
       setMessage('Población guardada correctamente.');
     } catch (err) {
@@ -139,7 +163,7 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
           <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className="font-semibold text-gray-600 block mb-1">Número total</label>
             <input spellCheck={true}
@@ -157,9 +181,28 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
                 const val = e.target.value;
                 if (val.length <= 13) setPanel((p) => ({ ...p, total_number: val }));
               }}
-              className="w-full p-2 border rounded bg-white"
+              className="w-full p-2 border rounded bg-white text-xs"
               placeholder="Ej. 15000"
             />
+          </div>
+          <div>
+            <label className="font-semibold text-gray-600 block mb-1">Tipo de población (Unidad)</label>
+            <select
+              id={`pop-type-${populationType}-${project.id}`}
+              name="population_type"
+              value={panel.population_type}
+              onChange={(e) => setPanel((p) => ({ ...p, population_type: e.target.value }))}
+              className="w-full p-2 border rounded bg-white text-xs"
+            >
+              <option value="Personas">Personas</option>
+              <option value="Familias">Familias</option>
+              <option value="Hectáreas">Hectáreas</option>
+              <option value="Productores">Productores</option>
+              <option value="Viviendas">Viviendas</option>
+              <option value="Estudiantes">Estudiantes</option>
+              <option value="Comunidades">Comunidades</option>
+              <option value="Otro">Otro</option>
+            </select>
           </div>
           <div>
             <AIAssistedField
@@ -178,10 +221,11 @@ function PopulationPanel({ project, populationType, title, number }: PopulationP
               <input spellCheck={true}
                 type="text"
                 id={`pop-source-${populationType}-${project.id}`}
+                name="source"
                 maxLength={500}
                 value={panel.source}
                 onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
-                className="w-full p-2 border rounded bg-white mt-1"
+                className="w-full p-2 border rounded bg-white text-xs mt-1"
                 placeholder="Ej. DANE, censo, encuesta…"
               />
             </AIAssistedField>

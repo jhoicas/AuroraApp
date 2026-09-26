@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import { useProjectStore, type Project } from '../../../store/projectStore';
-import { useProjectMgaStore, type CauseObjectiveRelation } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, debouncedPatchProject, type CauseObjectiveRelation } from '../../../store/projectMgaStore';
 import { useAuroraCopilotStore } from '../../../store/auroraCopilotStore';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 import {
@@ -97,8 +97,18 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const problemDescription = project.problem_description ?? '';
-  const situacionExistente = project.situacion_existente ?? '';
-  const magnitudProblema = project.magnitud_problema ?? '';
+  const situacionExistente =
+    (project as any).situation ??
+    project.situacion_existente ??
+    (project.mga_formulation_data as any)?.situation ??
+    (project.mga_formulation_data as any)?.situacion_existente ??
+    '';
+  const magnitudProblema =
+    (project as any).magnitude ??
+    project.magnitud_problema ??
+    (project.mga_formulation_data as any)?.magnitude ??
+    (project.mga_formulation_data as any)?.magnitud_problema ??
+    '';
   const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
   const isProjectSaving = useProjectStore((s) => s.isSaving);
 
@@ -195,11 +205,28 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
         setMessage(null);
         setError(null);
         try {
+          const curProj = useProjectStore.getState().currentProject;
+          const sitVal =
+            (curProj as any)?.situation ??
+            curProj?.situacion_existente ??
+            '';
+          const magVal =
+            (curProj as any)?.magnitude ??
+            curProj?.magnitud_problema ??
+            '';
           await useProjectStore.getState().updateProjectDetails(project.id, {
-            problem_description: useProjectStore.getState().currentProject?.problem_description ?? '',
-            general_objective: useProjectStore.getState().currentProject?.general_objective ?? '',
-            situacion_existente: useProjectStore.getState().currentProject?.situacion_existente ?? '',
-            magnitud_problema: useProjectStore.getState().currentProject?.magnitud_problema ?? '',
+            problem_description: curProj?.problem_description ?? '',
+            general_objective: curProj?.general_objective ?? '',
+            situacion_existente: sitVal,
+            magnitud_problema: magVal,
+            situation: sitVal,
+            magnitude: magVal,
+          });
+          debouncedPatchProject(project.id, {
+            situation: sitVal,
+            magnitude: magVal,
+            situacion_existente: sitVal,
+            magnitud_problema: magVal,
           });
           setMessage('Identificación del problema guardada.');
         } catch (err) {
@@ -733,14 +760,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={situacionExistente}
-            onAutoFill={(v) => patchCurrentProject({ situacion_existente: v })}
+            onAutoFill={(v) => patchCurrentProject({ situacion_existente: v, situation: v } as any)}
             maxLength={2000}
           >
             <textarea spellCheck={true}
               id={`mga-situation-${project.id}`}
+              name="situation"
               maxLength={2000}
               value={situacionExistente}
-              onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value })}
+              onChange={(e) => patchCurrentProject({ situacion_existente: e.target.value, situation: e.target.value } as any)}
               onBlur={() => void handleSaveIdentification()}
               className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
               placeholder="Describa el contexto territorial, social o institucional actual…"
@@ -758,14 +786,15 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
             currentValue={magnitudProblema}
-            onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v })}
+            onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v, magnitude: v } as any)}
             maxLength={2000}
           >
             <textarea spellCheck={true}
               id={`mga-magnitude-${project.id}`}
+              name="magnitude"
               maxLength={2000}
               value={magnitudProblema}
-              onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value })}
+              onChange={(e) => patchCurrentProject({ magnitud_problema: e.target.value, magnitude: e.target.value } as any)}
               onBlur={() => void handleSaveIdentification()}
               className="min-h-[150px] w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-primary"
               placeholder="Indique magnitud, fuentes y línea base del problema…"

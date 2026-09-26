@@ -28,7 +28,11 @@ import (
 // Fórmula: (hitos_cumplidos * 100) / 10 = hitos_cumplidos * 10
 const ProjectProgressSQL = `(
 	(CASE WHEN projects.name IS NOT NULL AND TRIM(projects.name) != '' AND projects.sector_id IS NOT NULL THEN 1 ELSE 0 END) +
-	(CASE WHEN projects.problem_description IS NOT NULL AND TRIM(projects.problem_description) != '' AND projects.situacion_existente IS NOT NULL AND TRIM(projects.situacion_existente) != '' THEN 1 ELSE 0 END) +
+	(CASE WHEN projects.problem_description IS NOT NULL AND TRIM(projects.problem_description) != '' AND (
+		(projects.situacion_existente IS NOT NULL AND TRIM(projects.situacion_existente) != '') OR
+		(projects.mga_formulation_data->>'situation' IS NOT NULL AND TRIM(projects.mga_formulation_data->>'situation') != '') OR
+		(projects.mga_formulation_data->>'situacion_existente' IS NOT NULL AND TRIM(projects.mga_formulation_data->>'situacion_existente') != '')
+	) THEN 1 ELSE 0 END) +
 	(CASE WHEN EXISTS (SELECT 1 FROM mga_causes WHERE mga_causes.project_id = projects.id AND mga_causes.deleted_at IS NULL) THEN 1 ELSE 0 END) +
 	(CASE WHEN EXISTS (SELECT 1 FROM mga_effects WHERE mga_effects.project_id = projects.id AND mga_effects.deleted_at IS NULL) THEN 1 ELSE 0 END) +
 	(CASE WHEN EXISTS (SELECT 1 FROM mga_participants WHERE mga_participants.project_id = projects.id AND mga_participants.deleted_at IS NULL) THEN 1 ELSE 0 END) +

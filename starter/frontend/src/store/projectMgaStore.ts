@@ -20,6 +20,7 @@ import {
   updateMgaObjective,
   updateMgaParticipant,
   updateMgaPopulation,
+  updateMgaIndicator,
   type CreateMgaAlternativePayload,
   type CreateMgaCausePayload,
   type CreateMgaEffectPayload,
@@ -38,6 +39,7 @@ import {
   type UpdateMgaCausePayload,
   type UpdateMgaEffectPayload,
   type UpdateMgaParticipantPayload,
+  type UpdateMgaIndicatorPayload,
 } from '../lib/mgaApi';
 import debounce from 'lodash.debounce';
 import { useProjectStore, type Project } from './projectStore';
@@ -174,6 +176,11 @@ type ProjectMgaState = {
   ) => Promise<void>;
   removeAlternative: (projectId: string, alternativeId: string) => Promise<void>;
   createIndicator: (projectId: string, payload: CreateMgaIndicatorPayload) => Promise<void>;
+  editIndicator: (
+    projectId: string,
+    indicatorId: string,
+    payload: UpdateMgaIndicatorPayload,
+  ) => Promise<void>;
   deleteIndicator: (projectId: string, indicatorId: string) => Promise<void>;
   savePlanDesarrollo: (projectId: string, data: PlanDesarrolloData) => Promise<void>;
   saveProblematica: (projectId: string) => Promise<void>;
@@ -517,8 +524,18 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, problematica: true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      const store = useProjectStore.getState();
+      const curProj = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
+      const sitVal = (curProj as any)?.situation ?? curProj?.situacion_existente ?? '';
+      const magVal = (curProj as any)?.magnitude ?? curProj?.magnitud_problema ?? '';
+      const newCompleted = { ...formulation.completedSections, problematica: true, identificacion: true };
+      debouncedPatchProject(projectId, {
+        situation: sitVal,
+        magnitude: magVal,
+        situacion_existente: sitVal,
+        magnitud_problema: magVal,
+        completedSections: newCompleted,
+      });
       return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
@@ -548,7 +565,10 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
       const newCompleted = { ...formulation.completedSections, objetivos: true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      debouncedPatchProject(projectId, {
+        completedSections: newCompleted,
+        generalIndicators: formulation.generalIndicators,
+      });
       return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
@@ -1037,6 +1057,28 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     }
   },
 
+  editIndicator: async (projectId, indicatorId, payload) => {
+    set({ isSaving: true, error: null });
+    try {
+      const updated = await updateMgaIndicator(projectId, indicatorId, payload);
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        return {
+          byProjectId: patchFormulation(state, projectId, {
+            generalIndicators: formulation.generalIndicators.map((i) =>
+              i.id === indicatorId ? mapIndicatorToUi(updated) : i,
+            ),
+          }),
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      const message = extractError(err, 'No se pudo actualizar el indicador');
+      set({ isSaving: false, error: message });
+      throw new Error(message);
+    }
+  },
+
   deleteIndicator: async (projectId, indicatorId) => {
     set({ isSaving: true, error: null });
     try {
@@ -1092,6 +1134,8 @@ export type PopulationLocationsData = {
   departments?: string[];
   demographicNotes?: string;
   localization?: string;
+  population_type?: string;
+  population_unit?: string;
 };
 
 export function parsePopulationLocations(raw: unknown): PopulationLocationsData {
@@ -1150,13 +1194,23 @@ export function hasMgaSectionData(
       const generalObj = hasText(project.general_objective) || hasText(pData.general_objective);
       const causesCount = form?.causeRelations?.length || 0;
       const effectsCount = form?.effects?.length || 0;
+      const hasSituation =
+        hasText((project as any).situation) ||
+        hasText(project.situacion_existente) ||
+        hasText(pData.situation) ||
+        hasText(pData.situacion_existente);
+      const hasMagnitude =
+        hasText((project as any).magnitude) ||
+        hasText(project.magnitud_problema) ||
+        hasText(pData.magnitude) ||
+        hasText(pData.magnitud_problema);
       const hasCompleted = Boolean(
         form?.completedSections?.['problematica'] ||
         form?.completedSections?.['identificacion'] ||
         pData.completedSections?.['problematica'] ||
         pData.completedSections?.['identificacion']
       );
-      return Boolean(problemDesc || generalObj || causesCount > 0 || effectsCount > 0 || hasCompleted);
+      return Boolean(problemDesc || generalObj || causesCount > 0 || effectsCount > 0 || hasSituation || hasMagnitude || hasCompleted);
     }
 
     case 'participantes': {
@@ -1174,6 +1228,7 @@ export function hasMgaSectionData(
         (p) =>
           (typeof p.total_number === 'number' && p.total_number > 0) ||
           hasText(p.source) ||
+          hasText((p as any).population_type) ||
           (typeof p.locations === 'string' ? hasText(p.locations) : Boolean(p.locations))
       );
       const hasPDataPop = Boolean(pData.poblacion && (typeof pData.poblacion === 'object' ? Object.keys(pData.poblacion).length > 0 : true));
@@ -1186,8 +1241,11 @@ export function hasMgaSectionData(
       const indicatorsCount = form?.generalIndicators?.length || 0;
       const pDataIndicatorsCount = Array.isArray(pData.generalIndicators) ? pData.generalIndicators.length : 0;
       const hasSpecificObjectives = (form?.causeRelations || []).some((c) => hasText(c.specificObjective));
+      const hasDetailedIndicators = (form?.generalIndicators || []).some(
+        (i) => hasText(i.indicator) || hasText(i.verificationSource) || hasText(i.sourceType)
+      );
       const hasCompleted = Boolean(form?.completedSections?.['objetivos'] || pData.completedSections?.['objetivos']);
-      return Boolean(generalObj || indicatorsCount > 0 || pDataIndicatorsCount > 0 || hasSpecificObjectives || hasCompleted);
+      return Boolean(generalObj || indicatorsCount > 0 || pDataIndicatorsCount > 0 || hasSpecificObjectives || hasDetailedIndicators || hasCompleted);
     }
 
     case 'alternativas': {
@@ -1210,13 +1268,21 @@ export function hasMgaSectionData(
       const pDataItems = pData.analisisTecnico?.items;
       const hasFormItems = Boolean(formItems && typeof formItems === 'object' && Object.values(formItems).some(hasText));
       const hasPDataItems = Boolean(pDataItems && typeof pDataItems === 'object' && Object.values(pDataItems).some(hasText));
+      const formHorizon = form?.analisisTecnico?.project_horizon ?? form?.analisisTecnico?.horizonte_evaluacion;
+      const pDataHorizon =
+        pData.analisisTecnico?.project_horizon ??
+        pData.analisis_tecnico?.project_horizon ??
+        pData.project_horizon;
+      const hasHorizon =
+        (typeof formHorizon === 'number' && formHorizon > 0) ||
+        (typeof pDataHorizon === 'number' && pDataHorizon > 0);
       const hasCompleted = Boolean(
         form?.completedSections?.['analisisTecnico'] ||
         form?.completedSections?.['analisis-tecnico'] ||
         pData.completedSections?.['analisisTecnico'] ||
         pData.completedSections?.['analisis-tecnico']
       );
-      return hasFormItems || hasPDataItems || hasCompleted;
+      return hasFormItems || hasPDataItems || hasHorizon || hasCompleted;
     }
 
     case 'localizacion': {
@@ -1287,10 +1353,22 @@ export function hasMgaSectionData(
     }
 
     case 'evaluacion': {
-      const resumen = form?.evaluacion?.resumen || pData.evaluacion?.resumen;
+      const evalObj = form?.evaluacion || pData.evaluacion;
+      const resumen = evalObj?.resumen;
       const hasResumen = hasText(resumen);
+      const hasRate =
+        evalObj &&
+        ((typeof evalObj.opportunity_interest_rate === 'number' && evalObj.opportunity_interest_rate > 0) ||
+         (typeof evalObj.tasa_descuento === 'number' && evalObj.tasa_descuento > 0));
+      const hasIndicators =
+        evalObj &&
+        (evalObj.vpn !== undefined ||
+         evalObj.rcb !== undefined ||
+         evalObj.cae !== undefined ||
+         evalObj.vpc !== undefined ||
+         (evalObj.indicadores && Object.keys(evalObj.indicadores).length > 0));
       const hasCompleted = Boolean(form?.completedSections?.['evaluacion'] || pData.completedSections?.['evaluacion']);
-      return hasResumen || hasCompleted;
+      return hasResumen || Boolean(hasRate) || Boolean(hasIndicators) || hasCompleted;
     }
 
     case 'programacion': {

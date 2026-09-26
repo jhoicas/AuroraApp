@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Check, HelpCircle, Minus, Pencil, Plus, PlusCircle, Trash2 } from 'lucide-react';
+import { Check, HelpCircle, Minus, Pencil, Plus, PlusCircle, Trash2, X } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import {
   MGA_INFINITIVE_ASK_SUFFIX,
@@ -45,6 +45,9 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
   const mgaError = useProjectMgaStore((s) => s.error);
   const clearMgaError = useProjectMgaStore((s) => s.clearError);
   const saveObjetivos = useProjectMgaStore((s) => s.saveObjetivos);
+  const createIndicator = useProjectMgaStore((s) => s.createIndicator);
+  const editIndicator = useProjectMgaStore((s) => s.editIndicator);
+  const deleteIndicator = useProjectMgaStore((s) => s.deleteIndicator);
 
   const formulation = getFormulation(project.id);
   const { causeRelations, generalIndicators, effects = [] } = formulation;
@@ -190,6 +193,80 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
     }
   };
 
+  const [showIndicatorModal, setShowIndicatorModal] = useState(false);
+  const [editingIndicatorId, setEditingIndicatorId] = useState<string | null>(null);
+  const [indicatorForm, setIndicatorForm] = useState({
+    name: '',
+    unit: '',
+    target: '',
+    source_type: 'Secundaria',
+    verification_source: '',
+  });
+
+  const handleOpenAddIndicator = () => {
+    setEditingIndicatorId(null);
+    setIndicatorForm({
+      name: '',
+      unit: '',
+      target: '',
+      source_type: 'Secundaria',
+      verification_source: '',
+    });
+    setShowIndicatorModal(true);
+  };
+
+  const handleOpenEditIndicator = (ind: GeneralObjectiveIndicator) => {
+    setEditingIndicatorId(ind.id);
+    setIndicatorForm({
+      name: ind.indicator,
+      unit: ind.measuredThrough,
+      target: ind.target.replace(/\./g, '').replace(',', '.'),
+      source_type: ind.sourceType || 'Secundaria',
+      verification_source: ind.verificationSource || '',
+    });
+    setShowIndicatorModal(true);
+  };
+
+  const handleDeleteIndicator = async (id: string) => {
+    try {
+      await deleteIndicator(project.id, id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando indicador');
+    }
+  };
+
+  const handleSaveIndicator = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!indicatorForm.name.trim() || !indicatorForm.unit.trim()) {
+      setError('El nombre del indicador y la unidad son obligatorios.');
+      return;
+    }
+    const numTarget = parseFloat(indicatorForm.target) || 0;
+    try {
+      if (editingIndicatorId) {
+        await editIndicator(project.id, editingIndicatorId, {
+          name: indicatorForm.name.trim(),
+          unit: indicatorForm.unit.trim(),
+          target: numTarget,
+          source_type: indicatorForm.source_type,
+          verification_source: indicatorForm.verification_source.trim(),
+        });
+      } else {
+        await createIndicator(project.id, {
+          name: indicatorForm.name.trim(),
+          unit: indicatorForm.unit.trim(),
+          target: numTarget,
+          source_type: indicatorForm.source_type,
+          verification_source: indicatorForm.verification_source.trim(),
+        });
+      }
+      setShowIndicatorModal(false);
+      setEditingIndicatorId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando indicador');
+    }
+  };
+
   if (isInitializing || isMgaLoading) {
     return (
       <div className="bg-white p-6 border rounded-lg text-sm text-gray-500">
@@ -296,40 +373,155 @@ export default function ObjetivosTab({ project, skipInitialFetch = false }: Obje
                     </tr>
                   </thead>
                   <tbody>
-                    {generalIndicators.map((ind: GeneralObjectiveIndicator) => (
-                      <tr key={ind.id} className="border-b">
-                        <td className="p-2 border text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            className="p-1 bg-[#2980b9] text-white rounded mr-1"
-                            aria-label="Editar indicador"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            className="p-1 bg-[#2980b9] text-white rounded"
-                            aria-label="Eliminar indicador"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                    {generalIndicators.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-3 text-center text-gray-500">
+                          No hay indicadores registrados. Haga clic en "Adicionar" para registrar uno.
                         </td>
-                        <td className="p-2 border font-medium">{ind.indicator}</td>
-                        <td className="p-2 border">{ind.measuredThrough}</td>
-                        <td className="p-2 border font-semibold">{ind.target}</td>
-                        <td className="p-2 border">{ind.sourceType}</td>
-                        <td className="p-2 border">{ind.verificationSource}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      generalIndicators.map((ind: GeneralObjectiveIndicator) => (
+                        <tr key={ind.id} className="border-b hover:bg-gray-50">
+                          <td className="p-2 border text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditIndicator(ind)}
+                              className="p-1 bg-[#2980b9] text-white rounded mr-1 hover:bg-[#1f6391]"
+                              aria-label="Editar indicador"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteIndicator(ind.id)}
+                              className="p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                              aria-label="Eliminar indicador"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </td>
+                          <td className="p-2 border font-medium">{ind.indicator}</td>
+                          <td className="p-2 border">{ind.measuredThrough}</td>
+                          <td className="p-2 border font-semibold">{ind.target}</td>
+                          <td className="p-2 border">{ind.sourceType}</td>
+                          <td className="p-2 border">{ind.verificationSource}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white text-xs font-semibold rounded"
+                  onClick={handleOpenAddIndicator}
+                  className="flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white text-xs font-semibold rounded hover:bg-[#1f6391]"
                 >
                   <PlusCircle className="w-4 h-4" /> Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showIndicatorModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl text-xs space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-sm font-bold text-gray-800">
+                  {editingIndicatorId ? 'Editar Indicador de Objetivo' : 'Adicionar Indicador de Objetivo General'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowIndicatorModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="font-semibold block mb-1 text-gray-700">Indicador objetivo *</label>
+                  <input
+                    type="text"
+                    value={indicatorForm.name}
+                    onChange={(e) => setIndicatorForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full p-2 border rounded"
+                    placeholder="Ej. Tasa de cobertura de acueducto..."
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold block mb-1 text-gray-700">Medido a través de (Unidad) *</label>
+                    <input
+                      type="text"
+                      value={indicatorForm.unit}
+                      onChange={(e) => setIndicatorForm((f) => ({ ...f, unit: e.target.value }))}
+                      className="w-full p-2 border rounded"
+                      placeholder="Ej. Porcentaje, Número, Km..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1 text-gray-700">Meta *</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={indicatorForm.target}
+                      onChange={(e) => setIndicatorForm((f) => ({ ...f, target: e.target.value }))}
+                      className="w-full p-2 border rounded"
+                      placeholder="Ej. 100"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold block mb-1 text-gray-700">Tipo de fuente *</label>
+                    <select
+                      value={indicatorForm.source_type}
+                      onChange={(e) => setIndicatorForm((f) => ({ ...f, source_type: e.target.value }))}
+                      className="w-full p-2 border rounded bg-white"
+                    >
+                      <option value="Primaria">Primaria</option>
+                      <option value="Secundaria">Secundaria</option>
+                      <option value="Registro Administrativo">Registro Administrativo</option>
+                      <option value="Estadísticas DANE">Estadísticas DANE</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1 text-gray-700">Fuente de verificación *</label>
+                    <input
+                      type="text"
+                      value={indicatorForm.verification_source}
+                      onChange={(e) => setIndicatorForm((f) => ({ ...f, verification_source: e.target.value }))}
+                      className="w-full p-2 border rounded"
+                      placeholder="Ej. Informes de interventoría, SISBEN..."
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowIndicatorModal(false)}
+                  className="px-3 py-1.5 border rounded text-gray-600 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => void handleSaveIndicator(e)}
+                  className="px-4 py-1.5 bg-[#2980b9] text-white font-semibold rounded hover:bg-[#1f6391]"
+                >
+                  Guardar Indicador
                 </button>
               </div>
             </div>

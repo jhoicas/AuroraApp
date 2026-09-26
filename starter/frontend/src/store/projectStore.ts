@@ -17,6 +17,8 @@ export type Project = {
   general_objective?: string;
   situacion_existente?: string;
   magnitud_problema?: string;
+  situation?: string;
+  magnitude?: string;
   fase_maduracion?: string;
   region_id?: number | null;
   regionId?: number | null;
@@ -83,6 +85,8 @@ export type UpdateProjectDetailsPayload = {
   general_objective: string;
   situacion_existente: string;
   magnitud_problema: string;
+  situation?: string;
+  magnitude?: string;
 };
 
 export type CreateBudgetItemPayload = {

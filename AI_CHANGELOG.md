@@ -21,7 +21,38 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
-### 2026-09-25 - Antigravity - Reestructuración de Cadena de Valor (CadenaValorTab) Layout Oficial MGA DNP
+### 2026-09-25 - Antigravity - Paridad Total de Campos MGA DNP XML, Persistencia JSONB y Auditoría de Avance
+
+- **Objetivo:** Garantizar la paridad total de campos con el XML oficial de la MGA (`ProjectSummary.xml`) en todos los módulos de formulación, asegurar su persistencia en `mga_formulation_data` (JSONB) y actualizar el cálculo de porcentaje de avance y auditoría del proyecto.
+- **Frontend (React / TypeScript / Zustand):**
+  - [IdentificacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/IdentificacionTab.tsx):
+    - Soporte completo para `situation` (Situación actual) y `magnitude` (Magnitud cuantificable del problema) vinculados bidireccionalmente con `situacion_existente` y `magnitud_problema`.
+    - Persistencia inmediata al escribir y guardar hacia `debouncedPatchProject` y `updateProjectDetails`.
+  - [PoblacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/PoblacionTab.tsx):
+    - Se agregó el campo `source` (Fuente de información demográfica) y el selector interactivo `population_type` (Personas, Familias, Hectáreas, etc.) con sincronización a `mga_formulation_data.poblacion` y a las localizaciones.
+  - [ObjetivosTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx):
+    - Integración de tabla interactiva y modal de gestión (Adicionar/Editar/Eliminar) de indicadores del objetivo general con soporte explícito para `verification_source` (Fuente de verificación) y `source_type` (Tipo de fuente: Primaria, Secundaria, Registro Administrativo, etc.).
+  - [AnalisisTecnicoTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/AnalisisTecnicoTab.tsx):
+    - Inclusión del campo numérico `project_horizon` (Horizonte de evaluación en años) y persistencia en `mga_formulation_data.analisis_tecnico`.
+  - [RiesgosTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/RiesgosTab.tsx):
+    - Expansión de la matriz de riesgos para incluir `classification_level` ('Propósito' | 'Componente/Producto' | 'Actividad'), `effect` (Efecto del riesgo) y `mitigation` (Medidas de mitigación).
+  - [EvaluacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/EvaluacionTab.tsx):
+    - Inclusión del campo numérico `opportunity_interest_rate` (Tasa de interés de oportunidad / descuento) y tabla editable de indicadores financieros (VPN, RCB, CAE, VPC, TIR) por alternativa.
+  - [projectMgaStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectMgaStore.ts):
+    - Extensión de tipos de datos (`PopulationLocationsData`, `GeneralIndicator`, `RiskItem`, `EvaluationFinancialIndicators`).
+    - Actualización integral de `hasMgaSectionData` para validar la presencia de todos los sub-campos exigidos por el DNP para otorgar el estado completado (100% de avance).
+  - [projectStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectStore.ts):
+    - Extensión de `Project` y `UpdateProjectDetailsPayload` con `situation` y `magnitude`.
+- **Backend (Go / Postgres):**
+  - [project_repository.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/project_repository.go):
+    - Actualización de la consulta `ProjectProgressSQL` para reconocer tanto `situation` como `situacion_existente` dentro de `mga_formulation_data`.
+  - [formulation_audit_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/project/formulation_audit_service.go):
+    - Evaluación exhaustiva en la auditoría de formulación para `situation`, `magnitude`, `project_horizon`, riesgos (`classification_level`, `mitigation`) y evaluación económica (`opportunity_interest_rate`), emitiendo hallazgos de completitud (`succ-`) o advertencias (`warn-`) según el estándar MGA.
+- **Validaciones Ejecutadas:**
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `npm run build` -> Exit Code 0 (Vite + tsc -b completados exitosamente).
+  - `npx vitest run src/components/Tenant/MGA` -> Exit Code 0 (6 suites, 33 tests pasados).
+  - `cd starter/backend && go test ./internal/application/project/...` -> Exit Code 0.
 
 - **Objetivo:** Reestructurar visual y funcionalmente la pestaña `CadenaValorTab.tsx` para replicar con exactitud la distribución de columnas (Productos a la izquierda vs Actividades apiladas a la derecha), jerarquía de acordeón por Objetivo Específico con costos consolidados, campos metodológicos (Indicador, Unidad, Cantidad, Etapa, Costo), y barras de acción inferiores según el estándar de la MGA oficial.
 - **Frontend (React / TypeScript / Zustand / TailwindCSS):**

@@ -14,6 +14,16 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<Record<string, string>>({});
+  const [projectHorizon, setProjectHorizon] = useState<string>(() => {
+    const rawHorizon =
+      formulation.analisisTecnico?.project_horizon ??
+      formulation.analisisTecnico?.horizonte_evaluacion ??
+      (project.mga_formulation_data as any)?.analisisTecnico?.project_horizon ??
+      (project.mga_formulation_data as any)?.analisis_tecnico?.project_horizon ??
+      (project.mga_formulation_data as any)?.project_horizon ??
+      '';
+    return rawHorizon ? String(rawHorizon) : '';
+  });
 
   const fieldProjectContext = {
     projectName: project.name,
@@ -25,15 +35,29 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
     if (formulation.analisisTecnico?.items) {
       setItems(formulation.analisisTecnico.items);
     }
-  }, [formulation.analisisTecnico]);
+    const h =
+      formulation.analisisTecnico?.project_horizon ??
+      formulation.analisisTecnico?.horizonte_evaluacion ??
+      (project.mga_formulation_data as any)?.analisisTecnico?.project_horizon ??
+      (project.mga_formulation_data as any)?.analisis_tecnico?.project_horizon ??
+      (project.mga_formulation_data as any)?.project_horizon;
+    if (h !== undefined && h !== null && h !== '') {
+      setProjectHorizon(String(h));
+    }
+  }, [formulation.analisisTecnico, project.mga_formulation_data]);
 
   const alternatives = formulation.alternatives.filter(a => a.proceeds_to_preparation);
 
   const handleSave = async () => {
     setError(null);
     setMessage(null);
+    const numHorizon = parseInt(projectHorizon, 10);
     try {
-      await saveAnalisisTecnico(project.id, { items });
+      await saveAnalisisTecnico(project.id, {
+        items,
+        project_horizon: Number.isFinite(numHorizon) ? numHorizon : 0,
+        horizonte_evaluacion: Number.isFinite(numHorizon) ? numHorizon : 0,
+      });
       setMessage('Análisis técnico guardado exitosamente.');
     } catch (err) {
       setError('Error al guardar análisis técnico');
@@ -49,6 +73,30 @@ export default function AnalisisTecnicoTab({ project }: { project: Project }) {
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+
+      {/* Horizonte de Evaluación */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm space-y-2">
+        <label className="font-semibold text-gray-700 block">
+          Horizonte de evaluación del proyecto (Años) *
+        </label>
+        <p className="text-xs text-gray-500">
+          Periodo estimado en años que contempla la fase de inversión, operación y vida útil de los activos para la evaluación ex-ante (metodología MGA DNP).
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min="1"
+            max="100"
+            id={`mga-project-horizon-${project.id}`}
+            name="project_horizon"
+            value={projectHorizon}
+            onChange={(e) => setProjectHorizon(e.target.value)}
+            className="w-48 p-2 border rounded text-xs bg-white focus:ring-2 focus:ring-primary"
+            placeholder="Ej. 10"
+          />
+          <span className="text-xs text-gray-600 font-medium">años de horizonte de evaluación</span>
+        </div>
+      </div>
 
       <div className="space-y-4">
         {alternatives.length === 0 ? (

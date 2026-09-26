@@ -5,6 +5,19 @@ import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
+export type MgaRiskItem = {
+  id: string;
+  alternativeId: string;
+  classification_level: 'Propósito' | 'Componente/Producto' | 'Actividad';
+  descripcion: string;
+  probabilidad: string;
+  impacto: string;
+  efectos: string;
+  effect: string;
+  medida: string;
+  mitigation: string;
+};
+
 export default function RiesgosTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const saveRiesgos = useProjectMgaStore((s) => s.saveRiesgos);
@@ -13,7 +26,7 @@ export default function RiesgosTab({ project }: { project: Project }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<MgaRiskItem[]>([]);
 
   const fieldProjectContext = {
     projectName: project.name,
@@ -21,31 +34,54 @@ export default function RiesgosTab({ project }: { project: Project }) {
     productCode: project.product_code || undefined,
   };
 
+  const alternatives = formulation.alternatives.filter(a => a.proceeds_to_preparation);
+
   useEffect(() => {
-    if (formulation.riesgos?.items) {
-      setItems(formulation.riesgos.items);
+    if (formulation.riesgos?.items && Array.isArray(formulation.riesgos.items)) {
+      const mapped: MgaRiskItem[] = formulation.riesgos.items.map((item: any) => ({
+        id: item.id || crypto.randomUUID(),
+        alternativeId: item.alternativeId || '',
+        classification_level: item.classification_level || 'Propósito',
+        descripcion: item.descripcion || '',
+        probabilidad: item.probabilidad || 'Media',
+        impacto: item.impacto || 'Medio',
+        efectos: item.efectos || item.effect || '',
+        effect: item.effect || item.efectos || '',
+        medida: item.medida || item.mitigation || '',
+        mitigation: item.mitigation || item.medida || '',
+      }));
+      setItems(mapped);
     }
   }, [formulation.riesgos]);
-
-  const alternatives = formulation.alternatives.filter(a => a.proceeds_to_preparation);
 
   const handleAddItem = () => {
     setItems([
       ...items,
       {
         id: crypto.randomUUID(),
-        alternativeId: '',
+        alternativeId: alternatives[0]?.id || '',
+        classification_level: 'Propósito',
         descripcion: '',
-        probabilidad: '',
-        impacto: '',
+        probabilidad: 'Media',
+        impacto: 'Medio',
         efectos: '',
+        effect: '',
         medida: '',
+        mitigation: '',
       }
     ]);
   };
 
   const updateItem = (id: string, field: string, value: string) => {
-    setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setItems(items.map(item => {
+      if (item.id !== id) return item;
+      const updated: any = { ...item, [field]: value };
+      if (field === 'efectos') updated.effect = value;
+      if (field === 'effect') updated.efectos = value;
+      if (field === 'medida') updated.mitigation = value;
+      if (field === 'mitigation') updated.medida = value;
+      return updated;
+    }));
   };
 
   const deleteItem = (id: string) => {
@@ -78,6 +114,7 @@ export default function RiesgosTab({ project }: { project: Project }) {
           <thead className="bg-[#6c757d] text-white">
             <tr>
               <th className="p-2 border">Acciones</th>
+              <th className="p-2 border">Nivel de Clasificación</th>
               <th className="p-2 border">Alternativa</th>
               <th className="p-2 border">Descripción</th>
               <th className="p-2 border">Probabilidad</th>
@@ -89,7 +126,7 @@ export default function RiesgosTab({ project }: { project: Project }) {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-4 text-center text-gray-500">
+                <td colSpan={8} className="p-4 text-center text-gray-500">
                   No hay riesgos registrados.
                 </td>
               </tr>
@@ -104,6 +141,18 @@ export default function RiesgosTab({ project }: { project: Project }) {
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
+                  </td>
+                  <td className="p-2 border">
+                    <select
+                      name="classification_level"
+                      value={item.classification_level}
+                      onChange={(e) => updateItem(item.id, 'classification_level', e.target.value)}
+                      className="w-full p-1 border rounded bg-white text-xs font-medium"
+                    >
+                      <option value="Propósito">Propósito</option>
+                      <option value="Componente/Producto">Componente/Producto</option>
+                      <option value="Actividad">Actividad</option>
+                    </select>
                   </td>
                   <td className="p-2 border">
                     <select
@@ -182,6 +231,7 @@ export default function RiesgosTab({ project }: { project: Project }) {
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-efectos-${item.id}`}
+                        name="effect"
                         rows={2}
                         maxLength={500}
                         value={item.efectos}
@@ -207,6 +257,7 @@ export default function RiesgosTab({ project }: { project: Project }) {
                     >
                       <textarea spellCheck={true}
                         id={`riesgo-medida-${item.id}`}
+                        name="mitigation"
                         rows={2}
                         maxLength={500}
                         value={item.medida}

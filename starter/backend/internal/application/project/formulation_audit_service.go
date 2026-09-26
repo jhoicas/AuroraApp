@@ -73,6 +73,41 @@ func NewFormulationAuditService(
 const minIdentificationTextLen = 100
 
 type auditFormulationData struct {
+	Situation           string `json:"situation"`
+	SituacionExistente  string `json:"situacion_existente"`
+	Magnitude           string `json:"magnitude"`
+	MagnitudProblema    string `json:"magnitud_problema"`
+	ProjectHorizon      int    `json:"project_horizon"`
+	HorizonteEvaluacion int    `json:"horizonte_evaluacion"`
+	AnalisisTecnico     *struct {
+		ProjectHorizon      int               `json:"project_horizon"`
+		HorizonteEvaluacion int               `json:"horizonte_evaluacion"`
+		Items               map[string]string `json:"items"`
+	} `json:"analisisTecnico"`
+	AnalisisTecnicoSnake *struct {
+		ProjectHorizon      int               `json:"project_horizon"`
+		HorizonteEvaluacion int               `json:"horizonte_evaluacion"`
+		Items               map[string]string `json:"items"`
+	} `json:"analisis_tecnico"`
+	Riesgos *struct {
+		Items []struct {
+			ID                  string `json:"id"`
+			ClassificationLevel string `json:"classification_level"`
+			Mitigation          string `json:"mitigation"`
+			Medida              string `json:"medida"`
+			Effect              string `json:"effect"`
+			Efectos             string `json:"efectos"`
+		} `json:"items"`
+	} `json:"riesgos"`
+	Evaluacion *struct {
+		OpportunityInterestRate *float64 `json:"opportunity_interest_rate"`
+		TasaDescuento           *float64 `json:"tasa_descuento"`
+		Resumen                 string   `json:"resumen"`
+		VPN                     *float64 `json:"vpn"`
+		RCB                     *float64 `json:"rcb"`
+		CAE                     *float64 `json:"cae"`
+		VPC                     *float64 `json:"vpc"`
+	} `json:"evaluacion"`
 	Localizaciones []struct {
 		RegionID            *int `json:"region_id"`
 		RegionIDCamel       *int `json:"regionId"`
@@ -364,7 +399,19 @@ func (s *FormulationAuditService) AuditProject(
 	}
 
 	// 5. EVALUACIÓN CUALITATIVA / COHERENCIA NARRATIVA
+	var parsed auditFormulationData
+	if len(project.MgaFormulationData) > 0 {
+		_ = json.Unmarshal(project.MgaFormulationData, &parsed)
+	}
+
 	situacion := strings.TrimSpace(project.SituacionExistente)
+	if situacion == "" {
+		if strings.TrimSpace(parsed.Situation) != "" {
+			situacion = strings.TrimSpace(parsed.Situation)
+		} else if strings.TrimSpace(parsed.SituacionExistente) != "" {
+			situacion = strings.TrimSpace(parsed.SituacionExistente)
+		}
+	}
 	if situacion == "" {
 		addFinding(
 			"warn-situacion-empty",
@@ -381,9 +428,24 @@ func (s *FormulationAuditService) AuditProject(
 			"identificacion",
 			false,
 		)
+	} else {
+		addFinding(
+			"succ-situacion",
+			"Descripción de la situación existente y antecedentes estructurada conforme a la metodología MGA.",
+			"SUCCESS",
+			"identificacion",
+			true,
+		)
 	}
 
 	magnitud := strings.TrimSpace(project.MagnitudProblema)
+	if magnitud == "" {
+		if strings.TrimSpace(parsed.Magnitude) != "" {
+			magnitud = strings.TrimSpace(parsed.Magnitude)
+		} else if strings.TrimSpace(parsed.MagnitudProblema) != "" {
+			magnitud = strings.TrimSpace(parsed.MagnitudProblema)
+		}
+	}
 	if magnitud == "" {
 		addFinding(
 			"warn-magnitud-empty",
@@ -400,6 +462,114 @@ func (s *FormulationAuditService) AuditProject(
 			"identificacion",
 			false,
 		)
+	} else {
+		addFinding(
+			"succ-magnitud",
+			"Magnitud actual del problema e indicadores de referencia cuantificados.",
+			"SUCCESS",
+			"identificacion",
+			true,
+		)
+	}
+
+	// 6. SUB-CAMPOS METODOLÓGICOS MGA: ANÁLISIS TÉCNICO, RIESGOS Y EVALUACIÓN
+	horizon := 0
+	if parsed.AnalisisTecnico != nil {
+		if parsed.AnalisisTecnico.ProjectHorizon > 0 {
+			horizon = parsed.AnalisisTecnico.ProjectHorizon
+		} else if parsed.AnalisisTecnico.HorizonteEvaluacion > 0 {
+			horizon = parsed.AnalisisTecnico.HorizonteEvaluacion
+		}
+	}
+	if horizon == 0 && parsed.AnalisisTecnicoSnake != nil {
+		if parsed.AnalisisTecnicoSnake.ProjectHorizon > 0 {
+			horizon = parsed.AnalisisTecnicoSnake.ProjectHorizon
+		} else if parsed.AnalisisTecnicoSnake.HorizonteEvaluacion > 0 {
+			horizon = parsed.AnalisisTecnicoSnake.HorizonteEvaluacion
+		}
+	}
+	if horizon == 0 {
+		if parsed.ProjectHorizon > 0 {
+			horizon = parsed.ProjectHorizon
+		} else if parsed.HorizonteEvaluacion > 0 {
+			horizon = parsed.HorizonteEvaluacion
+		}
+	}
+	if horizon > 0 {
+		addFinding(
+			"succ-horizon",
+			"Horizonte de evaluación del proyecto definido y validado (pestaña Análisis Técnico).",
+			"SUCCESS",
+			"analisis-tecnico",
+			true,
+		)
+	} else if parsed.AnalisisTecnico != nil || parsed.AnalisisTecnicoSnake != nil {
+		addFinding(
+			"warn-horizon",
+			"Debe especificar el horizonte de evaluación en años en el análisis técnico.",
+			"WARNING",
+			"analisis-tecnico",
+			false,
+		)
+	}
+
+	if parsed.Riesgos != nil && len(parsed.Riesgos.Items) > 0 {
+		allHaveMitigationAndLevel := true
+		for _, r := range parsed.Riesgos.Items {
+			mit := strings.TrimSpace(r.Mitigation)
+			if mit == "" {
+				mit = strings.TrimSpace(r.Medida)
+			}
+			level := strings.TrimSpace(r.ClassificationLevel)
+			if mit == "" || level == "" {
+				allHaveMitigationAndLevel = false
+				break
+			}
+		}
+		if allHaveMitigationAndLevel {
+			addFinding(
+				"succ-riesgos-detail",
+				"Matriz de riesgos con niveles de clasificación metodológica y medidas de mitigación completas.",
+				"SUCCESS",
+				"riesgos",
+				true,
+			)
+		} else {
+			addFinding(
+				"warn-riesgos-detail",
+				"Todos los riesgos deben especificar su nivel de clasificación (Propósito, Componente, Actividad) y medida de mitigación.",
+				"WARNING",
+				"riesgos",
+				false,
+			)
+		}
+	}
+
+	if parsed.Evaluacion != nil {
+		rate := 0.0
+		if parsed.Evaluacion.OpportunityInterestRate != nil {
+			rate = *parsed.Evaluacion.OpportunityInterestRate
+		} else if parsed.Evaluacion.TasaDescuento != nil {
+			rate = *parsed.Evaluacion.TasaDescuento
+		}
+
+		if rate > 0 {
+			addFinding(
+				"succ-evaluacion-rate",
+				"Tasa de interés de oportunidad / descuento y criterios de evaluación económica registrados.",
+				"SUCCESS",
+				"evaluacion",
+				true,
+			)
+		} else {
+			addFinding(
+				"warn-evaluacion-rate",
+				"Debe registrar la tasa de interés de oportunidad / descuento (pestaña Evaluación).",
+				"WARNING",
+				"evaluacion",
+				false,
+			)
+		}
 	}
 
 	return AuditResult{

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';

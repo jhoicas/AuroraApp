@@ -21,6 +21,17 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Fix de compilación TypeScript TS6133 en Localización MGA
+
+- **Objetivo:** Resolver errores estrictos de TypeScript (`TS6133: declared but its value is never read`) en componentes de Localización MGA que bloqueaban el build de Docker.
+- **Frontend (React / TypeScript):**
+  - [LocalizacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.tsx): Removida importación innecesaria de `useMemo` de `react`.
+  - [LocalizacionTab.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.test.tsx): Removidas importaciones no utilizadas de `vi` (`vitest`) y `useProjectMgaStore`.
+- **Validaciones:**
+  - `npx tsc --noEmit` en `starter/frontend` finalizó con Exit Code 0 sin errores de tipos.
+  - `npm run build` (`tsc -b && vite build`) en `starter/frontend` completado exitosamente con Exit Code 0.
+
+
 ### 2026-09-25 - Antigravity - Módulo de Localización MGA (Multi-localización, Catálogos y Lógica Condicional Étnica)
 
 - **Objetivo:** Implementar el módulo completo de "Localización MGA" con soporte multi-localización, sincronización inicial con datos base del proyecto, filtros en cascada (Región -> Departamento -> Municipio) y lógica condicional étnica (Tipo de Agrupación y Agrupación) según la Tipología del proyecto ("E - Esquemas SUIFP's - Pueblos y comunidades étnicas" o "E - PIIP - Pueblos y Comunidades Indígenas").

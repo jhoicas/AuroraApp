@@ -1,10 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
 import LocalizacionTab from './LocalizacionTab';
 import { useLocationStore } from '../../../store/locationStore';
-import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
 
 const mockProjectStandard: Project = {

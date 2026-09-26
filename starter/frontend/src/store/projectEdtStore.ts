@@ -41,17 +41,17 @@ type ProjectEdtStoreState = {
   clearError: () => void;
   fetchEdtChain: (projectId: string) => Promise<ProjectEdtChainState>;
   linkProduct: (projectId: string, productCode: string) => Promise<ProjectCatalogLink>;
-  addEdtNode: (projectId: string, payload: CreateEdtNodePayload) => Promise<void>;
+  addEdtNode: (projectId: string, payload: CreateEdtNodePayload) => Promise<ProjectEdtNode>;
   editEdtNode: (projectId: string, nodeId: string, payload: UpdateEdtNodePayload) => Promise<void>;
   removeEdtNode: (projectId: string, nodeId: string) => Promise<void>;
-  addDeliverable: (projectId: string, payload: CreateDeliverablePayload) => Promise<void>;
+  addDeliverable: (projectId: string, payload: CreateDeliverablePayload) => Promise<ProjectDeliverable>;
   editDeliverable: (
     projectId: string,
     deliverableId: string,
     payload: UpdateDeliverablePayload,
   ) => Promise<void>;
   removeDeliverable: (projectId: string, deliverableId: string) => Promise<void>;
-  addActivity: (projectId: string, payload: CreateActivityPayload) => Promise<void>;
+  addActivity: (projectId: string, payload: CreateActivityPayload) => Promise<ProjectActivity>;
   editActivity: (
     projectId: string,
     activityId: string,
@@ -150,6 +150,7 @@ export const useProjectEdtStore = create<ProjectEdtStoreState>((set, get) => ({
           isSaving: false,
         };
       });
+      return created;
     } catch (err) {
       const message = extractError(err, 'No se pudo crear el nodo EDT');
       set({ isSaving: false, error: message });
@@ -215,6 +216,7 @@ export const useProjectEdtStore = create<ProjectEdtStoreState>((set, get) => ({
           isSaving: false,
         };
       });
+      return created;
     } catch (err) {
       const message = extractError(err, 'No se pudo crear el entregable');
       set({ isSaving: false, error: message });
@@ -278,6 +280,7 @@ export const useProjectEdtStore = create<ProjectEdtStoreState>((set, get) => ({
           isSaving: false,
         };
       });
+      return created;
     } catch (err) {
       const message = extractError(err, 'No se pudo crear la actividad');
       set({ isSaving: false, error: message });

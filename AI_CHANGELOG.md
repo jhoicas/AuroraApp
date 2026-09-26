@@ -21,6 +21,30 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Reestructuración de Cadena de Valor (CadenaValorTab) Layout Oficial MGA DNP
+
+- **Objetivo:** Reestructurar visual y funcionalmente la pestaña `CadenaValorTab.tsx` para replicar con exactitud la distribución de columnas (Productos a la izquierda vs Actividades apiladas a la derecha), jerarquía de acordeón por Objetivo Específico con costos consolidados, campos metodológicos (Indicador, Unidad, Cantidad, Etapa, Costo), y barras de acción inferiores según el estándar de la MGA oficial.
+- **Frontend (React / TypeScript / Zustand / TailwindCSS):**
+  - [CadenaValorTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx):
+    - **Estructura de Acordeón por Objetivo**: Cada objetivo específico cuenta con un panel desplegable cuya cabecera muestra a la izquierda el nombre numerado con check verde (`✓ 1. Objetivo específico 1: [Nombre]`) y a la derecha el costo acumulado (`Costo: $ [Suma]`).
+    - **Bloque Superior de Alternativa**: Contenedor gris claro (`bg-slate-100`) con la descripción de la alternativa y causa directa del proyecto, más el botón `+ Adicionar producto` (fondo azul oscuro `#002855`).
+    - **Layout en Dos Columnas (Grid `lg:grid-cols-12`)**:
+      - **Tarjeta de Producto (Izquierda - `lg:col-span-5`)**: Fondo gris claro (`bg-slate-100`), título en negrita (`1.1 Producto 1: [Nombre]`), desglose de campos metodológicos (`Indicador principal :`, `Unidad de Medida :`, `Cantidad :`, `Costo $`, `Etapa : Inversión`). Barra de acción inferior oscura (`bg-slate-700`) con botón `+ Adicionar actividad` a la izquierda e iconos de editar (`Pencil`) y eliminar (`Trash2`) a la derecha.
+      - **Contenedor de Actividades (Derecha - `lg:col-span-7`)**: Lista vertical de tarjetas de actividades (`bg-blue-50/70`, `border-blue-200`) mostrando código, nombre, `Costo : $` y `Etapa : Inversión`. Barra de acción inferior azul (`bg-blue-700`) con botón `+ Programar costos` a la izquierda e iconos de editar y eliminar a la derecha.
+    - **Modales Integrados**: Modales para creación y edición de Productos (con campos de indicador, unidad y cantidad) y Actividades (con cálculo automático de costo total a partir de cantidad y costo unitario), y modal informativo para Programar Costos.
+    - **Pie de Página**: Muestra alineado a la derecha el `Costo total de la alternativa: $ [Suma Total]` con formateo COP e integra el botón principal `Guardar Cadena de Valor`.
+  - [projectEdtStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectEdtStore.ts):
+    - Se adaptaron `addEdtNode`, `addDeliverable` y `addActivity` para retornar las entidades creadas directamente, facilitando el enlace fluido entre productos, entregables y actividades.
+  - [projectMgaStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectMgaStore.ts):
+    - Se actualizó `saveCadenaDeValor` para aceptar y persistir opcionalmente metadatos de productos (`product_metadata`) en el JSONB del proyecto.
+  - [CadenaValorTab.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/CadenaValorTab.test.tsx):
+    - Nueva suite de 8 pruebas unitarias que validan el renderizado del acordeón por objetivo, el bloque de alternativa, los campos metodológicos de la tarjeta de producto, la tarjeta de actividad, el pie de página con costo total, y la apertura de los modales de producto, actividad y programación de costos.
+- **Validaciones:**
+  - `cd starter/frontend && npx tsc --noEmit`: Exit Code 0 (0 errores de tipos TypeScript).
+  - `cd starter/frontend && npx vitest run src/components/Tenant/MGA`: 6 suites y 33 pruebas aprobadas al 100%.
+  - `cd starter/frontend && npm run build`: Compilación Vite + TypeScript de producción exitosa en 5.54s sin advertencias de tipos.
+
+
 ### 2026-09-25 - Antigravity - Implementación de Sección 02 Factores Analizados y Población Objetivo en Localización MGA
 
 - **Objetivo:** Completar la pestaña `LocalizacionTab.tsx` implementando la sección "02 - Factores analizados" con los 14 criterios oficiales de la MGA y el botón de acceso rápido para sincronizar la localización desde la población objetivo.

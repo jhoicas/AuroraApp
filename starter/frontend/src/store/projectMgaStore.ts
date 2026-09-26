@@ -180,7 +180,7 @@ type ProjectMgaState = {
   saveParticipantes: (projectId: string) => Promise<void>;
   savePoblacion: (projectId: string) => Promise<void>;
   saveObjetivos: (projectId: string) => Promise<void>;
-  saveCadenaDeValor: (projectId: string) => Promise<void>;
+  saveCadenaDeValor: (projectId: string, data?: Record<string, any>) => Promise<void>;
   saveAlternativas: (projectId: string) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, data: Record<string, any>) => Promise<void>;
@@ -553,13 +553,28 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     });
   },
 
-  saveCadenaDeValor: async (projectId) => {
+  saveCadenaDeValor: async (projectId, data) => {
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
       const newCompleted = { ...formulation.completedSections, 'cadena-valor': true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
+      const patchData: Record<string, any> = { completedSections: newCompleted };
+      if (data) {
+        patchData.cadena_valor = data;
+        patchData.cadenaValor = data;
+      }
+      debouncedPatchProject(projectId, patchData);
+      return {
+        byProjectId: {
+          ...state.byProjectId,
+          [projectId]: {
+            ...formulation,
+            completedSections: newCompleted,
+            ...(data ? { cadenaValor: data, cadena_valor: data } : {}),
+          },
+        },
+        isSaving: false,
+      };
     });
   },
 

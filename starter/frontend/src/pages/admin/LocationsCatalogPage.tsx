@@ -6,12 +6,16 @@ import {
   adminCreateRegion, adminUpdateRegion,
   adminCreateDepartamento, adminUpdateDepartamento,
   adminCreateMunicipio, adminUpdateMunicipio,
-  adminImportLocations
+  adminCreateTipoAgrupacion, adminUpdateTipoAgrupacion,
+  adminCreateAgrupacion, adminUpdateAgrupacion,
+  listTiposAgrupacion,
+  adminImportLocations,
+  type AdminTipoAgrupacion
 } from '../../lib/adminApi';
 import CatalogImporterModal from '../../components/admin/CatalogImporterModal';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 
-type Tab = 'regiones' | 'departamentos' | 'municipios';
+type Tab = 'regiones' | 'departamentos' | 'municipios' | 'tipos_agrupacion' | 'agrupaciones';
 
 export default function LocationsCatalogPage() {
   const { regions, adminLocations, adminLocationsMeta, isLoadingLocations, fetchLocations, fetchAdminLocations } = useLocationStore();
@@ -23,8 +27,9 @@ export default function LocationsCatalogPage() {
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const [editingItem, setEditingItem] = useState<{ id: number; name: string; parentId?: number } | null>(null);
-  const [formData, setFormData] = useState({ id: 0, name: '', parentId: 0 });
+  const [editingItem, setEditingItem] = useState<{ id: number; name: string; parentId?: number; tipoAgrupacionId?: number } | null>(null);
+  const [formData, setFormData] = useState({ id: 0, name: '', parentId: 0, tipoAgrupacionId: 0 });
+  const [tiposAgrupacionList, setTiposAgrupacionList] = useState<AdminTipoAgrupacion[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -33,10 +38,17 @@ export default function LocationsCatalogPage() {
 
   useEffect(() => {
     fetchLocations(false);
+    void listTiposAgrupacion().then(setTiposAgrupacionList).catch(() => {});
   }, [fetchLocations]);
 
   const departamentos = regions.flatMap((r: Region) => 
     r.departamentos.map((d: Departamento) => ({ ...d, regionName: r.name }))
+  );
+
+  const municipios = regions.flatMap((r: Region) =>
+    r.departamentos.flatMap((d: Departamento) =>
+      d.municipios.map((m: any) => ({ ...m, depName: d.name, regionName: r.name }))
+    )
   );
 
   const handleTabChange = (tab: Tab) => {
@@ -52,13 +64,18 @@ export default function LocationsCatalogPage() {
 
   const handleOpenCreate = () => {
     setEditingItem(null);
-    setFormData({ id: 0, name: '', parentId: 0 });
+    setFormData({ id: 0, name: '', parentId: 0, tipoAgrupacionId: 0 });
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (item: any, parentId?: number) => {
-    setEditingItem({ id: item.id, name: item.name, parentId });
-    setFormData({ id: item.id, name: item.name, parentId: parentId || 0 });
+  const handleOpenEdit = (item: any, parentId?: number, tipoAgrupacionId?: number) => {
+    setEditingItem({ id: item.id, name: item.name, parentId, tipoAgrupacionId });
+    setFormData({ 
+      id: item.id, 
+      name: item.name, 
+      parentId: parentId || item.municipio_id || item.departamento_id || item.region_id || 0,
+      tipoAgrupacionId: tipoAgrupacionId || item.tipo_agrupacion_id || 0,
+    });
     setIsModalOpen(true);
   };
 
@@ -72,9 +89,33 @@ export default function LocationsCatalogPage() {
       } else if (activeTab === 'departamentos') {
         if (editingItem) await adminUpdateDepartamento(editingItem.id, formData.name);
         else await adminCreateDepartamento({ id: formData.id, name: formData.name, region_id: formData.parentId });
-      } else {
+      } else if (activeTab === 'municipios') {
         if (editingItem) await adminUpdateMunicipio(editingItem.id, formData.name);
         else await adminCreateMunicipio({ id: formData.id, name: formData.name, departamento_id: formData.parentId });
+      } else if (activeTab === 'tipos_agrupacion') {
+        if (editingItem) await adminUpdateTipoAgrupacion(editingItem.id, formData.name);
+        else await adminCreateTipoAgrupacion({ id: formData.id || undefined, name: formData.name });
+        void listTiposAgrupacion().then(setTiposAgrupacionList).catch(() => {});
+      } else if (activeTab === 'agrupaciones') {
+        if (!formData.parentId || !formData.tipoAgrupacionId) {
+          alert('Debe seleccionar el Municipio y el Tipo de Agrupación.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (editingItem) {
+          await adminUpdateAgrupacion(editingItem.id, {
+            name: formData.name,
+            municipio_id: formData.parentId,
+            tipo_agrupacion_id: formData.tipoAgrupacionId
+          });
+        } else {
+          await adminCreateAgrupacion({
+            id: formData.id || undefined,
+            name: formData.name,
+            municipio_id: formData.parentId,
+            tipo_agrupacion_id: formData.tipoAgrupacionId
+          });
+        }
       }
       setIsModalOpen(false);
       fetchAdminLocations(activeTab, searchTerm, page, limit);
@@ -175,7 +216,7 @@ export default function LocationsCatalogPage() {
             onClick={handleOpenCreate}
             className="flex items-center gap-2 rounded-lg bg-[#006162] px-4 py-2 font-medium text-white transition-colors hover:bg-teal-800"
           >
-            <Plus className="h-4 w-4" /> Nueva {activeTab === 'regiones' ? 'Región' : activeTab === 'departamentos' ? 'Departamento' : 'Municipio'}
+            <Plus className="h-4 w-4" /> Nuevo/a {activeTab === 'regiones' ? 'Región' : activeTab === 'departamentos' ? 'Departamento' : activeTab === 'municipios' ? 'Municipio' : activeTab === 'tipos_agrupacion' ? 'Tipo de Agrupación' : 'Agrupación'}
           </button>
         </div>
       </div>
@@ -205,6 +246,22 @@ export default function LocationsCatalogPage() {
         >
           Municipios
         </button>
+        <button
+          onClick={() => handleTabChange('tipos_agrupacion')}
+          className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
+            activeTab === 'tipos_agrupacion' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Tipos de Agrupación
+        </button>
+        <button
+          onClick={() => handleTabChange('agrupaciones')}
+          className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
+            activeTab === 'agrupaciones' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Agrupaciones Étnicas
+        </button>
       </div>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -212,7 +269,7 @@ export default function LocationsCatalogPage() {
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder={`Buscar en ${activeTab}...`}
+            placeholder={`Buscar en ${activeTab.replace('_', ' ')}...`}
             className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
             value={searchTerm}
             onChange={handleSearchChange}
@@ -241,17 +298,19 @@ export default function LocationsCatalogPage() {
         <table className="w-full text-left text-sm text-slate-600">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
             <tr>
-              <th className="px-6 py-4 font-semibold">Código DANE</th>
+              <th className="px-6 py-4 font-semibold">{activeTab === 'tipos_agrupacion' || activeTab === 'agrupaciones' ? 'ID' : 'Código DANE'}</th>
               <th className="px-6 py-4 font-semibold">Nombre</th>
               {activeTab === 'departamentos' && <th className="px-6 py-4 font-semibold">Región</th>}
               {activeTab === 'municipios' && <th className="px-6 py-4 font-semibold">Departamento</th>}
+              {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Municipio</th>}
+              {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Tipo Agrupación</th>}
               <th className="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {isLoadingLocations ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-slate-500">Cargando...</td>
+                <td colSpan={6} className="py-12 text-center text-slate-500">Cargando...</td>
               </tr>
             ) : activeTab === 'regiones' ? (
               adminLocations.map((r: any) => (
@@ -282,7 +341,7 @@ export default function LocationsCatalogPage() {
                   </td>
                 </tr>
               ))
-            ) : (
+            ) : activeTab === 'municipios' ? (
               adminLocations.map((m: any) => (
                 <tr key={m.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-800">{m.id}</td>
@@ -291,6 +350,36 @@ export default function LocationsCatalogPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => handleOpenEdit(m, m.departamento_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : activeTab === 'tipos_agrupacion' ? (
+              adminLocations.map((t: any) => (
+                <tr key={t.id} className="transition-colors hover:bg-slate-50">
+                  <td className="px-6 py-4 font-medium text-slate-800">{t.id}</td>
+                  <td className="px-6 py-4">{t.name}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleOpenEdit(t)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              adminLocations.map((a: any) => (
+                <tr key={a.id} className="transition-colors hover:bg-slate-50">
+                  <td className="px-6 py-4 font-medium text-slate-800">{a.id}</td>
+                  <td className="px-6 py-4">{a.name}</td>
+                  <td className="px-6 py-4 text-slate-600">{a.municipio?.name || a.municipio_id}</td>
+                  <td className="px-6 py-4 text-slate-600">{a.tipo_agrupacion?.name || a.tipo_agrupacion_id}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleOpenEdit(a, a.municipio_id, a.tipo_agrupacion_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
                         <Edit2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -326,21 +415,28 @@ export default function LocationsCatalogPage() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-xl font-semibold text-slate-800">
-                {editingItem ? 'Editar' : 'Nueva'} {activeTab === 'regiones' ? 'Región' : activeTab === 'departamentos' ? 'Departamento' : 'Municipio'}
+                {editingItem ? 'Editar' : 'Nueva'} {
+                  activeTab === 'regiones' ? 'Región' : 
+                  activeTab === 'departamentos' ? 'Departamento' : 
+                  activeTab === 'municipios' ? 'Municipio' :
+                  activeTab === 'tipos_agrupacion' ? 'Tipo de Agrupación' : 'Agrupación Étnica'
+                }
               </h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6">
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Código DANE</label>
-                <input
-                  type="number"
-                  required
-                  disabled={!!editingItem}
-                  value={formData.id}
-                  onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || 0 })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162] disabled:bg-slate-100"
-                />
-              </div>
+              {activeTab !== 'tipos_agrupacion' && activeTab !== 'agrupaciones' && (
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Código DANE</label>
+                  <input
+                    type="number"
+                    required
+                    disabled={!!editingItem}
+                    value={formData.id}
+                    onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162] disabled:bg-slate-100"
+                  />
+                </div>
+              )}
               <div className="mb-4">
                 <label className="mb-2 block text-sm font-medium text-slate-700">Nombre</label>
                 <input
@@ -349,8 +445,13 @@ export default function LocationsCatalogPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
+                  placeholder={
+                    activeTab === 'tipos_agrupacion' ? 'Ej. Resguardo, Consejo Comunitario...' :
+                    activeTab === 'agrupaciones' ? 'Ej. Resguardo Indígena...' : ''
+                  }
                 />
               </div>
+
               {activeTab === 'departamentos' && (
                 <div className="mb-6">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Región</label>
@@ -368,6 +469,7 @@ export default function LocationsCatalogPage() {
                   </select>
                 </div>
               )}
+
               {activeTab === 'municipios' && (
                 <div className="mb-6">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Departamento</label>
@@ -385,6 +487,49 @@ export default function LocationsCatalogPage() {
                   </select>
                 </div>
               )}
+
+              {activeTab === 'agrupaciones' && (
+                <>
+                  <div className="mb-4">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Municipio <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={formData.parentId}
+                      onChange={(e) => setFormData({ ...formData, parentId: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
+                    >
+                      <option value="">Seleccione un municipio...</option>
+                      {municipios.map((m: any) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.depName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Tipo de Agrupación <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={formData.tipoAgrupacionId}
+                      onChange={(e) => setFormData({ ...formData, tipoAgrupacionId: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
+                    >
+                      <option value="">Seleccione un tipo de agrupación...</option>
+                      {tiposAgrupacionList.map((t: AdminTipoAgrupacion) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"

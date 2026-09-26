@@ -135,10 +135,62 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		UpdatedAt:      now,
 	}
 
+	mgaMap := make(map[string]interface{})
 	if req.MgaFormulationData != nil {
-		if b, err := json.Marshal(*req.MgaFormulationData); err == nil {
-			project.MgaFormulationData = datatypes.JSON(b)
+		mgaMap = *req.MgaFormulationData
+	}
+	if _, ok := mgaMap["localizaciones"]; !ok && len(req.Localizaciones) > 0 {
+		locItems := make([]map[string]interface{}, 0, len(req.Localizaciones))
+		for _, loc := range req.Localizaciones {
+			regID := loc.RegionID
+			if regID == nil {
+				regID = loc.RegionIDCamel
+			}
+			depID := loc.DepartamentoID
+			if depID == nil {
+				depID = loc.DepartamentoIDCamel
+			}
+			munID := loc.MunicipioID
+			if munID == nil {
+				munID = loc.MunicipioIDCamel
+			}
+			tipoAgrupID := loc.TipoAgrupacionID
+			if tipoAgrupID == nil {
+				tipoAgrupID = loc.TipoAgrupacionIDCamel
+			}
+			agrupID := loc.AgrupacionID
+			if agrupID == nil {
+				agrupID = loc.AgrupacionIDCamel
+			}
+			item := map[string]interface{}{
+				"region_id":       regID,
+				"departamento_id": depID,
+				"municipio_id":    munID,
+			}
+			if tipoAgrupID != nil {
+				item["tipo_agrupacion_id"] = tipoAgrupID
+			}
+			if agrupID != nil {
+				item["agrupacion_id"] = agrupID
+			}
+			locItems = append(locItems, item)
 		}
+		mgaMap["localizaciones"] = locItems
+	}
+	if _, ok := mgaMap["tipologia"]; !ok && req.Tipologia != "" {
+		mgaMap["tipologia"] = req.Tipologia
+	}
+	if _, ok := mgaMap["tipo_inversion"]; !ok && req.TipoInversion != "" {
+		mgaMap["tipo_inversion"] = req.TipoInversion
+	}
+	if _, ok := mgaMap["proceso_id"]; !ok && req.ProcesoID != 0 {
+		mgaMap["proceso_id"] = req.ProcesoID
+	}
+	if _, ok := mgaMap["objeto"]; !ok && req.Objeto != "" {
+		mgaMap["objeto"] = req.Objeto
+	}
+	if b, err := json.Marshal(mgaMap); err == nil {
+		project.MgaFormulationData = datatypes.JSON(b)
 	}
 
 

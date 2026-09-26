@@ -21,11 +21,27 @@ type CreateProjectRequest struct {
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 
-// LocationSelectionDTO representa una selección de localización en la creación del proyecto.
+// LocationSelectionDTO representa una selección de localización en la creación del proyecto y formulación MGA.
 type LocationSelectionDTO struct {
-	RegionID       *int `json:"regionId"`
-	DepartamentoID *int `json:"departamentoId"`
-	MunicipioID    *int `json:"municipioId"`
+	RegionID         *int `json:"region_id,omitempty"`
+	RegionIDCamel    *int `json:"regionId,omitempty"`
+	DepartamentoID   *int `json:"departamento_id,omitempty"`
+	DepartamentoIDCamel *int `json:"departamentoId,omitempty"`
+	MunicipioID      *int `json:"municipio_id,omitempty"`
+	MunicipioIDCamel *int `json:"municipioId,omitempty"`
+	TipoAgrupacionID *int `json:"tipo_agrupacion_id,omitempty"`
+	TipoAgrupacionIDCamel *int `json:"tipoAgrupacionId,omitempty"`
+	AgrupacionID     *int `json:"agrupacion_id,omitempty"`
+	AgrupacionIDCamel *int `json:"agrupacionId,omitempty"`
+}
+
+// MgaLocalizationItemDTO representa cada registro del array de localizaciones en MgaFormulationData.
+type MgaLocalizationItemDTO struct {
+	RegionID         *int `json:"region_id"`
+	DepartamentoID   *int `json:"departamento_id"`
+	MunicipioID      *int `json:"municipio_id"`
+	TipoAgrupacionID *int `json:"tipo_agrupacion_id,omitempty"`
+	AgrupacionID     *int `json:"agrupacion_id,omitempty"`
 }
 
 // UpdateProjectDetailsRequest campos de formulación MGA.

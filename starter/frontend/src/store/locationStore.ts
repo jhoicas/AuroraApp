@@ -30,11 +30,29 @@ export type Proceso = {
   name: string;
 };
 
+export type TipoAgrupacion = {
+  id: number;
+  name: string;
+  is_active?: boolean;
+};
+
+export type Agrupacion = {
+  id: number;
+  name: string;
+  municipio_id: number;
+  tipo_agrupacion_id: number;
+  is_active?: boolean;
+  municipio?: Municipio;
+  tipo_agrupacion?: TipoAgrupacion;
+};
+
 /** Selección de localización del usuario en el formulario. */
 export type LocationSelection = {
   regionId: number | null;
   departamentoId: number | null;
   municipioId: number | null;
+  tipoAgrupacionId?: number | null;
+  agrupacionId?: number | null;
 };
 
 // ─── Store ───────────────────────────────────────────────────────────
@@ -42,14 +60,20 @@ export type LocationSelection = {
 type LocationState = {
   regions: Region[];
   procesos: Proceso[];
+  tiposAgrupacion: TipoAgrupacion[];
+  agrupaciones: Agrupacion[];
   isLoadingLocations: boolean;
   isLoadingProcesos: boolean;
+  isLoadingTiposAgrupacion: boolean;
+  isLoadingAgrupaciones: boolean;
   error: string | null;
   fetchLocations: (force?: boolean) => Promise<void>;
   fetchProcesos: () => Promise<void>;
+  fetchTiposAgrupacion: (force?: boolean) => Promise<void>;
+  fetchAgrupaciones: (params?: { municipio_id?: number; tipo_agrupacion_id?: number }) => Promise<void>;
   adminLocations: any[];
   adminLocationsMeta: PaginationMeta | null;
-  fetchAdminLocations: (type: 'regiones' | 'departamentos' | 'municipios', search?: string, page?: number, limit?: number) => Promise<void>;
+  fetchAdminLocations: (type: 'regiones' | 'departamentos' | 'municipios' | 'tipos_agrupacion' | 'agrupaciones', search?: string, page?: number, limit?: number) => Promise<void>;
   clearError: () => void;
 };
 
@@ -64,10 +88,14 @@ function extractError(err: unknown, fallback: string): string {
 export const useLocationStore = create<LocationState>((set, get) => ({
   regions: [],
   procesos: [],
+  tiposAgrupacion: [],
+  agrupaciones: [],
   adminLocations: [],
   adminLocationsMeta: null,
   isLoadingLocations: false,
   isLoadingProcesos: false,
+  isLoadingTiposAgrupacion: false,
+  isLoadingAgrupaciones: false,
   error: null,
 
   clearError: () => set({ error: null }),
@@ -102,6 +130,44 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       set({
         isLoadingLocations: false,
         error: extractError(err, 'No se pudieron cargar las localizaciones'),
+      });
+    }
+  },
+
+  fetchTiposAgrupacion: async (force?: boolean) => {
+    if (!force && get().tiposAgrupacion.length > 0) return;
+
+    set({ isLoadingTiposAgrupacion: true, error: null });
+    try {
+      const { data } = await api.get<{ data: TipoAgrupacion[] }>('/locations/tipos-agrupacion');
+      set({
+        tiposAgrupacion: data.data ?? [],
+        isLoadingTiposAgrupacion: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingTiposAgrupacion: false,
+        error: extractError(err, 'No se pudieron cargar los tipos de agrupación'),
+      });
+    }
+  },
+
+  fetchAgrupaciones: async (params?: { municipio_id?: number; tipo_agrupacion_id?: number }) => {
+    set({ isLoadingAgrupaciones: true, error: null });
+    try {
+      const q = new URLSearchParams();
+      if (params?.municipio_id) q.append('municipio_id', String(params.municipio_id));
+      if (params?.tipo_agrupacion_id) q.append('tipo_agrupacion_id', String(params.tipo_agrupacion_id));
+      const queryStr = q.toString() ? `?${q.toString()}` : '';
+      const { data } = await api.get<{ data: Agrupacion[] }>(`/locations/agrupaciones${queryStr}`);
+      set({
+        agrupaciones: data.data ?? [],
+        isLoadingAgrupaciones: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingAgrupaciones: false,
+        error: extractError(err, 'No se pudieron cargar las agrupaciones'),
       });
     }
   },

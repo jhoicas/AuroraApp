@@ -94,6 +94,14 @@ export type PlanDesarrolloData = {
   };
 };
 
+export type ProjectMgaLocalizationItem = {
+  region_id: number | null;
+  departamento_id: number | null;
+  municipio_id: number | null;
+  tipo_agrupacion_id?: number | null;
+  agrupacion_id?: number | null;
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -105,6 +113,7 @@ export type ProjectMgaFormulation = {
   necesidades?: Record<string, any>;
   analisisTecnico?: Record<string, any>;
   localizacion?: Record<string, any>;
+  localizaciones?: ProjectMgaLocalizationItem[];
   riesgos?: Record<string, any>;
   ingresosBeneficios?: Record<string, any>;
   prestamos?: Record<string, any>;
@@ -355,9 +364,22 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         const newCompleted = { ...formulation.completedSections, localizacion: true };
-        debouncedPatchProject(projectId, { localizacion: data, completedSections: newCompleted });
+        const localizacionesArray = data.localizaciones || (Array.isArray(data) ? data : formulation.localizaciones);
+        debouncedPatchProject(projectId, { 
+          localizaciones: localizacionesArray, 
+          localizacion: data, 
+          completedSections: newCompleted 
+        });
         return {
-          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, localizacion: data, completedSections: newCompleted } },
+          byProjectId: { 
+            ...state.byProjectId, 
+            [projectId]: { 
+              ...formulation, 
+              localizaciones: localizacionesArray,
+              localizacion: data, 
+              completedSections: newCompleted 
+            } 
+          },
           isSaving: false,
         };
       });
@@ -550,6 +572,8 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         if (pData.necesidades) formulation.necesidades = pData.necesidades;
         if (pData.analisisTecnico) formulation.analisisTecnico = pData.analisisTecnico;
         if (pData.localizacion) formulation.localizacion = pData.localizacion;
+        if (pData.localizaciones) formulation.localizaciones = pData.localizaciones;
+        else if (pData.localizacion?.localizaciones) formulation.localizaciones = pData.localizacion.localizaciones;
         if (pData.riesgos) formulation.riesgos = pData.riesgos;
         if (pData.ingresosBeneficios) formulation.ingresosBeneficios = pData.ingresosBeneficios;
         if (pData.prestamos) formulation.prestamos = pData.prestamos;

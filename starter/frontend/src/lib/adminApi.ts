@@ -50,8 +50,10 @@ export const adminImportLocations = async (localizaciones: any[]): Promise<void>
   await api.post('/admin/locations/import', { localizaciones });
 };
 
+export type LocationAdminType = 'regiones' | 'departamentos' | 'municipios' | 'tipos_agrupacion' | 'agrupaciones';
+
 export const adminListLocations = async (
-  type: 'regiones' | 'departamentos' | 'municipios',
+  type: LocationAdminType,
   search?: string,
   page: number = 1,
   limit: number = 10
@@ -106,6 +108,81 @@ export const adminUpdateMunicipio = async (id: number, name: string): Promise<vo
 export const adminToggleMunicipio = async (id: number): Promise<boolean> => {
   const { data } = await api.delete<{ status: string; is_active: boolean }>(`/admin/locations/municipios/${id}`);
   return data.is_active;
+};
+
+// ─── Tipos de Agrupación y Agrupaciones CRUD ───
+
+export interface AdminTipoAgrupacion {
+  id: number;
+  name: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminAgrupacion {
+  id: number;
+  name: string;
+  municipio_id: number;
+  tipo_agrupacion_id: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  municipio?: Municipio;
+  tipo_agrupacion?: AdminTipoAgrupacion;
+}
+
+export const adminCreateTipoAgrupacion = async (payload: { id?: number; name: string }): Promise<AdminTipoAgrupacion> => {
+  const { data } = await api.post<AdminTipoAgrupacion>('/admin/locations/tipos-agrupacion', payload);
+  return data;
+};
+
+export const adminUpdateTipoAgrupacion = async (id: number, name: string): Promise<void> => {
+  await api.put(`/admin/locations/tipos-agrupacion/${id}`, { name });
+};
+
+export const adminToggleTipoAgrupacion = async (id: number): Promise<boolean> => {
+  const { data } = await api.delete<{ status: string; is_active: boolean }>(`/admin/locations/tipos-agrupacion/${id}`);
+  return data.is_active;
+};
+
+export const adminCreateAgrupacion = async (payload: {
+  id?: number;
+  name: string;
+  municipio_id: number;
+  tipo_agrupacion_id: number;
+}): Promise<AdminAgrupacion> => {
+  const { data } = await api.post<AdminAgrupacion>('/admin/locations/agrupaciones', payload);
+  return data;
+};
+
+export const adminUpdateAgrupacion = async (
+  id: number,
+  payload: { name: string; municipio_id?: number; tipo_agrupacion_id?: number }
+): Promise<void> => {
+  await api.put(`/admin/locations/agrupaciones/${id}`, payload);
+};
+
+export const adminToggleAgrupacion = async (id: number): Promise<boolean> => {
+  const { data } = await api.delete<{ status: string; is_active: boolean }>(`/admin/locations/agrupaciones/${id}`);
+  return data.is_active;
+};
+
+export const listTiposAgrupacion = async (): Promise<AdminTipoAgrupacion[]> => {
+  const { data } = await api.get<{ data: AdminTipoAgrupacion[] }>('/locations/tipos-agrupacion');
+  return data.data ?? [];
+};
+
+export const listAgrupaciones = async (params?: {
+  municipio_id?: number;
+  tipo_agrupacion_id?: number;
+}): Promise<AdminAgrupacion[]> => {
+  const q = new URLSearchParams();
+  if (params?.municipio_id) q.append('municipio_id', String(params.municipio_id));
+  if (params?.tipo_agrupacion_id) q.append('tipo_agrupacion_id', String(params.tipo_agrupacion_id));
+  const queryStr = q.toString() ? `?${q.toString()}` : '';
+  const { data } = await api.get<{ data: AdminAgrupacion[] }>(`/locations/agrupaciones${queryStr}`);
+  return data.data ?? [];
 };
 
 // ─────────────────────────── Catálogos MGA ───────────────────────────

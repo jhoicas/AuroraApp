@@ -209,6 +209,32 @@ func (h *AdminLocationHandler) ListAdminLocations(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		data = muns
+	case "tipos_agrupacion":
+		query := h.db.WithContext(c.Context()).Model(&models.TipoAgrupacion{})
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+		if err := query.Count(&totalRecords).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		var tipos []models.TipoAgrupacion
+		if err := query.Order("name ASC").Offset(offset).Limit(limit).Find(&tipos).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		data = tipos
+	case "agrupaciones":
+		query := h.db.WithContext(c.Context()).Model(&models.Agrupacion{})
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+		if err := query.Count(&totalRecords).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		var agrups []models.Agrupacion
+		if err := query.Preload("Municipio").Preload("TipoAgrupacion").Order("name ASC").Offset(offset).Limit(limit).Find(&agrups).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		data = agrups
 	default: // regiones
 		query := h.db.WithContext(c.Context()).Model(&models.Region{})
 		if search != "" {
@@ -400,6 +426,171 @@ func (h *AdminLocationHandler) ToggleMunicipio(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+// ─────────────────────────── Tipos de Agrupación CRUD ───────────────────────────
+
+// CreateTipoAgrupacion
+func (h *AdminLocationHandler) CreateTipoAgrupacion(c *fiber.Ctx) error {
+	var req struct {
+		ID   int    `json:"id"`
+		Name string `json:"name" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	now := time.Now().UTC()
+	item := models.TipoAgrupacion{
+		ID:        req.ID,
+		Name:      req.Name,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := h.db.WithContext(c.Context()).Create(&item).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusCreated).JSON(item)
+}
+
+// UpdateTipoAgrupacion
+func (h *AdminLocationHandler) UpdateTipoAgrupacion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var req struct {
+		Name string `json:"name" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.db.WithContext(c.Context()).Model(&models.TipoAgrupacion{}).Where("id = ?", id).Update("name", req.Name).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated"})
+}
+
+// ToggleTipoAgrupacion
+func (h *AdminLocationHandler) ToggleTipoAgrupacion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var r models.TipoAgrupacion
+	if err := h.db.WithContext(c.Context()).First(&r, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	}
+	r.IsActive = !r.IsActive
+	if err := h.db.WithContext(c.Context()).Save(&r).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+// ─────────────────────────── Agrupaciones CRUD ───────────────────────────
+
+// CreateAgrupacion
+func (h *AdminLocationHandler) CreateAgrupacion(c *fiber.Ctx) error {
+	var req struct {
+		ID               int    `json:"id"`
+		Name             string `json:"name" validate:"required"`
+		MunicipioID      int    `json:"municipio_id" validate:"required"`
+		TipoAgrupacionID int    `json:"tipo_agrupacion_id" validate:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	now := time.Now().UTC()
+	item := models.Agrupacion{
+		ID:               req.ID,
+		Name:             req.Name,
+		MunicipioID:      req.MunicipioID,
+		TipoAgrupacionID: req.TipoAgrupacionID,
+		IsActive:         true,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	if err := h.db.WithContext(c.Context()).Create(&item).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusCreated).JSON(item)
+}
+
+// UpdateAgrupacion
+func (h *AdminLocationHandler) UpdateAgrupacion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var req struct {
+		Name             string `json:"name" validate:"required"`
+		MunicipioID      int    `json:"municipio_id"`
+		TipoAgrupacionID int    `json:"tipo_agrupacion_id"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	updates := map[string]interface{}{
+		"name":       req.Name,
+		"updated_at": time.Now().UTC(),
+	}
+	if req.MunicipioID > 0 {
+		updates["municipio_id"] = req.MunicipioID
+	}
+	if req.TipoAgrupacionID > 0 {
+		updates["tipo_agrupacion_id"] = req.TipoAgrupacionID
+	}
+	if err := h.db.WithContext(c.Context()).Model(&models.Agrupacion{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated"})
+}
+
+// ToggleAgrupacion
+func (h *AdminLocationHandler) ToggleAgrupacion(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var r models.Agrupacion
+	if err := h.db.WithContext(c.Context()).First(&r, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	}
+	r.IsActive = !r.IsActive
+	if err := h.db.WithContext(c.Context()).Save(&r).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "updated", "is_active": r.IsActive})
+}
+
+// ─────────────────────────── Consultas Autenticadas ───────────────────────────
+
+// ListTiposAgrupacion devuelve el listado de tipos de agrupación étnica activos.
+// GET /api/v1/locations/tipos-agrupacion
+func (h *AdminLocationHandler) ListTiposAgrupacion(c *fiber.Ctx) error {
+	var items []models.TipoAgrupacion
+	if err := h.db.WithContext(c.Context()).Where("is_active = ?", true).Order("name ASC").Find(&items).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"data": items})
+}
+
+// ListAgrupaciones devuelve las agrupaciones étnicas activas, filtrables opcionalmente por municipio_id y tipo_agrupacion_id.
+// GET /api/v1/locations/agrupaciones
+func (h *AdminLocationHandler) ListAgrupaciones(c *fiber.Ctx) error {
+	query := h.db.WithContext(c.Context()).Where("is_active = ?", true)
+	if munID, err := strconv.Atoi(c.Query("municipio_id")); err == nil && munID > 0 {
+		query = query.Where("municipio_id = ?", munID)
+	}
+	if tipoID, err := strconv.Atoi(c.Query("tipo_agrupacion_id")); err == nil && tipoID > 0 {
+		query = query.Where("tipo_agrupacion_id = ?", tipoID)
+	}
+	var items []models.Agrupacion
+	if err := query.Order("name ASC").Find(&items).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"data": items})
 }
 
 

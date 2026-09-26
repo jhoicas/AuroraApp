@@ -38,6 +38,34 @@ type Municipio struct {
 	CreatedAt       time.Time    `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt       time.Time    `gorm:"column:updated_at;not null" json:"updated_at"`
 	Departamento    Departamento `gorm:"foreignKey:DepartamentoID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Agrupaciones    []Agrupacion `gorm:"foreignKey:MunicipioID" json:"agrupaciones,omitempty"`
 }
 
 func (Municipio) TableName() string { return "municipios" }
+
+// TipoAgrupacion catálogo global de tipos de agrupaciones étnicas (ej. Resguardo, Consejo Comunitario).
+type TipoAgrupacion struct {
+	ID           int          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name         string       `gorm:"column:name;type:varchar(255);not null" json:"name"`
+	IsActive     bool         `gorm:"column:is_active;not null;default:true" json:"is_active"`
+	CreatedAt    time.Time    `gorm:"column:created_at;not null" json:"created_at"`
+	UpdatedAt    time.Time    `gorm:"column:updated_at;not null" json:"updated_at"`
+	Agrupaciones []Agrupacion `gorm:"foreignKey:TipoAgrupacionID" json:"agrupaciones,omitempty"`
+}
+
+func (TipoAgrupacion) TableName() string { return "tipos_agrupacion" }
+
+// Agrupacion comunidad/territorio étnico específico perteneciente a un Municipio y a un TipoAgrupacion.
+type Agrupacion struct {
+	ID               int            `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name             string         `gorm:"column:name;type:varchar(255);not null" json:"name"`
+	MunicipioID      int            `gorm:"column:municipio_id;not null;index" json:"municipio_id"`
+	TipoAgrupacionID int            `gorm:"column:tipo_agrupacion_id;not null;index" json:"tipo_agrupacion_id"`
+	IsActive         bool           `gorm:"column:is_active;not null;default:true" json:"is_active"`
+	CreatedAt        time.Time      `gorm:"column:created_at;not null" json:"created_at"`
+	UpdatedAt        time.Time      `gorm:"column:updated_at;not null" json:"updated_at"`
+	Municipio        Municipio      `gorm:"foreignKey:MunicipioID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"municipio,omitempty"`
+	TipoAgrupacion   TipoAgrupacion `gorm:"foreignKey:TipoAgrupacionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"tipo_agrupacion,omitempty"`
+}
+
+func (Agrupacion) TableName() string { return "agrupaciones" }

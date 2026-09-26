@@ -22,6 +22,8 @@ func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) 
 		httpmw.RequireAuth(jwtSecret),
 	)
 	authenticated.Get("/locations", locHandler.ListLocations)
+	authenticated.Get("/locations/tipos-agrupacion", locHandler.ListTiposAgrupacion)
+	authenticated.Get("/locations/agrupaciones", locHandler.ListAgrupaciones)
 	authenticated.Get("/procesos", procHandler.ListProcesos)
 
 	// ── Rutas de importación y administración (SUPER_ADMIN) ──
@@ -61,4 +63,16 @@ func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) 
 	admin.Put("/locations/municipios/:id", locHandler.UpdateMunicipio)
 	admin.Delete("/locations/municipios/:id", locHandler.ToggleMunicipio)
 	admin.Put("/locations/municipios/:id/toggle", locHandler.ToggleMunicipio)
+
+	// Tipos de Agrupación CRUD
+	admin.Post("/locations/tipos-agrupacion", locHandler.CreateTipoAgrupacion)
+	admin.Put("/locations/tipos-agrupacion/:id", locHandler.UpdateTipoAgrupacion)
+	admin.Delete("/locations/tipos-agrupacion/:id", locHandler.ToggleTipoAgrupacion)
+	admin.Put("/locations/tipos-agrupacion/:id/toggle", locHandler.ToggleTipoAgrupacion)
+
+	// Agrupaciones CRUD
+	admin.Post("/locations/agrupaciones", locHandler.CreateAgrupacion)
+	admin.Put("/locations/agrupaciones/:id", locHandler.UpdateAgrupacion)
+	admin.Delete("/locations/agrupaciones/:id", locHandler.ToggleAgrupacion)
+	admin.Put("/locations/agrupaciones/:id/toggle", locHandler.ToggleAgrupacion)
 }

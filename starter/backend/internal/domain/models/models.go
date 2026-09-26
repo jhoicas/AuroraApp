@@ -21,6 +21,8 @@ func AllModels() []any {
 		&Region{},
 		&Departamento{},
 		&Municipio{},
+		&TipoAgrupacion{},
+		&Agrupacion{},
 		&Proceso{},
 		&Project{},
 		&AILog{},

@@ -21,7 +21,57 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
-### 2026-09-25 - Antigravity - Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)
+### 2026-09-25 - Antigravity - Módulo de Localización MGA (Multi-localización, Catálogos y Lógica Condicional Étnica)
+
+- **Objetivo:** Implementar el módulo completo de "Localización MGA" con soporte multi-localización, sincronización inicial con datos base del proyecto, filtros en cascada (Región -> Departamento -> Municipio) y lógica condicional étnica (Tipo de Agrupación y Agrupación) según la Tipología del proyecto ("E - Esquemas SUIFP's - Pueblos y comunidades étnicas" o "E - PIIP - Pueblos y Comunidades Indígenas").
+- **Backend (Go):**
+  - `starter/backend/internal/domain/models/location.go`:
+    - Creados modelos GORM `TipoAgrupacion` (catálogo global) y `Agrupacion` (pertenece a `Municipio` y `TipoAgrupacion`).
+    - Actualizado `Municipio` con relación `Agrupaciones []Agrupacion`.
+  - `starter/backend/internal/domain/models/models.go`:
+    - Registrados `&TipoAgrupacion{}` y `&Agrupacion{}` en `AllModels()`.
+  - `starter/backend/internal/infrastructure/persistence/postgres/db.go`:
+    - Registrada auto-migración de `TipoAgrupacion` y `Agrupacion`.
+  - `starter/backend/internal/interfaces/http/dto/project_dto.go`:
+    - Actualizado `LocationSelectionDTO` y creado `MgaLocalizationItemDTO` con campos `region_id`, `departamento_id`, `municipio_id`, `tipo_agrupacion_id`, `agrupacion_id` (compatibles con snake_case y camelCase).
+  - `starter/backend/internal/interfaces/http/handlers/project_handler.go`:
+    - En `CreateProject`, se sincronizan e inicializan las `localizaciones`, `tipologia`, `proceso_id` y `objeto` directamente en `MgaFormulationData`.
+  - `starter/backend/internal/application/project/formulation_audit_service.go`:
+    - Actualizada auditoría en `hasDefinedLocalization` para reconocer el array de `localizaciones` en snake_case y camelCase así como localizaciones anidadas.
+  - `starter/backend/internal/interfaces/http/handlers/admin_location_handler.go`:
+    - Añadido soporte para `tipos_agrupacion` y `agrupaciones` en `ListAdminLocations`.
+    - Implementados handlers CRUD: `CreateTipoAgrupacion`, `UpdateTipoAgrupacion`, `ToggleTipoAgrupacion`, `CreateAgrupacion`, `UpdateAgrupacion`, `ToggleAgrupacion`.
+    - Implementados endpoints de consulta autenticada para formulación: `ListTiposAgrupacion` y `ListAgrupaciones` (filtrable por `municipio_id` y `tipo_agrupacion_id`).
+  - `starter/backend/internal/interfaces/http/router/admin_locations.go`:
+    - Registradas rutas GET `/locations/tipos-agrupacion`, GET `/locations/agrupaciones` y rutas administrativas CRUD en `/admin/locations/tipos-agrupacion` y `/admin/locations/agrupaciones`.
+  - `starter/backend/internal/interfaces/http/handlers/admin_location_handler_test.go`:
+    - Creada suite unitaria en memoria con SQLite validando CRUD de `TipoAgrupacion`, `Agrupacion`, filtros dependientes y listado administrativo.
+- **Frontend (React / TypeScript):**
+  - `starter/frontend/src/lib/adminApi.ts`:
+    - Declarados tipos `AdminTipoAgrupacion`, `AdminAgrupacion`, `LocationAdminType`.
+    - Implementadas funciones `adminCreateTipoAgrupacion`, `adminUpdateTipoAgrupacion`, `adminToggleTipoAgrupacion`, `adminCreateAgrupacion`, `adminUpdateAgrupacion`, `adminToggleAgrupacion`, `listTiposAgrupacion`, `listAgrupaciones`.
+  - `starter/frontend/src/store/locationStore.ts`:
+    - Añadidos tipos `TipoAgrupacion`, `Agrupacion` y campos de estado `tiposAgrupacion`, `agrupaciones`, `fetchTiposAgrupacion`, `fetchAgrupaciones`.
+  - `starter/frontend/src/store/projectMgaStore.ts`:
+    - Añadido tipo `ProjectMgaLocalizationItem` a `ProjectMgaFormulation`.
+    - Actualizado `saveLocalizacion` para persistir `{ localizaciones: [...] }` en `MgaFormulationData` y `debouncedPatchProject`.
+    - Actualizado `fetchFormulation` para cargar `localizaciones` desde `pData.localizaciones`.
+  - `starter/frontend/src/pages/admin/LocationsCatalogPage.tsx`:
+    - Añadidas pestañas `Tipos de Agrupación` y `Agrupaciones Étnicas`.
+    - Modal de creación de Agrupación exige seleccionar Municipio y Tipo de Agrupación al que pertenece.
+  - `starter/frontend/src/components/Tenant/MGA/LocalizacionTab.tsx`:
+    - Rediseño completo para soporte multi-localización con botón `+ Agregar otra localización` y eliminación de filas.
+    - Sincronización inicial automática con las localizaciones base del proyecto si el array está vacío.
+    - Filtros en cascada: Región -> Departamento -> Municipio.
+    - Lógica condicional étnica: evalúa si `tipologia === "E - Esquemas SUIFP's - Pueblos y comunidades étnicas" || tipologia === "E - PIIP - Pueblos y Comunidades Indígenas"`. Si es verdadero, habilita selects de "Tipo de Agrupación" y "Agrupación", con filtro estricto de Agrupación por `municipio_id` y `tipo_agrupacion_id`.
+  - `starter/frontend/src/components/Tenant/MGA/LocalizacionTab.test.tsx`:
+    - Creada suite unitaria validando renderizado estándar, detección de tipología étnica, adición dinámica de filas y filtrado dependiente de agrupaciones.
+- **Validaciones:**
+  - `cd starter/backend && go build ./...` (Exit code 0).
+  - `cd starter/backend && go test ./...` (Exit code 0, 100% pruebas de backend pasando).
+  - `cd starter/backend && go test -v ./internal/interfaces/http/handlers -run TestAdminLocationHandler_TipoAgrupacionAndAgrupacion` (PASS).
+  - `cd starter/frontend && npx tsc --noEmit` (Exit code 0).
+  - `cd starter/frontend && npx vitest run src/components/Tenant/MGA/LocalizacionTab.test.tsx` (4/4 tests pasados).
 
 - **Objetivo:** Implementar la sección "Radar de Calidad y Auditoría MGA (Visión del Banco de Proyectos)" en el dashboard de reportes (`/tenant/reports`), conectando un nuevo endpoint analítico en Go con la interfaz interactiva en React para diagnosticar en tiempo real cuellos de botella y proyectos bloqueados vs listos para viabilidad territorial.
 - **Backend (Go):**

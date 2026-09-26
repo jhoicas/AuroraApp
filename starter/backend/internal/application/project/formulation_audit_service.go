@@ -74,15 +74,28 @@ const minIdentificationTextLen = 100
 
 type auditFormulationData struct {
 	Localizaciones []struct {
-		RegionID       *int `json:"regionId"`
-		DepartamentoID *int `json:"departamentoId"`
-		MunicipioID    *int `json:"municipioId"`
+		RegionID            *int `json:"region_id"`
+		RegionIDCamel       *int `json:"regionId"`
+		DepartamentoID      *int `json:"departamento_id"`
+		DepartamentoIDCamel *int `json:"departamentoId"`
+		MunicipioID         *int `json:"municipio_id"`
+		MunicipioIDCamel    *int `json:"municipioId"`
+		TipoAgrupacionID    *int `json:"tipo_agrupacion_id"`
+		AgrupacionID        *int `json:"agrupacion_id"`
 	} `json:"localizaciones"`
 	Localizacion *struct {
 		Items map[string]struct {
 			Type     string `json:"type"`
 			Specific string `json:"specific"`
 		} `json:"items"`
+		Localizaciones []struct {
+			RegionID            *int `json:"region_id"`
+			RegionIDCamel       *int `json:"regionId"`
+			DepartamentoID      *int `json:"departamento_id"`
+			DepartamentoIDCamel *int `json:"departamentoId"`
+			MunicipioID         *int `json:"municipio_id"`
+			MunicipioIDCamel    *int `json:"municipioId"`
+		} `json:"localizaciones"`
 	} `json:"localizacion"`
 }
 
@@ -95,14 +108,21 @@ func hasDefinedLocalization(data []byte) bool {
 		return false
 	}
 	for _, loc := range parsed.Localizaciones {
-		if loc.RegionID != nil || loc.DepartamentoID != nil || loc.MunicipioID != nil {
+		if loc.RegionID != nil || loc.RegionIDCamel != nil || loc.DepartamentoID != nil || loc.DepartamentoIDCamel != nil || loc.MunicipioID != nil || loc.MunicipioIDCamel != nil {
 			return true
 		}
 	}
-	if parsed.Localizacion != nil && len(parsed.Localizacion.Items) > 0 {
-		for _, item := range parsed.Localizacion.Items {
-			if strings.TrimSpace(item.Type) != "" || strings.TrimSpace(item.Specific) != "" {
+	if parsed.Localizacion != nil {
+		for _, loc := range parsed.Localizacion.Localizaciones {
+			if loc.RegionID != nil || loc.RegionIDCamel != nil || loc.DepartamentoID != nil || loc.DepartamentoIDCamel != nil || loc.MunicipioID != nil || loc.MunicipioIDCamel != nil {
 				return true
+			}
+		}
+		if len(parsed.Localizacion.Items) > 0 {
+			for _, item := range parsed.Localizacion.Items {
+				if strings.TrimSpace(item.Type) != "" || strings.TrimSpace(item.Specific) != "" {
+					return true
+				}
 			}
 		}
 	}

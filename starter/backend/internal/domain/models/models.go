@@ -44,5 +44,6 @@ func AllModels() []any {
 		&ProjectDeliverable{},
 		&ProjectActivity{},
 		&PNDCatalog{},
+		&CatalogSyncLog{},
 	}
 }

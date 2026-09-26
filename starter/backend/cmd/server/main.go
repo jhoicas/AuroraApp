@@ -61,6 +61,9 @@ func main() {
 	// Paso 7 — Catálogos relacionales MGA (actores, entidades, posiciones)
 	router.RegisterMgaCatalogRoutes(app, db, cfg.JWTSecret)
 
+	// Sincronización SODA Datos Abiertos DNP (SUPER_ADMIN)
+	router.RegisterAdminSyncRoutes(app, db, cfg.JWTSecret)
+
 	// Legacy starter routes (se migrarán en pasos posteriores)
 	adminGroup := app.Group("/api/admin")
 	adminGroup.Post("/catalog/upload", legacyhandlers.ImportCatalogExcel)

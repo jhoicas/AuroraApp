@@ -21,6 +21,41 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-26 - Antigravity - Motor de Sincronización SODA (Datos Abiertos DNP - PND) y Disparador SuperAdmin
+
+- **Objetivo:** Construir el motor de sincronización de datos abiertos gubernamentales (SODA - datos.gov.co) para el Plan Nacional de Desarrollo (dataset `uds4-jdij.json`), garantizar auditoría en base de datos (`catalog_sync_logs`), upsert idempotente en `pnd_catalogs` y conectar el botón de disparo y estado de sincronización en el frontend administrativo.
+- **Backend (Go / Fiber / GORM / Postgres):**
+  - [catalog_sync_log.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/catalog_sync_log.go):
+    - Modelo de auditoría `CatalogSyncLog` con `ID`, `CatalogName`, `StartedAt`, `CompletedAt`, `Status` (`IN_PROGRESS`, `SUCCESS`, `FAILED`), `RecordsProcessed`, `ErrorMessage` y hook `BeforeCreate` para UUIDs.
+  - [models.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/models.go) y [db.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/db.go):
+    - Registro en `AllModels` y migración segura en `AutoMigrate` / `ensureCatalogSyncLogsSchema` con índices para `catalog_name`, `started_at` y `status`.
+    - Índice único `idx_pnd_catalogs_unique_identifier` sobre `pnd_catalogs.unique_identifier` para soportar `ON CONFLICT DO UPDATE`.
+  - [pnd_catalog.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/pnd_catalog.go):
+    - Tag `gorm:"type:varchar(255);uniqueIndex"` en `UniqueIdentifier`.
+  - [soda_client.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/soda/soda_client.go) y [soda_client_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/soda/soda_client_test.go):
+    - Cliente HTTP genérico para SODA con paginación automática (`$limit=1000`, `$offset`), soporte de tokens de aplicación `X-App-Token`, timeouts y decodificación. Pruebas unitarias con servidor mock (`httptest.Server`).
+  - [pnd_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/pnd_sync_service.go):
+    - Servicio ETL que consume `uds4-jdij.json`, mapea a la jerarquía PND (`Plan`, `Pilar`, `Objective`, `Strategy`, `Component`/`Program`), genera hashes deterministas para `UniqueIdentifier` y ejecuta upsert masivo en lotes con `clause.OnConflict{Columns: ["unique_identifier"], UpdateAll: true}`.
+    - Manejo completo del ciclo de vida en `CatalogSyncLog` (`IN_PROGRESS` -> `SUCCESS` / `FAILED`).
+  - [admin_sync_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler.go), [admin_sync_handler_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler_test.go) y [admin_sync.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/router/admin_sync.go):
+    - Handlers y rutas protegidas por `RequireRole(RoleSuperAdmin)`:
+      - `GET /api/v1/admin/sync/status?catalog=PND`
+      - `POST /api/v1/admin/sync/pnd`
+  - [main.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/cmd/server/main.go):
+    - Registro de `RegisterAdminSyncRoutes`.
+- **Frontend (React / TypeScript / Vite / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Tipos `CatalogSyncLog`, `PndSyncResult` y funciones API `getSyncStatus(catalog)` y `triggerPndSync()`.
+  - [PndCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/PndCatalogPage.tsx):
+    - Header con bloque visual del estado de sincronización (`Última sincronización: [Fecha formateada]` con contador de registros o badge `Sincronización en curso con DNP...`).
+    - Botón interactivo "Sincronizar con DNP (Datos Abiertos)" con spinner `RefreshCw`, estado `isSyncing`, recarga de fecha de sincronización y refresco automático de la tabla del catálogo tras completar el proceso.
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/infrastructure/soda/...` -> PASS.
+  - `go test -v ./internal/interfaces/http/handlers -run TestAdminSyncHandler` -> PASS.
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (`tsc -b && vite build` completado en 5.65s).
+
 ### 2026-09-25 - Antigravity - Paridad Total de Campos MGA DNP XML, Persistencia JSONB y Auditoría de Avance
 
 - **Objetivo:** Garantizar la paridad total de campos con el XML oficial de la MGA (`ProjectSummary.xml`) en todos los módulos de formulación, asegurar su persistencia en `mga_formulation_data` (JSONB) y actualizar el cálculo de porcentaje de avance y auditoría del proyecto.

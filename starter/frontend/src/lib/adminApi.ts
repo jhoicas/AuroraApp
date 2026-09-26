@@ -262,3 +262,41 @@ export const adminDeleteMgaPosition = async (id: number): Promise<void> => {
   await api.delete(`/admin/mga/catalogs/positions/${id}`);
 };
 
+// ─────────────────────────── Sincronización SODA (Datos Abiertos) ───────────────────────────
+
+export interface CatalogSyncLog {
+  id: string;
+  catalog_name: string;
+  started_at: string;
+  completed_at?: string | null;
+  status: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS';
+  records_processed: number;
+  error_message?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PndSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
+
+export interface TriggerSyncResponse {
+  status: string;
+  message: string;
+  data: PndSyncResult;
+}
+
+export const getSyncStatus = async (catalog: string = 'PND'): Promise<CatalogSyncLog | null> => {
+  const { data } = await api.get<{ data: CatalogSyncLog | null }>(`/admin/sync/status?catalog=${encodeURIComponent(catalog)}`);
+  return data.data;
+};
+
+export const triggerPndSync = async (): Promise<PndSyncResult> => {
+  const { data } = await api.post<TriggerSyncResponse>('/admin/sync/pnd');
+  return data.data;
+};
+

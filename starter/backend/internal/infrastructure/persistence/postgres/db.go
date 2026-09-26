@@ -145,6 +145,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.Agrupacion{}); err != nil {
 		log.Printf("automigrate Agrupacion: %v", err)
 	}
+	if err := db.AutoMigrate(&models.CatalogSyncLog{}); err != nil {
+		log.Printf("automigrate CatalogSyncLog: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -166,6 +169,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureMgaExtendedSchema(db)
 	ensureMgaCatalogSchema(db)
 	ensureProjectEdtSchema(db)
+	ensureCatalogSyncLogsSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -1319,6 +1323,52 @@ func ensureProjectEdtSchema(db *gorm.DB) {
 		`ALTER TABLE project_activities ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
 	}
 	execSchemaStatements(db, "ensure project edt schema", statements)
+}
+
+func ensureCatalogSyncLogsSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS catalog_sync_logs (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		catalog_name VARCHAR(100) NOT NULL,
+		started_at TIMESTAMPTZ NOT NULL,
+		completed_at TIMESTAMPTZ,
+		status VARCHAR(50) NOT NULL,
+		records_processed INTEGER DEFAULT 0,
+		error_message TEXT,
+		created_at TIMESTAMPTZ DEFAULT NOW(),
+		updated_at TIMESTAMPTZ DEFAULT NOW()
+	)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		fallback := `CREATE TABLE IF NOT EXISTS catalog_sync_logs (
+			id UUID PRIMARY KEY,
+			catalog_name VARCHAR(100) NOT NULL,
+			started_at TIMESTAMPTZ NOT NULL,
+			completed_at TIMESTAMPTZ,
+			status VARCHAR(50) NOT NULL,
+			records_processed INTEGER DEFAULT 0,
+			error_message TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`
+		if err2 := db.Exec(fallback).Error; err2 != nil {
+			log.Printf("ensure catalog_sync_logs schema: CREATE TABLE failed: %v (fallback: %v)", err, err2)
+		}
+	}
+
+	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_catalog_sync_logs_catalog_name ON catalog_sync_logs (catalog_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalog_sync_logs_started_at ON catalog_sync_logs (started_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalog_sync_logs_status ON catalog_sync_logs (status)`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS catalog_name VARCHAR(100)`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS status VARCHAR(50)`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS records_processed INTEGER DEFAULT 0`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS error_message TEXT`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_pnd_catalogs_unique_identifier ON pnd_catalogs (unique_identifier)`,
+	}
+	execSchemaStatements(db, "ensure catalog_sync_logs schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

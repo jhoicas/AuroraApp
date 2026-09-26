@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
 import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
 import { useCatalogStore, type CatalogPnd } from '../../store/catalogStore';
+import { getSyncStatus, triggerPndSync, type CatalogSyncLog } from '../../lib/adminApi';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
 
@@ -10,6 +12,22 @@ function cellText(value: string | null | undefined): string {
   const v = (value ?? '').trim();
   if (!v || v === '0') return '—';
   return v;
+}
+
+function formatSyncDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 export default function PndCatalogPage() {
@@ -26,6 +44,24 @@ export default function PndCatalogPage() {
   const [limit, setLimit] = useState<number>(10);
   const [searchFocused, setSearchFocused] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+
+  // Estado de sincronización SODA DNP
+  const [syncLog, setSyncLog] = useState<CatalogSyncLog | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const loadSyncStatus = useCallback(async () => {
+    try {
+      const status = await getSyncStatus('PND');
+      setSyncLog(status);
+    } catch {
+      // Ignorar fallo no crítico en lectura de status
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSyncStatus();
+  }, [loadSyncStatus]);
 
   useCopilotSearchSync('pnd', setQuery);
 
@@ -47,14 +83,68 @@ export default function PndCatalogPage() {
     setPage(1);
   };
 
+  const handleTriggerSync = async () => {
+    try {
+      setIsSyncing(true);
+      setSyncError(null);
+      clearError();
+      const res = await triggerPndSync();
+      setFlash(`Sincronización con Datos Abiertos DNP exitosa: ${res.records_processed} registros procesados.`);
+      await loadSyncStatus();
+      refreshList();
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.details ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Error al sincronizar con Datos Abiertos DNP';
+      setSyncError(msg);
+      await loadSyncStatus();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="-m-6 font-body text-[#121c2c]">
       <div className="p-6 md:p-12 max-w-[1280px] mx-auto space-y-8">
-        <div>
-          <h3 className="font-headline text-2xl font-semibold text-[#121c2c] mb-1">Plan Nacional de Desarrollo (PND)</h3>
-          <p className="text-base text-[#3f4949]">
-            Catálogo del PND estructurado en Transformación, Pilar, Catalizador y Componente.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h3 className="font-headline text-2xl font-semibold text-[#121c2c] mb-1">Plan Nacional de Desarrollo (PND)</h3>
+            <p className="text-base text-[#3f4949]">
+              Catálogo del PND estructurado en Transformación, Pilar, Catalizador y Componente.
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-sm text-[#6f7979]">
+              {isSyncing || syncLog?.status === 'IN_PROGRESS' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Sincronización en curso con DNP...
+                </span>
+              ) : syncLog?.completed_at ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  Última sincronización: {formatSyncDate(syncLog.completed_at)}
+                  {syncLog.records_processed > 0 && ` (${syncLog.records_processed} registros)`}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
+                  Sin sincronización previa registrada
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTriggerSync}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#006162] hover:bg-[#004e4f] text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title="Disparar sincronización con datos.gov.co"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar con DNP (Datos Abiertos)'}</span>
+            </button>
+          </div>
         </div>
 
         <CatalogImporter
@@ -114,6 +204,21 @@ export default function PndCatalogPage() {
           <div className="bg-[#FFF5F5] border-l-4 border-[#E53E3E] text-[#C53030] p-4 rounded-r shadow-sm">
             <p className="font-semibold">Error al cargar listado</p>
             <p className="text-sm">{error}</p>
+          </div>
+        )}
+        {syncError && (
+          <div className="bg-[#FFF5F5] border-l-4 border-[#E53E3E] text-[#C53030] p-4 rounded-r shadow-sm flex items-center justify-between">
+            <div>
+              <p className="font-semibold">Error al sincronizar con Datos Abiertos</p>
+              <p className="text-sm">{syncError}</p>
+            </div>
+            <button
+              onClick={() => setSyncError(null)}
+              className="text-[#C53030] hover:text-[#9B2C2C] p-1 rounded-md transition-colors hover:bg-[#FED7D7]"
+              title="Cerrar"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
           </div>
         )}
         {flash && (

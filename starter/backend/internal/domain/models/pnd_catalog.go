@@ -15,7 +15,7 @@ type PNDCatalog struct {
 	StrategyDescription  string    `gorm:"type:text;index" json:"StrategyDescription"`  // Catalizador
 	ComponentDescription string    `gorm:"type:text;index" json:"ComponentDescription"` // Componente
 	RowState             int       `json:"RowState"`
-	UniqueIdentifier     *string   `json:"UniqueIdentifier"`
+	UniqueIdentifier     *string   `gorm:"type:varchar(255);uniqueIndex" json:"UniqueIdentifier"`
 	CreatedAt            time.Time `json:"CreatedAt"`
 	UpdatedAt            time.Time `json:"UpdatedAt"`
 }

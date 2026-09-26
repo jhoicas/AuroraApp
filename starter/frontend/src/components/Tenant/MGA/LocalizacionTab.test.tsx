@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
 import LocalizacionTab from './LocalizacionTab';
 import { useLocationStore } from '../../../store/locationStore';
-import type { Project } from '../../../store/projectStore';
+import { useProjectStore, type Project } from '../../../store/projectStore';
 
 const mockProjectStandard: Project = {
   id: 'proj-standard-1',
@@ -50,6 +50,7 @@ const mockProjectEthnic: Project = {
 
 describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
   beforeEach(() => {
+    useProjectStore.setState({ currentProject: null });
     server.use(
       http.get(apiUrl('/locations/agrupaciones'), () => {
         return HttpResponse.json({
@@ -162,4 +163,86 @@ describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
     // La opción del Consejo Comunitario (tipo 2) NO debe aparecer para el tipo 1 seleccionado
     expect(screen.queryByRole('option', { name: 'Consejo Comunitario Afro de Cali' })).not.toBeInTheDocument();
   });
+
+  it('pre-puebla automáticamente la localización base del proyecto si el array de localizaciones de la MGA está vacío', async () => {
+    const projectWithEmptyMgaLocs: Project = {
+      id: 'proj-empty-locs-1',
+      tenant_id: 'tenant-1',
+      creator_id: 'user-1',
+      name: 'Proyecto Con Localización Base',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      mga_formulation_data: {
+        tipologia: 'General - Esquemas SUIFP',
+        localizaciones: [], // array vacío
+      },
+    };
+
+    // Simulamos que el store de proyectos tiene la localización base
+    useProjectStore.setState({
+      currentProject: {
+        ...projectWithEmptyMgaLocs,
+        region_id: 1,
+        departamento_id: 76,
+        municipio_id: 76001,
+      } as any,
+    });
+
+    render(<LocalizacionTab project={projectWithEmptyMgaLocs} />);
+
+    // Los dropdowns deben reflejar los valores base del proyecto
+    const selects = screen.getAllByRole('combobox');
+    const regionSelect = selects[0] as HTMLSelectElement;
+    const deptoSelect = selects[1] as HTMLSelectElement;
+    const munSelect = selects[2] as HTMLSelectElement;
+
+    expect(regionSelect.value).toBe('1');
+    expect(deptoSelect.value).toBe('76');
+    expect(munSelect.value).toBe('76001');
+
+    // Al agregar otra localización, la primera se mantiene intacta y la segunda inicia vacía
+    const addBtn = screen.getByRole('button', { name: /Agregar otra localización/i });
+    fireEvent.click(addBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Localización #2')).toBeInTheDocument();
+    });
+
+    const updatedSelects = screen.getAllByRole('combobox');
+    expect((updatedSelects[0] as HTMLSelectElement).value).toBe('1');
+    expect((updatedSelects[1] as HTMLSelectElement).value).toBe('76');
+    expect((updatedSelects[2] as HTMLSelectElement).value).toBe('76001');
+
+    // Segunda fila (índices 3, 4, 5) inicia vacía
+    expect((updatedSelects[3] as HTMLSelectElement).value).toBe('');
+    expect((updatedSelects[4] as HTMLSelectElement).value).toBe('');
+    expect((updatedSelects[5] as HTMLSelectElement).value).toBe('');
+  });
+
+  it('pre-puebla automáticamente la localización base desde project si mga_formulation_data no tiene localizaciones', () => {
+    const projectWithBaseFields: any = {
+      id: 'proj-direct-fields-1',
+      tenant_id: 'tenant-1',
+      creator_id: 'user-1',
+      name: 'Proyecto Con Campos Directos',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      region_id: 1,
+      departamento_id: 76,
+      municipio_id: 76001,
+      mga_formulation_data: null,
+    };
+
+    useProjectStore.setState({ currentProject: projectWithBaseFields });
+
+    render(<LocalizacionTab project={projectWithBaseFields} />);
+
+    const selects = screen.getAllByRole('combobox');
+    expect((selects[0] as HTMLSelectElement).value).toBe('1');
+    expect((selects[1] as HTMLSelectElement).value).toBe('76');
+    expect((selects[2] as HTMLSelectElement).value).toBe('76001');
+  });
 });
+

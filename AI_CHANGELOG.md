@@ -21,6 +21,25 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Pre-población Automática de Localización Base en LocalizacionTab
+
+- **Objetivo:** Corregir la inicialización de datos en LocalizacionTab.tsx para pre-poblar automáticamente la Localización Principal/Base del proyecto con la Región, Departamento y Municipio definidos en la creación del proyecto cuando el array de localizaciones MGA está vacío o es nulo.
+- **Frontend (React / TypeScript / Zustand):**
+  - [LocalizacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.tsx):
+    - Conectado useProjectStore (currentProject = useProjectStore(state => state.currentProject)) junto al prop project (activeProject).
+    - En el hook de inicialización (useEffect), si el array de localizaciones (mgaData.localizaciones, formulation.localizaciones, project.mga_formulation_data?.localizaciones, etc.) está vacío o no existe, extrae y mapea automáticamente la localización base del proyecto (region_id, departamento_id, municipio_id, y opcionalmente tipo_agrupacion_id y agrupacion_id si aplica tipología étnica).
+    - Mantiene intacta y respeta la información si mgaData.localizaciones ya contiene registros, impidiendo sobreescrituras no deseadas.
+    - Implementado isUserEditedRef para evitar que actualizaciones asíncronas sobreescriban modificaciones manuales del usuario o filas agregadas.
+    - El botón "+ Agregar otra localización" continúa añadiendo objetos vacíos adicionales de forma independiente sin interferir en la sincronización del primer registro.
+  - [LocalizacionTab.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.test.tsx):
+    - Añadidas pruebas unitarias que validan la pre-población automática de Región, Departamento y Municipio a partir de currentProject y campos directos del proyecto cuando localizaciones de la MGA está vacío.
+    - Verificada la adición multi-registro conservando los valores pre-poblados de la primera fila.
+- **Validaciones:**
+  - cd starter/frontend && npx tsc --noEmit: Exit Code 0 (0 errores de TypeScript).
+  - npx vitest run src/components/Tenant/MGA/LocalizacionTab.test.tsx: 6 pruebas pasadas exitosamente (Exit Code 0).
+  - npx vitest run src/components/Tenant/MGA: 18 pruebas unitarias pasadas al 100%.
+  - npm run build (tsc -b && vite build): Build de producción completado exitosamente en 5.49s.
+
 ### 2026-09-25 - Antigravity - Desbloqueo de Navegación MGA e Indicador de Completitud con Check (✓)
 
 - **Objetivo:** Desbloquear las pestañas y etapas del MGA en proyectos existentes que contienen información gestionada, eliminando bloqueos secuenciales artificiales y mostrando un icono visual de verificación (check) en todas las secciones con datos.

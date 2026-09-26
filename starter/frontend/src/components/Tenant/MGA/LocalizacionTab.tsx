@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
-import type { Project } from '../../../store/projectStore';
+import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
 import { useLocationStore, type Region, type Departamento, type Municipio, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
 import MgaAlert from './MgaAlert';
@@ -14,6 +14,7 @@ interface LocalizacionRow {
 }
 
 export default function LocalizacionTab({ project }: { project: Project }) {
+  const currentProject = useProjectStore((state) => state.currentProject);
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const saveLocalizacion = useProjectMgaStore((s) => s.saveLocalizacion);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
@@ -32,9 +33,18 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LocalizacionRow[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const isUserEditedRef = useRef(false);
+
+  // Proyecto activo con prioridad al del store
+  const activeProject = (currentProject && currentProject.id === project.id ? currentProject : null) || currentProject || project;
 
   // Tipología del proyecto para lógica étnica condicional
-  const tipologia = project.mga_formulation_data?.tipologia || (formulation as any)?.tipologia || '';
+  const tipologia =
+    project.mga_formulation_data?.tipologia ||
+    activeProject?.mga_formulation_data?.tipologia ||
+    (formulation as any)?.tipologia ||
+    (activeProject as any)?.tipologia ||
+    '';
   const isEthnic =
     tipologia === "E - Esquemas SUIFP's - Pueblos y comunidades étnicas" ||
     tipologia === "E - PIIP - Pueblos y Comunidades Indígenas";
@@ -50,12 +60,34 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
   // Inicialización y sincronización con datos base del proyecto
   useEffect(() => {
-    if (initialized) return;
+    // Si el usuario ya interactuó o editó manualmente, respetamos sus cambios y no sobreescribimos
+    if (isUserEditedRef.current) return;
+
+    // Si ya fue inicializado, verificar si actualmente solo tiene la fila vacía por defecto
+    // para permitir que se pre-pueble si los datos base llegaron después del montaje
+    if (initialized) {
+      const isSingleDefaultRow =
+        rows.length === 1 &&
+        rows[0].region_id === null &&
+        rows[0].departamento_id === null &&
+        rows[0].municipio_id === null;
+      if (!isSingleDefaultRow) {
+        return;
+      }
+    }
 
     let initialRows: LocalizacionRow[] = [];
 
-    // 1. Verificar si ya existen localizaciones guardadas en la formulación
-    const existing = formulation.localizaciones || (formulation.localizacion?.localizaciones as any[]);
+    // 1. Verificar si ya existen localizaciones guardadas en la formulación MGA
+    const existing =
+      formulation.localizaciones ||
+      (formulation.localizacion?.localizaciones as any[]) ||
+      (project.mga_formulation_data?.localizaciones as any[]) ||
+      (activeProject?.mga_formulation_data?.localizaciones as any[]) ||
+      ((activeProject?.mga_formulation_data?.identificacion as any)?.localizaciones as any[]) ||
+      ((project.mga_formulation_data?.identificacion as any)?.localizaciones as any[]) ||
+      ((activeProject as any)?.localizaciones as any[]);
+
     if (existing && Array.isArray(existing) && existing.length > 0) {
       initialRows = existing.map((loc: any) => ({
         region_id: loc.region_id ?? loc.regionId ?? null,
@@ -65,16 +97,97 @@ export default function LocalizacionTab({ project }: { project: Project }) {
         agrupacion_id: loc.agrupacion_id ?? loc.agrupacionId ?? null,
       }));
     } else {
-      // 2. Si no hay localizaciones, verificar si hay localizaciones base en project.mga_formulation_data
-      const projectLocs = project.mga_formulation_data?.localizaciones as any[];
-      if (projectLocs && Array.isArray(projectLocs) && projectLocs.length > 0) {
-        initialRows = projectLocs.map((loc: any) => ({
-          region_id: loc.region_id ?? loc.regionId ?? null,
-          departamento_id: loc.departamento_id ?? loc.departamentoId ?? null,
-          municipio_id: loc.municipio_id ?? loc.municipioId ?? null,
-          tipo_agrupacion_id: loc.tipo_agrupacion_id ?? loc.tipoAgrupacionId ?? null,
-          agrupacion_id: loc.agrupacion_id ?? loc.agrupacionId ?? null,
-        }));
+      // 2. Si el array de localizaciones de la MGA está vacío o es nulo,
+      // pre-poblar automáticamente con la localización base definida al crear el proyecto
+      const toNumOrNull = (val: unknown): number | null => {
+        if (val === null || val === undefined || val === '') return null;
+        const num = Number(val);
+        return Number.isNaN(num) ? null : num;
+      };
+
+      const baseRegion = toNumOrNull(
+        (activeProject as any)?.region_id ??
+        (activeProject as any)?.regionId ??
+        (project as any)?.region_id ??
+        (project as any)?.regionId ??
+        activeProject?.mga_formulation_data?.region_id ??
+        (activeProject?.mga_formulation_data as any)?.regionId ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.region_id ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.regionId ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.region_id ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.regionId ??
+        project.mga_formulation_data?.region_id ??
+        (project.mga_formulation_data as any)?.regionId ??
+        (project.mga_formulation_data?.identificacion as any)?.region_id ??
+        (project.mga_formulation_data?.identificacion as any)?.regionId
+      );
+
+      const baseDepto = toNumOrNull(
+        (activeProject as any)?.departamento_id ??
+        (activeProject as any)?.departamentoId ??
+        (project as any)?.departamento_id ??
+        (project as any)?.departamentoId ??
+        activeProject?.mga_formulation_data?.departamento_id ??
+        (activeProject?.mga_formulation_data as any)?.departamentoId ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.departamento_id ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.departamentoId ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.departamento_id ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.departamentoId ??
+        project.mga_formulation_data?.departamento_id ??
+        (project.mga_formulation_data as any)?.departamentoId ??
+        (project.mga_formulation_data?.identificacion as any)?.departamento_id ??
+        (project.mga_formulation_data?.identificacion as any)?.departamentoId
+      );
+
+      const baseMun = toNumOrNull(
+        (activeProject as any)?.municipio_id ??
+        (activeProject as any)?.municipioId ??
+        (project as any)?.municipio_id ??
+        (project as any)?.municipioId ??
+        activeProject?.mga_formulation_data?.municipio_id ??
+        (activeProject?.mga_formulation_data as any)?.municipioId ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.municipio_id ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.municipioId ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.municipio_id ??
+        (activeProject?.mga_formulation_data?.localizacion as any)?.municipioId ??
+        project.mga_formulation_data?.municipio_id ??
+        (project.mga_formulation_data as any)?.municipioId ??
+        (project.mga_formulation_data?.identificacion as any)?.municipio_id ??
+        (project.mga_formulation_data?.identificacion as any)?.municipioId
+      );
+
+      const baseTipoAgrup = toNumOrNull(
+        (activeProject as any)?.tipo_agrupacion_id ??
+        (activeProject as any)?.tipoAgrupacionId ??
+        (project as any)?.tipo_agrupacion_id ??
+        (project as any)?.tipoAgrupacionId ??
+        activeProject?.mga_formulation_data?.tipo_agrupacion_id ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.tipo_agrupacion_id ??
+        project.mga_formulation_data?.tipo_agrupacion_id ??
+        (project.mga_formulation_data?.identificacion as any)?.tipo_agrupacion_id
+      );
+
+      const baseAgrup = toNumOrNull(
+        (activeProject as any)?.agrupacion_id ??
+        (activeProject as any)?.agrupacionId ??
+        (project as any)?.agrupacion_id ??
+        (project as any)?.agrupacionId ??
+        activeProject?.mga_formulation_data?.agrupacion_id ??
+        (activeProject?.mga_formulation_data?.identificacion as any)?.agrupacion_id ??
+        project.mga_formulation_data?.agrupacion_id ??
+        (project.mga_formulation_data?.identificacion as any)?.agrupacion_id
+      );
+
+      if (baseRegion !== null || baseDepto !== null || baseMun !== null) {
+        initialRows = [
+          {
+            region_id: baseRegion,
+            departamento_id: baseDepto,
+            municipio_id: baseMun,
+            tipo_agrupacion_id: baseTipoAgrup,
+            agrupacion_id: baseAgrup,
+          },
+        ];
       }
     }
 
@@ -93,10 +206,19 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
     setRows(initialRows);
     setInitialized(true);
-  }, [formulation.localizaciones, formulation.localizacion, project.mga_formulation_data, initialized]);
+  }, [
+    formulation.localizaciones,
+    formulation.localizacion,
+    project,
+    currentProject,
+    activeProject,
+    initialized,
+    rows.length,
+  ]);
 
   // Manejadores para modificar cada fila con filtros en cascada
   const updateRow = (index: number, field: keyof LocalizacionRow, value: number | null) => {
+    isUserEditedRef.current = true;
     setRows((prev) => {
       const next = [...prev];
       const currentRow = { ...next[index] };
@@ -126,6 +248,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   };
 
   const addRow = () => {
+    isUserEditedRef.current = true;
     setRows((prev) => [
       ...prev,
       {
@@ -139,6 +262,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   };
 
   const removeRow = (index: number) => {
+    isUserEditedRef.current = true;
     if (rows.length <= 1) return;
     setRows((prev) => prev.filter((_, i) => i !== index));
   };

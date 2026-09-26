@@ -29,7 +29,7 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
     - Creada y exportada la función utilitaria `hasMgaSectionData(sectionId, project, formulation, edtChain)` que evalúa exhaustivamente la existencia de datos para las 16 secciones del MGA (considerando datos en `Project`, `mga_formulation_data`, `formulation` y `edtChain`).
     - Añadido selector/método `isSectionManaged(projectId, sectionId)` en `ProjectMgaState` y `useProjectMgaStore`.
     - Mejorada la resolución de proyecto en `fetchFormulation` para consultar `currentProject` como fallback de `projects`.
-    - Tipado seguro de `p.locations` para poblaciones.
+    - Tipado seguro y validación defensiva de campos JSONB/unknown mediante helper `hasText(val: unknown)`, previniendo errores TS2339 en llamadas a `.trim()`.
   - [MGALayout.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/MGALayout.tsx):
     - Conectado `useMgaSectionStatuses` con `hasMgaSectionData` y `useProjectEdtStore`: cualquier pestaña con datos queda en estado `COMPLETED` (`disabled = false`), y habilita el acceso a la siguiente sección en `ACTIVE` (`disabled = false`).
     - Reemplazados badges estáticos con `<Check className="h-3.5 w-3.5 stroke-[2.5]" />` y `<Lock className="h-3 w-3" />` de `lucide-react`, con contraste adaptativo para tabs activas e inactivas.

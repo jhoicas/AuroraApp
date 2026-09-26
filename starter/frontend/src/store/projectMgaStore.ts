@@ -1075,6 +1075,10 @@ export function parsePopulationLocations(raw: unknown): PopulationLocationsData 
   return {};
 }
 
+function hasText(val: unknown): boolean {
+  return typeof val === 'string' && val.trim().length > 0;
+}
+
 /**
  * Evalúa si una sección del MGA cuenta con datos registrados o gestionados
  * en el proyecto, la formulación actual o la cadena de valor (EDT).
@@ -1102,16 +1106,16 @@ export function hasMgaSectionData(
         return Boolean(form?.completedSections?.['plan-desarrollo'] || pData.completedSections?.['plan-desarrollo']);
       }
       const hasLinks = Array.isArray(pd.pndLinks) && pd.pndLinks.length > 0;
-      const hasDep = Boolean(pd.departamental?.plan?.trim() || pd.departamental?.estrategia?.trim() || pd.departamental?.programa?.trim());
-      const hasMun = Boolean(pd.municipal?.plan?.trim() || pd.municipal?.estrategia?.trim() || pd.municipal?.programa?.trim());
-      const hasEtnico = Boolean(pd.etnico?.tipoComunidad?.trim() || pd.etnico?.instrumentos?.trim());
-      const hasOtros = Boolean(pd.otros?.plan?.trim() || pd.otros?.estrategia?.trim() || pd.otros?.programa?.trim());
+      const hasDep = Boolean(hasText(pd.departamental?.plan) || hasText(pd.departamental?.estrategia) || hasText(pd.departamental?.programa));
+      const hasMun = Boolean(hasText(pd.municipal?.plan) || hasText(pd.municipal?.estrategia) || hasText(pd.municipal?.programa));
+      const hasEtnico = Boolean(hasText(pd.etnico?.tipoComunidad) || hasText(pd.etnico?.instrumentos));
+      const hasOtros = Boolean(hasText(pd.otros?.plan) || hasText(pd.otros?.estrategia) || hasText(pd.otros?.programa));
       return hasLinks || hasDep || hasMun || hasEtnico || hasOtros || Boolean(form?.completedSections?.['plan-desarrollo'] || pData.completedSections?.['plan-desarrollo']);
     }
 
     case 'identificacion': {
-      const problemDesc = project.problem_description?.trim() || pData.problem_description?.trim() || '';
-      const generalObj = project.general_objective?.trim() || pData.general_objective?.trim() || '';
+      const problemDesc = hasText(project.problem_description) || hasText(pData.problem_description);
+      const generalObj = hasText(project.general_objective) || hasText(pData.general_objective);
       const causesCount = form?.causeRelations?.length || 0;
       const effectsCount = form?.effects?.length || 0;
       const hasCompleted = Boolean(
@@ -1126,7 +1130,7 @@ export function hasMgaSectionData(
     case 'participantes': {
       const partCount = form?.participants?.length || 0;
       const pDataPartCount = Array.isArray(pData.participants) ? pData.participants.length : 0;
-      const hasAnalisis = Boolean(pData.analisis_participantes?.trim());
+      const hasAnalisis = hasText(pData.analisis_participantes);
       const hasCompleted = Boolean(form?.completedSections?.['participantes'] || pData.completedSections?.['participantes']);
       return partCount > 0 || pDataPartCount > 0 || hasAnalisis || hasCompleted;
     }
@@ -1136,9 +1140,9 @@ export function hasMgaSectionData(
       const pDataPopCount = Array.isArray(pData.populations) ? pData.populations.length : 0;
       const hasActivePop = (form?.populations || []).some(
         (p) =>
-          (p.total_number && p.total_number > 0) ||
-          Boolean(p.source?.trim()) ||
-          (typeof p.locations === 'string' ? Boolean(p.locations.trim()) : Boolean(p.locations))
+          (typeof p.total_number === 'number' && p.total_number > 0) ||
+          hasText(p.source) ||
+          (typeof p.locations === 'string' ? hasText(p.locations) : Boolean(p.locations))
       );
       const hasPDataPop = Boolean(pData.poblacion && (typeof pData.poblacion === 'object' ? Object.keys(pData.poblacion).length > 0 : true));
       const hasCompleted = Boolean(form?.completedSections?.['poblacion'] || pData.completedSections?.['poblacion']);
@@ -1146,10 +1150,10 @@ export function hasMgaSectionData(
     }
 
     case 'objetivos': {
-      const generalObj = project.general_objective?.trim() || pData.general_objective?.trim() || '';
+      const generalObj = hasText(project.general_objective) || hasText(pData.general_objective);
       const indicatorsCount = form?.generalIndicators?.length || 0;
       const pDataIndicatorsCount = Array.isArray(pData.generalIndicators) ? pData.generalIndicators.length : 0;
-      const hasSpecificObjectives = (form?.causeRelations || []).some((c) => Boolean(c.specificObjective?.trim()));
+      const hasSpecificObjectives = (form?.causeRelations || []).some((c) => hasText(c.specificObjective));
       const hasCompleted = Boolean(form?.completedSections?.['objetivos'] || pData.completedSections?.['objetivos']);
       return Boolean(generalObj || indicatorsCount > 0 || pDataIndicatorsCount > 0 || hasSpecificObjectives || hasCompleted);
     }
@@ -1172,8 +1176,8 @@ export function hasMgaSectionData(
     case 'analisis-tecnico': {
       const formItems = form?.analisisTecnico?.items;
       const pDataItems = pData.analisisTecnico?.items;
-      const hasFormItems = Boolean(formItems && typeof formItems === 'object' && Object.values(formItems).some((v) => typeof v === 'string' && v.trim().length > 0));
-      const hasPDataItems = Boolean(pDataItems && typeof pDataItems === 'object' && Object.values(pDataItems).some((v: any) => typeof v === 'string' && v.trim().length > 0));
+      const hasFormItems = Boolean(formItems && typeof formItems === 'object' && Object.values(formItems).some(hasText));
+      const hasPDataItems = Boolean(pDataItems && typeof pDataItems === 'object' && Object.values(pDataItems).some(hasText));
       const hasCompleted = Boolean(
         form?.completedSections?.['analisisTecnico'] ||
         form?.completedSections?.['analisis-tecnico'] ||
@@ -1208,7 +1212,7 @@ export function hasMgaSectionData(
          (edtChain.deliverables && edtChain.deliverables.length > 0) ||
          edtChain.catalogLink !== null)
       );
-      const hasProductCode = Boolean(project.product_code?.trim() || pData.product_code?.trim());
+      const hasProductCode = Boolean(hasText(project.product_code) || hasText(pData.product_code));
       const hasCompleted = Boolean(form?.completedSections?.['cadena-valor'] || pData.completedSections?.['cadena-valor']);
       return hasEdt || hasProductCode || hasCompleted;
     }
@@ -1252,7 +1256,7 @@ export function hasMgaSectionData(
 
     case 'evaluacion': {
       const resumen = form?.evaluacion?.resumen || pData.evaluacion?.resumen;
-      const hasResumen = typeof resumen === 'string' && resumen.trim().length > 0;
+      const hasResumen = hasText(resumen);
       const hasCompleted = Boolean(form?.completedSections?.['evaluacion'] || pData.completedSections?.['evaluacion']);
       return hasResumen || hasCompleted;
     }

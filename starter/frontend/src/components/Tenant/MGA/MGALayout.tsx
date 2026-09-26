@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Home } from 'lucide-react';
+import { Home, Check, Lock } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectStore } from '../../../store/projectStore';
 import CreateProjectModal from '../CreateProjectModal';
@@ -20,7 +20,8 @@ import PrestamosTab from './PrestamosTab';
 import DepreciacionTab from './DepreciacionTab';
 import EvaluacionTab from './EvaluacionTab';
 import ProgramacionTab from './ProgramacionTab';
-import { useProjectMgaStore } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
+import { useProjectEdtStore, type ProjectEdtChainState } from '../../../store/projectEdtStore';
 
 export type MgaMainStageId =
   | 'identificacion'
@@ -115,13 +116,16 @@ export type MGALayoutProps = {
   bannerActions?: ReactNode;
 };
 
-function CheckBadge({ className = '' }: { className?: string }) {
+function CheckBadge({ isActive = false, className = '' }: { isActive?: boolean; className?: string }) {
   return (
     <span
-      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2e7d32] text-[11px] font-bold text-white ${className}`}
+      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors ${
+        isActive ? 'bg-white text-emerald-700 shadow-sm' : 'bg-emerald-600 text-white'
+      } ${className}`}
       aria-hidden
+      title="Sección con información gestionada"
     >
-      ✓
+      <Check className="h-3.5 w-3.5 stroke-[2.5]" />
     </span>
   );
 }
@@ -129,83 +133,106 @@ function CheckBadge({ className = '' }: { className?: string }) {
 function LockBadge({ className = '' }: { className?: string }) {
   return (
     <span
-      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] text-slate-500 ${className}`}
+      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500 ${className}`}
       aria-hidden
       title="Sección bloqueada"
     >
-      🔒
+      <Lock className="h-3 w-3" />
     </span>
   );
 }
 
 type SectionStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
 
-function useMgaSectionStatuses(project: Project) {
+export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
+  'plan-desarrollo',
+  'identificacion',
+  'participantes',
+  'poblacion',
+  'objetivos',
+  'alternativas',
+  'necesidades',
+  'analisis-tecnico',
+  'localizacion',
+  'cadena-valor',
+  'riesgos',
+  'ingresos-beneficios',
+  'prestamos',
+  'depreciacion',
+  'evaluacion',
+  'programacion',
+];
+
+function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState | null) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
-  const { causeRelations, effects } = formulation;
 
-  const problemDesc = project.problem_description?.trim() || '';
-  const hasDirectCauses = causeRelations.some((c) => c.causeType === 'Causa directa' && c.causeDescription?.trim());
-  const hasIndirectCauses = causeRelations.some((c) => c.causeType === 'Causa indirecta' && c.causeDescription?.trim());
-  const hasDirectEffects = effects.some((e) => e.effect_type === 'directo' && e.description?.trim());
-  const hasIndirectEffects = effects.some((e) => e.effect_type === 'indirecto' && e.description?.trim());
-  const isProblemTreeComplete = Boolean(
-    problemDesc && hasDirectCauses && hasIndirectCauses && hasDirectEffects && hasIndirectEffects
-  );
+  const statuses = {} as Record<MgaLayoutTabId, SectionStatus>;
 
-  const cPlan = !!formulation.completedSections['plan-desarrollo']; 
-  const cIdentificacion = !!formulation.completedSections['problematica'] && isProblemTreeComplete;
-  const cParticipantes = !!formulation.completedSections['participantes'];
-  const cPoblacion = !!formulation.completedSections['poblacion'];
-  const cObjetivos = !!formulation.completedSections['objetivos'] && isProblemTreeComplete;
-  const cAlternativas = !!formulation.completedSections['alternativas'];
+  for (let i = 0; i < ALL_MGA_SECTIONS.length; i++) {
+    const sectionId = ALL_MGA_SECTIONS[i];
+    const hasData = hasMgaSectionData(sectionId, project, formulation, edtChain);
 
-  const cNecesidades = !!formulation.completedSections.necesidades;
-  const cAnalisisTecnico = !!formulation.completedSections.analisisTecnico;
-  const cLocalizacion = !!formulation.completedSections.localizacion;
-  const cCadenaValor = !!formulation.completedSections['cadena-valor'];
-  const cRiesgos = !!formulation.completedSections.riesgos;
-  const cIngresosBeneficios = !!formulation.completedSections.ingresosBeneficios;
-  const cPrestamos = !!formulation.completedSections.prestamos;
-  const cDepreciacion = !!formulation.completedSections.depreciacion;
-  const cEvaluacion = !!formulation.completedSections.evaluacion;
-  const cProgramacion = !!formulation.completedSections.programacion;
+    const prevSectionId = i > 0 ? ALL_MGA_SECTIONS[i - 1] : null;
+    const prevHasData = prevSectionId ? hasMgaSectionData(prevSectionId, project, formulation, edtChain) : false;
+    const prevIsCompleted = prevSectionId
+      ? Boolean(formulation.completedSections?.[prevSectionId] || project.mga_formulation_data?.completedSections?.[prevSectionId])
+      : false;
 
-  const statuses: Record<MgaLayoutTabId, SectionStatus> = {
-    'plan-desarrollo': cPlan ? 'COMPLETED' : 'ACTIVE',
-    'identificacion': cIdentificacion ? 'COMPLETED' : (cPlan ? 'ACTIVE' : 'LOCKED'),
-    'participantes': cParticipantes ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
-    'poblacion': cPoblacion ? 'COMPLETED' : (cParticipantes ? 'ACTIVE' : 'LOCKED'),
-    'objetivos': cObjetivos ? 'COMPLETED' : (cPoblacion && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
-    'alternativas': cAlternativas ? 'COMPLETED' : (cObjetivos && isProblemTreeComplete ? 'ACTIVE' : 'LOCKED'),
-    'necesidades': cNecesidades ? 'COMPLETED' : (cAlternativas ? 'ACTIVE' : 'LOCKED'),
-    'analisis-tecnico': cAnalisisTecnico ? 'COMPLETED' : (cNecesidades ? 'ACTIVE' : 'LOCKED'),
-    'localizacion': cLocalizacion ? 'COMPLETED' : (cAnalisisTecnico ? 'ACTIVE' : 'LOCKED'),
-    'cadena-valor': cCadenaValor ? 'COMPLETED' : (cLocalizacion ? 'ACTIVE' : 'LOCKED'),
-    'riesgos': cRiesgos ? 'COMPLETED' : (cCadenaValor ? 'ACTIVE' : 'LOCKED'),
-    'ingresos-beneficios': cIngresosBeneficios ? 'COMPLETED' : (cRiesgos ? 'ACTIVE' : 'LOCKED'),
-    'prestamos': cPrestamos ? 'COMPLETED' : (cIngresosBeneficios ? 'ACTIVE' : 'LOCKED'),
-    'depreciacion': cDepreciacion ? 'COMPLETED' : (cPrestamos ? 'ACTIVE' : 'LOCKED'),
-    'evaluacion': cEvaluacion ? 'COMPLETED' : (cDepreciacion ? 'ACTIVE' : 'LOCKED'),
-    'programacion': cProgramacion ? 'COMPLETED' : (cEvaluacion ? 'ACTIVE' : 'LOCKED'),
-  };
+    // Secciones que marcan inicio de etapa o accesibles por datos previos
+    const isStageStart =
+      sectionId === 'plan-desarrollo' ||
+      sectionId === 'identificacion' ||
+      (sectionId === 'necesidades' && (hasMgaSectionData('alternativas', project, formulation, edtChain) || hasMgaSectionData('identificacion', project, formulation, edtChain))) ||
+      (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
+      (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
+
+    const isUnlocked =
+      i === 0 ||
+      hasData ||
+      prevHasData ||
+      prevIsCompleted ||
+      isStageStart;
+
+    if (hasData) {
+      statuses[sectionId] = 'COMPLETED';
+    } else if (isUnlocked) {
+      statuses[sectionId] = 'ACTIVE';
+    } else {
+      statuses[sectionId] = 'LOCKED';
+    }
+  }
 
   return statuses;
 }
 
-function useMgaMainStageStatuses(subStatuses: Record<MgaLayoutTabId, SectionStatus>) {
-  const cIdentificacion = subStatuses['alternativas'] === 'COMPLETED';
-  const cPreparacion = subStatuses['depreciacion'] === 'COMPLETED';
-  const cEvaluacion = subStatuses['evaluacion'] === 'COMPLETED';
-  const cProgramacion = subStatuses['programacion'] === 'COMPLETED';
-  const cPresentar = false;
+function useMgaMainStageStatuses(
+  subStatuses: Record<MgaLayoutTabId, SectionStatus>,
+  project: Project,
+  formulation: ProjectMgaFormulation,
+  edtChain?: ProjectEdtChainState | null,
+) {
+  const isStageAllCompleted = (subSections: MgaSubSection[]) =>
+    subSections.every((s) => subStatuses[s.id] === 'COMPLETED');
+
+  const isStageAnyManaged = (subSections: MgaSubSection[]) =>
+    subSections.some((s) => hasMgaSectionData(s.id, project, formulation, edtChain));
+
+  const cIdentificacion = isStageAllCompleted(SUB_SECTIONS_IDENTIFICACION);
+  const cPreparacion = isStageAllCompleted(SUB_SECTIONS_PREPARACION);
+  const cEvaluacion = isStageAllCompleted(SUB_SECTIONS_EVALUACION);
+  const cProgramacion = isStageAllCompleted(SUB_SECTIONS_PROGRAMACION);
+
+  const mIdentificacion = isStageAnyManaged(SUB_SECTIONS_IDENTIFICACION);
+  const mPreparacion = isStageAnyManaged(SUB_SECTIONS_PREPARACION);
+  const mEvaluacion = isStageAnyManaged(SUB_SECTIONS_EVALUACION);
+  const mProgramacion = isStageAnyManaged(SUB_SECTIONS_PROGRAMACION);
 
   const statuses: Record<MgaMainStageId, SectionStatus> = {
     identificacion: cIdentificacion ? 'COMPLETED' : 'ACTIVE',
-    preparacion: cPreparacion ? 'COMPLETED' : (cIdentificacion ? 'ACTIVE' : 'LOCKED'),
-    evaluacion: cEvaluacion ? 'COMPLETED' : (cPreparacion ? 'ACTIVE' : 'LOCKED'),
-    programacion: cProgramacion ? 'COMPLETED' : (cEvaluacion ? 'ACTIVE' : 'LOCKED'),
-    presentar: cPresentar ? 'COMPLETED' : (cProgramacion ? 'ACTIVE' : 'LOCKED'),
+    preparacion: cPreparacion ? 'COMPLETED' : (mPreparacion || mIdentificacion || cIdentificacion ? 'ACTIVE' : 'LOCKED'),
+    evaluacion: cEvaluacion ? 'COMPLETED' : (mEvaluacion || mPreparacion || cPreparacion ? 'ACTIVE' : 'LOCKED'),
+    programacion: cProgramacion ? 'COMPLETED' : (mProgramacion || mEvaluacion || cEvaluacion ? 'ACTIVE' : 'LOCKED'),
+    presentar: cProgramacion || mProgramacion ? 'ACTIVE' : 'LOCKED',
   };
   return statuses;
 }
@@ -261,8 +288,10 @@ export default function MGALayout({
   footerSlot,
   bannerActions,
 }: MGALayoutProps) {
-  const sectionStatuses = useMgaSectionStatuses(project);
-  const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses);
+  const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
+  const sectionStatuses = useMgaSectionStatuses(project, edtChain);
+  const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses, project, formulation, edtChain);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const currentProject = useProjectStore((state) => state.currentProject);
 
@@ -340,14 +369,23 @@ export default function MGALayout({
                     stage.id === 'preparacion' ? SUB_SECTIONS_PREPARACION :
                     stage.id === 'evaluacion' ? SUB_SECTIONS_EVALUACION :
                     stage.id === 'programacion' ? SUB_SECTIONS_PROGRAMACION : SUB_SECTIONS_IDENTIFICACION;
-                  if (subList[0]) {
-                    onChangeSubTab(subList[0].id);
+                  const targetSub = subList.find((s) => sectionStatuses[s.id] !== 'LOCKED') || subList[0];
+                  if (targetSub) {
+                    onChangeSubTab(targetSub.id);
                   }
                 }}
                 className={btnClass}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {isCompleted && <CheckBadge className="bg-white text-[#2e7d32]" />}
+                {isCompleted && (
+                  <span
+                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm"
+                    aria-hidden
+                    title="Etapa completada"
+                  >
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </span>
+                )}
                 {isLocked && <LockBadge className="bg-white/20 text-white/50" />}
                 {!isCompleted && !isLocked && <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />}
                 <span>{stage.label}</span>
@@ -432,7 +470,12 @@ export default function MGALayout({
                     className={btnClass}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    {isCompleted && <CheckBadge className={isActive ? 'bg-white text-[#2e7d32]' : ''} />}
+                    {isCompleted && (
+                      <CheckBadge
+                        isActive={isActive}
+                        className={isActive ? 'bg-white text-emerald-700' : ''}
+                      />
+                    )}
                     {isLocked && <LockBadge />}
                     {!isCompleted && !isLocked && <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />}
                     

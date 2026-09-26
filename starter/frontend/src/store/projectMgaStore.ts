@@ -40,7 +40,8 @@ import {
   type UpdateMgaParticipantPayload,
 } from '../lib/mgaApi';
 import debounce from 'lodash.debounce';
-import { useProjectStore } from './projectStore';
+import { useProjectStore, type Project } from './projectStore';
+import type { ProjectEdtChainState } from './projectEdtStore';
 
 export type CauseType = 'Causa directa' | 'Causa indirecta';
 export type EffectType = 'Efecto directo' | 'Efecto indirecto';
@@ -188,6 +189,7 @@ type ProjectMgaState = {
   saveDepreciacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveEvaluacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveProgramacion: (projectId: string, data: Record<string, any>) => Promise<void>;
+  isSectionManaged: (projectId: string, sectionId: string) => boolean;
   clearError: () => void;
 };
 
@@ -296,6 +298,13 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   error: null,
 
   clearError: () => set({ error: null }),
+
+  isSectionManaged: (projectId, sectionId) => {
+    const formulation = get().byProjectId[projectId] ?? EMPTY_FORMULATION;
+    const store = useProjectStore.getState();
+    const proj = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
+    return hasMgaSectionData(sectionId, proj, formulation);
+  },
 
   savePlanDesarrollo: async (projectId, data) => {
     set({ isSaving: true, error: null });
@@ -565,7 +574,8 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       const data = await fetchMgaFormulation(projectId);
       const formulation = formulationFromApi(data);
       
-      const project = useProjectStore.getState().projects.find(p => p.id === projectId);
+      const store = useProjectStore.getState();
+      const project = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
       if (project?.mga_formulation_data) {
         const pData = project.mga_formulation_data;
         if (pData.planDesarrollo) formulation.planDesarrollo = pData.planDesarrollo as PlanDesarrolloData;
@@ -1063,4 +1073,196 @@ export function parsePopulationLocations(raw: unknown): PopulationLocationsData 
   }
   if (typeof raw === 'object') return raw as PopulationLocationsData;
   return {};
+}
+
+/**
+ * Evalúa si una sección del MGA cuenta con datos registrados o gestionados
+ * en el proyecto, la formulación actual o la cadena de valor (EDT).
+ */
+export function hasMgaSectionData(
+  sectionId: string,
+  project?: Project | null,
+  formulation?: ProjectMgaFormulation | null,
+  edtChain?: ProjectEdtChainState | null,
+): boolean {
+  if (!project) return false;
+  const pData = project.mga_formulation_data || {};
+  const form = formulation;
+
+  const normalizedId =
+    sectionId === 'problematica' ? 'identificacion' :
+    sectionId === 'analisisTecnico' ? 'analisis-tecnico' :
+    sectionId === 'ingresosBeneficios' ? 'ingresos-beneficios' :
+    sectionId;
+
+  switch (normalizedId) {
+    case 'plan-desarrollo': {
+      const pd = form?.planDesarrollo || pData.planDesarrollo;
+      if (!pd) {
+        return Boolean(form?.completedSections?.['plan-desarrollo'] || pData.completedSections?.['plan-desarrollo']);
+      }
+      const hasLinks = Array.isArray(pd.pndLinks) && pd.pndLinks.length > 0;
+      const hasDep = Boolean(pd.departamental?.plan?.trim() || pd.departamental?.estrategia?.trim() || pd.departamental?.programa?.trim());
+      const hasMun = Boolean(pd.municipal?.plan?.trim() || pd.municipal?.estrategia?.trim() || pd.municipal?.programa?.trim());
+      const hasEtnico = Boolean(pd.etnico?.tipoComunidad?.trim() || pd.etnico?.instrumentos?.trim());
+      const hasOtros = Boolean(pd.otros?.plan?.trim() || pd.otros?.estrategia?.trim() || pd.otros?.programa?.trim());
+      return hasLinks || hasDep || hasMun || hasEtnico || hasOtros || Boolean(form?.completedSections?.['plan-desarrollo'] || pData.completedSections?.['plan-desarrollo']);
+    }
+
+    case 'identificacion': {
+      const problemDesc = project.problem_description?.trim() || pData.problem_description?.trim() || '';
+      const generalObj = project.general_objective?.trim() || pData.general_objective?.trim() || '';
+      const causesCount = form?.causeRelations?.length || 0;
+      const effectsCount = form?.effects?.length || 0;
+      const hasCompleted = Boolean(
+        form?.completedSections?.['problematica'] ||
+        form?.completedSections?.['identificacion'] ||
+        pData.completedSections?.['problematica'] ||
+        pData.completedSections?.['identificacion']
+      );
+      return Boolean(problemDesc || generalObj || causesCount > 0 || effectsCount > 0 || hasCompleted);
+    }
+
+    case 'participantes': {
+      const partCount = form?.participants?.length || 0;
+      const pDataPartCount = Array.isArray(pData.participants) ? pData.participants.length : 0;
+      const hasAnalisis = Boolean(pData.analisis_participantes?.trim());
+      const hasCompleted = Boolean(form?.completedSections?.['participantes'] || pData.completedSections?.['participantes']);
+      return partCount > 0 || pDataPartCount > 0 || hasAnalisis || hasCompleted;
+    }
+
+    case 'poblacion': {
+      const popCount = form?.populations?.length || 0;
+      const pDataPopCount = Array.isArray(pData.populations) ? pData.populations.length : 0;
+      const hasActivePop = (form?.populations || []).some(
+        (p) => (p.total_number && p.total_number > 0) || Boolean(p.source?.trim()) || Boolean(p.locations?.trim())
+      );
+      const hasPDataPop = Boolean(pData.poblacion && (typeof pData.poblacion === 'object' ? Object.keys(pData.poblacion).length > 0 : true));
+      const hasCompleted = Boolean(form?.completedSections?.['poblacion'] || pData.completedSections?.['poblacion']);
+      return popCount > 0 || pDataPopCount > 0 || hasActivePop || hasPDataPop || hasCompleted;
+    }
+
+    case 'objetivos': {
+      const generalObj = project.general_objective?.trim() || pData.general_objective?.trim() || '';
+      const indicatorsCount = form?.generalIndicators?.length || 0;
+      const pDataIndicatorsCount = Array.isArray(pData.generalIndicators) ? pData.generalIndicators.length : 0;
+      const hasSpecificObjectives = (form?.causeRelations || []).some((c) => Boolean(c.specificObjective?.trim()));
+      const hasCompleted = Boolean(form?.completedSections?.['objetivos'] || pData.completedSections?.['objetivos']);
+      return Boolean(generalObj || indicatorsCount > 0 || pDataIndicatorsCount > 0 || hasSpecificObjectives || hasCompleted);
+    }
+
+    case 'alternativas': {
+      const altCount = form?.alternatives?.length || 0;
+      const pDataAltCount = Array.isArray(pData.alternatives) ? pData.alternatives.length : 0;
+      const hasCompleted = Boolean(form?.completedSections?.['alternativas'] || pData.completedSections?.['alternativas']);
+      return altCount > 0 || pDataAltCount > 0 || hasCompleted;
+    }
+
+    case 'necesidades': {
+      const formItems = form?.necesidades?.items;
+      const pDataItems = pData.necesidades?.items;
+      const hasItems = (Array.isArray(formItems) && formItems.length > 0) || (Array.isArray(pDataItems) && pDataItems.length > 0);
+      const hasCompleted = Boolean(form?.completedSections?.['necesidades'] || pData.completedSections?.['necesidades']);
+      return hasItems || hasCompleted;
+    }
+
+    case 'analisis-tecnico': {
+      const formItems = form?.analisisTecnico?.items;
+      const pDataItems = pData.analisisTecnico?.items;
+      const hasFormItems = Boolean(formItems && typeof formItems === 'object' && Object.values(formItems).some((v) => typeof v === 'string' && v.trim().length > 0));
+      const hasPDataItems = Boolean(pDataItems && typeof pDataItems === 'object' && Object.values(pDataItems).some((v: any) => typeof v === 'string' && v.trim().length > 0));
+      const hasCompleted = Boolean(
+        form?.completedSections?.['analisisTecnico'] ||
+        form?.completedSections?.['analisis-tecnico'] ||
+        pData.completedSections?.['analisisTecnico'] ||
+        pData.completedSections?.['analisis-tecnico']
+      );
+      return hasFormItems || hasPDataItems || hasCompleted;
+    }
+
+    case 'localizacion': {
+      const locList = form?.localizaciones || pData.localizaciones || form?.localizacion?.localizaciones || pData.localizacion?.localizaciones;
+      const hasLocList = Array.isArray(locList) && locList.length > 0;
+      const hasBaseLocation = Boolean(
+        (project as any).region_id ||
+        (project as any).departamento_id ||
+        (project as any).municipio_id ||
+        pData.region_id ||
+        pData.departamento_id ||
+        pData.municipio_id
+      );
+      const hasFormLoc = Boolean(form?.localizacion && Object.keys(form.localizacion).length > 0);
+      const hasPDataLoc = Boolean(pData.localizacion && Object.keys(pData.localizacion).length > 0);
+      const hasCompleted = Boolean(form?.completedSections?.['localizacion'] || pData.completedSections?.['localizacion']);
+      return Boolean(hasLocList || hasBaseLocation || hasFormLoc || hasPDataLoc || hasCompleted);
+    }
+
+    case 'cadena-valor': {
+      const hasEdt = Boolean(
+        edtChain &&
+        ((edtChain.activities && edtChain.activities.length > 0) ||
+         (edtChain.edtNodes && edtChain.edtNodes.length > 0) ||
+         (edtChain.deliverables && edtChain.deliverables.length > 0) ||
+         edtChain.catalogLink !== null)
+      );
+      const hasProductCode = Boolean(project.product_code?.trim() || pData.product_code?.trim());
+      const hasCompleted = Boolean(form?.completedSections?.['cadena-valor'] || pData.completedSections?.['cadena-valor']);
+      return hasEdt || hasProductCode || hasCompleted;
+    }
+
+    case 'riesgos': {
+      const formItems = form?.riesgos?.items;
+      const pDataItems = pData.riesgos?.items;
+      const hasItems = (Array.isArray(formItems) && formItems.length > 0) || (Array.isArray(pDataItems) && pDataItems.length > 0);
+      const hasCompleted = Boolean(form?.completedSections?.['riesgos'] || pData.completedSections?.['riesgos']);
+      return hasItems || hasCompleted;
+    }
+
+    case 'ingresos-beneficios': {
+      const formItems = form?.ingresosBeneficios?.items;
+      const pDataItems = pData.ingresosBeneficios?.items;
+      const hasItems = (Array.isArray(formItems) && formItems.length > 0) || (Array.isArray(pDataItems) && pDataItems.length > 0);
+      const hasCompleted = Boolean(
+        form?.completedSections?.['ingresosBeneficios'] ||
+        form?.completedSections?.['ingresos-beneficios'] ||
+        pData.completedSections?.['ingresosBeneficios'] ||
+        pData.completedSections?.['ingresos-beneficios']
+      );
+      return hasItems || hasCompleted;
+    }
+
+    case 'prestamos': {
+      const formItems = form?.prestamos?.items;
+      const pDataItems = pData.prestamos?.items;
+      const hasItems = (Array.isArray(formItems) && formItems.length > 0) || (Array.isArray(pDataItems) && pDataItems.length > 0);
+      const hasCompleted = Boolean(form?.completedSections?.['prestamos'] || pData.completedSections?.['prestamos']);
+      return hasItems || hasCompleted;
+    }
+
+    case 'depreciacion': {
+      const formItems = form?.depreciacion?.items;
+      const pDataItems = pData.depreciacion?.items;
+      const hasItems = (Array.isArray(formItems) && formItems.length > 0) || (Array.isArray(pDataItems) && pDataItems.length > 0);
+      const hasCompleted = Boolean(form?.completedSections?.['depreciacion'] || pData.completedSections?.['depreciacion']);
+      return hasItems || hasCompleted;
+    }
+
+    case 'evaluacion': {
+      const resumen = form?.evaluacion?.resumen || pData.evaluacion?.resumen;
+      const hasResumen = typeof resumen === 'string' && resumen.trim().length > 0;
+      const hasCompleted = Boolean(form?.completedSections?.['evaluacion'] || pData.completedSections?.['evaluacion']);
+      return hasResumen || hasCompleted;
+    }
+
+    case 'programacion': {
+      const prog = form?.programacion || pData.programacion;
+      const hasFuentes = Array.isArray(prog?.fuentes) && prog.fuentes.length > 0;
+      const hasIndicadores = Array.isArray(prog?.indicadores) && prog.indicadores.length > 0;
+      const hasCompleted = Boolean(form?.completedSections?.['programacion'] || pData.completedSections?.['programacion']);
+      return hasFuentes || hasIndicadores || hasCompleted;
+    }
+
+    default:
+      return Boolean(form?.completedSections?.[normalizedId] || pData.completedSections?.[normalizedId]);
+  }
 }

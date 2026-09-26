@@ -21,6 +21,27 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Implementación de Sección 02 Factores Analizados y Población Objetivo en Localización MGA
+
+- **Objetivo:** Completar la pestaña `LocalizacionTab.tsx` implementando la sección "02 - Factores analizados" con los 14 criterios oficiales de la MGA y el botón de acceso rápido para sincronizar la localización desde la población objetivo.
+- **Frontend (React / TypeScript / Zustand / TailwindCSS):**
+  - [projectMgaStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectMgaStore.ts):
+    - Ampliado `ProjectMgaFormulation` para incluir `factores_analizados?: string[]` y `localizaciones_factores?: string[]`.
+    - Adaptado `saveLocalizacion` para recibir y persistir `factores_analizados` y `localizaciones_factores` tanto en el estado reactivo como en el patch debounced al backend.
+    - Actualizado `fetchFormulation` para hidratar `factores_analizados` desde el JSONB (`pData.factores_analizados`, `pData.localizaciones_factores` o `pData.localizacion?.factores_analizados`).
+  - [LocalizacionTab.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.tsx):
+    - **Acceso Rápido Población Objetivo**: Agregado botón en la barra superior "Utilizar localización de la población objetivo" con icono `Users`, que extrae las ubicaciones estructuradas (`municipalities` / `departments`) de la población objetivo registrada o notifica al usuario en caso de estar incompleta.
+    - **Sección 02 - Factores analizados**: Implementado bloque visual oficial con icono `CheckSquare`, contador reactivo de selección, y grid responsivo (`grid grid-cols-1 md:grid-cols-2 gap-3`) con los 14 factores oficiales de la MGA (Aspectos administrativos y políticos, Cercanía a la población objetivo, etc.).
+    - **Acciones Globales**: Agregados botones "Seleccionar todo" y "Deseleccionar todo" que actualizan en lote el array `factores`.
+    - **Guardado Integrado**: Modificado `handleSave` para enviar `localizaciones: payload`, `factores_analizados: factores` y `localizaciones_factores: factores` a la mutación `saveLocalizacion`.
+  - [LocalizacionTab.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/LocalizacionTab.test.tsx):
+    - Agregadas 5 nuevas pruebas unitarias para validar: renderizado de los 14 factores oficiales, selección/deselección individual (toggle), botones globales "Seleccionar todo" / "Deseleccionar todo", botón de población objetivo y persistencia de factores en `handleSave`.
+- **Validaciones:**
+  - `cd starter/frontend && npx tsc --noEmit`: Exit Code 0 (0 errores de tipos).
+  - `cd starter/frontend && npx vitest run src/components/Tenant/MGA/LocalizacionTab.test.tsx`: 13 pruebas ejecutadas y aprobadas (100%).
+  - `cd starter/frontend && npm run build`: Compilación Vite + TypeScript exitosa en 2.93s sin errores.
+
+
 ### 2026-09-25 - Antigravity - Sincronización Definitiva Backend/Frontend de Localización Base MGA
 
 - **Objetivo:** Resolver el problema estructural de sincronización de localización base en la pestaña MGA, exponiendo las llaves geográficas directamente en el DTO del backend y asegurando reactividad a la hidratación asíncrona y normalización de tipos en el frontend.

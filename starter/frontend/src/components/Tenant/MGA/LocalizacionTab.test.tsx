@@ -1,10 +1,11 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
-import LocalizacionTab from './LocalizacionTab';
+import LocalizacionTab, { FACTORES_ANALIZADOS_MGA } from './LocalizacionTab';
 import { useLocationStore } from '../../../store/locationStore';
 import { useProjectStore, type Project } from '../../../store/projectStore';
+import { useProjectMgaStore } from '../../../store/projectMgaStore';
 
 const mockProjectStandard: Project = {
   id: 'proj-standard-1',
@@ -306,5 +307,115 @@ describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
       expect((hydratedSelects[2] as HTMLSelectElement).value).toBe('76001');
     });
   });
+
+  it('renderiza la sección 02 - Factores analizados con los 14 factores oficiales de la MGA', () => {
+    render(<LocalizacionTab project={mockProjectStandard} />);
+
+    expect(screen.getByText('02 - Factores analizados')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Indique los criterios y factores que justifican la selección de la localización/i)
+    ).toBeInTheDocument();
+
+    // Comprobamos que todos los 14 factores estén renderizados
+    for (const factor of FACTORES_ANALIZADOS_MGA) {
+      expect(screen.getByText(factor)).toBeInTheDocument();
+    }
+
+    expect(screen.getByRole('button', { name: /^Seleccionar todo$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Deseleccionar todo$/i })).toBeInTheDocument();
+  });
+
+  it('permite alternar (toggle) factores individualmente', () => {
+    render(<LocalizacionTab project={mockProjectStandard} />);
+
+    const factorCheckbox = screen.getByRole('checkbox', { name: /Aspectos administrativos y políticos/i });
+    expect(factorCheckbox).not.toBeChecked();
+
+    fireEvent.click(factorCheckbox);
+    expect(factorCheckbox).toBeChecked();
+
+    fireEvent.click(factorCheckbox);
+    expect(factorCheckbox).not.toBeChecked();
+  });
+
+  it('permite seleccionar y deseleccionar todos los factores con los botones globales', () => {
+    render(<LocalizacionTab project={mockProjectStandard} />);
+
+    const selectAllBtn = screen.getByRole('button', { name: /^Seleccionar todo$/i });
+    const deselectAllBtn = screen.getByRole('button', { name: /^Deseleccionar todo$/i });
+
+    // Seleccionar todo
+    fireEvent.click(selectAllBtn);
+    expect(screen.getByText(`14 de ${FACTORES_ANALIZADOS_MGA.length} seleccionados`)).toBeInTheDocument();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(FACTORES_ANALIZADOS_MGA.length);
+    for (const cb of checkboxes) {
+      expect(cb).toBeChecked();
+    }
+
+    // Deseleccionar todo
+    fireEvent.click(deselectAllBtn);
+    expect(screen.getByText(`0 de ${FACTORES_ANALIZADOS_MGA.length} seleccionados`)).toBeInTheDocument();
+    for (const cb of checkboxes) {
+      expect(cb).not.toBeChecked();
+    }
+  });
+
+  it('muestra mensaje informativo cuando se hace clic en "Utilizar localización de la población objetivo" sin población registrada', () => {
+    render(<LocalizacionTab project={mockProjectStandard} />);
+
+    const syncBtn = screen.getByRole('button', { name: /Utilizar localización de la población objetivo/i });
+    expect(syncBtn).toBeInTheDocument();
+
+    fireEvent.click(syncBtn);
+
+    expect(
+      screen.getByText(/No se ha registrado aún la población objetivo en la pestaña Población/i)
+    ).toBeInTheDocument();
+  });
+
+  it('guarda exitosamente las localizaciones y factores analizados seleccionados', async () => {
+    const saveSpy = vi.fn().mockResolvedValue(undefined);
+    useProjectMgaStore.setState({
+      saveLocalizacion: saveSpy as any,
+    });
+
+    render(<LocalizacionTab project={mockProjectStandard} />);
+
+    // Seleccionar factores
+    const factorTopografia = screen.getByRole('checkbox', { name: /Topografía/i });
+    fireEvent.click(factorTopografia);
+
+    const factorComunicaciones = screen.getByRole('checkbox', { name: /Comunicaciones/i });
+    fireEvent.click(factorComunicaciones);
+
+    // Guardar
+    const saveBtn = screen.getByRole('button', { name: /Guardar Localización/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+    });
+
+    expect(saveSpy).toHaveBeenCalledWith(
+      'proj-standard-1',
+      expect.objectContaining({
+        localizaciones: [
+          expect.objectContaining({
+            region_id: 1,
+            departamento_id: 76,
+            municipio_id: 76001,
+          }),
+        ],
+        factores_analizados: expect.arrayContaining(['Topografía', 'Comunicaciones']),
+      }),
+    );
+
+    expect(
+      await screen.findByText(/Localizaciones y factores analizados guardados exitosamente/i)
+    ).toBeInTheDocument();
+  });
 });
+
 

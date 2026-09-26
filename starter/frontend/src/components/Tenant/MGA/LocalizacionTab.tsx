@@ -1,9 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
-import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2, Users, CheckSquare } from 'lucide-react';
 import { useProjectStore, type Project } from '../../../store/projectStore';
-import { useProjectMgaStore, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
 import { useLocationStore, type Region, type Departamento, type Municipio, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
 import MgaAlert from './MgaAlert';
+
+export const FACTORES_ANALIZADOS_MGA = [
+  'Aspectos administrativos y políticos',
+  'Cercanía a la población objetivo',
+  'Cercanía de fuentes de abastecimiento',
+  'Comunicaciones',
+  'Costo y disponibilidad de terrenos',
+  'Disponibilidad de servicios públicos domiciliarios (Agua, energía y otros)',
+  'Disponibilidad y costo de mano de obra',
+  'Estructura impositiva y legal',
+  'Factores ambientales',
+  'Impacto para la Equidad de Género',
+  'Medios y costos de transporte',
+  'Orden público',
+  'Otros',
+  'Topografía',
+] as const;
 
 interface LocalizacionRow {
   region_id: number | null;
@@ -32,6 +49,14 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LocalizacionRow[]>([]);
+  const [factores, setFactores] = useState<string[]>(() => {
+    const saved =
+      formulation.factores_analizados ||
+      formulation.localizaciones_factores ||
+      (formulation.localizacion as any)?.factores_analizados ||
+      (project.mga_formulation_data as any)?.factores_analizados;
+    return Array.isArray(saved) ? saved : [];
+  });
   const isUserEditedRef = useRef(false);
 
   // Proyecto activo con prioridad al del store
@@ -252,6 +277,92 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     rows.length,
   ]);
 
+  // Sincronización reactiva de factores analizados si se cargan asíncronamente
+  useEffect(() => {
+    const saved =
+      formulation.factores_analizados ||
+      formulation.localizaciones_factores ||
+      (formulation.localizacion as any)?.factores_analizados ||
+      (project.mga_formulation_data as any)?.factores_analizados ||
+      (activeProject?.mga_formulation_data as any)?.factores_analizados;
+    if (Array.isArray(saved) && saved.length > 0 && factores.length === 0) {
+      setFactores(saved);
+    }
+  }, [
+    formulation.factores_analizados,
+    formulation.localizaciones_factores,
+    formulation.localizacion,
+    project.mga_formulation_data,
+    activeProject?.mga_formulation_data,
+    factores.length,
+  ]);
+
+  // Manejadores de selección de factores analizados
+  const toggleFactor = (factor: string) => {
+    setFactores((prev) =>
+      prev.includes(factor) ? prev.filter((f) => f !== factor) : [...prev, factor]
+    );
+  };
+
+  const handleSelectAllFactores = () => {
+    setFactores([...FACTORES_ANALIZADOS_MGA]);
+  };
+
+  const handleDeselectAllFactores = () => {
+    setFactores([]);
+  };
+
+  // Sincronización o copia rápida desde la población objetivo
+  const handleSyncFromPoblacionObjetivo = () => {
+    const populations = formulation.populations || [];
+    const popObjetivo = populations.find((p) => p.population_type === 'objetivo');
+
+    if (!popObjetivo) {
+      setMessage('No se ha registrado aún la población objetivo en la pestaña Población.');
+      return;
+    }
+
+    const parsed = parsePopulationLocations(popObjetivo.locations);
+    const munNames = (parsed.municipalities || []).map((m) => m.toLowerCase().trim());
+    const deptoNames = (parsed.departments || []).map((d) => d.toLowerCase().trim());
+
+    let matchedRow: LocalizacionRow | null = null;
+
+    for (const reg of regions) {
+      for (const dep of reg.departamentos || []) {
+        const depMatches = deptoNames.includes(dep.name.toLowerCase().trim());
+        for (const mun of dep.municipios || []) {
+          const munMatches = munNames.includes(mun.name.toLowerCase().trim());
+          if (munMatches || (depMatches && munNames.length === 0)) {
+            matchedRow = {
+              region_id: Number(reg.id),
+              departamento_id: Number(dep.id),
+              municipio_id: Number(mun.id),
+              tipo_agrupacion_id: null,
+              agrupacion_id: null,
+            };
+            break;
+          }
+        }
+        if (matchedRow) break;
+      }
+      if (matchedRow) break;
+    }
+
+    if (matchedRow) {
+      isUserEditedRef.current = true;
+      setRows([matchedRow]);
+      setMessage('Localización sincronizada desde la población objetivo.');
+    } else if (parsed.localization || (parsed.municipalities && parsed.municipalities.length > 0)) {
+      const detail = [parsed.localization, parsed.departments?.join(', '), parsed.municipalities?.join(', ')]
+        .filter(Boolean)
+        .join(' - ');
+      setMessage(`Localización de población objetivo referenciada (${detail}). Seleccione los valores equivalentes en el catálogo.`);
+    } else {
+      setMessage('La población objetivo no cuenta con datos de localización estructurados.');
+    }
+  };
+
   // Manejadores para modificar cada fila con filtros en cascada
   const updateRow = (index: number, field: keyof LocalizacionRow, value: number | null) => {
     isUserEditedRef.current = true;
@@ -328,8 +439,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
         ...(isEthnic ? { tipo_agrupacion_id: r.tipo_agrupacion_id, agrupacion_id: r.agrupacion_id } : {}),
       }));
 
-      await saveLocalizacion(project.id, { localizaciones: payload });
-      setMessage('Localizaciones guardadas exitosamente.');
+      await saveLocalizacion(project.id, {
+        localizaciones: payload,
+        factores_analizados: factores,
+        localizaciones_factores: factores,
+      });
+      setMessage('Localizaciones y factores analizados guardados exitosamente.');
     } catch (err) {
       setError('Error al guardar las localizaciones. Por favor intente nuevamente.');
     }
@@ -365,6 +480,27 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+
+      {/* Sub-encabezado y botón de acceso rápido */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+        <div>
+          <span className="font-semibold text-slate-800 text-xs uppercase tracking-wider block">
+            01 - Georreferenciación y Ubicación Territorial
+          </span>
+          <span className="text-[11px] text-slate-500">
+            Especifique las regiones, departamentos y municipios de cobertura del proyecto.
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleSyncFromPoblacionObjetivo}
+          className="inline-flex items-center gap-2 px-3.5 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors text-xs font-medium shadow-sm"
+          title="Copiar o sincronizar localización desde la población objetivo"
+        >
+          <Users className="w-4 h-4 text-[#006162]" />
+          <span>Utilizar localización de la población objetivo</span>
+        </button>
+      </div>
 
       {/* Listado de Localizaciones */}
       <div className="space-y-4">
@@ -552,6 +688,68 @@ export default function LocalizacionTab({ project }: { project: Project }) {
           <Plus className="w-4 h-4" />
           <span>Agregar otra localización</span>
         </button>
+      </div>
+
+      {/* Sección 02 - Factores analizados */}
+      <div className="mt-8 pt-6 border-t border-slate-200 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 text-[#006162]" />
+            <div>
+              <h2 className="text-base font-semibold text-slate-800">02 - Factores analizados</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Indique los criterios y factores que justifican la selección de la localización según la metodología MGA.
+              </p>
+            </div>
+          </div>
+          <div className="text-xs text-slate-500 font-medium">
+            {`${factores.length} de ${FACTORES_ANALIZADOS_MGA.length} seleccionados`}
+          </div>
+        </div>
+
+        <div className="p-4 bg-slate-50/60 border border-slate-200 rounded-xl space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {FACTORES_ANALIZADOS_MGA.map((factor) => {
+              const isChecked = factores.includes(factor);
+              return (
+                <label
+                  key={factor}
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer text-xs select-none ${
+                    isChecked
+                      ? 'bg-teal-50/70 border-[#006162]/40 text-slate-800 shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleFactor(factor)}
+                    className="mt-0.5 rounded border-slate-300 text-[#006162] focus:ring-[#006162] w-4 h-4 cursor-pointer"
+                  />
+                  <span className="font-medium leading-relaxed">{factor}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* Botones de Acción Global */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={handleSelectAllFactores}
+              className="px-3 py-1.5 text-xs font-medium text-[#006162] hover:bg-teal-50 border border-[#006162]/30 rounded-lg transition-colors"
+            >
+              Seleccionar todo
+            </button>
+            <button
+              type="button"
+              onClick={handleDeselectAllFactores}
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors"
+            >
+              Deseleccionar todo
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Botón Guardar */}

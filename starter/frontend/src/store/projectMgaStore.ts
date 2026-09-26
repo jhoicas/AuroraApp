@@ -115,6 +115,8 @@ export type ProjectMgaFormulation = {
   analisisTecnico?: Record<string, any>;
   localizacion?: Record<string, any>;
   localizaciones?: ProjectMgaLocalizationItem[];
+  factores_analizados?: string[];
+  localizaciones_factores?: string[];
   riesgos?: Record<string, any>;
   ingresosBeneficios?: Record<string, any>;
   prestamos?: Record<string, any>;
@@ -374,9 +376,12 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         const newCompleted = { ...formulation.completedSections, localizacion: true };
         const localizacionesArray = data.localizaciones || (Array.isArray(data) ? data : formulation.localizaciones);
+        const factoresArray = data.factores_analizados || data.factoresAnalizados || data.factores || formulation.factores_analizados;
         debouncedPatchProject(projectId, { 
           localizaciones: localizacionesArray, 
           localizacion: data, 
+          factores_analizados: factoresArray,
+          localizaciones_factores: factoresArray,
           completedSections: newCompleted 
         });
         return {
@@ -386,6 +391,8 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
               ...formulation, 
               localizaciones: localizacionesArray,
               localizacion: data, 
+              factores_analizados: factoresArray,
+              localizaciones_factores: factoresArray,
               completedSections: newCompleted 
             } 
           },
@@ -584,6 +591,16 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         if (pData.localizacion) formulation.localizacion = pData.localizacion;
         if (pData.localizaciones) formulation.localizaciones = pData.localizaciones;
         else if (pData.localizacion?.localizaciones) formulation.localizaciones = pData.localizacion.localizaciones;
+        if (pData.factores_analizados) {
+          formulation.factores_analizados = pData.factores_analizados;
+          formulation.localizaciones_factores = pData.factores_analizados;
+        } else if (pData.localizaciones_factores) {
+          formulation.factores_analizados = pData.localizaciones_factores;
+          formulation.localizaciones_factores = pData.localizaciones_factores;
+        } else if (pData.localizacion?.factores_analizados) {
+          formulation.factores_analizados = pData.localizacion.factores_analizados;
+          formulation.localizaciones_factores = pData.localizacion.factores_analizados;
+        }
         if (pData.riesgos) formulation.riesgos = pData.riesgos;
         if (pData.ingresosBeneficios) formulation.ingresosBeneficios = pData.ingresosBeneficios;
         if (pData.prestamos) formulation.prestamos = pData.prestamos;

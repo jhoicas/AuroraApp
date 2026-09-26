@@ -1135,7 +1135,10 @@ export function hasMgaSectionData(
       const popCount = form?.populations?.length || 0;
       const pDataPopCount = Array.isArray(pData.populations) ? pData.populations.length : 0;
       const hasActivePop = (form?.populations || []).some(
-        (p) => (p.total_number && p.total_number > 0) || Boolean(p.source?.trim()) || Boolean(p.locations?.trim())
+        (p) =>
+          (p.total_number && p.total_number > 0) ||
+          Boolean(p.source?.trim()) ||
+          (typeof p.locations === 'string' ? Boolean(p.locations.trim()) : Boolean(p.locations))
       );
       const hasPDataPop = Boolean(pData.poblacion && (typeof pData.poblacion === 'object' ? Object.keys(pData.poblacion).length > 0 : true));
       const hasCompleted = Boolean(form?.completedSections?.['poblacion'] || pData.completedSections?.['poblacion']);

@@ -21,6 +21,27 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-25 - Antigravity - Desbloqueo de Navegación MGA e Indicador de Completitud con Check (✓)
+
+- **Objetivo:** Desbloquear las pestañas y etapas del MGA en proyectos existentes que contienen información gestionada, eliminando bloqueos secuenciales artificiales y mostrando un icono visual de verificación (check) en todas las secciones con datos.
+- **Frontend (React / TypeScript / Zustand):**
+  - [projectMgaStore.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/store/projectMgaStore.ts):
+    - Creada y exportada la función utilitaria `hasMgaSectionData(sectionId, project, formulation, edtChain)` que evalúa exhaustivamente la existencia de datos para las 16 secciones del MGA (considerando datos en `Project`, `mga_formulation_data`, `formulation` y `edtChain`).
+    - Añadido selector/método `isSectionManaged(projectId, sectionId)` en `ProjectMgaState` y `useProjectMgaStore`.
+    - Mejorada la resolución de proyecto en `fetchFormulation` para consultar `currentProject` como fallback de `projects`.
+    - Tipado seguro de `p.locations` para poblaciones.
+  - [MGALayout.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/MGALayout.tsx):
+    - Conectado `useMgaSectionStatuses` con `hasMgaSectionData` y `useProjectEdtStore`: cualquier pestaña con datos queda en estado `COMPLETED` (`disabled = false`), y habilita el acceso a la siguiente sección en `ACTIVE` (`disabled = false`).
+    - Reemplazados badges estáticos con `<Check className="h-3.5 w-3.5 stroke-[2.5]" />` y `<Lock className="h-3 w-3" />` de `lucide-react`, con contraste adaptativo para tabs activas e inactivas.
+    - Actualizado `useMgaMainStageStatuses` y el click en etapas principales para desbloquear la etapa si tiene datos o si la etapa previa fue trabajada, seleccionando automáticamente la primera sub-sección disponible.
+  - [MGALayout.test.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/components/Tenant/MGA/MGALayout.test.tsx):
+    - Pruebas unitarias completas que validan la evaluación de `hasMgaSectionData` y el desbloqueo/check de botones en el menú de navegación lateral.
+- **Validaciones:**
+  - `npx vitest run src/components/Tenant/MGA`: 16 pruebas unitarias pasadas exitosamente (100%).
+  - `npx tsc --noEmit` en `starter/frontend`: Exit Code 0.
+  - `npm run build` (`tsc -b && vite build`) en `starter/frontend`: Exit Code 0 en 5.94s.
+
+
 ### 2026-09-25 - Antigravity - Fix de compilación TypeScript TS6133 en Localización MGA
 
 - **Objetivo:** Resolver errores estrictos de TypeScript (`TS6133: declared but its value is never read`) en componentes de Localización MGA que bloqueaban el build de Docker.

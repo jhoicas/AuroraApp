@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { RefreshCw, Package } from 'lucide-react';
+import { RefreshCw, Package, UploadCloud } from 'lucide-react';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import { api } from '../../lib/api';
 import {
@@ -90,8 +90,9 @@ export default function ProgramsCatalogPage() {
   const [importing, setImporting] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Estado de sincronización SODA DNP
+  // Estado de sincronización de catálogo
   const [syncLog, setSyncLog] = useState<CatalogSyncLog | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -203,15 +204,15 @@ export default function ProgramsCatalogPage() {
     }
   };
 
-  const handleSync = async () => {
+  const handleSync = async (file: File) => {
     try {
       setIsSyncing(true);
       setSyncError(null);
       clearError();
-      const res = await triggerProgramsSync();
+      const res = await triggerProgramsSync(file);
 
       const count = res?.records_processed ?? 0;
-      setFlash(`Sincronización con Datos Abiertos DNP exitosa: ${count.toLocaleString('es-CO')} registros procesados.`);
+      setFlash(`Carga de catálogo exitosa: ${count.toLocaleString('es-CO')} registros procesados.`);
 
       // Actualizar estado de sincronización local de inmediato
       if (res) {
@@ -236,11 +237,12 @@ export default function ProgramsCatalogPage() {
         err?.response?.data?.details ||
         err?.response?.data?.error ||
         err?.message ||
-        'Error al sincronizar con Datos Abiertos DNP';
+        'Error al procesar el archivo JSON de programas';
       setSyncError(msg);
       await loadSyncStatus();
     } finally {
       setIsSyncing(false);
+      if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
     }
   };
 
@@ -253,24 +255,24 @@ export default function ProgramsCatalogPage() {
               Programas / Subprogramas
             </h3>
             <p className="text-base text-[#3f4949]">
-              Catálogo maestro DNP. Sincronización oficial SODA o alta manual/CSV.
+              Catálogo maestro DNP. Carga oficial JSON o alta manual/CSV.
             </p>
             <div className="mt-2 flex items-center gap-2 text-sm text-[#6f7979]">
               {isSyncing ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Sincronización en curso con DNP...
+                  Procesando catálogo...
                 </span>
               ) : syncLog?.completed_at ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Última sincronización: {formatSyncDate(syncLog.completed_at)}
+                  Última carga: {formatSyncDate(syncLog.completed_at)}
                   {syncLog.records_processed > 0 && ` (${syncLog.records_processed.toLocaleString('es-CO')} registros)`}
                 </span>
               ) : syncLog?.status === 'IN_PROGRESS' ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Sincronización en curso con DNP...
+                  Procesando catálogo...
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
@@ -287,15 +289,31 @@ export default function ProgramsCatalogPage() {
               className="hidden"
               onChange={(e) => void handleImportFile(e.target.files?.[0])}
             />
+            <input
+              ref={jsonFileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void handleSync(file);
+                }
+              }}
+            />
             <button
               type="button"
-              onClick={handleSync}
+              onClick={() => jsonFileInputRef.current?.click()}
               disabled={isSyncing}
               className="h-12 px-4 bg-[#006162] hover:bg-[#004e4f] text-white font-medium rounded-lg inline-flex items-center gap-2 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              title="Disparar sincronización con datos.gov.co"
+              title="Subir archivo JSON de catálogo"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar con DNP'}</span>
+              {isSyncing ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <UploadCloud className="w-4 h-4" />
+              )}
+              <span>{isSyncing ? 'Procesando...' : 'Subir Catálogo (.json)'}</span>
             </button>
             <button
               type="button"

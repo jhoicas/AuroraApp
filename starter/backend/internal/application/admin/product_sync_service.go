@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
-	"aurora-backend/internal/infrastructure/soda"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,10 +16,7 @@ import (
 )
 
 const (
-	// DefaultProductsDatasetResourceID dataset oficial o genérico para productos DNP MGA
-	// TODO: Confirmar el resource ID definitivo de datos.gov.co para catálogo de productos MGA (DNP)
-	DefaultProductsDatasetResourceID = "productos-mga-dnp.json"
-	CatalogNameProducts              = "PRODUCTS"
+	CatalogNameProducts = "PRODUCTS"
 )
 
 // RawSodaProductRow captura los campos del catálogo de productos provenientes de la API SODA / DNP.
@@ -89,35 +85,19 @@ type ProductSyncResult struct {
 	DurationMs       int64     `json:"duration_ms"`
 }
 
-// ProductSyncService coordina la extracción y carga (Upsert Protegido) de Productos MGA resolviendo la FK con Programas.
+// ProductSyncService coordina la carga (Upsert Protegido) de Productos MGA resolviendo la FK con Programas.
 type ProductSyncService struct {
-	db         *gorm.DB
-	sodaClient soda.Client
-	resourceID string
+	db *gorm.DB
 }
 
 // NewProductSyncService inicializa el servicio de sincronización de productos.
-func NewProductSyncService(db *gorm.DB, sodaClient soda.Client) *ProductSyncService {
+func NewProductSyncService(db *gorm.DB) *ProductSyncService {
 	if db == nil {
 		panic("db is required for ProductSyncService")
 	}
-	if sodaClient == nil {
-		sodaClient = soda.NewClient(soda.DefaultBaseURL, "", nil)
-	}
 	return &ProductSyncService{
-		db:         db,
-		sodaClient: sodaClient,
-		resourceID: DefaultProductsDatasetResourceID,
+		db: db,
 	}
-}
-
-// WithResourceID permite configurar un resource ID alternativo de SODA.
-func (s *ProductSyncService) WithResourceID(resourceID string) *ProductSyncService {
-	clean := strings.TrimSpace(resourceID)
-	if clean != "" {
-		s.resourceID = clean
-	}
-	return s
 }
 
 // GetLatestSyncStatus consulta y devuelve la última entrada de auditoría para el catálogo de productos.
@@ -143,8 +123,8 @@ func (s *ProductSyncService) GetLatestSyncStatus(ctx context.Context, catalogNam
 	return &logEntry, nil
 }
 
-// SyncProducts ejecuta la sincronización de Productos desde SODA resolviendo la FK con Programas y aplicando Upsert Protegido.
-func (s *ProductSyncService) SyncProducts(ctx context.Context) (*ProductSyncResult, error) {
+// SyncProducts ejecuta la sincronización de Productos desde data JSON resolviendo la FK con Programas y aplicando Upsert Protegido.
+func (s *ProductSyncService) SyncProducts(ctx context.Context, data []map[string]interface{}) (*ProductSyncResult, error) {
 	startTime := time.Now()
 
 	// 1. Crear registro de auditoría en estado IN_PROGRESS
@@ -160,14 +140,7 @@ func (s *ProductSyncService) SyncProducts(ctx context.Context) (*ProductSyncResu
 		return nil, fmt.Errorf("create initial products sync log: %w", err)
 	}
 
-	// 2. Extraer registros desde la API SODA
-	rawMessages, err := s.sodaClient.FetchAll(ctx, s.resourceID, nil)
-	if err != nil {
-		s.failSync(ctx, syncLog.ID, fmt.Errorf("fetch products data from SODA API: %w", err))
-		return nil, fmt.Errorf("fetch products data from SODA API: %w", err)
-	}
-
-	if len(rawMessages) == 0 {
+	if len(data) == 0 {
 		completedAt := time.Now()
 		_ = s.db.WithContext(ctx).Model(&models.CatalogSyncLog{}).Where("id = ?", syncLog.ID).Updates(map[string]any{
 			"completed_at":      &completedAt,
@@ -184,7 +157,7 @@ func (s *ProductSyncService) SyncProducts(ctx context.Context) (*ProductSyncResu
 		}, nil
 	}
 
-	// 3. Consultar programas existentes en memoria para resolución de FK (ProgramID)
+	// 2. Consultar programas existentes en memoria para resolución de FK (ProgramID)
 	var programs []models.ProgramSubprogram
 	if err := s.db.WithContext(ctx).Find(&programs).Error; err != nil {
 		s.failSync(ctx, syncLog.ID, fmt.Errorf("query existing programs for relation mapping: %w", err))
@@ -204,15 +177,22 @@ func (s *ProductSyncService) SyncProducts(ctx context.Context) (*ProductSyncResu
 		}
 	}
 
-	// 4. Transformar filas planas a modelos CatalogProduct resolviendo la FK con Programas
-	productItems := make([]models.CatalogProduct, 0, len(rawMessages))
-	seenKeys := make(map[string]struct{}, len(rawMessages))
+	// 3. Transformar filas a modelos CatalogProduct resolviendo la FK con Programas
+	productItems := make([]models.CatalogProduct, 0, len(data))
+	seenKeys := make(map[string]struct{}, len(data))
 	now := time.Now().UTC()
 
-	for i, raw := range rawMessages {
+	for i, item := range data {
+		raw, err := json.Marshal(item)
+		if err != nil {
+			err = fmt.Errorf("marshal product row %d: %w", i, err)
+			s.failSync(ctx, syncLog.ID, err)
+			return nil, err
+		}
+
 		var row RawSodaProductRow
 		if err := json.Unmarshal(raw, &row); err != nil {
-			err = fmt.Errorf("unmarshal soda product row %d: %w", i, err)
+			err = fmt.Errorf("unmarshal product row %d: %w", i, err)
 			s.failSync(ctx, syncLog.ID, err)
 			return nil, err
 		}
@@ -403,7 +383,7 @@ func (s *ProductSyncService) SyncProducts(ctx context.Context) (*ProductSyncResu
 
 	// 5. Upsert Protegido: Se actualizan los atributos oficiales pero EXCLUYENDO 'observaciones'
 	if len(productItems) > 0 {
-		err = s.db.WithContext(ctx).
+		err := s.db.WithContext(ctx).
 			Table("catalogo_productos").
 			Clauses(clause.OnConflict{
 				Columns: []clause.Column{

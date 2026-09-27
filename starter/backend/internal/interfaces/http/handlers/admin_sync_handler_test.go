@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +18,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func createMultipartRequest(url string, jsonData any) (*http.Request, error) {
+	b, err := json.Marshal(jsonData)
+	if err != nil {
+		return nil, err
+	}
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "catalog.json")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := part.Write(b); err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	req := httptest.NewRequest(http.MethodPost, url, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req, nil
+}
 
 type mockSodaClient struct {
 	records []json.RawMessage
@@ -177,15 +201,8 @@ func TestAdminSyncHandler_TriggerSectorsSyncAndStatus(t *testing.T) {
 		},
 	}
 
-	var rawMessages []json.RawMessage
-	for _, row := range sampleRows {
-		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
-	}
-
-	mockClient := &mockSodaClient{records: rawMessages}
-	pndSyncService := admin.NewPndSyncService(db, mockClient)
-	sectorSyncService := admin.NewSectorSyncService(db, mockClient)
+	pndSyncService := admin.NewPndSyncService(db, &mockSodaClient{})
+	sectorSyncService := admin.NewSectorSyncService(db)
 	handler := NewAdminSyncHandlerWithService(pndSyncService, sectorSyncService)
 
 	app := fiber.New()
@@ -193,7 +210,8 @@ func TestAdminSyncHandler_TriggerSectorsSyncAndStatus(t *testing.T) {
 	app.Post("/api/v1/admin/sync/sectors", handler.TriggerSectorsSync)
 
 	// 1. Trigger Sectors Sync
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/sectors", nil)
+	req, err := createMultipartRequest("/api/v1/admin/sync/sectors", sampleRows)
+	require.NoError(t, err)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -255,16 +273,9 @@ func TestAdminSyncHandler_TriggerProgramsSyncAndStatus(t *testing.T) {
 		},
 	}
 
-	var rawMessages []json.RawMessage
-	for _, row := range sampleRows {
-		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
-	}
-
-	mockClient := &mockSodaClient{records: rawMessages}
-	pndSyncService := admin.NewPndSyncService(db, mockClient)
-	sectorSyncService := admin.NewSectorSyncService(db, mockClient)
-	programSyncService := admin.NewProgramSyncService(db, mockClient)
+	pndSyncService := admin.NewPndSyncService(db, &mockSodaClient{})
+	sectorSyncService := admin.NewSectorSyncService(db)
+	programSyncService := admin.NewProgramSyncService(db)
 	handler := NewAdminSyncHandlerWithService(pndSyncService, sectorSyncService).WithProgramSyncService(programSyncService)
 
 	app := fiber.New()
@@ -272,7 +283,8 @@ func TestAdminSyncHandler_TriggerProgramsSyncAndStatus(t *testing.T) {
 	app.Post("/api/v1/admin/sync/programs", handler.TriggerProgramsSync)
 
 	// 1. Trigger Programs Sync
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/programs", nil)
+	req, err := createMultipartRequest("/api/v1/admin/sync/programs", sampleRows)
+	require.NoError(t, err)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -343,15 +355,8 @@ func TestAdminSyncHandler_TriggerProductsSyncAndStatus(t *testing.T) {
 		},
 	}
 
-	var rawMessages []json.RawMessage
-	for _, row := range sampleRows {
-		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
-	}
-
-	mockClient := &mockSodaClient{records: rawMessages}
-	pndSyncService := admin.NewPndSyncService(db, mockClient)
-	productSyncService := admin.NewProductSyncService(db, mockClient)
+	pndSyncService := admin.NewPndSyncService(db, &mockSodaClient{})
+	productSyncService := admin.NewProductSyncService(db)
 	handler := NewAdminSyncHandlerWithService(pndSyncService).WithProductSyncService(productSyncService)
 
 	app := fiber.New()
@@ -359,7 +364,8 @@ func TestAdminSyncHandler_TriggerProductsSyncAndStatus(t *testing.T) {
 	app.Post("/api/v1/admin/sync/products", handler.TriggerProductsSync)
 
 	// 1. Trigger Products Sync
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/products", nil)
+	req, err := createMultipartRequest("/api/v1/admin/sync/products", sampleRows)
+	require.NoError(t, err)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -427,15 +433,8 @@ func TestAdminSyncHandler_TriggerEdtSyncAndStatus(t *testing.T) {
 		},
 	}
 
-	var rawMessages []json.RawMessage
-	for _, row := range sampleRows {
-		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
-	}
-
-	mockClient := &mockSodaClient{records: rawMessages}
-	pndSyncService := admin.NewPndSyncService(db, mockClient)
-	edtSyncService := admin.NewEdtSyncService(db, mockClient)
+	pndSyncService := admin.NewPndSyncService(db, &mockSodaClient{})
+	edtSyncService := admin.NewEdtSyncService(db)
 	handler := NewAdminSyncHandlerWithService(pndSyncService).WithEdtSyncService(edtSyncService)
 
 	app := fiber.New()
@@ -443,7 +442,8 @@ func TestAdminSyncHandler_TriggerEdtSyncAndStatus(t *testing.T) {
 	app.Post("/api/v1/admin/sync/edt", handler.TriggerEdtSync)
 
 	// 1. Trigger EDT Sync
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/edt", nil)
+	req, err := createMultipartRequest("/api/v1/admin/sync/edt", sampleRows)
+	require.NoError(t, err)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
-	"aurora-backend/internal/infrastructure/soda"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,10 +16,7 @@ import (
 )
 
 const (
-	// DefaultEdtDatasetResourceID dataset oficial o genérico para EDT MGA DNP
-	// TODO: Confirmar el resource ID definitivo de datos.gov.co para catálogo EDT / matriz de actividades MGA (DNP)
-	DefaultEdtDatasetResourceID = "edt-mga-dnp.json"
-	CatalogNameEdt              = "EDT"
+	CatalogNameEdt = "EDT"
 )
 
 // RawSodaEdtRow captura los campos del catálogo EDT provenientes de la API SODA / DNP.
@@ -68,35 +64,19 @@ type EdtSyncResult struct {
 	DurationMs       int64     `json:"duration_ms"`
 }
 
-// EdtSyncService coordina la extracción y carga (Upsert Protegido) de EDT MGA resolviendo la FK con Productos.
+// EdtSyncService coordina la carga (Upsert Protegido) de EDT MGA resolviendo la FK con Productos.
 type EdtSyncService struct {
-	db         *gorm.DB
-	sodaClient soda.Client
-	resourceID string
+	db *gorm.DB
 }
 
 // NewEdtSyncService inicializa el servicio de sincronización de EDT.
-func NewEdtSyncService(db *gorm.DB, sodaClient soda.Client) *EdtSyncService {
+func NewEdtSyncService(db *gorm.DB) *EdtSyncService {
 	if db == nil {
 		panic("db is required for EdtSyncService")
 	}
-	if sodaClient == nil {
-		sodaClient = soda.NewClient(soda.DefaultBaseURL, "", nil)
-	}
 	return &EdtSyncService{
-		db:         db,
-		sodaClient: sodaClient,
-		resourceID: DefaultEdtDatasetResourceID,
+		db: db,
 	}
-}
-
-// WithResourceID permite configurar un resource ID alternativo de SODA.
-func (s *EdtSyncService) WithResourceID(resourceID string) *EdtSyncService {
-	clean := strings.TrimSpace(resourceID)
-	if clean != "" {
-		s.resourceID = clean
-	}
-	return s
 }
 
 // GetLatestSyncStatus consulta y devuelve la última entrada de auditoría para el catálogo EDT.
@@ -122,8 +102,8 @@ func (s *EdtSyncService) GetLatestSyncStatus(ctx context.Context, catalogName st
 	return &logEntry, nil
 }
 
-// SyncEdt ejecuta la sincronización de EDT desde SODA resolviendo la FK con Productos y aplicando Upsert Protegido.
-func (s *EdtSyncService) SyncEdt(ctx context.Context) (*EdtSyncResult, error) {
+// SyncEdt ejecuta la sincronización de EDT desde data JSON resolviendo la FK con Productos y aplicando Upsert Protegido.
+func (s *EdtSyncService) SyncEdt(ctx context.Context, data []map[string]interface{}) (*EdtSyncResult, error) {
 	startTime := time.Now()
 
 	// 1. Crear registro de auditoría en estado IN_PROGRESS
@@ -139,14 +119,7 @@ func (s *EdtSyncService) SyncEdt(ctx context.Context) (*EdtSyncResult, error) {
 		return nil, fmt.Errorf("create initial edt sync log: %w", err)
 	}
 
-	// 2. Extraer registros desde la API SODA
-	rawMessages, err := s.sodaClient.FetchAll(ctx, s.resourceID, nil)
-	if err != nil {
-		s.failSync(ctx, syncLog.ID, fmt.Errorf("fetch edt data from SODA API: %w", err))
-		return nil, fmt.Errorf("fetch edt data from SODA API: %w", err)
-	}
-
-	if len(rawMessages) == 0 {
+	if len(data) == 0 {
 		completedAt := time.Now()
 		_ = s.db.WithContext(ctx).Model(&models.CatalogSyncLog{}).Where("id = ?", syncLog.ID).Updates(map[string]any{
 			"completed_at":      &completedAt,
@@ -163,7 +136,7 @@ func (s *EdtSyncService) SyncEdt(ctx context.Context) (*EdtSyncResult, error) {
 		}, nil
 	}
 
-	// 3. Consultar productos existentes en memoria para resolución de FK (ProductID)
+	// 2. Consultar productos existentes en memoria para resolución de FK (ProductID)
 	var products []models.CatalogProduct
 	if err := s.db.WithContext(ctx).Find(&products).Error; err != nil {
 		s.failSync(ctx, syncLog.ID, fmt.Errorf("query existing products for relation mapping: %w", err))
@@ -185,15 +158,22 @@ func (s *EdtSyncService) SyncEdt(ctx context.Context) (*EdtSyncResult, error) {
 		}
 	}
 
-	// 4. Transformar filas planas a modelos CatalogEdt resolviendo la FK con Productos
-	edtItems := make([]models.CatalogEdt, 0, len(rawMessages))
-	seenKeys := make(map[string]struct{}, len(rawMessages))
+	// 3. Transformar filas a modelos CatalogEdt resolviendo la FK con Productos
+	edtItems := make([]models.CatalogEdt, 0, len(data))
+	seenKeys := make(map[string]struct{}, len(data))
 	now := time.Now().UTC()
 
-	for i, raw := range rawMessages {
+	for i, item := range data {
+		raw, err := json.Marshal(item)
+		if err != nil {
+			err = fmt.Errorf("marshal edt row %d: %w", i, err)
+			s.failSync(ctx, syncLog.ID, err)
+			return nil, err
+		}
+
 		var row RawSodaEdtRow
 		if err := json.Unmarshal(raw, &row); err != nil {
-			err = fmt.Errorf("unmarshal soda edt row %d: %w", i, err)
+			err = fmt.Errorf("unmarshal edt row %d: %w", i, err)
 			s.failSync(ctx, syncLog.ID, err)
 			return nil, err
 		}
@@ -330,7 +310,7 @@ func (s *EdtSyncService) SyncEdt(ctx context.Context) (*EdtSyncResult, error) {
 
 	// 5. Upsert Protegido: Se actualizan los atributos oficiales pero EXCLUYENDO ESTRICTAMENTE 'observaciones'
 	if len(edtItems) > 0 {
-		err = s.db.WithContext(ctx).
+		err := s.db.WithContext(ctx).
 			Table("catalogo_edt").
 			Clauses(clause.OnConflict{
 				Columns: []clause.Column{

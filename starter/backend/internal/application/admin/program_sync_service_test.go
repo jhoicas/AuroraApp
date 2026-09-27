@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -95,17 +94,18 @@ func TestProgramSyncService_SyncPrograms_ResolvesSectorFKAndProtectedUpsert(t *t
 		},
 	}
 
-	var rawMessages []json.RawMessage
+	var data []map[string]interface{}
 	for _, row := range sampleRows {
 		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
+		var item map[string]interface{}
+		_ = json.Unmarshal(b, &item)
+		data = append(data, item)
 	}
 
-	mockClient := &mockSodaClient{records: rawMessages}
-	service := NewProgramSyncService(db, mockClient)
+	service := NewProgramSyncService(db)
 
 	// 4. Ejecutar Sync
-	res, err := service.SyncPrograms(context.Background())
+	res, err := service.SyncPrograms(context.Background(), data)
 	require.NoError(t, err)
 	assert.Equal(t, 2, res.RecordsProcessed, "debe procesar 2 registros y omitir el del sector inexistente 99")
 	assert.Equal(t, "SUCCESS", res.Status)
@@ -143,17 +143,15 @@ func TestProgramSyncService_SyncPrograms_ResolvesSectorFKAndProtectedUpsert(t *t
 
 func TestProgramSyncService_SyncPrograms_FailureHandling(t *testing.T) {
 	db := newProgramTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
 
-	mockClient := &mockSodaClient{err: errors.New("soda network gateway timeout")}
-	service := NewProgramSyncService(db, mockClient)
+	service := NewProgramSyncService(db)
 
-	res, err := service.SyncPrograms(context.Background())
+	res, err := service.SyncPrograms(context.Background(), []map[string]interface{}{{"codigo_programa": "0101"}})
 	require.Error(t, err)
 	assert.Nil(t, res)
 
-	status, err := service.GetLatestSyncStatus(context.Background(), "PROGRAMS")
-	require.NoError(t, err)
-	require.NotNil(t, status)
-	assert.Equal(t, models.CatalogSyncStatus("FAILED"), status.Status)
-	assert.Contains(t, status.ErrorMessage, "soda network gateway timeout")
+	assert.Contains(t, err.Error(), "closed")
 }

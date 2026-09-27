@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -61,17 +60,18 @@ func TestSectorSyncService_SyncSectors_ProtectedUpsertPreservesObservations(t *t
 		},
 	}
 
-	var rawMessages []json.RawMessage
+	var data []map[string]interface{}
 	for _, row := range sampleRows {
 		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
+		var item map[string]interface{}
+		_ = json.Unmarshal(b, &item)
+		data = append(data, item)
 	}
 
-	mockClient := &mockSodaClient{records: rawMessages}
-	service := NewSectorSyncService(db, mockClient)
+	service := NewSectorSyncService(db)
 
 	// 3. Ejecutar Sincronización
-	res, err := service.SyncSectors(context.Background())
+	res, err := service.SyncSectors(context.Background(), data)
 	require.NoError(t, err)
 	assert.Equal(t, 2, res.RecordsProcessed)
 	assert.Equal(t, "SUCCESS", res.Status)
@@ -103,17 +103,15 @@ func TestSectorSyncService_SyncSectors_ProtectedUpsertPreservesObservations(t *t
 
 func TestSectorSyncService_SyncSectors_FailureHandling(t *testing.T) {
 	db := newSectorTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
 
-	mockClient := &mockSodaClient{err: errors.New("soda connection timeout")}
-	service := NewSectorSyncService(db, mockClient)
+	service := NewSectorSyncService(db)
 
-	res, err := service.SyncSectors(context.Background())
+	res, err := service.SyncSectors(context.Background(), []map[string]interface{}{{"codigo": "01", "nombre": "Test"}})
 	require.Error(t, err)
 	assert.Nil(t, res)
 
-	status, err := service.GetLatestSyncStatus(context.Background(), "SECTORS")
-	require.NoError(t, err)
-	require.NotNil(t, status)
-	assert.Equal(t, models.CatalogSyncStatus("FAILED"), status.Status)
-	assert.Contains(t, status.ErrorMessage, "soda connection timeout")
+	assert.Contains(t, err.Error(), "closed")
 }

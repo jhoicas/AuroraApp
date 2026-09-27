@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
-	"aurora-backend/internal/infrastructure/soda"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,13 +16,10 @@ import (
 )
 
 const (
-	// DefaultProgramsDatasetResourceID dataset oficial o genérico para programas DNP MGA
-	// TODO: Confirmar el resource ID definitivo de datos.gov.co para programas de inversión pública MGA
-	DefaultProgramsDatasetResourceID = "programas-mga-dnp.json"
-	CatalogNamePrograms              = "PROGRAMS"
+	CatalogNamePrograms = "PROGRAMS"
 )
 
-// RawSodaProgramRow representa los campos esperados para el catálogo de programas desde SODA.
+// RawSodaProgramRow representa los campos esperados para el catálogo de programas.
 type RawSodaProgramRow struct {
 	CodigoPrograma    string `json:"codigo_programa"`
 	Code              string `json:"code"`
@@ -53,35 +49,19 @@ type ProgramSyncResult struct {
 	DurationMs       int64     `json:"duration_ms"`
 }
 
-// ProgramSyncService coordina la extracción y carga (Upsert Protegido) de Programas MGA resolviendo la FK de Sectores.
+// ProgramSyncService coordina la carga (Upsert Protegido) de Programas MGA resolviendo la FK de Sectores.
 type ProgramSyncService struct {
-	db         *gorm.DB
-	sodaClient soda.Client
-	resourceID string
+	db *gorm.DB
 }
 
 // NewProgramSyncService inicializa el servicio de sincronización de programas.
-func NewProgramSyncService(db *gorm.DB, sodaClient soda.Client) *ProgramSyncService {
+func NewProgramSyncService(db *gorm.DB) *ProgramSyncService {
 	if db == nil {
 		panic("db is required for ProgramSyncService")
 	}
-	if sodaClient == nil {
-		sodaClient = soda.NewClient(soda.DefaultBaseURL, "", nil)
-	}
 	return &ProgramSyncService{
-		db:         db,
-		sodaClient: sodaClient,
-		resourceID: DefaultProgramsDatasetResourceID,
+		db: db,
 	}
-}
-
-// WithResourceID permite configurar un resource ID alternativo de SODA.
-func (s *ProgramSyncService) WithResourceID(resourceID string) *ProgramSyncService {
-	clean := strings.TrimSpace(resourceID)
-	if clean != "" {
-		s.resourceID = clean
-	}
-	return s
 }
 
 // GetLatestSyncStatus consulta y devuelve la última entrada de auditoría para el catálogo de programas.
@@ -107,8 +87,8 @@ func (s *ProgramSyncService) GetLatestSyncStatus(ctx context.Context, catalogNam
 	return &logEntry, nil
 }
 
-// SyncPrograms ejecuta la sincronización de Programas desde SODA aplicando resolución de FK con Sectores y Upsert Protegido.
-func (s *ProgramSyncService) SyncPrograms(ctx context.Context) (*ProgramSyncResult, error) {
+// SyncPrograms ejecuta la sincronización de Programas desde data JSON aplicando resolución de FK con Sectores y Upsert Protegido.
+func (s *ProgramSyncService) SyncPrograms(ctx context.Context, data []map[string]interface{}) (*ProgramSyncResult, error) {
 	startTime := time.Now()
 
 	// 1. Crear registro de auditoría en estado IN_PROGRESS
@@ -124,14 +104,7 @@ func (s *ProgramSyncService) SyncPrograms(ctx context.Context) (*ProgramSyncResu
 		return nil, fmt.Errorf("create initial programs sync log: %w", err)
 	}
 
-	// 2. Extraer registros desde la API SODA
-	rawMessages, err := s.sodaClient.FetchAll(ctx, s.resourceID, nil)
-	if err != nil {
-		s.failSync(ctx, syncLog.ID, fmt.Errorf("fetch programs data from SODA API: %w", err))
-		return nil, fmt.Errorf("fetch programs data from SODA API: %w", err)
-	}
-
-	if len(rawMessages) == 0 {
+	if len(data) == 0 {
 		completedAt := time.Now()
 		_ = s.db.WithContext(ctx).Model(&models.CatalogSyncLog{}).Where("id = ?", syncLog.ID).Updates(map[string]any{
 			"completed_at":      &completedAt,
@@ -148,7 +121,7 @@ func (s *ProgramSyncService) SyncPrograms(ctx context.Context) (*ProgramSyncResu
 		}, nil
 	}
 
-	// 3. Consultar sectores existentes en la base de datos para mapeo en memoria de SectorID
+	// 2. Consultar sectores existentes en la base de datos para mapeo en memoria de SectorID
 	var sectors []models.Sector
 	if err := s.db.WithContext(ctx).Find(&sectors).Error; err != nil {
 		s.failSync(ctx, syncLog.ID, fmt.Errorf("query existing sectors for relation mapping: %w", err))
@@ -169,14 +142,21 @@ func (s *ProgramSyncService) SyncPrograms(ctx context.Context) (*ProgramSyncResu
 		}
 	}
 
-	// 4. Transformar filas planas a modelos ProgramSubprogram resolviendo la FK con Sectores
-	programItems := make([]models.ProgramSubprogram, 0, len(rawMessages))
-	seenKeys := make(map[string]struct{}, len(rawMessages))
+	// 3. Transformar filas a modelos ProgramSubprogram resolviendo la FK con Sectores
+	programItems := make([]models.ProgramSubprogram, 0, len(data))
+	seenKeys := make(map[string]struct{}, len(data))
 
-	for i, raw := range rawMessages {
+	for i, item := range data {
+		raw, err := json.Marshal(item)
+		if err != nil {
+			err = fmt.Errorf("marshal program row %d: %w", i, err)
+			s.failSync(ctx, syncLog.ID, err)
+			return nil, err
+		}
+
 		var row RawSodaProgramRow
 		if err := json.Unmarshal(raw, &row); err != nil {
-			err = fmt.Errorf("unmarshal soda program row %d: %w", i, err)
+			err = fmt.Errorf("unmarshal program row %d: %w", i, err)
 			s.failSync(ctx, syncLog.ID, err)
 			return nil, err
 		}
@@ -283,7 +263,7 @@ func (s *ProgramSyncService) SyncPrograms(ctx context.Context) (*ProgramSyncResu
 	// 5. Upsert Protegido: Se actualizan únicamente las columnas oficiales,
 	// protegiendo y manteniendo intacto el campo 'observaciones' existente.
 	if len(programItems) > 0 {
-		err = s.db.WithContext(ctx).
+		err := s.db.WithContext(ctx).
 			Table("programas_subprogramas").
 			Clauses(clause.OnConflict{
 				Columns: []clause.Column{

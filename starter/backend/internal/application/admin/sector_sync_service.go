@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
-	"aurora-backend/internal/infrastructure/soda"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,13 +16,10 @@ import (
 )
 
 const (
-	// DefaultSectorsDatasetResourceID dataset oficial o genérico para sectores DNP
-	// TODO: Confirmar el resource ID definitivo de datos.gov.co para sectores de inversión pública
-	DefaultSectorsDatasetResourceID = "sectores-dnp.json"
-	CatalogNameSectors              = "SECTORS"
+	CatalogNameSectors = "SECTORS"
 )
 
-// RawSodaSectorRow representa los campos admitidos para el catálogo de sectores desde SODA.
+// RawSodaSectorRow representa los campos admitidos para el catálogo de sectores.
 type RawSodaSectorRow struct {
 	Codigo       string `json:"codigo"`
 	Code         string `json:"code"`
@@ -47,35 +43,19 @@ type SectorSyncResult struct {
 	DurationMs       int64     `json:"duration_ms"`
 }
 
-// SectorSyncService coordina la extracción y carga (Upsert Protegido) de Sectores desde SODA.
+// SectorSyncService coordina la carga (Upsert Protegido) de Sectores desde JSON local.
 type SectorSyncService struct {
-	db         *gorm.DB
-	sodaClient soda.Client
-	resourceID string
+	db *gorm.DB
 }
 
 // NewSectorSyncService inicializa el servicio de sincronización de sectores.
-func NewSectorSyncService(db *gorm.DB, sodaClient soda.Client) *SectorSyncService {
+func NewSectorSyncService(db *gorm.DB) *SectorSyncService {
 	if db == nil {
 		panic("db is required for SectorSyncService")
 	}
-	if sodaClient == nil {
-		sodaClient = soda.NewClient(soda.DefaultBaseURL, "", nil)
-	}
 	return &SectorSyncService{
-		db:         db,
-		sodaClient: sodaClient,
-		resourceID: DefaultSectorsDatasetResourceID,
+		db: db,
 	}
-}
-
-// WithResourceID permite configurar un resource ID alternativo de SODA (útil para pruebas o datasets específicos).
-func (s *SectorSyncService) WithResourceID(resourceID string) *SectorSyncService {
-	clean := strings.TrimSpace(resourceID)
-	if clean != "" {
-		s.resourceID = clean
-	}
-	return s
 }
 
 // GetLatestSyncStatus consulta y devuelve la última entrada de auditoría para el catálogo de sectores.
@@ -101,8 +81,8 @@ func (s *SectorSyncService) GetLatestSyncStatus(ctx context.Context, catalogName
 	return &logEntry, nil
 }
 
-// SyncSectors ejecuta la sincronización de Sectores desde SODA aplicando Upsert Protegido sobre 'observaciones'.
-func (s *SectorSyncService) SyncSectors(ctx context.Context) (*SectorSyncResult, error) {
+// SyncSectors ejecuta la sincronización de Sectores desde data JSON aplicando Upsert Protegido sobre 'observaciones'.
+func (s *SectorSyncService) SyncSectors(ctx context.Context, data []map[string]interface{}) (*SectorSyncResult, error) {
 	startTime := time.Now()
 
 	// 1. Crear registro de auditoría en estado IN_PROGRESS
@@ -118,14 +98,7 @@ func (s *SectorSyncService) SyncSectors(ctx context.Context) (*SectorSyncResult,
 		return nil, fmt.Errorf("create initial sectors sync log: %w", err)
 	}
 
-	// 2. Extraer registros desde la API SODA
-	rawMessages, err := s.sodaClient.FetchAll(ctx, s.resourceID, nil)
-	if err != nil {
-		s.failSync(ctx, syncLog.ID, fmt.Errorf("fetch sectors data from SODA API: %w", err))
-		return nil, fmt.Errorf("fetch sectors data from SODA API: %w", err)
-	}
-
-	if len(rawMessages) == 0 {
+	if len(data) == 0 {
 		completedAt := time.Now()
 		_ = s.db.WithContext(ctx).Model(&models.CatalogSyncLog{}).Where("id = ?", syncLog.ID).Updates(map[string]any{
 			"completed_at":       &completedAt,
@@ -142,14 +115,21 @@ func (s *SectorSyncService) SyncSectors(ctx context.Context) (*SectorSyncResult,
 		}, nil
 	}
 
-	// 3. Transformar filas planas a modelos Sector
-	sectorItems := make([]models.Sector, 0, len(rawMessages))
-	seenCodes := make(map[string]struct{}, len(rawMessages))
+	// 2. Transformar filas a modelos Sector
+	sectorItems := make([]models.Sector, 0, len(data))
+	seenCodes := make(map[string]struct{}, len(data))
 
-	for i, raw := range rawMessages {
+	for i, item := range data {
+		raw, err := json.Marshal(item)
+		if err != nil {
+			err = fmt.Errorf("marshal sector row %d: %w", i, err)
+			s.failSync(ctx, syncLog.ID, err)
+			return nil, err
+		}
+
 		var row RawSodaSectorRow
 		if err := json.Unmarshal(raw, &row); err != nil {
-			err = fmt.Errorf("unmarshal soda sector row %d: %w", i, err)
+			err = fmt.Errorf("unmarshal sector row %d: %w", i, err)
 			s.failSync(ctx, syncLog.ID, err)
 			return nil, err
 		}
@@ -208,7 +188,7 @@ func (s *SectorSyncService) SyncSectors(ctx context.Context) (*SectorSyncResult,
 	// 4. Upsert Protegido: se actualizan 'nombre', 'aplicacion' y 'updated_at',
 	// preservando estrictamente el campo 'observaciones' en la base de datos.
 	if len(sectorItems) > 0 {
-		err = s.db.WithContext(ctx).
+		err := s.db.WithContext(ctx).
 			Table("sectores").
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "codigo"}},

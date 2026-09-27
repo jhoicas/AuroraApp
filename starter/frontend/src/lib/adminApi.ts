@@ -314,8 +314,13 @@ export interface TriggerSectorsSyncResponse {
   data: SectorSyncResult;
 }
 
-export const triggerSectorsSync = async (): Promise<SectorSyncResult> => {
-  const { data } = await api.post<TriggerSectorsSyncResponse>('/admin/sync/sectors', {}, { timeout: 300000 });
+export const triggerSectorsSync = async (file: File): Promise<SectorSyncResult> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<TriggerSectorsSyncResponse>('/admin/sync/sectors', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+  });
   return data.data;
 };
 
@@ -333,8 +338,13 @@ export interface TriggerProgramsSyncResponse {
   data: ProgramSyncResult;
 }
 
-export const triggerProgramsSync = async (): Promise<ProgramSyncResult> => {
-  const { data } = await api.post<TriggerProgramsSyncResponse>('/admin/sync/programs', {}, { timeout: 300000 });
+export const triggerProgramsSync = async (file: File): Promise<ProgramSyncResult> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<TriggerProgramsSyncResponse>('/admin/sync/programs', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+  });
   return data.data;
 };
 
@@ -352,8 +362,13 @@ export interface TriggerProductsSyncResponse {
   data: ProductSyncResult;
 }
 
-export const triggerProductsSync = async (): Promise<ProductSyncResult> => {
-  const { data } = await api.post<TriggerProductsSyncResponse>('/admin/sync/products', {}, { timeout: 300000 });
+export const triggerProductsSync = async (file: File): Promise<ProductSyncResult> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<TriggerProductsSyncResponse>('/admin/sync/products', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+  });
   return data.data;
 };
 
@@ -371,8 +386,13 @@ export interface TriggerEdtSyncResponse {
   data: EdtSyncResult;
 }
 
-export const triggerEdtSync = async (): Promise<EdtSyncResult> => {
-  const { data } = await api.post<TriggerEdtSyncResponse>('/admin/sync/edt', {}, { timeout: 300000 });
+export const triggerEdtSync = async (file: File): Promise<EdtSyncResult> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<TriggerEdtSyncResponse>('/admin/sync/edt', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+  });
   return data.data;
 };
 

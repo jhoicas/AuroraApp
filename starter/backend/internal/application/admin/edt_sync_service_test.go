@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -107,17 +106,18 @@ func TestEdtSyncService_SyncEdt_ResolvesProductFKAndProtectedUpsert(t *testing.T
 		},
 	}
 
-	var rawMessages []json.RawMessage
+	var data []map[string]interface{}
 	for _, row := range sampleRows {
 		b, _ := json.Marshal(row)
-		rawMessages = append(rawMessages, b)
+		var item map[string]interface{}
+		_ = json.Unmarshal(b, &item)
+		data = append(data, item)
 	}
 
-	mockClient := &mockSodaClient{records: rawMessages}
-	service := NewEdtSyncService(db, mockClient)
+	service := NewEdtSyncService(db)
 
 	// 4. Ejecutar sincronización
-	res, err := service.SyncEdt(context.Background())
+	res, err := service.SyncEdt(context.Background(), data)
 	require.NoError(t, err)
 	assert.Equal(t, 2, res.RecordsProcessed, "debe procesar 2 registros y omitir el del producto fantasma 9999999")
 	assert.Equal(t, "SUCCESS", res.Status)
@@ -154,17 +154,15 @@ func TestEdtSyncService_SyncEdt_ResolvesProductFKAndProtectedUpsert(t *testing.T
 
 func TestEdtSyncService_SyncEdt_FailureHandling(t *testing.T) {
 	db := newEdtTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
 
-	mockClient := &mockSodaClient{err: errors.New("soda edt endpoint timeout")}
-	service := NewEdtSyncService(db, mockClient)
+	service := NewEdtSyncService(db)
 
-	res, err := service.SyncEdt(context.Background())
+	res, err := service.SyncEdt(context.Background(), []map[string]interface{}{{"codigo_producto_estandarizado": "0101001"}})
 	require.Error(t, err)
 	assert.Nil(t, res)
 
-	status, err := service.GetLatestSyncStatus(context.Background(), "EDT")
-	require.NoError(t, err)
-	require.NotNil(t, status)
-	assert.Equal(t, models.CatalogSyncStatus("FAILED"), status.Status)
-	assert.Contains(t, status.ErrorMessage, "soda edt endpoint timeout")
+	assert.Contains(t, err.Error(), "closed")
 }

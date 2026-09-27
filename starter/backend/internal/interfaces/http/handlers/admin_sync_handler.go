@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"aurora-backend/internal/application/admin"
@@ -11,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// AdminSyncHandler maneja las solicitudes administrativas para sincronización de catálogos con SODA.
+// AdminSyncHandler maneja las solicitudes administrativas para sincronización de catálogos con SODA o archivos locales.
 type AdminSyncHandler struct {
 	pndSyncService     *admin.PndSyncService
 	sectorSyncService  *admin.SectorSyncService
@@ -25,10 +27,10 @@ func NewAdminSyncHandler(db *gorm.DB) *AdminSyncHandler {
 	sodaClient := soda.NewClient(soda.DefaultBaseURL, "", nil)
 	return &AdminSyncHandler{
 		pndSyncService:     admin.NewPndSyncService(db, sodaClient),
-		sectorSyncService:  admin.NewSectorSyncService(db, sodaClient),
-		programSyncService: admin.NewProgramSyncService(db, sodaClient),
-		productSyncService: admin.NewProductSyncService(db, sodaClient),
-		edtSyncService:     admin.NewEdtSyncService(db, sodaClient),
+		sectorSyncService:  admin.NewSectorSyncService(db),
+		programSyncService: admin.NewProgramSyncService(db),
+		productSyncService: admin.NewProductSyncService(db),
+		edtSyncService:     admin.NewEdtSyncService(db),
 	}
 }
 
@@ -121,7 +123,34 @@ func (h *AdminSyncHandler) TriggerSync(c *fiber.Ctx) error {
 	})
 }
 
-// TriggerSectorsSync dispara la sincronización del catálogo de Sectores desde SODA.
+// parseUploadedJSON extrae el archivo subido en el campo 'file', lo abre y decodifica el JSON como un array de objetos.
+func parseUploadedJSON(c *fiber.Ctx) ([]map[string]interface{}, error) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return nil, fmt.Errorf("archivo 'file' es requerido en multipart/form-data: %w", err)
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo abrir el archivo subido: %w", err)
+	}
+	defer f.Close()
+
+	var data []map[string]interface{}
+	if err := json.NewDecoder(f).Decode(&data); err != nil {
+		if _, seekErr := f.Seek(0, 0); seekErr == nil {
+			var single map[string]interface{}
+			if errSingle := json.NewDecoder(f).Decode(&single); errSingle == nil {
+				return []map[string]interface{}{single}, nil
+			}
+		}
+		return nil, fmt.Errorf("el archivo no contiene un JSON válido (debe ser un array de objetos): %w", err)
+	}
+
+	return data, nil
+}
+
+// TriggerSectorsSync carga y sincroniza el catálogo de Sectores desde un archivo JSON subido.
 // POST /api/v1/admin/sync/sectors
 func (h *AdminSyncHandler) TriggerSectorsSync(c *fiber.Ctx) error {
 	if h.sectorSyncService == nil {
@@ -130,7 +159,15 @@ func (h *AdminSyncHandler) TriggerSectorsSync(c *fiber.Ctx) error {
 		})
 	}
 
-	result, err := h.sectorSyncService.SyncSectors(c.Context())
+	data, err := parseUploadedJSON(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "failed to read uploaded json file",
+			"details": err.Error(),
+		})
+	}
+
+	result, err := h.sectorSyncService.SyncSectors(c.Context(), data)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":   "failed to execute sectors catalog sync",
@@ -145,7 +182,7 @@ func (h *AdminSyncHandler) TriggerSectorsSync(c *fiber.Ctx) error {
 	})
 }
 
-// TriggerProgramsSync dispara la sincronización del catálogo de Programas desde SODA.
+// TriggerProgramsSync carga y sincroniza el catálogo de Programas desde un archivo JSON subido.
 // POST /api/v1/admin/sync/programs
 func (h *AdminSyncHandler) TriggerProgramsSync(c *fiber.Ctx) error {
 	if h.programSyncService == nil {
@@ -154,7 +191,15 @@ func (h *AdminSyncHandler) TriggerProgramsSync(c *fiber.Ctx) error {
 		})
 	}
 
-	result, err := h.programSyncService.SyncPrograms(c.Context())
+	data, err := parseUploadedJSON(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "failed to read uploaded json file",
+			"details": err.Error(),
+		})
+	}
+
+	result, err := h.programSyncService.SyncPrograms(c.Context(), data)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":   "failed to execute programs catalog sync",
@@ -169,7 +214,7 @@ func (h *AdminSyncHandler) TriggerProgramsSync(c *fiber.Ctx) error {
 	})
 }
 
-// TriggerProductsSync dispara la sincronización del catálogo de Productos desde SODA.
+// TriggerProductsSync carga y sincroniza el catálogo de Productos desde un archivo JSON subido.
 // POST /api/v1/admin/sync/products
 func (h *AdminSyncHandler) TriggerProductsSync(c *fiber.Ctx) error {
 	if h.productSyncService == nil {
@@ -178,7 +223,15 @@ func (h *AdminSyncHandler) TriggerProductsSync(c *fiber.Ctx) error {
 		})
 	}
 
-	result, err := h.productSyncService.SyncProducts(c.Context())
+	data, err := parseUploadedJSON(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "failed to read uploaded json file",
+			"details": err.Error(),
+		})
+	}
+
+	result, err := h.productSyncService.SyncProducts(c.Context(), data)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":   "failed to execute products catalog sync",
@@ -193,7 +246,7 @@ func (h *AdminSyncHandler) TriggerProductsSync(c *fiber.Ctx) error {
 	})
 }
 
-// TriggerEdtSync dispara la sincronización del catálogo EDT desde SODA.
+// TriggerEdtSync carga y sincroniza el catálogo EDT desde un archivo JSON subido.
 // POST /api/v1/admin/sync/edt
 func (h *AdminSyncHandler) TriggerEdtSync(c *fiber.Ctx) error {
 	if h.edtSyncService == nil {
@@ -202,7 +255,15 @@ func (h *AdminSyncHandler) TriggerEdtSync(c *fiber.Ctx) error {
 		})
 	}
 
-	result, err := h.edtSyncService.SyncEdt(c.Context())
+	data, err := parseUploadedJSON(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "failed to read uploaded json file",
+			"details": err.Error(),
+		})
+	}
+
+	result, err := h.edtSyncService.SyncEdt(c.Context(), data)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":   "failed to execute EDT catalog sync",

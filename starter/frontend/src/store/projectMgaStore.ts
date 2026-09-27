@@ -142,6 +142,24 @@ export type CadenaValorData = {
   edtId: string;
 };
 
+export type UbicacionJson = {
+  id: string;
+  region: string;
+  departamento: string;
+  municipio: string;
+  tipoAgrupacion?: string;
+  agrupacion?: string;
+  especifica?: string;
+  latitud?: string;
+  longitud?: string;
+  georeferenciada: boolean;
+};
+
+export type LocalizacionPreparacionData = {
+  ubicaciones: UbicacionJson[];
+  factoresAnalizados: string[];
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -156,6 +174,7 @@ export type ProjectMgaFormulation = {
   estudioNecesidades?: EstudioNecesidadItem[];
   analisisTecnico?: Record<string, { resumen: string }>;
   localizacion?: Record<string, any>;
+  localizacionPreparacion?: Record<string, LocalizacionPreparacionData>;
   localizaciones?: ProjectMgaLocalizationItem[];
   factores_analizados?: string[];
   localizaciones_factores?: string[];
@@ -231,6 +250,7 @@ type ProjectMgaState = {
   saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, alternativeId: string, data: { resumen: string }) => Promise<void>;
+  saveLocalizacionPreparacion: (projectId: string, alternativeId: string, data: LocalizacionPreparacionData) => Promise<void>;
   saveLocalizacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveRiesgos: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveIngresosBeneficios: (projectId: string, data: Record<string, any>) => Promise<void>;
@@ -415,6 +435,26 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       });
     } catch (err) {
       set({ isLoading: false, error: 'Error guardando analisis tecnico', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveLocalizacionPreparacion: async (projectId, alternativeId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const currentLocalizacion = formulation.localizacionPreparacion || {};
+        const updatedLocalizacion = { ...currentLocalizacion, [alternativeId]: data };
+        const newCompleted = { ...formulation.completedSections, localizacionPreparacion: true };
+        debouncedPatchProject(projectId, { localizacionPreparacion: updatedLocalizacion, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, localizacionPreparacion: updatedLocalizacion, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando localizacion preparacion', isSaving: false });
       throw err;
     }
   },

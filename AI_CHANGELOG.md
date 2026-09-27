@@ -21,6 +21,38 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Programas MGA con Resolución FK de Sectores y Patrón Reactivo de UI
+
+- **Objetivo:** Extender el motor de sincronización de datos abiertos (SODA DNP) para el catálogo de Programas MGA (`programas_subprogramas`), garantizando la integridad referencial resolviendo la FK `sector_id` mediante búsqueda en memoria contra los sectores existentes en base de datos, aplicando Upsert Protegido que preserva el campo `observaciones`, e implementando el patrón reactivo de UI en `ProgramsCatalogPage.tsx`.
+- **Backend (Go / Fiber / GORM / Postgres & SQLite):**
+  - [program_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/program_sync_service.go):
+    - Implementación de `ProgramSyncService` para consumir datasets de programas MGA desde SODA.
+    - **Resolución FK de Sectores:** Consulta los sectores existentes en base de datos y construye un índice en memoria (`sectorByCode`) para asignar `SectorID` y `NombreSector` a cada programa. Si un sector no existe en la base de datos, el registro se omite de forma segura para preservar la integridad referencial.
+    - **Upsert Protegido:** Inserción y actualización masiva sobre `programas_subprogramas` usando `clause.OnConflict` en las columnas clave `(codigo_programa, codigo_subprograma)` asignando únicamente columnas oficiales (`sector_id`, `codigo_sector`, `nombre_sector`, `nombre_programa`, `ambito_aplicacion`, `nombre_subprograma`), protegiendo y manteniendo intacto el campo interno `observaciones`.
+    - Trazabilidad y auditoría completa en `CatalogSyncLog` con `catalog_name: "PROGRAMS"`.
+  - [program.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/program.go) & [program_subprogram.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/program_subprogram.go):
+    - Se adaptó la generación de ID mediante hook `BeforeCreate(tx *gorm.DB)` para compatibilidad cruzada entre PostgreSQL y SQLite en pruebas.
+  - [admin_sync_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler.go):
+    - Se inyectó `programSyncService` en el handler y se expuso `TriggerProgramsSync` (`POST /api/v1/admin/sync/programs`).
+    - Soporte multi-catálogo en `GetSyncStatus` para `?catalog=PROGRAMS`.
+  - [admin_sync.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/router/admin_sync.go):
+    - Registro de ruta protegida `POST /api/v1/admin/sync/programs` bajo el rol `SuperAdmin`.
+  - [program_sync_service_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/program_sync_service_test.go) & [admin_sync_handler_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler_test.go):
+    - Pruebas unitarias que validan la resolución de FK de sectores, omisión de programas con sectores inexistentes, protección estricta del campo `observaciones` y respuesta 200 de los endpoints HTTP.
+- **Frontend (React / TypeScript / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Tipos `ProgramSyncResult` y `TriggerProgramsSyncResponse`.
+    - Función exportada `triggerProgramsSync()` con timeout extendido a 300.000 ms (5 minutos).
+  - [ProgramsCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/ProgramsCatalogPage.tsx):
+    - Encabezado con badge de estado de sincronización (`formatSyncDate`), cantidad de registros procesados y botón "Sincronizar con DNP".
+    - **Regla de Oro del Spinner:** `setIsSyncing(false)` se invoca estrictamente en el bloque `finally` de `handleSync`.
+    - Actualización inmediata del estado local `syncLog` y refresco reactivo no bloqueante con `Promise.allSettled([fetchPrograms(...), loadSyncStatus()])` sin recargar la página (F5).
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/application/admin/... ./internal/interfaces/http/handlers -run "TestProgramSync|TestSectorSync|TestAdminSync"` -> 7 tests PASS.
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (`tsc -b && vite build` en 4.25s).
+
 ### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Sectores DNP con Upsert Protegido y Patrón Reactivo de UI
 
 - **Objetivo:** Extender el motor de sincronización SODA gubernamental para el catálogo maestro de Sectores (`sectores`), aplicando un Upsert Protegido que preserva intacto el campo interno `observaciones` de la entidad territorial, y acoplar el disparador administrativo con patrón reactivo (timeout de 5 min, `setIsSyncing(false)` en `finally` y recarga en paralelo).

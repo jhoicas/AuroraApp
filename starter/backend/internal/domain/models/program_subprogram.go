@@ -4,11 +4,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // ProgramSubprogram fila del catálogo DNP programas_subprogramas (maestro plano).
 type ProgramSubprogram struct {
-	ID                uuid.UUID  `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID                uuid.UUID  `gorm:"column:id;type:uuid;primaryKey" json:"id"`
 	TenantID          *uuid.UUID `gorm:"column:tenant_id;type:uuid;index" json:"tenant_id,omitempty"`
 	SectorID          uuid.UUID  `gorm:"column:sector_id;type:uuid;not null;index" json:"sector_id"`
 	CodigoSector      string     `gorm:"column:codigo_sector;type:varchar(50);not null;index" json:"codigo_sector"`
@@ -22,6 +23,14 @@ type ProgramSubprogram struct {
 	CreatedAt         time.Time  `gorm:"column:created_at;not null" json:"created_at"`
 }
 
+func (p *ProgramSubprogram) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
+}
+
 func (ProgramSubprogram) TableName() string {
 	return "programas_subprogramas"
 }
+

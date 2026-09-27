@@ -13,16 +13,18 @@ import (
 
 // AdminSyncHandler maneja las solicitudes administrativas para sincronización de catálogos con SODA.
 type AdminSyncHandler struct {
-	pndSyncService    *admin.PndSyncService
-	sectorSyncService *admin.SectorSyncService
+	pndSyncService     *admin.PndSyncService
+	sectorSyncService  *admin.SectorSyncService
+	programSyncService *admin.ProgramSyncService
 }
 
 // NewAdminSyncHandler crea una nueva instancia de AdminSyncHandler.
 func NewAdminSyncHandler(db *gorm.DB) *AdminSyncHandler {
 	sodaClient := soda.NewClient(soda.DefaultBaseURL, "", nil)
 	return &AdminSyncHandler{
-		pndSyncService:    admin.NewPndSyncService(db, sodaClient),
-		sectorSyncService: admin.NewSectorSyncService(db, sodaClient),
+		pndSyncService:     admin.NewPndSyncService(db, sodaClient),
+		sectorSyncService:  admin.NewSectorSyncService(db, sodaClient),
+		programSyncService: admin.NewProgramSyncService(db, sodaClient),
 	}
 }
 
@@ -38,7 +40,13 @@ func NewAdminSyncHandlerWithService(pndSyncService *admin.PndSyncService, sector
 	}
 }
 
-// GetSyncStatus consulta y devuelve el último CatalogSyncLog para el catálogo solicitado (ej. ?catalog=PND o ?catalog=SECTORS).
+// WithProgramSyncService inyecta el servicio de sincronización de programas (útil para tests).
+func (h *AdminSyncHandler) WithProgramSyncService(svc *admin.ProgramSyncService) *AdminSyncHandler {
+	h.programSyncService = svc
+	return h
+}
+
+// GetSyncStatus consulta y devuelve el último CatalogSyncLog para el catálogo solicitado (ej. ?catalog=PND, ?catalog=SECTORS o ?catalog=PROGRAMS).
 // GET /api/v1/admin/sync/status
 func (h *AdminSyncHandler) GetSyncStatus(c *fiber.Ctx) error {
 	catalog := c.Query("catalog", "PND")
@@ -46,12 +54,17 @@ func (h *AdminSyncHandler) GetSyncStatus(c *fiber.Ctx) error {
 	var logEntry *models.CatalogSyncLog
 	var err error
 
-	if strings.EqualFold(strings.TrimSpace(catalog), "SECTORS") && h.sectorSyncService != nil {
+	trimmedCatalog := strings.TrimSpace(catalog)
+	if strings.EqualFold(trimmedCatalog, "PROGRAMS") && h.programSyncService != nil {
+		logEntry, err = h.programSyncService.GetLatestSyncStatus(c.Context(), catalog)
+	} else if strings.EqualFold(trimmedCatalog, "SECTORS") && h.sectorSyncService != nil {
 		logEntry, err = h.sectorSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	} else if h.pndSyncService != nil {
 		logEntry, err = h.pndSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	} else if h.sectorSyncService != nil {
 		logEntry, err = h.sectorSyncService.GetLatestSyncStatus(c.Context(), catalog)
+	} else if h.programSyncService != nil {
+		logEntry, err = h.programSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	}
 
 	if err != nil {
@@ -107,3 +120,28 @@ func (h *AdminSyncHandler) TriggerSectorsSync(c *fiber.Ctx) error {
 		"data":    result,
 	})
 }
+
+// TriggerProgramsSync dispara la sincronización del catálogo de Programas desde SODA.
+// POST /api/v1/admin/sync/programs
+func (h *AdminSyncHandler) TriggerProgramsSync(c *fiber.Ctx) error {
+	if h.programSyncService == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "program sync service is not configured",
+		})
+	}
+
+	result, err := h.programSyncService.SyncPrograms(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to execute programs catalog sync",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Programs catalog sync completed successfully",
+		"data":    result,
+	})
+}
+

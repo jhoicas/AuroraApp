@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Program vista ligera sobre programas_subprogramas (explorador DNP por sector).
 // Campos Go en inglés; columnas PostgreSQL en español.
 type Program struct {
-	ID       uuid.UUID `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID       uuid.UUID `gorm:"column:id;type:uuid;primaryKey" json:"id"`
 	SectorID uuid.UUID `gorm:"column:sector_id;type:uuid;not null;index" json:"sector_id"`
 	// Sin uniqueIndex: la llave única real es (codigo_programa, codigo_subprograma)
 	// y la declara ProgramSubprogram. Declararla aquí crearía idx_prog_subprog_codes
@@ -26,6 +27,14 @@ type Program struct {
 	Products []Product `gorm:"-" json:"products,omitempty"`
 }
 
+func (p *Program) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
+}
+
 func (Program) TableName() string {
 	return "programas_subprogramas"
 }
+

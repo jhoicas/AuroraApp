@@ -319,4 +319,24 @@ export const triggerSectorsSync = async (): Promise<SectorSyncResult> => {
   return data.data;
 };
 
+export interface ProgramSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
+
+export interface TriggerProgramsSyncResponse {
+  status: string;
+  message: string;
+  data: ProgramSyncResult;
+}
+
+export const triggerProgramsSync = async (): Promise<ProgramSyncResult> => {
+  const { data } = await api.post<TriggerProgramsSyncResponse>('/admin/sync/programs', {}, { timeout: 300000 });
+  return data.data;
+};
+
+
 

@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"aurora-backend/internal/application/admin"
 	"aurora-backend/internal/domain/models"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -228,3 +230,85 @@ func TestAdminSyncHandler_TriggerSectorsSyncAndStatus(t *testing.T) {
 	db.Model(&models.Sector{}).Count(&sectorCount)
 	assert.Equal(t, int64(2), sectorCount)
 }
+
+func TestAdminSyncHandler_TriggerProgramsSyncAndStatus(t *testing.T) {
+	db := newSQLiteDB(t)
+	require.NoError(t, db.AutoMigrate(&models.CatalogSyncLog{}, &models.Sector{}, &models.ProgramSubprogram{}))
+
+	// Pre-seed a sector
+	sector := models.Sector{
+		ID:        uuid.New(),
+		Code:      "01",
+		Name:      "Agricultura",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&sector).Error)
+
+	sampleRows := []admin.RawSodaProgramRow{
+		{
+			CodigoSector:      "01",
+			CodigoPrograma:    "0101",
+			NombrePrograma:    "Desarrollo Rural Sostenible",
+			CodigoSubprograma: "010101",
+			NombreSubprograma: "Incentivos Forestales",
+		},
+	}
+
+	var rawMessages []json.RawMessage
+	for _, row := range sampleRows {
+		b, _ := json.Marshal(row)
+		rawMessages = append(rawMessages, b)
+	}
+
+	mockClient := &mockSodaClient{records: rawMessages}
+	pndSyncService := admin.NewPndSyncService(db, mockClient)
+	sectorSyncService := admin.NewSectorSyncService(db, mockClient)
+	programSyncService := admin.NewProgramSyncService(db, mockClient)
+	handler := NewAdminSyncHandlerWithService(pndSyncService, sectorSyncService).WithProgramSyncService(programSyncService)
+
+	app := fiber.New()
+	app.Get("/api/v1/admin/sync/status", handler.GetSyncStatus)
+	app.Post("/api/v1/admin/sync/programs", handler.TriggerProgramsSync)
+
+	// 1. Trigger Programs Sync
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/programs", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var triggerBody struct {
+		Status string                  `json:"status"`
+		Data   admin.ProgramSyncResult `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&triggerBody)
+	require.NoError(t, err)
+	assert.Equal(t, "success", triggerBody.Status)
+	assert.Equal(t, 1, triggerBody.Data.RecordsProcessed)
+	assert.Equal(t, "SUCCESS", triggerBody.Data.Status)
+	assert.Equal(t, "PROGRAMS", triggerBody.Data.CatalogName)
+
+	// 2. Status check for PROGRAMS
+	reqStatus := httptest.NewRequest(http.MethodGet, "/api/v1/admin/sync/status?catalog=PROGRAMS", nil)
+	respStatus, err := app.Test(reqStatus)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, respStatus.StatusCode)
+
+	var statusBody struct {
+		Data *models.CatalogSyncLog `json:"data"`
+	}
+	err = json.NewDecoder(respStatus.Body).Decode(&statusBody)
+	require.NoError(t, err)
+	require.NotNil(t, statusBody.Data)
+	assert.Equal(t, models.CatalogSyncStatus("SUCCESS"), statusBody.Data.Status)
+	assert.Equal(t, 1, statusBody.Data.RecordsProcessed)
+	assert.Equal(t, "PROGRAMS", statusBody.Data.CatalogName)
+
+	// 3. Verify programs are created with sector FK in DB
+	var prog models.ProgramSubprogram
+	err = db.Where("codigo_programa = ?", "0101").First(&prog).Error
+	require.NoError(t, err)
+	assert.Equal(t, sector.ID, prog.SectorID)
+	assert.Equal(t, "Desarrollo Rural Sostenible", prog.NombrePrograma)
+}
+

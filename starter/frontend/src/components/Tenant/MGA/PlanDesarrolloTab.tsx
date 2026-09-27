@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
@@ -12,67 +12,125 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const [openAccordion, setOpenAccordion] = useState<string>('01');
   const [isPndModalOpen, setIsPndModalOpen] = useState(false);
   
-  const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const savePlanDesarrollo = useProjectMgaStore((s) => s.savePlanDesarrollo);
 
-  const fieldProjectContext: ProjectContext = {
+  const initialPlanDesarrollo = useProjectMgaStore.getState().getFormulation(project.id)?.planDesarrollo;
+
+  const [pndLinks, setPndLinks] = useState<PlanDesarrolloPndLink[]>(() => initialPlanDesarrollo?.pndLinks || []);
+  
+  const [depPlan, setDepPlan] = useState(() => initialPlanDesarrollo?.departamental?.plan || '');
+  const [depEstrategia, setDepEstrategia] = useState(() => initialPlanDesarrollo?.departamental?.estrategia || '');
+  const [depPrograma, setDepPrograma] = useState(() => initialPlanDesarrollo?.departamental?.programa || '');
+
+  const [munPlan, setMunPlan] = useState(() => initialPlanDesarrollo?.municipal?.plan || '');
+  const [munEstrategia, setMunEstrategia] = useState(() => initialPlanDesarrollo?.municipal?.estrategia || '');
+  const [munPrograma, setMunPrograma] = useState(() => initialPlanDesarrollo?.municipal?.programa || '');
+
+  const [etnicoComunidad, setEtnicoComunidad] = useState(() => initialPlanDesarrollo?.etnico?.tipoComunidad || '');
+  const [etnicoInstrumentos, setEtnicoInstrumentos] = useState(() => initialPlanDesarrollo?.etnico?.instrumentos || '');
+
+  const [otrosPlan, setOtrosPlan] = useState(() => initialPlanDesarrollo?.otros?.plan || '');
+  const [otrosEstrategia, setOtrosEstrategia] = useState(() => initialPlanDesarrollo?.otros?.estrategia || '');
+  const [otrosPrograma, setOtrosPrograma] = useState(() => initialPlanDesarrollo?.otros?.programa || '');
+
+  const fieldProjectContext: ProjectContext = useMemo(() => ({
     projectName: project.name,
     sector: project.sector || undefined,
     productCode: project.product_code || undefined,
     procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
     objeto: (project as any)?.objeto || undefined,
-  };
+  }), [project.name, project.sector, project.product_code, (project as any)?.proceso_id, (project as any)?.objeto]);
 
-  const [pndLinks, setPndLinks] = useState<PlanDesarrolloPndLink[]>([]);
-  
-  const [depPlan, setDepPlan] = useState('');
-  const [depEstrategia, setDepEstrategia] = useState('');
-  const [depPrograma, setDepPrograma] = useState('');
-
-  const [munPlan, setMunPlan] = useState('');
-  const [munEstrategia, setMunEstrategia] = useState('');
-  const [munPrograma, setMunPrograma] = useState('');
-
-  const [etnicoComunidad, setEtnicoComunidad] = useState('');
-  const [etnicoInstrumentos, setEtnicoInstrumentos] = useState('');
-
-  const [otrosPlan, setOtrosPlan] = useState('');
-  const [otrosEstrategia, setOtrosEstrategia] = useState('');
-  const [otrosPrograma, setOtrosPrograma] = useState('');
-
-  useEffect(() => {
-    if (formulation.planDesarrollo) {
-      const data = formulation.planDesarrollo;
-      setPndLinks(data.pndLinks || []);
-      setDepPlan(data.departamental?.plan || '');
-      setDepEstrategia(data.departamental?.estrategia || '');
-      setDepPrograma(data.departamental?.programa || '');
-
-      setMunPlan(data.municipal?.plan || '');
-      setMunEstrategia(data.municipal?.estrategia || '');
-      setMunPrograma(data.municipal?.programa || '');
-
-      setEtnicoComunidad(data.etnico?.tipoComunidad || '');
-      setEtnicoInstrumentos(data.etnico?.instrumentos || '');
-
-      setOtrosPlan(data.otros?.plan || '');
-      setOtrosEstrategia(data.otros?.estrategia || '');
-      setOtrosPrograma(data.otros?.programa || '');
-    }
-  }, [formulation.planDesarrollo]);
-
-  const reactiveContext = {
+  const reactiveContext = useMemo(() => ({
     depPlan, depEstrategia, depPrograma,
     munPlan, munEstrategia, munPrograma,
     etnicoComunidad, etnicoInstrumentos,
     otrosPlan, otrosEstrategia, otrosPrograma
-  };
+  }), [
+    depPlan, depEstrategia, depPrograma,
+    munPlan, munEstrategia, munPrograma,
+    etnicoComunidad, etnicoInstrumentos,
+    otrosPlan, otrosEstrategia, otrosPrograma
+  ]);
 
   const handleToggle = (id: string) => {
     setOpenAccordion(openAccordion === id ? '' : id);
   };
 
+  const prevProjectIdRef = useRef(project.id);
+  const isFirstMount = useRef(true);
+  const lastSavedRef = useRef<string>(JSON.stringify({
+    pndLinks: initialPlanDesarrollo?.pndLinks || [],
+    departamental: {
+      plan: initialPlanDesarrollo?.departamental?.plan || '',
+      estrategia: initialPlanDesarrollo?.departamental?.estrategia || '',
+      programa: initialPlanDesarrollo?.departamental?.programa || '',
+    },
+    municipal: {
+      plan: initialPlanDesarrollo?.municipal?.plan || '',
+      estrategia: initialPlanDesarrollo?.municipal?.estrategia || '',
+      programa: initialPlanDesarrollo?.municipal?.programa || '',
+    },
+    etnico: {
+      tipoComunidad: initialPlanDesarrollo?.etnico?.tipoComunidad || '',
+      instrumentos: initialPlanDesarrollo?.etnico?.instrumentos || '',
+    },
+    otros: {
+      plan: initialPlanDesarrollo?.otros?.plan || '',
+      estrategia: initialPlanDesarrollo?.otros?.estrategia || '',
+      programa: initialPlanDesarrollo?.otros?.programa || '',
+    },
+  }));
+
+  // Sync state if project changes
   useEffect(() => {
+    if (prevProjectIdRef.current !== project.id) {
+      prevProjectIdRef.current = project.id;
+      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.planDesarrollo;
+      setPndLinks(currentData?.pndLinks || []);
+      setDepPlan(currentData?.departamental?.plan || '');
+      setDepEstrategia(currentData?.departamental?.estrategia || '');
+      setDepPrograma(currentData?.departamental?.programa || '');
+      setMunPlan(currentData?.municipal?.plan || '');
+      setMunEstrategia(currentData?.municipal?.estrategia || '');
+      setMunPrograma(currentData?.municipal?.programa || '');
+      setEtnicoComunidad(currentData?.etnico?.tipoComunidad || '');
+      setEtnicoInstrumentos(currentData?.etnico?.instrumentos || '');
+      setOtrosPlan(currentData?.otros?.plan || '');
+      setOtrosEstrategia(currentData?.otros?.estrategia || '');
+      setOtrosPrograma(currentData?.otros?.programa || '');
+      lastSavedRef.current = JSON.stringify({
+        pndLinks: currentData?.pndLinks || [],
+        departamental: {
+          plan: currentData?.departamental?.plan || '',
+          estrategia: currentData?.departamental?.estrategia || '',
+          programa: currentData?.departamental?.programa || '',
+        },
+        municipal: {
+          plan: currentData?.municipal?.plan || '',
+          estrategia: currentData?.municipal?.estrategia || '',
+          programa: currentData?.municipal?.programa || '',
+        },
+        etnico: {
+          tipoComunidad: currentData?.etnico?.tipoComunidad || '',
+          instrumentos: currentData?.etnico?.instrumentos || '',
+        },
+        otros: {
+          plan: currentData?.otros?.plan || '',
+          estrategia: currentData?.otros?.estrategia || '',
+          programa: currentData?.otros?.programa || '',
+        },
+      });
+    }
+  }, [project.id]);
+
+  // Save changes when user edits fields, guarded to avoid redundant saves and mount loops
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     const data: PlanDesarrolloData = {
       pndLinks,
       departamental: { plan: depPlan, estrategia: depEstrategia, programa: depPrograma },
@@ -80,7 +138,12 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
       etnico: { tipoComunidad: etnicoComunidad, instrumentos: etnicoInstrumentos },
       otros: { plan: otrosPlan, estrategia: otrosEstrategia, programa: otrosPrograma }
     };
-    savePlanDesarrollo(project.id, data);
+
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+
+    void savePlanDesarrollo(project.id, data);
   }, [
     pndLinks, depPlan, depEstrategia, depPrograma, 
     munPlan, munEstrategia, munPrograma, 

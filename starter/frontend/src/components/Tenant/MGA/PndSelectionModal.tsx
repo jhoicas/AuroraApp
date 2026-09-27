@@ -9,30 +9,24 @@ interface PndSelectionModalProps {
 }
 
 export default function PndSelectionModal({ isOpen, onClose, onSelect }: PndSelectionModalProps) {
-  const { catalogPnd, isLoadingPnd, fetchCatalogPnd } = useCatalogStore();
+  const catalogPnd = useCatalogStore((s) => s.catalogPnd);
+  const isLoadingPnd = useCatalogStore((s) => s.isLoadingPnd);
+  const fetchCatalogPnd = useCatalogStore((s) => s.fetchCatalogPnd);
+
   const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setDebouncedQuery('');
-      void fetchCatalogPnd({ page: 1, limit: 50, search: '' });
-    }
-  }, [isOpen, fetchCatalogPnd]);
+    if (!isOpen) return;
+    setQuery('');
+  }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 400);
+      void fetchCatalogPnd({ page: 1, limit: 50, search: query });
+    }, query ? 400 : 0);
     return () => clearTimeout(timer);
-  }, [query]);
-
-  useEffect(() => {
-    if (isOpen) {
-      void fetchCatalogPnd({ page: 1, limit: 50, search: debouncedQuery });
-    }
-  }, [debouncedQuery, isOpen, fetchCatalogPnd]);
+  }, [query, isOpen, fetchCatalogPnd]);
 
   if (!isOpen) return null;
 
@@ -47,6 +41,7 @@ export default function PndSelectionModal({ isOpen, onClose, onSelect }: PndSele
             <p className="text-sm text-slate-500 mt-1">Busca por transformación, pilar, catalizador o componente</p>
           </div>
           <button 
+            type="button"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
@@ -84,6 +79,7 @@ export default function PndSelectionModal({ isOpen, onClose, onSelect }: PndSele
             <div className="space-y-3">
               {catalogPnd.map((pnd) => (
                 <button
+                  type="button"
                   key={pnd.id}
                   onClick={() => onSelect(pnd)}
                   className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-emerald-500/50 hover:bg-emerald-50/50 transition-all group flex flex-col gap-2"

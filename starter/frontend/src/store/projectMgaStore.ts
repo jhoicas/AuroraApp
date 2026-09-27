@@ -117,6 +117,24 @@ export type EstudioNecesidadItem = {
   ultimo_ano_proyectado: number | string;
 };
 
+export type AlternativaJson = {
+  id: string;
+  nombre: string;
+  pasaPreparacion: boolean;
+  estado: string;
+};
+
+export type EvaluacionesJson = {
+  rentabilidad: boolean;
+  costoEficiencia: boolean;
+  multicriterio: boolean;
+};
+
+export type IdentificacionData = {
+  alternativas?: AlternativaJson[];
+  evaluaciones?: EvaluacionesJson;
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -124,6 +142,7 @@ export type ProjectMgaFormulation = {
   participants: MgaParticipant[];
   populations: MgaPopulation[];
   alternatives: MgaAlternative[];
+  identificacion?: IdentificacionData;
   planDesarrollo?: PlanDesarrolloData;
   necesidades?: Record<string, any>;
   estudioNecesidades?: EstudioNecesidadItem[];
@@ -201,7 +220,7 @@ type ProjectMgaState = {
   savePoblacion: (projectId: string) => Promise<void>;
   saveObjetivos: (projectId: string) => Promise<void>;
   saveCadenaDeValor: (projectId: string, data?: Record<string, any>) => Promise<void>;
-  saveAlternativas: (projectId: string) => Promise<void>;
+  saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveLocalizacion: (projectId: string, data: Record<string, any>) => Promise<void>;
@@ -279,6 +298,7 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     populations: data.populations ?? [],
     alternatives: data.alternatives ?? [],
     // As we don't have this in API yet, it will be undefined initially
+    identificacion: undefined,
     planDesarrollo: undefined,
     necesidades: undefined,
     analisisTecnico: undefined,
@@ -611,14 +631,23 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     });
   },
 
-  saveAlternativas: async (projectId) => {
+  saveAlternativas: async (projectId, data) => {
     set({ isSaving: true, error: null });
-    set((state) => {
-      const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, alternativas: true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
-      return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
-    });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, alternativas: true };
+        const newData = { ...(formulation.identificacion || {}), ...data };
+        debouncedPatchProject(projectId, { identificacion: newData, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, identificacion: newData, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando alternativas', isSaving: false });
+      throw err;
+    }
   },
 
   getFormulation: (projectId) => get().byProjectId[projectId] ?? EMPTY_FORMULATION,
@@ -633,6 +662,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       const project = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
       if (project?.mga_formulation_data) {
         const pData = project.mga_formulation_data;
+        if (pData.identificacion) formulation.identificacion = pData.identificacion as IdentificacionData;
         if (pData.planDesarrollo) formulation.planDesarrollo = pData.planDesarrollo as PlanDesarrolloData;
         if (pData.necesidades) formulation.necesidades = pData.necesidades;
         if (pData.estudioNecesidades) formulation.estudioNecesidades = pData.estudioNecesidades;

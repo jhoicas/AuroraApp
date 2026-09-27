@@ -17,7 +17,7 @@ export default function MeasurementUnitsCatalogPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit] = useState(10);
   const [searchFocused, setSearchFocused] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);

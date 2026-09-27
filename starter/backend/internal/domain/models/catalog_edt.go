@@ -26,12 +26,14 @@ type CatalogEdt struct {
 	NombreEntregableL2          string     `gorm:"column:nombre_entregable_l2;type:text" json:"nombre_entregable_l2"`
 	CodigoEntregableL3          string     `gorm:"column:codigo_entregable_l3;type:varchar(100);not null;default:'';uniqueIndex:idx_edt_composite" json:"codigo_entregable_l3"`
 	NombreEntregableL3          string     `gorm:"column:nombre_entregable_l3;type:text" json:"nombre_entregable_l3"`
-	CodigoActividad             string     `gorm:"column:codigo_actividad;type:varchar(100);not null;default:'';uniqueIndex:idx_edt_composite" json:"codigo_actividad"`
-	Actividad                   string     `gorm:"column:actividad;type:text" json:"actividad"`
-	UnidadDeMedida              string     `gorm:"column:unidad_de_medida;type:text" json:"unidad_de_medida"`
-	Observaciones               string     `gorm:"column:observaciones;type:text" json:"observaciones,omitempty"`
-	CreatedAt                   time.Time  `gorm:"column:created_at;not null" json:"created_at"`
-	UpdatedAt                   time.Time  `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	CodigoActividad             string          `gorm:"column:codigo_actividad;type:varchar(100);not null;default:'';uniqueIndex:idx_edt_composite" json:"codigo_actividad"`
+	Actividad                   string          `gorm:"column:actividad;type:text" json:"actividad"`
+	DescripcionActividad        string          `gorm:"column:descripcion_actividad;type:text" json:"descripcion_actividad,omitempty"`
+	UnidadDeMedida              string          `gorm:"column:unidad_de_medida;type:text" json:"unidad_de_medida"`
+	Observaciones               string          `gorm:"column:observaciones;type:text" json:"observaciones,omitempty"`
+	CreatedAt                   time.Time       `gorm:"column:created_at;not null" json:"created_at"`
+	UpdatedAt                   time.Time       `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	Product                     *CatalogProduct `gorm:"foreignKey:ProductID;references:ID" json:"product,omitempty"`
 }
 
 func (e *CatalogEdt) BeforeCreate(tx *gorm.DB) (err error) {

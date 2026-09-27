@@ -180,6 +180,7 @@ type ProductImportResponse struct {
 type CatalogEdtResponse struct {
 	ID                          string  `json:"id"`
 	TenantID                    *string `json:"tenant_id,omitempty"`
+	ProductID                   *string `json:"product_id,omitempty"`
 	CodigoProductoEstandarizado string  `json:"codigo_producto_estandarizado"`
 	NombreProducto              string  `json:"nombre_producto"`
 	CodigoEntregableL1          string  `json:"codigo_entregable_l1"`
@@ -190,6 +191,7 @@ type CatalogEdtResponse struct {
 	NombreEntregableL3          string  `json:"nombre_entregable_l3"`
 	CodigoActividad             string  `json:"codigo_actividad"`
 	Actividad                   string  `json:"actividad"`
+	DescripcionActividad        string  `json:"descripcion_actividad,omitempty"`
 	UnidadDeMedida              string  `json:"unidad_de_medida"`
 	CreatedAt                   string  `json:"created_at"`
 }

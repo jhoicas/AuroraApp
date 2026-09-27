@@ -247,7 +247,7 @@ export default function EdtCatalogPage() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
-              placeholder="Buscar por producto, entregable o actividad..."
+              placeholder="Buscar por producto (código/nombre), entregable o actividad..."
               className="w-full bg-transparent border-none outline-none focus:ring-0 text-lg text-[#121c2c] placeholder:text-[#6f7979]"
             />
           </div>
@@ -300,10 +300,10 @@ export default function EdtCatalogPage() {
               <thead className="bg-[#2c7a7b] text-[#c1ffff]">
                 <tr>
                   <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
-                    Cód. Producto
+                    Código de Producto
                   </th>
                   <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap min-w-[250px]">
-                    Nombre Producto
+                    Nombre de Producto
                   </th>
                   <th className="px-4 py-3 font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                     Ent. L1
@@ -386,9 +386,9 @@ export default function EdtCatalogPage() {
                       </td>
                       <td
                         className="px-4 py-3 whitespace-nowrap min-w-[280px] max-w-[360px] truncate"
-                        title={row.actividad}
+                        title={row.descripcion_actividad || row.actividad}
                       >
-                        {cellText(row.actividad)}
+                        {cellText(row.descripcion_actividad || row.actividad)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {cellText(row.unidad_de_medida)}

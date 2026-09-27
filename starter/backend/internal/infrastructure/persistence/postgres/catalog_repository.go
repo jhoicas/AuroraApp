@@ -708,6 +708,7 @@ var catalogEdtUpsertColumns = []string{
 	"nombre_entregable_l2",
 	"nombre_entregable_l3",
 	"actividad",
+	"descripcion_actividad",
 	"unidad_de_medida",
 	"updated_at",
 }
@@ -718,6 +719,9 @@ func normalizeCatalogEdtItem(it *models.CatalogEdt) {
 	it.CodigoEntregableL2 = strings.TrimSpace(it.CodigoEntregableL2)
 	it.CodigoEntregableL3 = strings.TrimSpace(it.CodigoEntregableL3)
 	it.CodigoActividad = strings.TrimSpace(it.CodigoActividad)
+	if it.DescripcionActividad == "" {
+		it.DescripcionActividad = it.Actividad
+	}
 }
 
 func catalogEdtBusinessKey(it models.CatalogEdt) string {
@@ -746,16 +750,40 @@ func (r *CatalogRepository) ListCatalogEdt(ctx context.Context, p CatalogEdtList
 	limit := normalizeCatalogLimit(p.Limit)
 	offset := (page - 1) * limit
 
-	q := r.db.WithContext(ctx).Model(&models.CatalogEdt{})
+	q := r.db.WithContext(ctx).Model(&models.CatalogEdt{}).
+		Joins("LEFT JOIN catalogo_productos cp ON cp.id = catalogo_edt.product_id")
+
 	if search := strings.TrimSpace(p.Search); search != "" {
 		pattern := "%" + escapeILIKE(search) + "%"
+		op := "ILIKE"
+		esc := ` ESCAPE '\'`
+		if r.db.Dialector.Name() == "sqlite" {
+			op = "LIKE"
+			esc = ""
+		}
+		whereClause := fmt.Sprintf(
+			`(catalogo_edt.codigo_producto_estandarizado %[1]s ?%[2]s OR
+			  catalogo_edt.nombre_producto %[1]s ?%[2]s OR
+			  catalogo_edt.codigo_actividad %[1]s ?%[2]s OR
+			  catalogo_edt.actividad %[1]s ?%[2]s OR
+			  catalogo_edt.descripcion_actividad %[1]s ?%[2]s OR
+			  catalogo_edt.codigo_entregable_l1 %[1]s ?%[2]s OR
+			  catalogo_edt.nombre_entregable_l1 %[1]s ?%[2]s OR
+			  catalogo_edt.codigo_entregable_l2 %[1]s ?%[2]s OR
+			  catalogo_edt.nombre_entregable_l2 %[1]s ?%[2]s OR
+			  catalogo_edt.codigo_entregable_l3 %[1]s ?%[2]s OR
+			  catalogo_edt.nombre_entregable_l3 %[1]s ?%[2]s OR
+			  cp.codigo %[1]s ?%[2]s OR
+			  cp.codigo_producto %[1]s ?%[2]s OR
+			  cp.nombre %[1]s ?%[2]s OR
+			  cp.producto %[1]s ?%[2]s)`,
+			op, esc,
+		)
 		q = q.Where(
-			`(codigo_producto_estandarizado ILIKE ? ESCAPE '\' OR nombre_producto ILIKE ? ESCAPE '\' OR
-			  codigo_actividad ILIKE ? ESCAPE '\' OR actividad ILIKE ? ESCAPE '\' OR
-			  codigo_entregable_l1 ILIKE ? ESCAPE '\' OR nombre_entregable_l1 ILIKE ? ESCAPE '\' OR
-			  codigo_entregable_l2 ILIKE ? ESCAPE '\' OR nombre_entregable_l2 ILIKE ? ESCAPE '\' OR
-			  codigo_entregable_l3 ILIKE ? ESCAPE '\' OR nombre_entregable_l3 ILIKE ? ESCAPE '\')`,
-			pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern,
+			whereClause,
+			pattern, pattern, pattern, pattern, pattern,
+			pattern, pattern, pattern, pattern, pattern, pattern,
+			pattern, pattern, pattern, pattern,
 		)
 	}
 
@@ -765,7 +793,8 @@ func (r *CatalogRepository) ListCatalogEdt(ctx context.Context, p CatalogEdtList
 	}
 
 	items := make([]models.CatalogEdt, 0, limit)
-	if err := q.Order("codigo_producto_estandarizado ASC, codigo_actividad ASC").
+	if err := q.Select("catalogo_edt.*, COALESCE(NULLIF(catalogo_edt.nombre_producto, ''), cp.producto, cp.nombre, '') AS nombre_producto").
+		Order("catalogo_edt.codigo_producto_estandarizado ASC, catalogo_edt.codigo_actividad ASC").
 		Limit(limit).Offset(offset).Find(&items).Error; err != nil {
 		return nil, fmt.Errorf("list catalogo_edt: %w", err)
 	}

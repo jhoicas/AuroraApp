@@ -23,7 +23,9 @@ type CatalogProduct struct {
 	CodigoPrograma          string     `gorm:"column:codigo_programa;type:varchar(50);not null;index" json:"codigo_programa"`
 	NombrePrograma          string     `gorm:"column:nombre_programa;type:text" json:"nombre_programa"`
 	CodigoProducto          string     `gorm:"column:codigo_producto;type:varchar(50);not null;uniqueIndex:idx_product_indicador;index" json:"codigo_producto"`
+	Code                    string     `gorm:"column:codigo;type:varchar(50)" json:"codigo,omitempty"`
 	Producto                string     `gorm:"column:producto;type:text;not null" json:"producto"`
+	Nombre                  string     `gorm:"column:nombre;type:text" json:"nombre,omitempty"`
 	Descripcion             string     `gorm:"column:descripcion;type:text" json:"descripcion"`
 	MedidoATravesDe         string     `gorm:"column:medido_a_traves_de;type:text" json:"medido_a_traves_de"`
 	CodigoIndicadorProducto string     `gorm:"column:codigo_indicador_producto;type:text;not null;default:'';uniqueIndex:idx_product_indicador" json:"codigo_indicador_producto"`

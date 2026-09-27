@@ -1019,9 +1019,19 @@ func toCatalogEdtResponse(e models.CatalogEdt) dto.CatalogEdtResponse {
 		s := e.TenantID.String()
 		tenantID = &s
 	}
+	var productID *string
+	if e.ProductID != nil {
+		s := e.ProductID.String()
+		productID = &s
+	}
+	descAct := e.DescripcionActividad
+	if descAct == "" {
+		descAct = e.Actividad
+	}
 	return dto.CatalogEdtResponse{
 		ID:                          e.ID.String(),
 		TenantID:                    tenantID,
+		ProductID:                   productID,
 		CodigoProductoEstandarizado: e.CodigoProductoEstandarizado,
 		NombreProducto:              e.NombreProducto,
 		CodigoEntregableL1:          e.CodigoEntregableL1,
@@ -1032,6 +1042,7 @@ func toCatalogEdtResponse(e models.CatalogEdt) dto.CatalogEdtResponse {
 		NombreEntregableL3:          e.NombreEntregableL3,
 		CodigoActividad:             e.CodigoActividad,
 		Actividad:                   e.Actividad,
+		DescripcionActividad:        descAct,
 		UnidadDeMedida:              e.UnidadDeMedida,
 		CreatedAt:                   e.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	}

@@ -219,6 +219,7 @@ export type CreateProductInput = {
 export type CatalogEdt = {
   id: string;
   tenant_id?: string | null;
+  product_id?: string | null;
   codigo_producto_estandarizado: string;
   nombre_producto: string;
   codigo_entregable_l1: string;
@@ -229,6 +230,7 @@ export type CatalogEdt = {
   nombre_entregable_l3: string;
   codigo_actividad: string;
   actividad: string;
+  descripcion_actividad?: string;
   unidad_de_medida: string;
   created_at?: string;
 };

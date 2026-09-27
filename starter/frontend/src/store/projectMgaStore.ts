@@ -135,6 +135,13 @@ export type IdentificacionData = {
   evaluaciones?: EvaluacionesJson;
 };
 
+export type CadenaValorData = {
+  sectorCode: string;
+  programaCode: string;
+  productoCode: string;
+  edtId: string;
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -144,6 +151,7 @@ export type ProjectMgaFormulation = {
   alternatives: MgaAlternative[];
   identificacion?: IdentificacionData;
   planDesarrollo?: PlanDesarrolloData;
+  cadenaValor?: CadenaValorData;
   necesidades?: Record<string, any>;
   estudioNecesidades?: EstudioNecesidadItem[];
   analisisTecnico?: Record<string, any>;
@@ -219,7 +227,7 @@ type ProjectMgaState = {
   saveParticipantes: (projectId: string) => Promise<void>;
   savePoblacion: (projectId: string) => Promise<void>;
   saveObjetivos: (projectId: string) => Promise<void>;
-  saveCadenaDeValor: (projectId: string, data?: Record<string, any>) => Promise<void>;
+  saveCadenaDeValor: (projectId: string, data?: CadenaValorData) => Promise<void>;
   saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, data: Record<string, any>) => Promise<void>;

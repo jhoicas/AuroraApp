@@ -19,7 +19,10 @@ import (
 func (h *CatalogHandler) ListCatalogPnd(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
-	search := strings.TrimSpace(c.Query("q"))
+	search := strings.TrimSpace(c.Query("search"))
+	if search == "" {
+		search = strings.TrimSpace(c.Query("q"))
+	}
 
 	result, err := h.repo.ListPndCatalogs(c.Context(), postgres.PndListParams{
 		Page:   page,

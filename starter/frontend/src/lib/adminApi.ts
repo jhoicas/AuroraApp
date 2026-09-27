@@ -296,7 +296,7 @@ export const getSyncStatus = async (catalog: string = 'PND'): Promise<CatalogSyn
 };
 
 export const triggerPndSync = async (): Promise<PndSyncResult> => {
-  const { data } = await api.post<TriggerSyncResponse>('/admin/sync/pnd');
+  const { data } = await api.post<TriggerSyncResponse>('/admin/sync/pnd', {}, { timeout: 300000 });
   return data.data;
 };
 

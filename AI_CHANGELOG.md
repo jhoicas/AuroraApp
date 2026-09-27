@@ -21,6 +21,21 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-26 - Antigravity - Desbloqueo de UI y Refresco Inmediato tras Sincronización SODA PND
+
+- **Objetivo:** Resolver el problema de UI donde el botón y el badge en `PndCatalogPage.tsx` quedaban en estado de sincronización indefinido tras completar exitosamente la descarga de datos abiertos del PND.
+- **Frontend (React / TypeScript / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Se configuró un timeout de 300s (5 minutos) en `triggerPndSync()` para evitar interrupciones prematuras por timeout por defecto de Axios al procesar grandes volúmenes de datos.
+  - [PndCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/PndCatalogPage.tsx):
+    - Se garantizó la ejecución obligatoria de `setIsSyncing(false)` en el bloque `finally` de `handleTriggerSync`.
+    - Actualización inmediata del estado local `syncLog` (`status: 'SUCCESS'`, `completed_at`, `records_processed`) con la respuesta del backend para evitar badges en `IN_PROGRESS` desactualizados.
+    - Se incorporó la recarga automática paralela inmediata mediante `Promise.allSettled` de `fetchCatalogPnd(...)` y `loadSyncStatus()`, mostrando de forma reactiva los más de 6.000 registros descargados sin requerir F5.
+    - Separación en el renderizado del badge entre la acción en vivo (`isSyncing`) y el registro histórico (`syncLog?.completed_at`).
+- **Validaciones Ejecutadas:**
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (`tsc -b && vite build` completado en 3.48s).
+
 ### 2026-09-26 - Antigravity - Corrección de Pluralización y Migración de Tabla PND (`pnd_catalog`)
 
 - **Objetivo:** Resolver el error `relation "pnd_catalogs" does not exist` al ejecutar la sincronización SODA DNP mediante la explicitación de la tabla `pnd_catalog` en el modelo GORM, servicio de sincronización y migraciones de base de datos.

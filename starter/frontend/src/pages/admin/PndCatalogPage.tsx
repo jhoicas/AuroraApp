@@ -89,9 +89,28 @@ export default function PndCatalogPage() {
       setSyncError(null);
       clearError();
       const res = await triggerPndSync();
-      setFlash(`Sincronización con Datos Abiertos DNP exitosa: ${res.records_processed} registros procesados.`);
-      await loadSyncStatus();
-      refreshList();
+
+      const count = res?.records_processed ?? 0;
+      setFlash(`Sincronización con Datos Abiertos DNP exitosa: ${count.toLocaleString('es-CO')} registros procesados.`);
+
+      // Actualizar estado de sincronización local de inmediato
+      if (res) {
+        setSyncLog({
+          id: res.sync_log_id,
+          catalog_name: res.catalog_name || 'PND',
+          started_at: new Date(Date.now() - (res.duration_ms || 0)).toISOString(),
+          completed_at: new Date().toISOString(),
+          status: 'SUCCESS',
+          records_processed: count,
+        });
+      }
+
+      // Recargar de inmediato los datos del catálogo y confirmar estado de auditoría
+      await Promise.allSettled([
+        fetchCatalogPnd({ page: 1, limit, search: debouncedQuery }),
+        loadSyncStatus(),
+      ]);
+      setPage(1);
     } catch (err: any) {
       const msg =
         err?.response?.data?.details ||
@@ -115,7 +134,7 @@ export default function PndCatalogPage() {
               Catálogo del PND estructurado en Transformación, Pilar, Catalizador y Componente.
             </p>
             <div className="mt-2 flex items-center gap-2 text-sm text-[#6f7979]">
-              {isSyncing || syncLog?.status === 'IN_PROGRESS' ? (
+              {isSyncing ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   Sincronización en curso con DNP...
@@ -124,7 +143,12 @@ export default function PndCatalogPage() {
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   Última sincronización: {formatSyncDate(syncLog.completed_at)}
-                  {syncLog.records_processed > 0 && ` (${syncLog.records_processed} registros)`}
+                  {syncLog.records_processed > 0 && ` (${syncLog.records_processed.toLocaleString('es-CO')} registros)`}
+                </span>
+              ) : syncLog?.status === 'IN_PROGRESS' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Sincronización en curso con DNP...
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">

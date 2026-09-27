@@ -17,6 +17,7 @@ type AdminSyncHandler struct {
 	sectorSyncService  *admin.SectorSyncService
 	programSyncService *admin.ProgramSyncService
 	productSyncService *admin.ProductSyncService
+	edtSyncService     *admin.EdtSyncService
 }
 
 // NewAdminSyncHandler crea una nueva instancia de AdminSyncHandler.
@@ -27,6 +28,7 @@ func NewAdminSyncHandler(db *gorm.DB) *AdminSyncHandler {
 		sectorSyncService:  admin.NewSectorSyncService(db, sodaClient),
 		programSyncService: admin.NewProgramSyncService(db, sodaClient),
 		productSyncService: admin.NewProductSyncService(db, sodaClient),
+		edtSyncService:     admin.NewEdtSyncService(db, sodaClient),
 	}
 }
 
@@ -54,7 +56,13 @@ func (h *AdminSyncHandler) WithProductSyncService(svc *admin.ProductSyncService)
 	return h
 }
 
-// GetSyncStatus consulta y devuelve el último CatalogSyncLog para el catálogo solicitado (ej. ?catalog=PND, ?catalog=SECTORS, ?catalog=PROGRAMS o ?catalog=PRODUCTS).
+// WithEdtSyncService inyecta el servicio de sincronización de EDT (útil para tests).
+func (h *AdminSyncHandler) WithEdtSyncService(svc *admin.EdtSyncService) *AdminSyncHandler {
+	h.edtSyncService = svc
+	return h
+}
+
+// GetSyncStatus consulta y devuelve el último CatalogSyncLog para el catálogo solicitado (ej. ?catalog=PND, ?catalog=SECTORS, ?catalog=PROGRAMS, ?catalog=PRODUCTS o ?catalog=EDT).
 // GET /api/v1/admin/sync/status
 func (h *AdminSyncHandler) GetSyncStatus(c *fiber.Ctx) error {
 	catalog := c.Query("catalog", "PND")
@@ -63,7 +71,9 @@ func (h *AdminSyncHandler) GetSyncStatus(c *fiber.Ctx) error {
 	var err error
 
 	trimmedCatalog := strings.TrimSpace(catalog)
-	if strings.EqualFold(trimmedCatalog, "PRODUCTS") && h.productSyncService != nil {
+	if strings.EqualFold(trimmedCatalog, "EDT") && h.edtSyncService != nil {
+		logEntry, err = h.edtSyncService.GetLatestSyncStatus(c.Context(), catalog)
+	} else if strings.EqualFold(trimmedCatalog, "PRODUCTS") && h.productSyncService != nil {
 		logEntry, err = h.productSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	} else if strings.EqualFold(trimmedCatalog, "PROGRAMS") && h.programSyncService != nil {
 		logEntry, err = h.programSyncService.GetLatestSyncStatus(c.Context(), catalog)
@@ -77,6 +87,8 @@ func (h *AdminSyncHandler) GetSyncStatus(c *fiber.Ctx) error {
 		logEntry, err = h.programSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	} else if h.productSyncService != nil {
 		logEntry, err = h.productSyncService.GetLatestSyncStatus(c.Context(), catalog)
+	} else if h.edtSyncService != nil {
+		logEntry, err = h.edtSyncService.GetLatestSyncStatus(c.Context(), catalog)
 	}
 
 	if err != nil {
@@ -177,6 +189,30 @@ func (h *AdminSyncHandler) TriggerProductsSync(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "success",
 		"message": "Products catalog sync completed successfully",
+		"data":    result,
+	})
+}
+
+// TriggerEdtSync dispara la sincronización del catálogo EDT desde SODA.
+// POST /api/v1/admin/sync/edt
+func (h *AdminSyncHandler) TriggerEdtSync(c *fiber.Ctx) error {
+	if h.edtSyncService == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "edt sync service is not configured",
+		})
+	}
+
+	result, err := h.edtSyncService.SyncEdt(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to execute EDT catalog sync",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "EDT catalog sync completed successfully",
 		"data":    result,
 	})
 }

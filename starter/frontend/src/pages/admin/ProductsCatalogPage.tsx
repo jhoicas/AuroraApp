@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { RefreshCw, ListTree } from 'lucide-react';
 import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import ProductDetailModal from '../../components/admin/ProductDetailModal';
@@ -642,6 +642,14 @@ export default function ProductsCatalogPage() {
                       </td>
                       <td className="px-4 py-3 sticky right-0 z-10 whitespace-nowrap text-right border-l border-[#E2E8F0] bg-white group-even:bg-[#E6FFFA] group-hover:bg-[#e7eeff] shadow-[-6px_0_8px_-4px_rgba(0,0,0,0.08)]">
                         <div className="inline-flex items-center gap-2">
+                          <Link
+                            to={`/admin/catalogs/edt?productCode=${encodeURIComponent(row.codigo_del_producto)}`}
+                            className="h-9 px-3 rounded-lg border border-[#319795] bg-[#E6FFFA] text-[#006162] text-xs font-bold inline-flex items-center gap-1.5 hover:bg-[#b2f5ea] transition-colors"
+                            title={`Ver matriz EDT del producto ${row.codigo_del_producto}`}
+                          >
+                            <ListTree className="w-3.5 h-3.5" />
+                            <span>EDT</span>
+                          </Link>
                           <button
                             type="button"
                             onClick={() => setViewingProduct(row)}

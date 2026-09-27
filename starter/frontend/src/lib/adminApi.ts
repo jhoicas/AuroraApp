@@ -357,6 +357,26 @@ export const triggerProductsSync = async (): Promise<ProductSyncResult> => {
   return data.data;
 };
 
+export interface EdtSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
+
+export interface TriggerEdtSyncResponse {
+  status: string;
+  message: string;
+  data: EdtSyncResult;
+}
+
+export const triggerEdtSync = async (): Promise<EdtSyncResult> => {
+  const { data } = await api.post<TriggerEdtSyncResponse>('/admin/sync/edt', {}, { timeout: 300000 });
+  return data.data;
+};
+
+
 
 
 

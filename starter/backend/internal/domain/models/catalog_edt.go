@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // CatalogEdt fila del catálogo DNP catalogo_edt (matriz EDT / actividades).
@@ -14,8 +15,9 @@ import (
 // El ID UUID es la PK interna; la unicidad de negocio NO reemplaza al ID.
 // Todos los códigos se almacenan como string para preservar ceros a la izquierda.
 type CatalogEdt struct {
-	ID                          uuid.UUID  `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID                          uuid.UUID  `gorm:"column:id;type:uuid;primaryKey" json:"id"`
 	TenantID                    *uuid.UUID `gorm:"column:tenant_id;type:uuid;index" json:"tenant_id,omitempty"`
+	ProductID                   *uuid.UUID `gorm:"column:product_id;type:uuid;index" json:"product_id,omitempty"`
 	CodigoProductoEstandarizado string     `gorm:"column:codigo_producto_estandarizado;type:varchar(50);not null;uniqueIndex:idx_edt_composite" json:"codigo_producto_estandarizado"`
 	NombreProducto              string     `gorm:"column:nombre_producto;type:text" json:"nombre_producto"`
 	CodigoEntregableL1          string     `gorm:"column:codigo_entregable_l1;type:varchar(100);not null;default:'';uniqueIndex:idx_edt_composite" json:"codigo_entregable_l1"`
@@ -27,8 +29,16 @@ type CatalogEdt struct {
 	CodigoActividad             string     `gorm:"column:codigo_actividad;type:varchar(100);not null;default:'';uniqueIndex:idx_edt_composite" json:"codigo_actividad"`
 	Actividad                   string     `gorm:"column:actividad;type:text" json:"actividad"`
 	UnidadDeMedida              string     `gorm:"column:unidad_de_medida;type:text" json:"unidad_de_medida"`
+	Observaciones               string     `gorm:"column:observaciones;type:text" json:"observaciones,omitempty"`
 	CreatedAt                   time.Time  `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt                   time.Time  `gorm:"column:updated_at" json:"updated_at,omitempty"`
+}
+
+func (e *CatalogEdt) BeforeCreate(tx *gorm.DB) (err error) {
+	if e.ID == uuid.Nil {
+		e.ID = uuid.New()
+	}
+	return nil
 }
 
 func (CatalogEdt) TableName() string {

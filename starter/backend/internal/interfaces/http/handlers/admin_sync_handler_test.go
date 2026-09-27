@@ -399,4 +399,89 @@ func TestAdminSyncHandler_TriggerProductsSyncAndStatus(t *testing.T) {
 	assert.Equal(t, "Servicio de Asistencia Forestal", prod.Producto)
 }
 
+func TestAdminSyncHandler_TriggerEdtSyncAndStatus(t *testing.T) {
+	db := newSQLiteDB(t)
+	require.NoError(t, db.AutoMigrate(&models.CatalogSyncLog{}, &models.CatalogProduct{}, &models.CatalogEdt{}))
+
+	// Pre-seed a product
+	prodID := uuid.New()
+	prod := models.CatalogProduct{
+		ID:                      prodID,
+		CodigoProducto:          "0101001",
+		Producto:                "Servicio de Asistencia Forestal",
+		CodigoIndicadorProducto: "IND-01",
+		CreatedAt:               time.Now(),
+	}
+	require.NoError(t, db.Create(&prod).Error)
+
+	sampleRows := []admin.RawSodaEdtRow{
+		{
+			CodigoProductoEstandarizado: "0101001",
+			NombreProducto:              "Servicio de Asistencia Forestal",
+			CodigoEntregableL1:          "01",
+			CodigoEntregableL2:          "0101",
+			CodigoEntregableL3:          "010101",
+			CodigoActividad:             "ACT-01",
+			Actividad:                   "Capacitación Técnica",
+			UnidadDeMedida:              "Horas",
+		},
+	}
+
+	var rawMessages []json.RawMessage
+	for _, row := range sampleRows {
+		b, _ := json.Marshal(row)
+		rawMessages = append(rawMessages, b)
+	}
+
+	mockClient := &mockSodaClient{records: rawMessages}
+	pndSyncService := admin.NewPndSyncService(db, mockClient)
+	edtSyncService := admin.NewEdtSyncService(db, mockClient)
+	handler := NewAdminSyncHandlerWithService(pndSyncService).WithEdtSyncService(edtSyncService)
+
+	app := fiber.New()
+	app.Get("/api/v1/admin/sync/status", handler.GetSyncStatus)
+	app.Post("/api/v1/admin/sync/edt", handler.TriggerEdtSync)
+
+	// 1. Trigger EDT Sync
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/edt", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var triggerBody struct {
+		Status string              `json:"status"`
+		Data   admin.EdtSyncResult `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&triggerBody)
+	require.NoError(t, err)
+	assert.Equal(t, "success", triggerBody.Status)
+	assert.Equal(t, 1, triggerBody.Data.RecordsProcessed)
+	assert.Equal(t, "SUCCESS", triggerBody.Data.Status)
+	assert.Equal(t, "EDT", triggerBody.Data.CatalogName)
+
+	// 2. Status check for EDT
+	reqStatus := httptest.NewRequest(http.MethodGet, "/api/v1/admin/sync/status?catalog=EDT", nil)
+	respStatus, err := app.Test(reqStatus)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, respStatus.StatusCode)
+
+	var statusBody struct {
+		Data *models.CatalogSyncLog `json:"data"`
+	}
+	err = json.NewDecoder(respStatus.Body).Decode(&statusBody)
+	require.NoError(t, err)
+	require.NotNil(t, statusBody.Data)
+	assert.Equal(t, models.CatalogSyncStatus("SUCCESS"), statusBody.Data.Status)
+	assert.Equal(t, 1, statusBody.Data.RecordsProcessed)
+	assert.Equal(t, "EDT", statusBody.Data.CatalogName)
+
+	// 3. Verify EDT is created with product FK in DB
+	var edt models.CatalogEdt
+	err = db.Where("codigo_producto_estandarizado = ? AND codigo_actividad = ?", "0101001", "ACT-01").First(&edt).Error
+	require.NoError(t, err)
+	assert.Equal(t, &prodID, edt.ProductID)
+	assert.Equal(t, "Capacitación Técnica", edt.Actividad)
+}
+
+
 

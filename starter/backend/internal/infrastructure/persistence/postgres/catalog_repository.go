@@ -702,6 +702,7 @@ type CatalogEdtListResult struct {
 const catalogEdtBatchSize = 500
 
 var catalogEdtUpsertColumns = []string{
+	"product_id",
 	"nombre_producto",
 	"nombre_entregable_l1",
 	"nombre_entregable_l2",

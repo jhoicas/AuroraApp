@@ -21,7 +21,45 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
-### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Productos MGA con Resolución FK de Programas, Navegación Relacional y Regla de Oro UI
+### 2026-09-26 - Antigravity - Expansión SODA: Catálogo EDT MGA con Resolución FK de Productos, Navegación Relacional y Regla de Oro UI
+
+- **Objetivo:** Expandir el motor de sincronización SODA DNP para el catálogo EDT (`catalogo_edt`), incorporando la llave foránea hacia Productos (`ProductID`), resolviendo en memoria la relación con productos existentes para omitir registros fantasma, implementando navegación relacional desde Productos hacia EDT con pre-filtrado automático y aplicando la Regla de Oro del spinner en la UI.
+- **Backend (Go / Fiber / GORM / Postgres & SQLite):**
+  - [catalog_edt.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/catalog_edt.go):
+    - Se agregaron `ProductID *uuid.UUID` (`gorm:"column:product_id;type:uuid;index"`), `Observaciones string` (`gorm:"column:observaciones;type:text"`) y el hook `BeforeCreate(tx *gorm.DB)` para asignación limpia de UUID compatible con PostgreSQL y SQLite.
+  - [db.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/db.go):
+    - Se actualizó `ensureCatalogoEdtSchema` para asegurar columnas `product_id UUID`, `observaciones TEXT` e índice `idx_catalogo_edt_product_id`.
+  - [catalog_repository.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/catalog_repository.go):
+    - Se incluyó `product_id` en `catalogEdtUpsertColumns`.
+  - [edt_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/edt_sync_service.go):
+    - Implementación de `EdtSyncService` para consumir el catálogo EDT / matriz de actividades desde SODA.
+    - **Resolución FK de Productos:** Consulta los productos existentes en base de datos y construye un mapa en memoria (`productByCode`) para asignar `ProductID` y `NombreProducto`. Omite de forma segura los EDT con productos no encontrados (productos fantasma).
+    - **Upsert Protegido:** Inserción y actualización masiva sobre `catalogo_edt` usando `clause.OnConflict` en las 5 columnas clave `(codigo_producto_estandarizado, codigo_entregable_l1, codigo_entregable_l2, codigo_entregable_l3, codigo_actividad)`, asignando columnas oficiales pero **EXCLUYENDO ESTRICTAMENTE** el campo `observaciones`.
+    - Trazabilidad y auditoría completa en `CatalogSyncLog` con `catalog_name: "EDT"`.
+  - [admin_sync_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler.go):
+    - Se inyectó `edtSyncService` en el handler y se expuso `TriggerEdtSync` (`POST /api/v1/admin/sync/edt`).
+    - Soporte multi-catálogo en `GetSyncStatus` para `?catalog=EDT`.
+  - [admin_sync.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/router/admin_sync.go):
+    - Registro de ruta protegida `POST /api/v1/admin/sync/edt` bajo el rol `SuperAdmin`.
+  - [edt_sync_service_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/edt_sync_service_test.go) & [admin_sync_handler_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler_test.go):
+    - Pruebas unitarias que validan la resolución de FK de productos, omisión de EDT con productos inexistentes, protección estricta del campo `observaciones` y respuesta 200 en endpoints HTTP.
+- **Frontend (React / TypeScript / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Tipos `EdtSyncResult` y `TriggerEdtSyncResponse`.
+    - Función exportada `triggerEdtSync()` con timeout extendido a 300.000 ms (5 minutos).
+  - [ProductsCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/ProductsCatalogPage.tsx):
+    - Se añadió botón de acción con ícono `ListTree` enlazando a `/admin/catalogs/edt?productCode={codigo_producto}` para navegación relacional directa desde cada producto.
+  - [EdtCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/EdtCatalogPage.tsx):
+    - Lectura de query param (`useSearchParams()`) para pre-filtrar automáticamente la tabla EDT al navegar desde la vista de Productos (`?productCode=...`).
+    - Encabezado con badge de estado de sincronización (`formatSyncDate`), cantidad de registros procesados y botón `Sincronizar con DNP`.
+    - **Regla de Oro del Spinner:** `setIsSyncing(false)` se invoca estrictamente en el bloque `finally` de `handleSync`.
+    - Actualización inmediata del estado local `syncLog` y refresco reactivo no bloqueante con `Promise.allSettled([fetchCatalogEdt(...), loadSyncStatus()])` sin recargar la página (F5).
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/application/admin/... ./internal/interfaces/http/handlers -run "TestEdtSync|TestProductSync|TestProgramSync|TestAdminSync"` -> 12 tests PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (Vite build exitoso en 5.00s).
+
 
 - **Objetivo:** Expandir el motor de sincronización de datos abiertos (SODA DNP) para el catálogo de Productos MGA (`catalogo_productos`), expandiendo el modelo de datos para capturar atributos oficiales DNP, resolviendo la relación de llave foránea (`ProgramID`) contra `programas_subprogramas` en memoria, implementando la navegación relacional de Programas hacia Productos con filtro automático, y aplicando la Regla de Oro de UI para el spinner.
 - **Backend (Go / Fiber / GORM / Postgres & SQLite):**

@@ -496,6 +496,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 	createSQL := `CREATE TABLE IF NOT EXISTS catalogo_edt (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			tenant_id UUID,
+			product_id UUID,
 			codigo_producto_estandarizado VARCHAR(50) NOT NULL,
 			nombre_producto TEXT,
 			codigo_entregable_l1 VARCHAR(100),
@@ -507,6 +508,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 			codigo_actividad VARCHAR(100) NOT NULL DEFAULT '',
 			actividad TEXT,
 			unidad_de_medida TEXT,
+			observaciones TEXT,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ
 		)`
@@ -515,6 +517,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 		fallback := `CREATE TABLE IF NOT EXISTS catalogo_edt (
 			id UUID PRIMARY KEY,
 			tenant_id UUID,
+			product_id UUID,
 			codigo_producto_estandarizado VARCHAR(50) NOT NULL,
 			nombre_producto TEXT,
 			codigo_entregable_l1 VARCHAR(100),
@@ -526,6 +529,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 			codigo_actividad VARCHAR(100) NOT NULL DEFAULT '',
 			actividad TEXT,
 			unidad_de_medida TEXT,
+			observaciones TEXT,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ
 		)`
@@ -538,6 +542,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 
 	statements := []string{
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS product_id UUID`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS codigo_producto_estandarizado VARCHAR(50)`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS nombre_producto TEXT`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS codigo_entregable_l1 VARCHAR(100)`,
@@ -549,6 +554,7 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS codigo_actividad VARCHAR(100)`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS actividad TEXT`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS unidad_de_medida TEXT`,
+		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS observaciones TEXT`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
 		`ALTER TABLE IF EXISTS catalogo_edt ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
 		`UPDATE catalogo_edt SET codigo_actividad = '' WHERE codigo_actividad IS NULL`,
@@ -588,6 +594,8 @@ func ensureCatalogoEdtSchema(db *gorm.DB) {
 			ON catalogo_edt (codigo_producto_estandarizado, codigo_entregable_l1, codigo_entregable_l2, codigo_entregable_l3, codigo_actividad)`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_edt_producto
 			ON catalogo_edt (codigo_producto_estandarizado)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_edt_product_id
+			ON catalogo_edt (product_id)`,
 	}
 	execSchemaStatements(db, "ensure catalogo_edt schema", statements)
 

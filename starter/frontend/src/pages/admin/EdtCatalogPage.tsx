@@ -1,11 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import CatalogImporter from '../../components/CatalogImporter';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import EdtDetailModal from '../../components/admin/EdtDetailModal';
 import { useCatalogStore, type CatalogEdt } from '../../store/catalogStore';
 import { useCopilotSearchSync } from '../../store/auroraCopilotStore';
+import { getSyncStatus, triggerEdtSync, type CatalogSyncLog } from '../../lib/adminApi';
 
 const LIMIT_OPTIONS = [5, 10, 20] as const;
+
+function formatSyncDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 function cellText(value: string | null | undefined): string {
   const v = (value ?? '').trim();
@@ -14,6 +33,9 @@ function cellText(value: string | null | undefined): string {
 }
 
 export default function EdtCatalogPage() {
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get('productCode') || searchParams.get('q') || '';
+
   const catalogEdt = useCatalogStore((s) => s.catalogEdt);
   const catalogEdtMeta = useCatalogStore((s) => s.catalogEdtMeta);
   const isLoadingEdt = useCatalogStore((s) => s.isLoadingEdt);
@@ -21,14 +43,32 @@ export default function EdtCatalogPage() {
   const fetchCatalogEdt = useCatalogStore((s) => s.fetchCatalogEdt);
   const clearError = useCatalogStore((s) => s.clearError);
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQ);
   useCopilotSearchSync('edt', setQuery);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQ.trim());
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(10);
   const [searchFocused, setSearchFocused] = useState(false);
   const [viewingEdt, setViewingEdt] = useState<CatalogEdt | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+
+  // Estado de sincronización SODA DNP
+  const [syncLog, setSyncLog] = useState<CatalogSyncLog | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const loadSyncStatus = useCallback(async () => {
+    try {
+      const status = await getSyncStatus('EDT');
+      setSyncLog(status);
+    } catch {
+      // Ignorar fallo no crítico en lectura de status
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSyncStatus();
+  }, [loadSyncStatus]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 350);
@@ -48,18 +88,116 @@ export default function EdtCatalogPage() {
     setPage(1);
   };
 
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      setFlash(null);
+      clearError();
+      const res = await triggerEdtSync();
+
+      const count = res?.records_processed ?? 0;
+      setFlash(`Sincronización con Datos Abiertos DNP exitosa: ${count.toLocaleString('es-CO')} registros procesados.`);
+
+      // Actualizar estado de sincronización local de inmediato
+      if (res) {
+        setSyncLog({
+          id: res.sync_log_id,
+          catalog_name: res.catalog_name || 'EDT',
+          started_at: new Date(Date.now() - (res.duration_ms || 0)).toISOString(),
+          completed_at: new Date().toISOString(),
+          status: 'SUCCESS',
+          records_processed: count,
+        });
+      }
+
+      // Recargar de inmediato los datos del catálogo y confirmar estado de auditoría sin F5
+      await Promise.allSettled([
+        fetchCatalogEdt({ page: 1, limit, search: debouncedQuery }),
+        loadSyncStatus(),
+      ]);
+      setPage(1);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.details ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Error al sincronizar con Datos Abiertos DNP';
+      setSyncError(msg);
+      await loadSyncStatus();
+    } finally {
+      // Regla de Oro de UI: setIsSyncing(false) estrictamente en el finally
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="-m-6 font-body text-[#121c2c]">
       <div className="p-6 md:p-12 max-w-[1280px] mx-auto space-y-8">
-        <div>
-          <h3 className="font-headline text-2xl font-semibold text-[#121c2c] mb-1">
-            Catálogo EDT
-          </h3>
-          <p className="text-base text-[#3f4949]">
-            Matriz de entregables y actividades DNP. Unicidad por producto estandarizado +
-            código de actividad.
-          </p>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+          <div>
+            <h3 className="font-headline text-2xl font-semibold text-[#121c2c] mb-1">
+              Catálogo EDT
+            </h3>
+            <p className="text-base text-[#3f4949]">
+              Matriz de entregables y actividades DNP. Unicidad por producto estandarizado +
+              código de actividad.
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-sm text-[#6f7979]">
+              {isSyncing ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Sincronización en curso con DNP...
+                </span>
+              ) : syncLog?.completed_at ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  Última sincronización: {formatSyncDate(syncLog.completed_at)}
+                  {syncLog.records_processed > 0 && ` (${syncLog.records_processed.toLocaleString('es-CO')} registros)`}
+                </span>
+              ) : syncLog?.status === 'IN_PROGRESS' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Sincronización en curso con DNP...
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
+                  Sin sincronización previa registrada
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="h-12 px-4 bg-[#006162] hover:bg-[#004e4f] text-white font-medium rounded-lg inline-flex items-center gap-2 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title="Disparar sincronización con datos.gov.co"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar con DNP'}</span>
+            </button>
+          </div>
         </div>
+
+        {syncError && (
+          <div className="mb-6 bg-[#FFF5F5] border-l-4 border-[#E53E3E] text-[#C53030] p-4 rounded-r shadow-sm flex items-center justify-between">
+            <div>
+              <p className="font-semibold">Error al sincronizar con Datos Abiertos</p>
+              <p className="text-sm">{syncError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncError(null)}
+              className="text-[#C53030] hover:text-[#9B2C2C] p-1 rounded-md transition-colors hover:bg-[#FED7D7]"
+              title="Cerrar"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+          </div>
+        )}
 
         <CatalogImporter
           variant="edt"

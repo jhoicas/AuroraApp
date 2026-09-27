@@ -145,6 +145,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.Agrupacion{}); err != nil {
 		log.Printf("automigrate Agrupacion: %v", err)
 	}
+	if err := db.AutoMigrate(&models.PNDCatalog{}); err != nil {
+		log.Printf("automigrate PNDCatalog: %v", err)
+	}
 	if err := db.AutoMigrate(&models.CatalogSyncLog{}); err != nil {
 		log.Printf("automigrate CatalogSyncLog: %v", err)
 	}
@@ -169,6 +172,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureMgaExtendedSchema(db)
 	ensureMgaCatalogSchema(db)
 	ensureProjectEdtSchema(db)
+	ensurePndCatalogSchema(db)
 	ensureCatalogSyncLogsSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
@@ -1366,9 +1370,50 @@ func ensureCatalogSyncLogsSchema(db *gorm.DB) {
 		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS error_message TEXT`,
 		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
 		`ALTER TABLE catalog_sync_logs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_pnd_catalogs_unique_identifier ON pnd_catalogs (unique_identifier)`,
 	}
 	execSchemaStatements(db, "ensure catalog_sync_logs schema", statements)
+}
+
+func ensurePndCatalogSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS pnd_catalog (
+		id SERIAL PRIMARY KEY,
+		plan_id INTEGER,
+		plan_name TEXT,
+		pillar_id INTEGER DEFAULT 1,
+		objective_id INTEGER DEFAULT 1,
+		strategy_id INTEGER DEFAULT 1,
+		component_id INTEGER DEFAULT 1,
+		pillar_description TEXT,
+		objective_description TEXT,
+		strategy_description TEXT,
+		component_description TEXT,
+		row_state INTEGER DEFAULT 1,
+		unique_identifier VARCHAR(255),
+		created_at TIMESTAMPTZ DEFAULT NOW(),
+		updated_at TIMESTAMPTZ DEFAULT NOW()
+	)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		log.Printf("ensure pnd_catalog schema: %v", err)
+	}
+
+	statements := []string{
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS plan_id INTEGER`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS plan_name TEXT`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS pillar_id INTEGER DEFAULT 1`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS objective_id INTEGER DEFAULT 1`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS strategy_id INTEGER DEFAULT 1`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS component_id INTEGER DEFAULT 1`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS pillar_description TEXT`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS objective_description TEXT`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS strategy_description TEXT`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS component_description TEXT`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS row_state INTEGER DEFAULT 1`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS unique_identifier VARCHAR(255)`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE IF EXISTS pnd_catalog ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_pnd_catalog_unique_identifier ON pnd_catalog (unique_identifier)`,
+	}
+	execSchemaStatements(db, "ensure pnd_catalog schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

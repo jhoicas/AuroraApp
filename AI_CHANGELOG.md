@@ -21,6 +21,24 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-26 - Antigravity - Corrección de Pluralización y Migración de Tabla PND (`pnd_catalog`)
+
+- **Objetivo:** Resolver el error `relation "pnd_catalogs" does not exist` al ejecutar la sincronización SODA DNP mediante la explicitación de la tabla `pnd_catalog` en el modelo GORM, servicio de sincronización y migraciones de base de datos.
+- **Backend (Go / GORM / Postgres):**
+  - [pnd_catalog.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/pnd_catalog.go):
+    - Se implementó explícitamente `func (PNDCatalog) TableName() string { return "pnd_catalog" }`.
+  - [pnd_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/pnd_sync_service.go):
+    - Se encadenó explícitamente `.Table("pnd_catalog")` previo a `.Clauses(clause.OnConflict{...})` en el bulk upsert.
+  - [pnd_sync_service_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/pnd_sync_service_test.go):
+    - Se agregaron pruebas unitarias para validar la inserción en la tabla `pnd_catalog`, verificación de campos mapeados e idempotencia del upsert.
+  - [db.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/db.go):
+    - Se incluyó `db.AutoMigrate(&models.PNDCatalog{})` de forma explícita en `Connect`.
+    - Se creó la función `ensurePndCatalogSchema(db)` para crear la tabla `pnd_catalog` y el índice único `idx_pnd_catalog_unique_identifier ON pnd_catalog (unique_identifier)`.
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/application/admin/...` -> PASS.
+  - `go test -v ./internal/infrastructure/soda/... ./internal/application/admin/... ./internal/interfaces/http/handlers -run TestAdminSyncHandler` -> PASS.
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+
 ### 2026-09-26 - Antigravity - Motor de Sincronización SODA (Datos Abiertos DNP - PND) y Disparador SuperAdmin
 
 - **Objetivo:** Construir el motor de sincronización de datos abiertos gubernamentales (SODA - datos.gov.co) para el Plan Nacional de Desarrollo (dataset `uds4-jdij.json`), garantizar auditoría en base de datos (`catalog_sync_logs`), upsert idempotente en `pnd_catalogs` y conectar el botón de disparo y estado de sincronización en el frontend administrativo.

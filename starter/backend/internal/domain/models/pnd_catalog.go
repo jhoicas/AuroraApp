@@ -19,3 +19,7 @@ type PNDCatalog struct {
 	CreatedAt            time.Time `json:"CreatedAt"`
 	UpdatedAt            time.Time `json:"UpdatedAt"`
 }
+
+func (PNDCatalog) TableName() string {
+	return "pnd_catalog"
+}

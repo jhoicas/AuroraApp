@@ -197,6 +197,7 @@ func (s *PndSyncService) SyncPnd(ctx context.Context) (*PndSyncResult, error) {
 	// 4. Upsert masivo en lotes de 100 usando clause.OnConflict{UpdateAll: true}
 	if len(catalogItems) > 0 {
 		err = s.db.WithContext(ctx).
+			Table("pnd_catalog").
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "unique_identifier"}},
 				UpdateAll: true,

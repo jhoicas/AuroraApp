@@ -105,6 +105,18 @@ export type ProjectMgaLocalizationItem = {
   agrupacion_id?: number | null;
 };
 
+export type EstudioNecesidadItem = {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  descripcion_oferta: string;
+  descripcion_demanda: string;
+  unidad_medida_id: number | string;
+  ano_inicial: number | string;
+  ano_final: number | string;
+  ultimo_ano_proyectado: number | string;
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -114,6 +126,7 @@ export type ProjectMgaFormulation = {
   alternatives: MgaAlternative[];
   planDesarrollo?: PlanDesarrolloData;
   necesidades?: Record<string, any>;
+  estudioNecesidades?: EstudioNecesidadItem[];
   analisisTecnico?: Record<string, any>;
   localizacion?: Record<string, any>;
   localizaciones?: ProjectMgaLocalizationItem[];
@@ -622,6 +635,8 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         const pData = project.mga_formulation_data;
         if (pData.planDesarrollo) formulation.planDesarrollo = pData.planDesarrollo as PlanDesarrolloData;
         if (pData.necesidades) formulation.necesidades = pData.necesidades;
+        if (pData.estudioNecesidades) formulation.estudioNecesidades = pData.estudioNecesidades;
+        else if (pData.necesidades?.estudioNecesidades) formulation.estudioNecesidades = pData.necesidades.estudioNecesidades;
         if (pData.analisisTecnico) formulation.analisisTecnico = pData.analisisTecnico;
         if (pData.localizacion) formulation.localizacion = pData.localizacion;
         if (pData.localizaciones) formulation.localizaciones = pData.localizaciones;

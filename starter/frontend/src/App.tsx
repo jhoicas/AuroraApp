@@ -21,6 +21,7 @@ import PndCatalogPage from './pages/admin/PndCatalogPage';
 import MgaActorsCatalogPage from './pages/admin/MgaActorsCatalogPage';
 import MgaEntitiesCatalogPage from './pages/admin/MgaEntitiesCatalogPage';
 import MgaPositionsCatalogPage from './pages/admin/MgaPositionsCatalogPage';
+import MeasurementUnitsCatalogPage from './pages/admin/MeasurementUnitsCatalogPage';
 import ProjectsDashboard from './pages/tenant/ProjectsDashboard';
 import ProjectCreationAssistant from './pages/tenant/ProjectCreationAssistant';
 import ProjectDetailPage from './pages/tenant/ProjectDetailPage';
@@ -61,6 +62,7 @@ function App() {
               <Route path="catalogs/pnd" element={<PndCatalogPage />} />
               <Route path="catalogs/procesos" element={<ProcesosCatalogPage />} />
               <Route path="catalogs/locations" element={<LocationsCatalogPage />} />
+              <Route path="catalogs/measurement-units" element={<MeasurementUnitsCatalogPage />} />
               <Route path="catalogs/mga-actors" element={<MgaActorsCatalogPage />} />
               <Route path="catalogs/mga-entities" element={<MgaEntitiesCatalogPage />} />
               <Route path="catalogs/mga-positions" element={<MgaPositionsCatalogPage />} />

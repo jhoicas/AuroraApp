@@ -151,6 +151,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.CatalogSyncLog{}); err != nil {
 		log.Printf("automigrate CatalogSyncLog: %v", err)
 	}
+	if err := db.AutoMigrate(&models.MeasurementUnit{}); err != nil {
+		log.Printf("automigrate MeasurementUnit: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -174,6 +177,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensureProjectEdtSchema(db)
 	ensurePndCatalogSchema(db)
 	ensureCatalogSyncLogsSchema(db)
+	ensureMeasurementUnitsSchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -193,6 +197,10 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 
 	if err := EnsureSystemRoles(db); err != nil {
 		return nil, fmt.Errorf("ensure system roles: %w", err)
+	}
+
+	if err := EnsureMeasurementUnitsSeed(db); err != nil {
+		log.Printf("ensure measurement units seed: %v", err)
 	}
 
 	log.Println("PostgreSQL connected and migrated via DATABASE_URL")
@@ -1435,6 +1443,26 @@ func ensurePndCatalogSchema(db *gorm.DB) {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_pnd_catalog_unique_identifier ON pnd_catalog (unique_identifier)`,
 	}
 	execSchemaStatements(db, "ensure pnd_catalog schema", statements)
+}
+
+func ensureMeasurementUnitsSchema(db *gorm.DB) {
+	createSQL := `CREATE TABLE IF NOT EXISTS catalogo_unidades_medida (
+		id INTEGER PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		created_at TIMESTAMPTZ DEFAULT NOW(),
+		updated_at TIMESTAMPTZ DEFAULT NOW()
+	)`
+	if err := db.Exec(createSQL).Error; err != nil {
+		log.Printf("ensure catalogo_unidades_medida schema: %v", err)
+	}
+
+	statements := []string{
+		`ALTER TABLE IF EXISTS catalogo_unidades_medida ADD COLUMN IF NOT EXISTS name VARCHAR(255)`,
+		`ALTER TABLE IF EXISTS catalogo_unidades_medida ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+		`ALTER TABLE IF EXISTS catalogo_unidades_medida ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_unidades_medida_name ON catalogo_unidades_medida (name)`,
+	}
+	execSchemaStatements(db, "ensure catalogo_unidades_medida schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

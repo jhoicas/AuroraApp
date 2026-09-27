@@ -23,6 +23,7 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/pnd', label: 'PND' },
   { to: '/admin/catalogs/procesos', label: 'Procesos MGA' },
   { to: '/admin/catalogs/locations', label: 'Localizaciones MGA' },
+  { to: '/admin/catalogs/measurement-units', label: 'Unidades de Medida' },
 ] as const;
 
 const mgaCatalogSubLinks = [
@@ -52,6 +53,7 @@ function headerTitle(pathname: string): string {
   if (pathname.includes('/admin/catalogs/pnd')) return 'PND';
   if (pathname.includes('/admin/catalogs/procesos')) return 'Procesos MGA';
   if (pathname.includes('/admin/catalogs/locations')) return 'Localizaciones MGA';
+  if (pathname.includes('/admin/catalogs/measurement-units')) return 'Unidades de Medida';
   if (pathname.includes('/admin/catalog')) return 'Catálogos Maestros';
   if (pathname.includes('/admin/tenants')) return 'Gestión de Tenants';
   if (pathname.includes('/admin/ai')) return 'Gestión IA Aurora';

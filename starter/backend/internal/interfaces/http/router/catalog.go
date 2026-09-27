@@ -1,6 +1,7 @@
 package router
 
 import (
+	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/interfaces/http/handlers"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -10,6 +11,7 @@ import (
 
 func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	h := handlers.NewCatalogHandler(db)
+	muHandler := handlers.NewMeasurementUnitHandler(db)
 
 	catalog := app.Group("/api/v1/catalog",
 		httpmw.RequireAuth(jwtSecret),
@@ -38,4 +40,17 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	catalog.Post("/ods/import", h.ImportOds)
 	catalog.Get("/pnd", h.ListCatalogPnd)
 	catalog.Post("/pnd/import", h.ImportPnd)
+
+	// Unidades de medida (tenant / selects)
+	catalog.Get("/measurement-units", muHandler.ListPublic)
+
+	// Unidades de medida (admin CRUD)
+	adminCatalogs := app.Group("/api/v1/admin/catalogs",
+		httpmw.RequireAuth(jwtSecret),
+		httpmw.RequireRole(constants.RoleSuperAdmin),
+	)
+	adminCatalogs.Get("/measurement-units", muHandler.ListAdmin)
+	adminCatalogs.Post("/measurement-units", muHandler.Create)
+	adminCatalogs.Put("/measurement-units/:id", muHandler.Update)
+	adminCatalogs.Delete("/measurement-units/:id", muHandler.Delete)
 }

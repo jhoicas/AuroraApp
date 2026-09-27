@@ -306,6 +306,18 @@ type PaginatedCatalogOds = {
   meta: CatalogPageMeta;
 };
 
+export type MeasurementUnit = {
+  id: number;
+  name: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type PaginatedMeasurementUnits = {
+  data: MeasurementUnit[];
+  meta: CatalogPageMeta;
+};
+
 export type CopilotCatalogTarget =
   | 'ods'
   | 'products'
@@ -315,6 +327,7 @@ export type CopilotCatalogTarget =
   | 'deliverables'
   | 'activities'
   | 'pnd'
+  | 'measurement-units'
   | 'full';
 
 type CatalogState = {
@@ -340,6 +353,8 @@ type CatalogState = {
   catalogOdsMeta: CatalogPageMeta | null;
   catalogPnd: CatalogPnd[];
   catalogPndMeta: CatalogPageMeta | null;
+  measurementUnits: MeasurementUnit[];
+  measurementUnitsMeta: CatalogPageMeta | null;
   isLoading: boolean;
   /** Carga de programas por sector (wizard tenant /tenant/catalog). */
   isLoadingSectorPrograms: boolean;
@@ -350,6 +365,7 @@ type CatalogState = {
   isLoadingActivities: boolean;
   isLoadingOds: boolean;
   isLoadingPnd: boolean;
+  isLoadingMeasurementUnits: boolean;
   procesos: Proceso[];
   procesosMeta: CatalogPageMeta | null;
   isLoadingProcesos: boolean;
@@ -385,6 +401,11 @@ type CatalogState = {
   importOds: (file: File) => Promise<CatalogImportResult>;
   fetchCatalogPnd: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   importPnd: (file: File) => Promise<CatalogImportResult>;
+  fetchMeasurementUnits: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
+  fetchAllMeasurementUnits: () => Promise<MeasurementUnit[]>;
+  createMeasurementUnit: (payload: { id?: number; name: string }) => Promise<MeasurementUnit>;
+  updateMeasurementUnit: (id: number, name: string) => Promise<MeasurementUnit>;
+  deleteMeasurementUnit: (id: number) => Promise<void>;
   fetchProcesos: (isActive?: boolean, search?: string, page?: number, limit?: number) => Promise<void>;
   createProceso: (payload: { id: number; name: string }) => Promise<void>;
   updateProceso: (id: number, name: string) => Promise<void>;
@@ -396,6 +417,7 @@ type CatalogState = {
   clearActivities: () => void;
   clearOds: () => void;
   clearPnd: () => void;
+  clearMeasurementUnits: () => void;
   clearError: () => void;
   copilotSearch: { catalog: CopilotCatalogTarget; query: string } | null;
   applyCopilotSearch: (catalog: CopilotCatalogTarget, query: string) => void;
@@ -531,6 +553,8 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   catalogOdsMeta: null,
   catalogPnd: [],
   catalogPndMeta: null,
+  measurementUnits: [],
+  measurementUnitsMeta: null,
   procesos: [],
   procesosMeta: null,
   isLoading: false,
@@ -542,6 +566,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   isLoadingActivities: false,
   isLoadingOds: false,
   isLoadingPnd: false,
+  isLoadingMeasurementUnits: false,
   isLoadingProcesos: false,
   error: null,
   copilotSearch: null,
@@ -570,6 +595,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   clearActivities: () => set({ catalogActivities: [], catalogActivitiesMeta: null }),
   clearOds: () => set({ catalogOds: [], catalogOdsMeta: null }),
   clearPnd: () => set({ catalogPnd: [], catalogPndMeta: null }),
+  clearMeasurementUnits: () => set({ measurementUnits: [], measurementUnitsMeta: null }),
 
   fetchSectors: async (opts) => {
     set({ isLoading: true, error: null });
@@ -1021,6 +1047,86 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
       return data;
     } catch (err) {
       throw new Error(extractError(err, 'No se pudo importar el archivo PND'));
+    }
+  },
+
+  // --- Unidades de Medida ---
+  fetchMeasurementUnits: async (opts) => {
+    set({ isLoadingMeasurementUnits: true, error: null });
+    try {
+      const { data } = await api.get<PaginatedMeasurementUnits>('/admin/catalogs/measurement-units', {
+        params: {
+          page: opts?.page ?? 1,
+          limit: opts?.limit ?? 10,
+          search: opts?.search?.trim() || undefined,
+        },
+      });
+      set({
+        measurementUnits: data.data ?? [],
+        measurementUnitsMeta: data.meta ?? null,
+        isLoadingMeasurementUnits: false,
+      });
+    } catch (err) {
+      set({
+        isLoadingMeasurementUnits: false,
+        error: extractError(err, 'No se pudieron cargar las unidades de medida'),
+        measurementUnits: [],
+        measurementUnitsMeta: null,
+      });
+    }
+  },
+
+  fetchAllMeasurementUnits: async () => {
+    set({ isLoadingMeasurementUnits: true, error: null });
+    try {
+      const { data } = await api.get<MeasurementUnit[]>('/catalog/measurement-units');
+      const units = Array.isArray(data) ? data : [];
+      set({
+        measurementUnits: units,
+        isLoadingMeasurementUnits: false,
+      });
+      return units;
+    } catch (err) {
+      set({
+        isLoadingMeasurementUnits: false,
+        error: extractError(err, 'No se pudieron cargar las unidades de medida'),
+      });
+      return [];
+    }
+  },
+
+  createMeasurementUnit: async (payload) => {
+    try {
+      const { data } = await api.post<MeasurementUnit>('/admin/catalogs/measurement-units', payload);
+      set((state) => ({
+        measurementUnits: [...state.measurementUnits, data].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo crear la unidad de medida'));
+    }
+  },
+
+  updateMeasurementUnit: async (id, name) => {
+    try {
+      const { data } = await api.put<MeasurementUnit>(`/admin/catalogs/measurement-units/${id}`, { name });
+      set((state) => ({
+        measurementUnits: state.measurementUnits.map((u) => (u.id === id ? data : u)),
+      }));
+      return data;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo actualizar la unidad de medida'));
+    }
+  },
+
+  deleteMeasurementUnit: async (id) => {
+    try {
+      await api.delete(`/admin/catalogs/measurement-units/${id}`);
+      set((state) => ({
+        measurementUnits: state.measurementUnits.filter((u) => u.id !== id),
+      }));
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo eliminar la unidad de medida'));
     }
   },
 

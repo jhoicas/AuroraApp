@@ -154,7 +154,7 @@ export type ProjectMgaFormulation = {
   cadenaValor?: CadenaValorData;
   necesidades?: Record<string, any>;
   estudioNecesidades?: EstudioNecesidadItem[];
-  analisisTecnico?: Record<string, any>;
+  analisisTecnico?: Record<string, { resumen: string }>;
   localizacion?: Record<string, any>;
   localizaciones?: ProjectMgaLocalizationItem[];
   factores_analizados?: string[];
@@ -230,7 +230,7 @@ type ProjectMgaState = {
   saveCadenaDeValor: (projectId: string, data?: CadenaValorData) => Promise<void>;
   saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
-  saveAnalisisTecnico: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveAnalisisTecnico: (projectId: string, alternativeId: string, data: { resumen: string }) => Promise<void>;
   saveLocalizacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveRiesgos: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveIngresosBeneficios: (projectId: string, data: Record<string, any>) => Promise<void>;
@@ -399,15 +399,17 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     }
   },
 
-  saveAnalisisTecnico: async (projectId, data) => {
+  saveAnalisisTecnico: async (projectId, alternativeId, data) => {
     set({ isSaving: true, error: null });
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const currentAnalisis = formulation.analisisTecnico || {};
+        const updatedAnalisis = { ...currentAnalisis, [alternativeId]: data };
         const newCompleted = { ...formulation.completedSections, analisisTecnico: true };
-        debouncedPatchProject(projectId, { analisisTecnico: data, completedSections: newCompleted });
+        debouncedPatchProject(projectId, { analisisTecnico: updatedAnalisis, completedSections: newCompleted });
         return {
-          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, analisisTecnico: data, completedSections: newCompleted } },
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, analisisTecnico: updatedAnalisis, completedSections: newCompleted } },
           isSaving: false,
         };
       });

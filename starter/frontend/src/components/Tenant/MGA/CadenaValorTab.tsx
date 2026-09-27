@@ -173,7 +173,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
             onChange={handleSectorChange}
             disabled={isLoadingSectors}
             projectContext={fieldProjectContext}
-            options={sectors.map(s => ({ value: s.id, label: \`\${s.code} - \${s.name}\` }))}
+            options={sectors.map(s => ({ value: s.id, label: `${s.code} - ${s.name}` }))}
           />
         </div>
 
@@ -187,7 +187,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
             onChange={handleProgramChange}
             disabled={!sectorCode || isLoadingPrograms}
             projectContext={fieldProjectContext}
-            options={programs.map(p => ({ value: p.code, label: \`\${p.code} - \${p.name}\` }))}
+            options={programs.map(p => ({ value: p.code, label: `${p.code} - ${p.name}` }))}
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
             onChange={handleProductChange}
             disabled={!programaCode || isLoadingProducts}
             projectContext={fieldProjectContext}
-            options={catalogProducts.map(p => ({ value: p.codigo_del_producto, label: \`\${p.codigo_del_producto} - \${p.producto}\` }))}
+            options={catalogProducts.map(p => ({ value: p.codigo_del_producto, label: `${p.codigo_del_producto} - ${p.producto}` }))}
           />
         </div>
 
@@ -215,7 +215,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
             onChange={setEdtId}
             disabled={!productoCode || isLoadingEdt}
             projectContext={fieldProjectContext}
-            options={catalogEdt.map(e => ({ value: e.id, label: \`\${e.codigo_actividad} - \${e.actividad}\` }))}
+            options={catalogEdt.map(e => ({ value: e.id, label: `${e.codigo_actividad} - ${e.actividad}` }))}
           />
         </div>
       </div>

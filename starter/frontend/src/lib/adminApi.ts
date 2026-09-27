@@ -300,3 +300,23 @@ export const triggerPndSync = async (): Promise<PndSyncResult> => {
   return data.data;
 };
 
+export interface SectorSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
+
+export interface TriggerSectorsSyncResponse {
+  status: string;
+  message: string;
+  data: SectorSyncResult;
+}
+
+export const triggerSectorsSync = async (): Promise<SectorSyncResult> => {
+  const { data } = await api.post<TriggerSectorsSyncResponse>('/admin/sync/sectors', {}, { timeout: 300000 });
+  return data.data;
+};
+
+

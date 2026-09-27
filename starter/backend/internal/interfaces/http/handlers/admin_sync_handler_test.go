@@ -155,3 +155,76 @@ func TestAdminSyncHandler_TriggerSyncAndStatus(t *testing.T) {
 	db.Model(&models.PNDCatalog{}).Count(&count)
 	assert.Equal(t, int64(2), count, "no debe duplicar registros existentes al re-sincronizar")
 }
+
+func TestAdminSyncHandler_TriggerSectorsSyncAndStatus(t *testing.T) {
+	db := newSQLiteDB(t)
+	require.NoError(t, db.AutoMigrate(&models.CatalogSyncLog{}, &models.Sector{}))
+
+	sampleRows := []admin.RawSodaSectorRow{
+		{
+			Codigo:      "01",
+			Nombre:      "Agricultura y Desarrollo Rural",
+			Aplicacion:  "Nacional y Territorial",
+			Descripcion: "Sector de agricultura",
+		},
+		{
+			Codigo:      "02",
+			Nombre:      "Salud y Protección Social",
+			Aplicacion:  "Nacional",
+			Descripcion: "Sector de salud",
+		},
+	}
+
+	var rawMessages []json.RawMessage
+	for _, row := range sampleRows {
+		b, _ := json.Marshal(row)
+		rawMessages = append(rawMessages, b)
+	}
+
+	mockClient := &mockSodaClient{records: rawMessages}
+	pndSyncService := admin.NewPndSyncService(db, mockClient)
+	sectorSyncService := admin.NewSectorSyncService(db, mockClient)
+	handler := NewAdminSyncHandlerWithService(pndSyncService, sectorSyncService)
+
+	app := fiber.New()
+	app.Get("/api/v1/admin/sync/status", handler.GetSyncStatus)
+	app.Post("/api/v1/admin/sync/sectors", handler.TriggerSectorsSync)
+
+	// 1. Trigger Sectors Sync
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/sectors", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var triggerBody struct {
+		Status string                 `json:"status"`
+		Data   admin.SectorSyncResult `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&triggerBody)
+	require.NoError(t, err)
+	assert.Equal(t, "success", triggerBody.Status)
+	assert.Equal(t, 2, triggerBody.Data.RecordsProcessed)
+	assert.Equal(t, "SUCCESS", triggerBody.Data.Status)
+	assert.Equal(t, "SECTORS", triggerBody.Data.CatalogName)
+
+	// 2. Status check for SECTORS
+	reqStatus := httptest.NewRequest(http.MethodGet, "/api/v1/admin/sync/status?catalog=SECTORS", nil)
+	respStatus, err := app.Test(reqStatus)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, respStatus.StatusCode)
+
+	var statusBody struct {
+		Data *models.CatalogSyncLog `json:"data"`
+	}
+	err = json.NewDecoder(respStatus.Body).Decode(&statusBody)
+	require.NoError(t, err)
+	require.NotNil(t, statusBody.Data)
+	assert.Equal(t, models.CatalogSyncStatus("SUCCESS"), statusBody.Data.Status)
+	assert.Equal(t, 2, statusBody.Data.RecordsProcessed)
+	assert.Equal(t, "SECTORS", statusBody.Data.CatalogName)
+
+	// 3. Verify sectors are created in DB
+	var sectorCount int64
+	db.Model(&models.Sector{}).Count(&sectorCount)
+	assert.Equal(t, int64(2), sectorCount)
+}

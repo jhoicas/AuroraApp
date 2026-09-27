@@ -21,6 +21,37 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Sectores DNP con Upsert Protegido y Patrón Reactivo de UI
+
+- **Objetivo:** Extender el motor de sincronización SODA gubernamental para el catálogo maestro de Sectores (`sectores`), aplicando un Upsert Protegido que preserva intacto el campo interno `observaciones` de la entidad territorial, y acoplar el disparador administrativo con patrón reactivo (timeout de 5 min, `setIsSyncing(false)` en `finally` y recarga en paralelo).
+- **Backend (Go / Fiber / GORM / Postgres & SQLite):**
+  - [sector_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/sector_sync_service.go):
+    - Implementación de `SectorSyncService` consumiendo SODA con mapeo flexible de campos (`codigo`/`code`/`cod_sector`, `nombre`/`name`/`sector`, `aplicacion`/`application`/`descripcion`).
+    - **Upsert Protegido:** Inserción y actualización masiva mediante `.Table("sectores")` y `clause.OnConflict` en columna `codigo`, asignando exclusivamente `nombre`, `aplicacion` y `updated_at`. El campo `observaciones` queda excluido de la actualización, salvaguardando notas internas de los municipios.
+    - Auditoría completa del ciclo de vida en `CatalogSyncLog` con `catalog_name: "SECTORS"` (`IN_PROGRESS` -> `SUCCESS` / `FAILED`).
+  - [sector.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/sector.go):
+    - Se adaptó la generación de ID mediante hook `BeforeCreate(tx *gorm.DB)` para compatibilidad cruzada entre PostgreSQL y SQLite en pruebas.
+  - [admin_sync_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler.go):
+    - Se incorporó `sectorSyncService` y el endpoint `TriggerSectorsSync` (`POST /api/v1/admin/sync/sectors`).
+    - Soporte multi-catálogo en `GetSyncStatus` para consultar el estado más reciente de `SECTORS`.
+  - [admin_sync.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/router/admin_sync.go):
+    - Registro de ruta protegida `POST /api/v1/admin/sync/sectors` bajo rol `SuperAdmin`.
+  - [sector_sync_service_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/sector_sync_service_test.go) & [admin_sync_handler_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler_test.go):
+    - Pruebas unitarias que certifican la protección del campo `observaciones` ante sobrescrituras por sincronización SODA y la respuesta HTTP 200 de los endpoints.
+- **Frontend (React / TypeScript / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Tipos `SectorSyncResult` y `TriggerSectorsSyncResponse`.
+    - Función exportada `triggerSectorsSync()` con timeout extendido a 300.000 ms (5 minutos).
+  - [SectorsCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/SectorsCatalogPage.tsx):
+    - Integración de badge de estado con `formatSyncDate` y botón "Sincronizar con DNP".
+    - Manejo riguroso del spinner con `setIsSyncing(false)` en bloque `finally`.
+    - Actualización inmediata del estado local tras éxito y refresco no bloqueante vía `Promise.allSettled([fetchSectors(...), loadSyncStatus()])` sin necesidad de recargar la página (F5).
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/application/admin/... ./internal/interfaces/http/handlers -run "TestSectorSync|TestAdminSync"` -> 5 tests PASS.
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (`tsc -b && vite build` completado en 4.83s).
+
 ### 2026-09-26 - Antigravity - Desbloqueo de UI y Refresco Inmediato tras Sincronización SODA PND
 
 - **Objetivo:** Resolver el problema de UI donde el botón y el badge en `PndCatalogPage.tsx` quedaban en estado de sincronización indefinido tras completar exitosamente la descarga de datos abiertos del PND.

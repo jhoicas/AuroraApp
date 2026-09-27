@@ -139,6 +139,12 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.Municipio{}); err != nil {
 		log.Printf("automigrate Municipio: %v", err)
 	}
+	if err := db.AutoMigrate(&models.Department{}); err != nil {
+		log.Printf("automigrate Department: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Municipality{}); err != nil {
+		log.Printf("automigrate Municipality: %v", err)
+	}
 	if err := db.AutoMigrate(&models.TipoAgrupacion{}); err != nil {
 		log.Printf("automigrate TipoAgrupacion: %v", err)
 	}

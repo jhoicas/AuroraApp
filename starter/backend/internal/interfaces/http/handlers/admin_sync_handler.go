@@ -15,22 +15,24 @@ import (
 
 // AdminSyncHandler maneja las solicitudes administrativas para sincronización de catálogos con SODA o archivos locales.
 type AdminSyncHandler struct {
-	pndSyncService     *admin.PndSyncService
-	sectorSyncService  *admin.SectorSyncService
-	programSyncService *admin.ProgramSyncService
-	productSyncService *admin.ProductSyncService
-	edtSyncService     *admin.EdtSyncService
+	pndSyncService      *admin.PndSyncService
+	sectorSyncService   *admin.SectorSyncService
+	programSyncService  *admin.ProgramSyncService
+	productSyncService  *admin.ProductSyncService
+	edtSyncService      *admin.EdtSyncService
+	divipolaSyncService *admin.DivipolaSyncService
 }
 
 // NewAdminSyncHandler crea una nueva instancia de AdminSyncHandler.
 func NewAdminSyncHandler(db *gorm.DB) *AdminSyncHandler {
 	sodaClient := soda.NewClient(soda.DefaultBaseURL, "", nil)
 	return &AdminSyncHandler{
-		pndSyncService:     admin.NewPndSyncService(db, sodaClient),
-		sectorSyncService:  admin.NewSectorSyncService(db),
-		programSyncService: admin.NewProgramSyncService(db),
-		productSyncService: admin.NewProductSyncService(db),
-		edtSyncService:     admin.NewEdtSyncService(db),
+		pndSyncService:      admin.NewPndSyncService(db, sodaClient),
+		sectorSyncService:   admin.NewSectorSyncService(db),
+		programSyncService:  admin.NewProgramSyncService(db),
+		productSyncService:  admin.NewProductSyncService(db),
+		edtSyncService:      admin.NewEdtSyncService(db),
+		divipolaSyncService: admin.NewDivipolaSyncService(db),
 	}
 }
 
@@ -275,6 +277,37 @@ func (h *AdminSyncHandler) TriggerEdtSync(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "EDT catalog sync completed successfully",
 		"data":    result,
+	})
+}
+
+// TriggerDivipolaSync carga y sincroniza el catálogo de DIVIPOLA desde un archivo JSON subido.
+// POST /api/v1/admin/sync/divipola
+func (h *AdminSyncHandler) TriggerDivipolaSync(c *fiber.Ctx) error {
+	if h.divipolaSyncService == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "divipola sync service is not configured",
+		})
+	}
+
+	data, err := parseUploadedJSON(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "failed to read uploaded json file",
+			"details": err.Error(),
+		})
+	}
+
+	err = h.divipolaSyncService.SyncDivipola(data)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "failed to execute DIVIPOLA catalog sync",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "DIVIPOLA catalog sync completed successfully",
 	})
 }
 

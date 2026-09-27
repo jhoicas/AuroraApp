@@ -40,6 +40,8 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	catalog.Post("/ods/import", h.ImportOds)
 	catalog.Get("/pnd", h.ListCatalogPnd)
 	catalog.Post("/pnd/import", h.ImportPnd)
+	catalog.Get("/departments", h.ListDepartments)
+	catalog.Get("/municipalities", h.ListMunicipalities)
 
 	// Unidades de medida (tenant / selects)
 	catalog.Get("/measurement-units", muHandler.ListPublic)

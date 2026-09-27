@@ -21,6 +21,7 @@ const catalogSubLinks = [
   { to: '/admin/catalogs/activities', label: 'Lista de actividades' },
   { to: '/admin/catalogs/ods', label: 'ODS' },
   { to: '/admin/catalogs/pnd', label: 'PND' },
+  { to: '/admin/catalogs/divipola', label: 'DIVIPOLA' },
   { to: '/admin/catalogs/procesos', label: 'Procesos MGA' },
   { to: '/admin/catalogs/locations', label: 'Localizaciones MGA' },
   { to: '/admin/catalogs/measurement-units', label: 'Unidades de Medida' },
@@ -51,6 +52,7 @@ function headerTitle(pathname: string): string {
   if (pathname.includes('/admin/catalogs/activities')) return 'Lista de actividades';
   if (pathname.includes('/admin/catalogs/ods')) return 'ODS';
   if (pathname.includes('/admin/catalogs/pnd')) return 'PND';
+  if (pathname.includes('/admin/catalogs/divipola')) return 'DIVIPOLA';
   if (pathname.includes('/admin/catalogs/procesos')) return 'Procesos MGA';
   if (pathname.includes('/admin/catalogs/locations')) return 'Localizaciones MGA';
   if (pathname.includes('/admin/catalogs/measurement-units')) return 'Unidades de Medida';

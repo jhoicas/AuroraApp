@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2, Users, CheckSquare } from 'lucide-react';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
-import { useLocationStore, type Region, type Departamento, type Municipio, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
+import { useLocationStore, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
+import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
 
 export const FACTORES_ANALIZADOS_MGA = [
@@ -37,14 +38,19 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const {
-    regions,
     tiposAgrupacion,
     agrupaciones,
-    isLoadingLocations,
-    fetchLocations,
+    isLoadingTiposAgrupacion,
+    isLoadingAgrupaciones,
     fetchTiposAgrupacion,
     fetchAgrupaciones,
   } = useLocationStore();
+
+  const departments = useCatalogStore((s) => s.departments);
+  const municipalitiesByDept = useCatalogStore((s) => s.municipalitiesByDept);
+  const isLoadingDivipola = useCatalogStore((s) => s.isLoadingDivipola);
+  const fetchDepartments = useCatalogStore((s) => s.fetchDepartments);
+  const fetchMunicipalities = useCatalogStore((s) => s.fetchMunicipalities);
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +81,21 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
   // Carga inicial de catálogos
   useEffect(() => {
-    fetchLocations(false);
+    void fetchDepartments();
     if (isEthnic) {
       fetchTiposAgrupacion(false);
       fetchAgrupaciones();
     }
-  }, [fetchLocations, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
+  }, [fetchDepartments, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
+
+  // Carga de municipios cuando cambia un departamento
+  useEffect(() => {
+    rows.forEach((r) => {
+      if (r.departamento_id) {
+        void fetchMunicipalities(r.departamento_id);
+      }
+    });
+  }, [rows, fetchMunicipalities]);
 
   // Helper de casteo ultra-seguro (string o number -> number | null)
   const toNumOrNull = (val: unknown): number | null => {
@@ -328,25 +343,20 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
     let matchedRow: LocalizacionRow | null = null;
 
-    for (const reg of regions) {
-      for (const dep of reg.departamentos || []) {
-        const depMatches = deptoNames.includes(dep.name.toLowerCase().trim());
-        for (const mun of dep.municipios || []) {
-          const munMatches = munNames.includes(mun.name.toLowerCase().trim());
-          if (munMatches || (depMatches && munNames.length === 0)) {
-            matchedRow = {
-              region_id: Number(reg.id),
-              departamento_id: Number(dep.id),
-              municipio_id: Number(mun.id),
-              tipo_agrupacion_id: null,
-              agrupacion_id: null,
-            };
-            break;
-          }
-        }
-        if (matchedRow) break;
+    for (const dep of departments) {
+      const depMatches = deptoNames.includes(dep.name.toLowerCase().trim());
+      // We would need municipalities to match them exactly, but since we don't have them all loaded,
+      // we match by department first if possible
+      if (depMatches) {
+        matchedRow = {
+          region_id: null,
+          departamento_id: Number(dep.id),
+          municipio_id: null,
+          tipo_agrupacion_id: null,
+          agrupacion_id: null,
+        };
+        break;
       }
-      if (matchedRow) break;
     }
 
     if (matchedRow) {
@@ -370,12 +380,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       const next = [...prev];
       const currentRow = { ...next[index] };
 
-      if (field === 'region_id') {
-        currentRow.region_id = value;
-        currentRow.departamento_id = null;
-        currentRow.municipio_id = null;
-        currentRow.agrupacion_id = null;
-      } else if (field === 'departamento_id') {
+      if (field === 'departamento_id') {
         currentRow.departamento_id = value;
         currentRow.municipio_id = null;
         currentRow.agrupacion_id = null;
@@ -421,8 +426,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     // Validación básica de completitud
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (!r.region_id || !r.departamento_id || !r.municipio_id) {
-        setError(`Fila #${i + 1}: Debe seleccionar Región, Departamento y Municipio.`);
+      if (!r.departamento_id || !r.municipio_id) {
+        setError(`Fila #${i + 1}: Debe seleccionar Departamento y Municipio.`);
         return;
       }
       if (isEthnic && (!r.tipo_agrupacion_id || !r.agrupacion_id)) {
@@ -505,12 +510,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       {/* Listado de Localizaciones */}
       <div className="space-y-4">
         {rows.map((row, index) => {
-          // Filtrado en cascada con normalización numérica
-          const selectedRegion = regions.find((r) => Number(r.id) === Number(row.region_id));
-          const deptosDisponibles = selectedRegion?.departamentos ?? [];
-
-          const selectedDepto = deptosDisponibles.find((d) => Number(d.id) === Number(row.departamento_id));
-          const municipiosDisponibles = selectedDepto?.municipios ?? [];
+          // Filtrado en cascada con DIVIPOLA
+          const municipiosDisponibles = row.departamento_id ? (municipalitiesByDept[row.departamento_id] || []) : [];
 
           // Filtrado estricto de agrupaciones étnicas:
           // Depende estrictamente del Municipio seleccionado y del Tipo de Agrupación
@@ -548,43 +549,21 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
               {/* Grid de Selectores Geográficos */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* 1. Región */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Región <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={row.region_id !== null && row.region_id !== undefined ? String(row.region_id) : ''}
-                    onChange={(e) => updateRow(index, 'region_id', e.target.value ? Number(e.target.value) : null)}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
-                    disabled={isLoadingLocations}
-                  >
-                    <option value="">Seleccione Región...</option>
-                    {regions.map((reg: Region) => (
-                      <option key={reg.id} value={String(reg.id)}>
-                        {reg.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* 2. Departamento */}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Departamento <span className="text-red-500">*</span>
+                    Departamento (DIVIPOLA) <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={row.departamento_id !== null && row.departamento_id !== undefined ? String(row.departamento_id) : ''}
                     onChange={(e) => updateRow(index, 'departamento_id', e.target.value ? Number(e.target.value) : null)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                    disabled={!row.region_id || deptosDisponibles.length === 0}
+                    disabled={isLoadingDivipola && departments.length === 0}
                   >
-                    <option value="">
-                      {!row.region_id ? 'Seleccione primero región...' : 'Seleccione Departamento...'}
-                    </option>
-                    {deptosDisponibles.map((dep: Departamento) => (
+                    <option value="">Seleccione Departamento...</option>
+                    {departments.map((dep) => (
                       <option key={dep.id} value={String(dep.id)}>
-                        {dep.name}
+                        {dep.code} - {dep.name}
                       </option>
                     ))}
                   </select>
@@ -593,7 +572,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                 {/* 3. Municipio */}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Municipio <span className="text-red-500">*</span>
+                    Municipio (DIVIPOLA) <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={row.municipio_id !== null && row.municipio_id !== undefined ? String(row.municipio_id) : ''}
@@ -604,9 +583,9 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     <option value="">
                       {!row.departamento_id ? 'Seleccione primero departamento...' : 'Seleccione Municipio...'}
                     </option>
-                    {municipiosDisponibles.map((mun: Municipio) => (
+                    {municipiosDisponibles.map((mun) => (
                       <option key={mun.id} value={String(mun.id)}>
-                        {mun.name}
+                        {mun.code} - {mun.name}
                       </option>
                     ))}
                   </select>

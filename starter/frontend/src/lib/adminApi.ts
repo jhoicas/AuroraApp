@@ -396,7 +396,50 @@ export const triggerEdtSync = async (file: File): Promise<EdtSyncResult> => {
   return data.data;
 };
 
+export interface DivipolaSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
 
+export interface TriggerDivipolaSyncResponse {
+  status: string;
+  message: string;
+  data: DivipolaSyncResult;
+}
 
+export const triggerDivipolaSync = async (file: File): Promise<DivipolaSyncResult> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<TriggerDivipolaSyncResponse>('/admin/sync/divipola', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+  });
+  return data.data;
+};
 
+export interface DivipolaDepartment {
+  id: number;
+  code: string;
+  name: string;
+}
 
+export interface DivipolaMunicipality {
+  id: number;
+  code: string;
+  name: string;
+  department_id: number;
+}
+
+export const fetchDepartments = async (): Promise<DivipolaDepartment[]> => {
+  const { data } = await api.get<DivipolaDepartment[]>('/catalog/departments');
+  return data;
+};
+
+export const fetchMunicipalities = async (departmentId?: number): Promise<DivipolaMunicipality[]> => {
+  const url = departmentId ? `/catalog/municipalities?department_id=${departmentId}` : '/catalog/municipalities';
+  const { data } = await api.get<DivipolaMunicipality[]>(url);
+  return data;
+};

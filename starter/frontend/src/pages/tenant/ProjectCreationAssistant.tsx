@@ -94,8 +94,13 @@ export default function ProjectCreationAssistant({
   // Location + Proceso store
   const regions = useLocationStore((s) => s.regions);
   const procesos = useLocationStore((s) => s.procesos);
-  const fetchLocations = useLocationStore((s) => s.fetchLocations);
   const fetchProcesos = useLocationStore((s) => s.fetchProcesos);
+  
+  // Divipola
+  const departments = useCatalogStore((s) => s.departments);
+  const municipalitiesByDept = useCatalogStore((s) => s.municipalitiesByDept);
+  const fetchDepartments = useCatalogStore((s) => s.fetchDepartments);
+  const fetchMunicipalities = useCatalogStore((s) => s.fetchMunicipalities);
 
   const [ideaSummary, setIdeaSummary] = useState('');
   const [sectorId, setSectorId] = useState('');
@@ -121,10 +126,18 @@ export default function ProjectCreationAssistant({
 
   useEffect(() => {
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
-    void fetchLocations();
+    void fetchDepartments();
     void fetchProcesos();
     return () => endInterview();
-  }, [fetchSectors, fetchLocations, fetchProcesos, endInterview]);
+  }, [fetchSectors, fetchDepartments, fetchProcesos, endInterview]);
+  
+  useEffect(() => {
+    localizaciones.forEach((loc) => {
+      if (loc.departamentoId) {
+        void fetchMunicipalities(loc.departamentoId);
+      }
+    });
+  }, [localizaciones, fetchMunicipalities]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -150,9 +163,9 @@ export default function ProjectCreationAssistant({
   );
 
   const fieldProjectContext: ProjectContext = useMemo(() => {
-    const mainRegion = localizaciones[0]?.regionId ? regions.find(r => r.id === localizaciones[0].regionId) : undefined;
-    const mainDep = mainRegion && localizaciones[0]?.departamentoId ? mainRegion.departamentos.find(d => d.id === localizaciones[0].departamentoId) : undefined;
-    const mainMun = mainDep && localizaciones[0]?.municipioId ? mainDep.municipios.find(m => m.id === localizaciones[0].municipioId) : undefined;
+    const mainDep = localizaciones[0]?.departamentoId ? departments.find(d => d.id === localizaciones[0].departamentoId) : undefined;
+    const muns = mainDep ? municipalitiesByDept[mainDep.id] || [] : [];
+    const mainMun = localizaciones[0]?.municipioId ? muns.find(m => m.id === localizaciones[0].municipioId) : undefined;
     
     return {
       projectName: generatedName,
@@ -162,7 +175,7 @@ export default function ProjectCreationAssistant({
       departamento: mainDep?.name,
       municipio: mainMun?.name,
     };
-  }, [generatedName, procesoName, objeto, selectedSector, localizaciones, regions]);
+  }, [generatedName, procesoName, objeto, selectedSector, localizaciones, departments, municipalitiesByDept]);
 
   // ── Location helpers ──
   const updateLocation = useCallback(
@@ -202,14 +215,11 @@ export default function ProjectCreationAssistant({
   );
 
   const getMunicipios = useCallback(
-    (regionId: number | null, depId: number | null) => {
-      if (regionId === null || depId === null) return [];
-      return regions
-        .find((r) => r.id === regionId)
-        ?.departamentos.find((d) => d.id === depId)
-        ?.municipios ?? [];
+    (depId: number | null) => {
+      if (depId === null) return [];
+      return municipalitiesByDept[depId] ?? [];
     },
-    [regions],
+    [municipalitiesByDept],
   );
 
   const sectorPrograms: CatalogProgram[] = useMemo(() => {
@@ -360,8 +370,8 @@ export default function ProjectCreationAssistant({
       setStartError('El objeto del proyecto debe contener al menos 10 caracteres.');
       return;
     }
-    if (localizaciones.length === 0 || !localizaciones.some(l => l.regionId)) {
-      setStartError('Debe seleccionar al menos una localización con su respectiva región.');
+    if (localizaciones.length === 0 || !localizaciones.some(l => l.departamentoId && l.municipioId)) {
+      setStartError('Debe seleccionar al menos una localización con su respectivo departamento y municipio.');
       return;
     }
     if (!sectorId) {
@@ -524,9 +534,8 @@ export default function ProjectCreationAssistant({
               </label>
               <div className="space-y-3">
                 {localizaciones.map((loc, idx) => {
-                  const selectedRegion = regions.find(r => r.id === loc.regionId);
-                  const selectedDepto = getDepartamentos(loc.regionId).find(d => d.id === loc.departamentoId);
-                  const selectedMun = getMunicipios(loc.regionId, loc.departamentoId).find(m => m.id === loc.municipioId);
+                  const selectedDepto = departments.find(d => d.id === loc.departamentoId);
+                  const selectedMun = getMunicipios(loc.departamentoId).find(m => m.id === loc.municipioId);
 
                   return (
                     <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm space-y-3 mb-3">
@@ -547,25 +556,13 @@ export default function ProjectCreationAssistant({
                       
                       <div className="flex flex-col space-y-3">
                         <div>
-                          <span className="text-sm font-semibold text-slate-700 mb-1 block">Región</span>
-                          <SearchableCombobox
-                            id={`region-${idx}`}
-                            label=""
-                            placeholder="Región"
-                            disabled={inputsLocked}
-                            options={regions.map(r => ({ value: String(r.id), label: r.name, code: String(r.id) }))}
-                            value={loc.regionId ? String(loc.regionId) : ''}
-                            onChange={(val) => updateLocation(idx, 'regionId', val ? Number(val) : null)}
-                          />
-                        </div>
-                        <div>
                           <span className="text-sm font-semibold text-slate-700 mb-1 block">Departamento</span>
                           <SearchableCombobox
                             id={`dep-${idx}`}
                             label=""
                             placeholder="Depto."
-                            disabled={inputsLocked || !loc.regionId}
-                            options={getDepartamentos(loc.regionId).map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
+                            disabled={inputsLocked}
+                            options={departments.map(d => ({ value: String(d.id), label: `${d.code} - ${d.name}`, code: String(d.id) }))}
                             value={loc.departamentoId ? String(loc.departamentoId) : ''}
                             onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
                           />
@@ -575,18 +572,18 @@ export default function ProjectCreationAssistant({
                           <SearchableCombobox
                             id={`mun-${idx}`}
                             label=""
-                            placeholder="Mpio. (opc.)"
+                            placeholder="Mpio."
                             disabled={inputsLocked || !loc.departamentoId}
-                            options={getMunicipios(loc.regionId, loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
+                            options={getMunicipios(loc.departamentoId).map(m => ({ value: String(m.id), label: `${m.code} - ${m.name}`, code: String(m.id) }))}
                             value={loc.municipioId ? String(loc.municipioId) : ''}
                             onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
                           />
                         </div>
                       </div>
 
-                      {loc.regionId && loc.departamentoId && loc.municipioId && (
+                      {loc.departamentoId && loc.municipioId && (
                         <div className="bg-emerald-100/70 text-emerald-800 text-sm p-2 rounded-md font-medium mt-3">
-                          ✓ {selectedRegion?.name} › {selectedDepto?.name} › {selectedMun?.name}
+                          ✓ {selectedDepto?.name} › {selectedMun?.name}
                         </div>
                       )}
                     </div>

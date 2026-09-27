@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { isAxiosError } from 'axios';
 import { api } from '../lib/api';
+import { fetchDepartments as fetchDeptsApi, fetchMunicipalities as fetchMunsApi, type DivipolaDepartment, type DivipolaMunicipality } from '../lib/adminApi';
 
 /** Límite alto para cargar listados completos en wizard tenant (sectores/productos). */
 export const CATALOG_FULL_LIST_LIMIT = 5000;
@@ -366,9 +367,12 @@ type CatalogState = {
   isLoadingOds: boolean;
   isLoadingPnd: boolean;
   isLoadingMeasurementUnits: boolean;
+  isLoadingDivipola: boolean;
   procesos: Proceso[];
   procesosMeta: CatalogPageMeta | null;
   isLoadingProcesos: boolean;
+  departments: DivipolaDepartment[];
+  municipalitiesByDept: Record<number, DivipolaMunicipality[]>;
   error: string | null;
   fetchSectors: (opts?: { page?: number; limit?: number; search?: string }) => Promise<void>;
   createSector: (input: CreateSectorInput) => Promise<CatalogSector>;
@@ -410,6 +414,8 @@ type CatalogState = {
   createProceso: (payload: { id: number; name: string }) => Promise<void>;
   updateProceso: (id: number, name: string) => Promise<void>;
   toggleProcesoStatus: (id: number) => Promise<void>;
+  fetchDepartments: () => Promise<void>;
+  fetchMunicipalities: (departmentId: number) => Promise<void>;
   clearPrograms: () => void;
   clearProducts: () => void;
   clearEdt: () => void;
@@ -568,6 +574,9 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   isLoadingPnd: false,
   isLoadingMeasurementUnits: false,
   isLoadingProcesos: false,
+  isLoadingDivipola: false,
+  departments: [],
+  municipalitiesByDept: {},
   error: null,
   copilotSearch: null,
 
@@ -1184,6 +1193,37 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
       }));
     } catch (err) {
       throw new Error(extractError(err, 'No se pudo cambiar el estado del proceso'));
+    }
+  },
+
+  fetchDepartments: async () => {
+    set({ isLoadingDivipola: true, error: null });
+    try {
+      const depts = await fetchDeptsApi();
+      set({ departments: depts, isLoadingDivipola: false });
+    } catch (err) {
+      set({
+        isLoadingDivipola: false,
+        error: extractError(err, 'No se pudieron cargar los departamentos'),
+        departments: [],
+      });
+    }
+  },
+
+  fetchMunicipalities: async (departmentId: number) => {
+    if (get().municipalitiesByDept[departmentId]) return;
+    set({ isLoadingDivipola: true, error: null });
+    try {
+      const muns = await fetchMunsApi(departmentId);
+      set((state) => ({ 
+        municipalitiesByDept: { ...state.municipalitiesByDept, [departmentId]: muns }, 
+        isLoadingDivipola: false 
+      }));
+    } catch (err) {
+      set({
+        isLoadingDivipola: false,
+        error: extractError(err, 'No se pudieron cargar los municipios'),
+      });
     }
   },
 }));

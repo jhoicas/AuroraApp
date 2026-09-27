@@ -429,12 +429,12 @@ func (r *CatalogRepository) UpsertCatalogProductByCode(ctx context.Context, item
 // catalogProductUpsertColumns columnas actualizadas en ON CONFLICT.
 // No incluye codigo_producto ni codigo_indicador_producto (llave compuesta).
 var catalogProductUpsertColumns = []string{
-	"tenant_id", "sector", "nombre_sector", "codigo_programa", "nombre_programa",
+	"tenant_id", "program_id", "sector", "nombre_sector", "codigo_programa", "nombre_programa",
 	"producto", "descripcion", "medido_a_traves_de",
 	"indicador_producto", "unidad_de_medida", "indicador_principal", "es_nacional",
 	"es_territorial", "ods", "meta_ods", "tipologia_general_suifp", "tipologia_d",
 	"tipologia_e", "tipologia_a_piip", "tipologia_b_piip", "tipologia_c_piip",
-	"tiene_edt", "edt",
+	"tiene_edt", "edt", "updated_at",
 }
 
 const catalogProductBatchSize = 500

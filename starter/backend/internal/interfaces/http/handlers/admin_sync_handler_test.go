@@ -312,3 +312,91 @@ func TestAdminSyncHandler_TriggerProgramsSyncAndStatus(t *testing.T) {
 	assert.Equal(t, "Desarrollo Rural Sostenible", prog.NombrePrograma)
 }
 
+func TestAdminSyncHandler_TriggerProductsSyncAndStatus(t *testing.T) {
+	db := newSQLiteDB(t)
+	require.NoError(t, db.AutoMigrate(&models.CatalogSyncLog{}, &models.Sector{}, &models.ProgramSubprogram{}, &models.CatalogProduct{}))
+
+	// Pre-seed a program
+	progID := uuid.New()
+	program := models.ProgramSubprogram{
+		ID:                progID,
+		SectorID:          uuid.New(),
+		CodigoSector:      "01",
+		NombreSector:      "Agricultura",
+		CodigoPrograma:    "0101",
+		NombrePrograma:    "Desarrollo Rural Sostenible",
+		CodigoSubprograma: "010101",
+		NombreSubprograma: "Incentivos Forestales",
+		CreatedAt:         time.Now(),
+	}
+	require.NoError(t, db.Create(&program).Error)
+
+	sampleRows := []admin.RawSodaProductRow{
+		{
+			CodigoPrograma:          "0101",
+			CodigoProducto:          "0101001",
+			Producto:                "Servicio de Asistencia Forestal",
+			Descripcion:             "Apoyo técnico especializado",
+			CodigoIndicadorProducto: "IND-01",
+			UnidadDeMedida:          "Familias",
+			EsNacional:              "true",
+		},
+	}
+
+	var rawMessages []json.RawMessage
+	for _, row := range sampleRows {
+		b, _ := json.Marshal(row)
+		rawMessages = append(rawMessages, b)
+	}
+
+	mockClient := &mockSodaClient{records: rawMessages}
+	pndSyncService := admin.NewPndSyncService(db, mockClient)
+	productSyncService := admin.NewProductSyncService(db, mockClient)
+	handler := NewAdminSyncHandlerWithService(pndSyncService).WithProductSyncService(productSyncService)
+
+	app := fiber.New()
+	app.Get("/api/v1/admin/sync/status", handler.GetSyncStatus)
+	app.Post("/api/v1/admin/sync/products", handler.TriggerProductsSync)
+
+	// 1. Trigger Products Sync
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sync/products", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var triggerBody struct {
+		Status string                  `json:"status"`
+		Data   admin.ProductSyncResult `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&triggerBody)
+	require.NoError(t, err)
+	assert.Equal(t, "success", triggerBody.Status)
+	assert.Equal(t, 1, triggerBody.Data.RecordsProcessed)
+	assert.Equal(t, "SUCCESS", triggerBody.Data.Status)
+	assert.Equal(t, "PRODUCTS", triggerBody.Data.CatalogName)
+
+	// 2. Status check for PRODUCTS
+	reqStatus := httptest.NewRequest(http.MethodGet, "/api/v1/admin/sync/status?catalog=PRODUCTS", nil)
+	respStatus, err := app.Test(reqStatus)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, respStatus.StatusCode)
+
+	var statusBody struct {
+		Data *models.CatalogSyncLog `json:"data"`
+	}
+	err = json.NewDecoder(respStatus.Body).Decode(&statusBody)
+	require.NoError(t, err)
+	require.NotNil(t, statusBody.Data)
+	assert.Equal(t, models.CatalogSyncStatus("SUCCESS"), statusBody.Data.Status)
+	assert.Equal(t, 1, statusBody.Data.RecordsProcessed)
+	assert.Equal(t, "PRODUCTS", statusBody.Data.CatalogName)
+
+	// 3. Verify product is created with program FK in DB
+	var prod models.CatalogProduct
+	err = db.Where("codigo_producto = ?", "0101001").First(&prod).Error
+	require.NoError(t, err)
+	assert.Equal(t, &progID, prod.ProgramID)
+	assert.Equal(t, "Servicio de Asistencia Forestal", prod.Producto)
+}
+
+

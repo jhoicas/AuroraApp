@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { RefreshCw, Package } from 'lucide-react';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import { api } from '../../lib/api';
 import {
@@ -421,12 +421,15 @@ export default function ProgramsCatalogPage() {
                   <th className="px-6 py-5 font-semibold uppercase tracking-wider">
                     Observaciones
                   </th>
+                  <th className="px-6 py-5 font-semibold uppercase tracking-wider text-right">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="text-base md:text-lg text-[#121c2c]">
                 {isLoadingPrograms && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-[#3f4949]">
+                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
                       <span className="inline-flex items-center gap-2">
                         <span className="material-symbols-outlined animate-spin text-[#006162]">
                           progress_activity
@@ -438,7 +441,7 @@ export default function ProgramsCatalogPage() {
                 )}
                 {!isLoadingPrograms && programSubprograms.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-[#3f4949]">
+                    <td colSpan={6} className="px-6 py-10 text-center text-[#3f4949]">
                       No hay registros. Añade un programa o importa un archivo.
                     </td>
                   </tr>
@@ -472,6 +475,16 @@ export default function ProgramsCatalogPage() {
                       </td>
                       <td className="px-6 py-5 text-[#3f4949] text-sm max-w-xs truncate">
                         {row.observaciones || '—'}
+                      </td>
+                      <td className="px-6 py-5 text-right whitespace-nowrap">
+                        <Link
+                          to={`/admin/catalogs/products?programCode=${encodeURIComponent(row.codigo_programa)}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-[#E6FFFA] text-[#006162] hover:bg-[#b2f5ea] transition-colors border border-[#81e6d9]"
+                          title={`Ver productos del programa ${row.codigo_programa}`}
+                        >
+                          <Package className="w-4 h-4" />
+                          <span>Productos</span>
+                        </Link>
                       </td>
                     </tr>
                   ))}

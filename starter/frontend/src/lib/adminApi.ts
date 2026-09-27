@@ -338,5 +338,25 @@ export const triggerProgramsSync = async (): Promise<ProgramSyncResult> => {
   return data.data;
 };
 
+export interface ProductSyncResult {
+  sync_log_id: string;
+  catalog_name: string;
+  records_processed: number;
+  status: string;
+  duration_ms: number;
+}
+
+export interface TriggerProductsSyncResponse {
+  status: string;
+  message: string;
+  data: ProductSyncResult;
+}
+
+export const triggerProductsSync = async (): Promise<ProductSyncResult> => {
+  const { data } = await api.post<TriggerProductsSyncResponse>('/admin/sync/products', {}, { timeout: 300000 });
+  return data.data;
+};
+
+
 
 

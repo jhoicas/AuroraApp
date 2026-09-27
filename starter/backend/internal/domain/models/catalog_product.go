@@ -5,17 +5,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // CatalogProduct fila del catálogo DNP catalogo_productos (maestro plano).
-// Un producto pertenece a un Programa (codigo_programa) y este a un Sector.
+// Un producto pertenece a un Programa (codigo_programa y program_id) y este a un Sector.
 //
 // Llave de negocio: (codigo_producto, codigo_indicador_producto) — el código de
 // producto se repite legítimamente en la MGA; la combinación con el indicador
 // identifica de forma única cada fila.
 type CatalogProduct struct {
-	ID                      uuid.UUID  `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID                      uuid.UUID  `gorm:"column:id;type:uuid;primaryKey" json:"id"`
 	TenantID                *uuid.UUID `gorm:"column:tenant_id;type:uuid;index" json:"tenant_id,omitempty"`
+	ProgramID               *uuid.UUID `gorm:"column:program_id;type:uuid;index" json:"program_id,omitempty"`
 	Sector                  string     `gorm:"column:sector;type:varchar(50)" json:"sector"`
 	NombreSector            string     `gorm:"column:nombre_sector;type:text" json:"nombre_sector"`
 	CodigoPrograma          string     `gorm:"column:codigo_programa;type:varchar(50);not null;index" json:"codigo_programa"`
@@ -40,7 +42,16 @@ type CatalogProduct struct {
 	TipologiaCPIIP          bool       `gorm:"column:tipologia_c_piip;default:false" json:"tipologia_c_piip"`
 	TieneEDT                bool       `gorm:"column:tiene_edt;default:false" json:"tiene_edt"`
 	EDT                     string     `gorm:"column:edt;type:text" json:"edt"`
+	Observaciones           string     `gorm:"column:observaciones;type:text" json:"observaciones,omitempty"`
 	CreatedAt               time.Time  `gorm:"column:created_at;not null" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at,omitempty"`
+}
+
+func (p *CatalogProduct) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
 }
 
 func (CatalogProduct) TableName() string {

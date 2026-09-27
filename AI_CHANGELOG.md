@@ -21,7 +21,46 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
-### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Programas MGA con Resolución FK de Sectores y Patrón Reactivo de UI
+### 2026-09-26 - Antigravity - Expansión SODA: Catálogo de Productos MGA con Resolución FK de Programas, Navegación Relacional y Regla de Oro UI
+
+- **Objetivo:** Expandir el motor de sincronización de datos abiertos (SODA DNP) para el catálogo de Productos MGA (`catalogo_productos`), expandiendo el modelo de datos para capturar atributos oficiales DNP, resolviendo la relación de llave foránea (`ProgramID`) contra `programas_subprogramas` en memoria, implementando la navegación relacional de Programas hacia Productos con filtro automático, y aplicando la Regla de Oro de UI para el spinner.
+- **Backend (Go / Fiber / GORM / Postgres & SQLite):**
+  - [catalog_product.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/catalog_product.go) & [product.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/domain/models/product.go):
+    - Se agregaron los campos `ProgramID *uuid.UUID` (`gorm:"column:program_id;type:uuid;index"`), `Observaciones string` (`gorm:"column:observaciones;type:text"`), y `UpdatedAt time.Time`.
+    - Se adaptó la generación de ID mediante hook `BeforeCreate(tx *gorm.DB)` para compatibilidad cruzada entre PostgreSQL y SQLite en pruebas.
+  - [db.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/db.go):
+    - Se actualizó `ensureCatalogoProductosSchema` para añadir columnas `program_id UUID`, `observaciones TEXT`, `updated_at TIMESTAMPTZ` e índice `idx_catalogo_productos_program_id`.
+  - [catalog_repository.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/infrastructure/persistence/postgres/catalog_repository.go):
+    - Se incluyeron `program_id` y `updated_at` en `catalogProductUpsertColumns`.
+  - [product_sync_service.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/product_sync_service.go):
+    - Implementación de `ProductSyncService` para consumir el catálogo de productos MGA desde SODA.
+    - **Resolución FK de Programas:** Consulta los programas existentes en base de datos y construye un mapa en memoria (`programByCode`) para asignar `ProgramID`, nombres de programa y sector. Si un producto referencia un programa inexistente, se omite de forma segura manteniendo la integridad referencial.
+    - **Upsert Protegido:** Inserción y actualización masiva sobre `catalogo_productos` usando `clause.OnConflict` en las columnas clave compuestas `(codigo_producto, codigo_indicador_producto)`, asignando todas las columnas oficiales actualizadas pero **EXCLUYENDO ESTRICTAMENTE** el campo `observaciones` para proteger anotaciones territoriales existentes.
+    - Trazabilidad y auditoría completa en `CatalogSyncLog` con `catalog_name: "PRODUCTS"`.
+  - [admin_sync_handler.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler.go):
+    - Se inyectó `productSyncService` en el handler y se expuso `TriggerProductsSync` (`POST /api/v1/admin/sync/products`).
+    - Soporte multi-catálogo en `GetSyncStatus` para `?catalog=PRODUCTS`.
+  - [admin_sync.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/router/admin_sync.go):
+    - Registro de ruta protegida `POST /api/v1/admin/sync/products` bajo el rol `SuperAdmin`.
+  - [product_sync_service_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/application/admin/product_sync_service_test.go) & [admin_sync_handler_test.go](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/backend/internal/interfaces/http/handlers/admin_sync_handler_test.go):
+    - Pruebas unitarias que validan la resolución de FK de programas, omisión de productos huérfanos/fantasma, protección del campo `observaciones` y respuesta 200 en endpoints HTTP.
+- **Frontend (React / TypeScript / TailwindCSS):**
+  - [adminApi.ts](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/lib/adminApi.ts):
+    - Tipos `ProductSyncResult` y `TriggerProductsSyncResponse`.
+    - Función exportada `triggerProductsSync()` con timeout extendido a 300.000 ms (5 minutos).
+  - [ProgramsCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/ProgramsCatalogPage.tsx):
+    - Se añadió columna y botón de acción con ícono `Package` enlazando a `/admin/catalogs/products?programCode={codigo_programa}` para navegación relacional directa.
+  - [ProductsCatalogPage.tsx](file:///c:/Users/yoiner.castillo/source/repos/AuroraApp/starter/frontend/src/pages/admin/ProductsCatalogPage.tsx):
+    - Lectura de query param (`useSearchParams()`) para pre-filtrar automáticamente la tabla de productos si se navega desde la vista de programas (`?programCode=...`).
+    - Encabezado con badge de estado de sincronización (`formatSyncDate`), cantidad de registros procesados y botón `Sincronizar con DNP`.
+    - **Regla de Oro del Spinner:** `setIsSyncing(false)` se invoca estrictamente en el bloque `finally` de `handleSync`.
+    - Actualización inmediata del estado local `syncLog` y refresco reactivo no bloqueante con `Promise.allSettled([fetchCatalogProducts(...), loadSyncStatus()])` sin recargar la página (F5).
+- **Validaciones Ejecutadas:**
+  - `go test -v ./internal/application/admin/... ./internal/interfaces/http/handlers -run "TestProductSync|TestProgramSync|TestAdminSync"` -> 9 tests PASS (Exit Code 0).
+  - `cd starter/backend && go build ./...` -> Exit Code 0.
+  - `cd starter/frontend && npx tsc --noEmit` -> Exit Code 0.
+  - `cd starter/frontend && npm run build` -> Exit Code 0 (Vite build exitoso en 4.77s).
+
 
 - **Objetivo:** Extender el motor de sincronización de datos abiertos (SODA DNP) para el catálogo de Programas MGA (`programas_subprogramas`), garantizando la integridad referencial resolviendo la FK `sector_id` mediante búsqueda en memoria contra los sectores existentes en base de datos, aplicando Upsert Protegido que preserva el campo `observaciones`, e implementando el patrón reactivo de UI en `ProgramsCatalogPage.tsx`.
 - **Backend (Go / Fiber / GORM / Postgres & SQLite):**

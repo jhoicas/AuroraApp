@@ -370,6 +370,7 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		`CREATE TABLE IF NOT EXISTS catalogo_productos (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			tenant_id UUID,
+			program_id UUID,
 			sector VARCHAR(50),
 			nombre_sector TEXT,
 			codigo_programa VARCHAR(50),
@@ -394,9 +395,12 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 			tipologia_c_piip BOOLEAN DEFAULT FALSE,
 			tiene_edt BOOLEAN DEFAULT FALSE,
 			edt TEXT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			observaciones TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ
 		)`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tenant_id UUID`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS program_id UUID`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS sector VARCHAR(50)`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS nombre_sector TEXT`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS codigo_programa VARCHAR(50)`,
@@ -421,7 +425,9 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tipologia_c_piip BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS tiene_edt BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS edt TEXT`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS observaciones TEXT`,
 		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`ALTER TABLE catalogo_productos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
 		// Amplía columnas descriptivas existentes VARCHAR → TEXT (idempotente).
 		`ALTER TABLE catalogo_productos ALTER COLUMN nombre_sector TYPE TEXT`,
 		`ALTER TABLE catalogo_productos ALTER COLUMN nombre_programa TYPE TEXT`,
@@ -475,6 +481,7 @@ func ensureCatalogoProductosSchema(db *gorm.DB) {
 		EXCEPTION WHEN others THEN NULL; END $$`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_programa ON catalogo_productos (codigo_programa)`,
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_codigo_producto ON catalogo_productos (codigo_producto)`,
+		`CREATE INDEX IF NOT EXISTS idx_catalogo_productos_program_id ON catalogo_productos (program_id)`,
 	}
 	execSchemaStatements(db, "ensure catalogo_productos schema", statements)
 }

@@ -202,9 +202,48 @@ export type NecesidadJson = {
   historico: NecesidadHistoricoJson[];
 };
 
+export type CostoCvJson = {
+  insumo: string;
+  periodo: number;
+  valor: number;
+};
+
+export type ActividadCvJson = {
+  id: string;
+  etapa: string;
+  nombre: string;
+  costos: CostoCvJson[];
+};
+
+export type EntregableCvJson = {
+  id: string;
+  etapa: string;
+  nombre: string;
+  costos: CostoCvJson[];
+};
+
+export type ProductoCvJson = {
+  id: string;
+  etapa: string;
+  productoId: string;
+  complemento: string;
+  descripcion: string;
+  unidadMedidaId: string;
+  cantidad: number;
+  localizacion: { rural: boolean; ruralDisperso: boolean; urbano: boolean };
+  poblacion: { usarObjetivo: boolean; numero: number; tipoAcumulacion: string; descripcion: string };
+  actividades: ActividadCvJson[];
+  entregables: EntregableCvJson[];
+};
+
+export type CadenaValorAlternativa = {
+  objetivos: Record<string, { productos: ProductoCvJson[] }>;
+};
+
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
   analisisTecnico?: Record<string, { resumen: string }>;
+  cadenaValorPrep?: Record<string, CadenaValorAlternativa>;
 };
 
 

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, AlertTriangle } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
-import { useProjectMgaStore } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, type PreparacionData } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import MgaAccordion from './MgaAccordion';
 
 type AnalisisTecnicoTabProps = {
   project: Project;
@@ -10,55 +11,55 @@ type AnalisisTecnicoTabProps = {
 
 export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps) {
   const getFormulation = useProjectMgaStore((s) => s.getFormulation);
-  const saveAnalisisTecnico = useProjectMgaStore((s) => s.saveAnalisisTecnico);
+  const savePreparacion = useProjectMgaStore((s) => s.savePreparacion);
+  const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const formulation = getFormulation(project.id);
-  const alternatives = formulation.identificacion?.alternativas || [];
+  const alternativasAll = formulation.identificacion?.alternativas || [];
+  // Important: filter alternatives where pasaPreparacion === true
+  const alternatives = alternativasAll.filter((alt: any) => alt.pasaPreparacion === true);
   
-  const [selectedAlternativeId, setSelectedAlternativeId] = useState<string>('');
+  const initialPreparacion = formulation.preparacion;
+
+  const [selectedAlternativeId, setSelectedAlternativeId] = useState<string>(alternatives.length > 0 ? alternatives[0].id : '');
   const [resumen, setResumen] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const prevProjectIdRef = useRef(project.id);
   const isFirstMount = useRef(true);
-  const lastSavedRef = useRef<string>('');
+  
+  // Guardamos un ref para controlar qué hemos guardado en todo "analisisTecnico"
+  const lastSavedRef = useRef<string>(JSON.stringify(initialPreparacion?.analisisTecnico || {}));
 
   // Initial load and project change sync
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
       isFirstMount.current = true;
-    }
-
-    const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
-    const alts = currentFormulation.identificacion?.alternativas || [];
-    
-    if (alts.length > 0) {
-      const altIdToSelect = selectedAlternativeId && alts.some(a => a.id === selectedAlternativeId) 
-        ? selectedAlternativeId 
-        : alts[0].id;
-        
-      setSelectedAlternativeId(altIdToSelect);
-      const initialResumen = currentFormulation.analisisTecnico?.[altIdToSelect]?.resumen || '';
-      setResumen(initialResumen);
-      lastSavedRef.current = initialResumen;
-    } else {
-      setSelectedAlternativeId('');
-      setResumen('');
-      lastSavedRef.current = '';
+      const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
+      const altsAll = currentFormulation.identificacion?.alternativas || [];
+      const alts = altsAll.filter((alt: any) => alt.pasaPreparacion === true);
+      
+      if (alts.length > 0) {
+        setSelectedAlternativeId(alts[0].id);
+        const currentData = currentFormulation.preparacion?.analisisTecnico || {};
+        setResumen(currentData[alts[0].id]?.resumen || '');
+        lastSavedRef.current = JSON.stringify(currentData);
+      } else {
+        setSelectedAlternativeId('');
+        setResumen('');
+        lastSavedRef.current = '{}';
+      }
     }
   }, [project.id]);
 
   // Handle alternative change
   const handleAlternativeChange = (newAltId: string) => {
-    // Before switching, save current if it's different (handled by the auto-save effect, but just in case, it relies on debounce)
     setSelectedAlternativeId(newAltId);
-    
     const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
-    const newResumen = currentFormulation.analisisTecnico?.[newAltId]?.resumen || '';
+    const currentData = currentFormulation.preparacion?.analisisTecnico || {};
+    const newResumen = currentData[newAltId]?.resumen || '';
     setResumen(newResumen);
-    lastSavedRef.current = newResumen; // Reset lastSavedRef so the new value doesn't trigger an immediate save if it hasn't changed
-    isFirstMount.current = true; // Prevent immediate save on next render
   };
 
   // Auto-save effect
@@ -70,11 +71,26 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
 
     if (!selectedAlternativeId) return;
 
-    if (resumen === lastSavedRef.current) return;
-    lastSavedRef.current = resumen;
+    const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
+    const currentData = currentFormulation.preparacion?.analisisTecnico || {};
+    
+    const updatedAnalisisTecnico = {
+      ...currentData,
+      [selectedAlternativeId]: { resumen }
+    };
 
-    void saveAnalisisTecnico(project.id, selectedAlternativeId, { resumen });
-  }, [resumen, selectedAlternativeId, project.id, saveAnalisisTecnico]);
+    const serialized = JSON.stringify(updatedAnalisisTecnico);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+
+    const currentPreparacion = currentFormulation.preparacion || { necesidades: {} };
+    const newData: PreparacionData = {
+      ...currentPreparacion,
+      analisisTecnico: updatedAnalisisTecnico
+    };
+
+    void savePreparacion(project.id, newData);
+  }, [resumen, selectedAlternativeId, project.id, savePreparacion]);
 
   if (alternatives.length === 0) {
     return (
@@ -83,8 +99,12 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
           <h1 className="text-xl font-normal text-[#2980b9]">Análisis técnico</h1>
           <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
         </div>
-        <div className="p-4 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-lg">
-          No hay alternativas registradas en el proyecto. Por favor, diríjase a la pestaña de "Identificación" para crear las alternativas antes de realizar el análisis técnico.
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md flex gap-3 text-sm">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+          <div className="text-yellow-700">
+            <p className="font-bold">No hay alternativas que pasen a preparación.</p>
+            <p>Por favor, diríjase a la pestaña de "Identificación", módulo "Alternativas", y asegúrese de que al menos una alternativa tenga habilitada la opción "Pasa a preparación".</p>
+          </div>
         </div>
       </div>
     );
@@ -92,56 +112,73 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
 
   return (
     <div className="space-y-4 bg-white p-4 border rounded-lg text-xs">
-      <div className="flex items-center gap-2 border-b pb-3">
-        <h1 className="text-xl font-normal text-[#2980b9]">Análisis técnico</h1>
-        <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
+      <div className="flex items-center justify-between border-b pb-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-normal text-[#2980b9]">Análisis técnico</h1>
+          <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
+        </div>
+        {isSaving && (
+          <div className="flex items-center gap-2 text-emerald-600 font-medium">
+             <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" /> Guardando...
+          </div>
+        )}
       </div>
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
 
-      <div className="space-y-6">
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">
-            Alternativa
-          </label>
-          <select
-            value={selectedAlternativeId}
-            onChange={(e) => handleAlternativeChange(e.target.value)}
-            className="w-full p-2.5 border border-slate-300 rounded-lg text-slate-800 text-sm focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
-          >
-            {alternatives.map((alt) => (
-              <option key={alt.id} value={alt.id}>
-                {alt.nombre}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-slate-500 mt-2">
-            Seleccione la alternativa para la cual desea diligenciar el análisis técnico.
-          </p>
-        </div>
+      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
+        <label className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
+        <select
+          value={selectedAlternativeId}
+          onChange={(e) => handleAlternativeChange(e.target.value)}
+          className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+        >
+          {alternatives.map((alt: any) => (
+            <option key={alt.id} value={alt.id}>{alt.nombre}</option>
+          ))}
+        </select>
+      </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">
-            Resumen de la alternativa <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={resumen}
-            onChange={(e) => setResumen(e.target.value)}
-            maxLength={2000}
-            rows={8}
-            placeholder="Ingrese el resumen técnico de la alternativa..."
-            className="w-full p-3 border border-slate-300 rounded-lg text-slate-800 text-sm focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none resize-y"
-          />
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-xs text-slate-500">
-              Describa técnicamente la alternativa seleccionada.
-            </p>
-            <p className="text-xs font-medium text-slate-500">
-              {resumen.length} / 2000
-            </p>
+      <MgaAccordion 
+        title="01 - Análisis técnico de la alternativa"
+        number="01"
+        open={true}
+        onToggle={() => {}}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-2">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
+              Resumen de la alternativa <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={resumen}
+              onChange={(e) => setResumen(e.target.value)}
+              maxLength={2000}
+              rows={8}
+              placeholder="Ingrese el resumen técnico de la alternativa..."
+              className="w-full p-3 border border-slate-300 rounded-lg text-slate-800 text-sm focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none resize-y"
+            />
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-slate-500">
+                Describa técnicamente la alternativa seleccionada.
+              </p>
+              <p className="text-xs font-medium text-slate-500">
+                {resumen.length} / 2000
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-100 rounded p-4 text-blue-800 self-start">
+            <h4 className="font-semibold mb-2">Se sugiere incluir:</h4>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Normas técnicas que apliquen a los productos</li>
+              <li>Requisitos técnicos sectoriales</li>
+              <li>Requisitos por fuentes de financiación</li>
+              <li>Requerimientos técnicos especiales</li>
+            </ul>
           </div>
         </div>
-      </div>
+      </MgaAccordion>
     </div>
   );
 }

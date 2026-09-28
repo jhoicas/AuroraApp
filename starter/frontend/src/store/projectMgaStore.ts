@@ -204,6 +204,7 @@ export type NecesidadJson = {
 
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
+  analisisTecnico?: Record<string, { resumen: string }>;
 };
 
 

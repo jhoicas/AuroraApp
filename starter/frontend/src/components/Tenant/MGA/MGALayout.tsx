@@ -340,7 +340,24 @@ export default function MGALayout({
   const activeMainStage: MgaMainStageId = userSelectedStage ?? targetStageFromTab;
 
   return (
-    <div className="flex min-h-[32rem] flex-col overflow-hidden rounded-lg border border-outline-variant/40 bg-surface font-body text-gray-800 shadow-sm">
+    <>
+      <style>{`
+        .mga-readonly {
+          pointer-events: none !important;
+          opacity: 0.8;
+        }
+        .mga-readonly button, 
+        .mga-readonly input, 
+        .mga-readonly select, 
+        .mga-readonly textarea,
+        .mga-readonly [role="button"] {
+          pointer-events: none !important;
+        }
+        .mga-readonly .allow-read {
+          pointer-events: auto !important;
+        }
+      `}</style>
+      <div className="flex min-h-[32rem] flex-col overflow-hidden rounded-lg border border-outline-variant/40 bg-surface font-body text-gray-800 shadow-sm">
       {/* 1. Cabecera */}
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/50 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
@@ -542,7 +559,19 @@ export default function MGALayout({
                   </p>
                 </div>
               )}
-              {renderWorkArea(project, activeTab)}
+              {formulation.estadoProyecto === 'PRESENTADO' && (
+                <div className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-4 text-blue-900 shadow-sm">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <span>🔒 Proyecto Presentado</span>
+                  </div>
+                  <p className="mt-1 text-xs text-blue-800 leading-relaxed">
+                    Este proyecto ha sido presentado y transferido. Se encuentra en modo de solo lectura. No es posible realizar modificaciones a la formulación.
+                  </p>
+                </div>
+              )}
+              <div className={formulation.estadoProyecto === 'PRESENTADO' ? 'mga-readonly' : ''}>
+                {renderWorkArea(project, activeTab)}
+              </div>
             </div>
           </div>
           {footerSlot && (
@@ -561,5 +590,6 @@ export default function MGALayout({
         />
       )}
     </div>
+    </>
   );
 }

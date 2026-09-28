@@ -400,6 +400,13 @@ export type ProgramacionData = {
   indicadores?: any[];
 };
 
+export type DocumentoSoporte = {
+  id: string;
+  nombre: string;
+  fechaCarga: string;
+  url: string;
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -426,6 +433,8 @@ export type ProjectMgaFormulation = {
   evaluacion?: Record<string, any>;
   programacion?: ProgramacionData;
   completedSections: Record<string, boolean>;
+  estadoProyecto?: 'EN_FORMULACION' | 'PRESENTADO';
+  documentosSoporte?: DocumentoSoporte[];
 };
 
 type ProjectMgaState = {
@@ -500,6 +509,8 @@ type ProjectMgaState = {
   saveDepreciacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveEvaluacion: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveProgramacion: (projectId: string, data: Record<string, any>) => Promise<void>;
+  saveDocumentosSoporte: (projectId: string, data: DocumentoSoporte[]) => Promise<void>;
+  presentarProyecto: (projectId: string) => Promise<void>;
   isSectionManaged: (projectId: string, sectionId: string) => boolean;
   clearError: () => void;
 };
@@ -512,6 +523,8 @@ const EMPTY_FORMULATION: ProjectMgaFormulation = {
   populations: [],
   alternatives: [],
   completedSections: {},
+  estadoProyecto: 'EN_FORMULACION',
+  documentosSoporte: [],
 };
 
 function extractError(err: unknown, fallback: string): string {
@@ -581,6 +594,8 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     evaluacion: undefined,
     programacion: undefined,
     completedSections: {},
+    estadoProyecto: 'EN_FORMULACION',
+    documentosSoporte: [],
   };
 }
 
@@ -860,6 +875,47 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       });
     } catch (err) {
       set({ isLoading: false, error: 'Error guardando programacion', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveDocumentosSoporte: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        debouncedPatchProject(projectId, { documentosSoporte: data });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, documentosSoporte: data } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando documentos de soporte', isSaving: false });
+      throw err;
+    }
+  },
+
+  presentarProyecto: async (projectId) => {
+    set({ isSaving: true, error: null });
+    try {
+      // Direct patch to ensure it is saved immediately, not debounced
+      await useProjectStore.getState().patchProject(projectId, { 
+        mga_formulation_data: { 
+          ...get().byProjectId[projectId], 
+          estadoProyecto: 'PRESENTADO' 
+        },
+        status: 'PRESENTADO'
+      });
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, estadoProyecto: 'PRESENTADO' } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error al presentar proyecto', isSaving: false });
       throw err;
     }
   },

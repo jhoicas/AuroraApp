@@ -10,6 +10,7 @@ import MgaPdfExportButton from './MgaPdfExportButton';
 import TechnicalDocumentValleExportButton from './TechnicalDocumentValleExportButton';
 import { useProjectEdtStore } from '../../../store/projectEdtStore';
 import MGALayout, { type MgaLayoutTabId } from './MGALayout';
+import MgaActionButtons from './MgaActionButtons';
 
 type MgaTabId = MgaAuditTabId;
 
@@ -58,6 +59,11 @@ export default function MgaFormulationShell({
   const isSaving = useProjectMgaStore((s) => s.isSaving);
   const mgaError = useProjectMgaStore((s) => s.error);
   const clearMgaError = useProjectMgaStore((s) => s.clearError);
+  const presentarProyecto = useProjectMgaStore((s) => s.presentarProyecto);
+  const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const isPresentado = formulation?.estadoProyecto === 'PRESENTADO';
+
+  const [presentarModalOpen, setPresentarModalOpen] = useState(false);
 
   const fetchEdtChain = useProjectEdtStore((s) => s.fetchEdtChain);
   const edtIsLoading = useProjectEdtStore((s) => s.isLoading);
@@ -134,8 +140,19 @@ export default function MgaFormulationShell({
     setActiveTab(tabId);
   };
 
+  const handlePresentar = async () => {
+    try {
+      await presentarProyecto(project.id);
+      setPresentarModalOpen(false);
+      navigate('/tenant/projects');
+    } catch (e) {
+      setLocalError('No se pudo presentar el proyecto');
+    }
+  };
+
   return (
-    <MGALayout
+    <>
+      <MGALayout
       project={project}
       projectTitle={project.name}
       activeTab={activeTab}
@@ -155,6 +172,14 @@ export default function MgaFormulationShell({
             formuladorType={formatRoleLabel(user?.role)}
             variant="outline"
           />
+          {!isPresentado && (
+            <button 
+              onClick={() => setPresentarModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#2980b9] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#1a6698] focus:outline-none focus:ring-2 focus:ring-[#2980b9] focus:ring-offset-1 transition-colors"
+            >
+              Presentar y transferir
+            </button>
+          )}
         </div>
       }
       headerSlot={
@@ -177,11 +202,35 @@ export default function MgaFormulationShell({
         ) : undefined
       }
       footerSlot={
-        <FormulationAuditPanel
-          projectId={project.id}
-          onNavigateToTab={handleNavigateToAuditTab}
-        />
+        <div className="flex flex-col gap-4">
+          <FormulationAuditPanel
+            projectId={project.id}
+            onNavigateToTab={handleNavigateToAuditTab}
+          />
+          <MgaActionButtons project={project} />
+        </div>
       }
     />
+      {presentarModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b bg-slate-50">
+              <h2 className="text-lg font-semibold text-slate-800">Confirmación</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700">¿Está seguro de presentar este proyecto? Una vez transferido, pasará a estado de solo lectura y no podrá modificar la formulación.</p>
+            </div>
+            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-2">
+              <button onClick={() => setPresentarModalOpen(false)} className="px-4 py-2 border rounded-lg text-slate-700 hover:bg-slate-100">
+                Cancelar
+              </button>
+              <button onClick={handlePresentar} className="px-4 py-2 bg-[#2980b9] text-white rounded-lg hover:bg-[#1a6698]">
+                Aceptar y Transferir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

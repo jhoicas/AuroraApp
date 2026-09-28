@@ -240,10 +240,23 @@ export type CadenaValorAlternativa = {
   objetivos: Record<string, { productos: ProductoCvJson[] }>;
 };
 
+export type RiesgoJson = {
+  id: string;
+  nivelClasificacion: '1' | '2' | '3';
+  referenciaId?: string;
+  tipo: string;
+  descripcion: string;
+  probabilidad: string;
+  impacto: string;
+  efectos: string;
+  medidasMitigacion: string;
+};
+
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
   analisisTecnico?: Record<string, { resumen: string }>;
   cadenaValorPrep?: Record<string, CadenaValorAlternativa>;
+  riesgos?: Record<string, RiesgoJson[]>;
 };
 
 

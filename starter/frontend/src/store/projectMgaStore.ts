@@ -252,11 +252,31 @@ export type RiesgoJson = {
   medidasMitigacion: string;
 };
 
+export type ProyeccionIngresoJson = {
+  periodo: number;
+  cantidad: number;
+  valorUnitario: number;
+  valorTotal: number;
+};
+
+export type IngresoBeneficioJson = {
+  id: string;
+  tipo: 'Ingresos' | 'Beneficios';
+  descripcion: string;
+  descripcionCantidad: string;
+  unidadMedidaId: string;
+  descripcionValorUnitario: string;
+  bienProducidoId: string;
+  rpc: number;
+  proyecciones: ProyeccionIngresoJson[];
+};
+
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
   analisisTecnico?: Record<string, { resumen: string }>;
   cadenaValorPrep?: Record<string, CadenaValorAlternativa>;
   riesgos?: Record<string, RiesgoJson[]>;
+  ingresosBeneficios?: Record<string, IngresoBeneficioJson[]>;
 };
 
 

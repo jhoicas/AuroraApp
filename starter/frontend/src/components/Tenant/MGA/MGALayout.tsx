@@ -19,6 +19,7 @@ import IngresosBeneficiosTab from './IngresosBeneficiosTab';
 import PrestamosTab from './PrestamosTab';
 import DepreciacionTab from './DepreciacionTab';
 import FlujoEvaluacionTab from './FlujoEvaluacionTab';
+import IndicadoresDecisionTab from './IndicadoresDecisionTab';
 import EvaluacionTab from './EvaluacionTab';
 import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
@@ -44,6 +45,7 @@ export type MgaLayoutTabId =
   | 'prestamos'
   | 'depreciacion'
   | 'flujo-evaluacion'
+  | 'indicadores-decision'
   | 'evaluacion'
   | 'programacion';
 
@@ -88,6 +90,7 @@ const SUB_SECTIONS_PREPARACION: MgaSubSection[] = [
 
 const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
   { id: 'flujo-evaluacion', label: 'Ver Flujo' },
+  { id: 'indicadores-decision', label: 'Indicadores y Decisión' },
   { id: 'evaluacion', label: 'Evaluación Económica' },
 ];
 
@@ -163,6 +166,7 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'prestamos',
   'depreciacion',
   'flujo-evaluacion',
+  'indicadores-decision',
   'evaluacion',
   'programacion',
 ];
@@ -188,6 +192,7 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
       sectionId === 'identificacion' ||
       (sectionId === 'necesidades' && (hasMgaSectionData('alternativas', project, formulation, edtChain) || hasMgaSectionData('identificacion', project, formulation, edtChain))) ||
       (sectionId === 'flujo-evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
+      (sectionId === 'indicadores-decision' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
 
@@ -274,6 +279,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <DepreciacionTab project={project} />;
     case 'flujo-evaluacion':
       return <FlujoEvaluacionTab project={project} />;
+    case 'indicadores-decision':
+      return <IndicadoresDecisionTab project={project} />;
     case 'evaluacion':
       return <EvaluacionTab project={project} />;
     case 'programacion':

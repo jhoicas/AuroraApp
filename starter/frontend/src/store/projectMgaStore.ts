@@ -344,6 +344,23 @@ export type LocalizacionPreparacionData = {
   factoresAnalizados: string[];
 };
 
+export type IndicadorProductoProgramado = {
+  id: string; // Generado localmente
+  indicadorId: string;
+  nombre: string;
+  esPrincipal: boolean;
+  esAcumulativo: boolean;
+  fuenteVerificacion: string;
+  detalleFuente: string;
+  metasPeriodo: Record<number, number>; // Clave: Periodo (0, 1, 2...), Valor: Meta programada
+};
+
+export type ProgramacionData = {
+  indicadoresProducto?: Record<string, IndicadorProductoProgramado[]>; // Clave: ID del Producto (Cadena Valor)
+  fuentes?: any[];
+  indicadores?: any[];
+};
+
 export type ProjectMgaFormulation = {
   causeRelations: CauseObjectiveRelation[];
   generalIndicators: GeneralObjectiveIndicator[];
@@ -368,7 +385,7 @@ export type ProjectMgaFormulation = {
   prestamos?: Record<string, any>;
   depreciacion?: Record<string, any>;
   evaluacion?: Record<string, any>;
-  programacion?: Record<string, any>;
+  programacion?: ProgramacionData;
   completedSections: Record<string, boolean>;
 };
 

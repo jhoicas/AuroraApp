@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { HelpCircle, Plus, Trash2, MapPin } from 'lucide-react';
+import { HelpCircle, Plus, Trash2, MapPin, AlertTriangle } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type UbicacionJson } from '../../../store/projectMgaStore';
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
+import MgaAccordion from './MgaAccordion';
 
 const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -29,7 +30,8 @@ type LocalizacionPreparacionTabProps = {
 export default function LocalizacionPreparacionTab({ project }: LocalizacionPreparacionTabProps) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const saveLocalizacionPreparacion = useProjectMgaStore((s) => s.saveLocalizacionPreparacion);
-  const alternatives = formulation.identificacion?.alternativas || [];
+  const alternativasAll = formulation.identificacion?.alternativas || [];
+  const alternatives = alternativasAll.filter((a: any) => a.pasaPreparacion === true);
 
   const { departments, municipalitiesByDept, fetchDepartments, fetchMunicipalities } = useCatalogStore();
 
@@ -62,10 +64,11 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
     }
 
     const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
-    const alts = currentFormulation.identificacion?.alternativas || [];
+    const altsAll = currentFormulation.identificacion?.alternativas || [];
+    const alts = altsAll.filter((a: any) => a.pasaPreparacion === true);
     
     if (alts.length > 0) {
-      const altIdToSelect = selectedAlternativeId && alts.some((a) => a.id === selectedAlternativeId) 
+      const altIdToSelect = selectedAlternativeId && alts.some((a: any) => a.id === selectedAlternativeId) 
         ? selectedAlternativeId 
         : alts[0].id;
         
@@ -165,6 +168,25 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
     );
   };
 
+  const handleCopyPoblacionObjetivo = () => {
+    const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
+    const localizacionesPO = currentFormulation.identificacion?.poblacion?.objetivo?.localizaciones || [];
+    if (localizacionesPO.length === 0) {
+      setError('La población objetivo no tiene localizaciones registradas en la pestaña de Identificación.');
+      return;
+    }
+    setUbicaciones(localizacionesPO);
+    setError(null);
+  };
+
+  const handleSelectAllFactores = () => {
+    setFactoresAnalizados([...FACTORES_ANALIZADOS_MGA]);
+  };
+
+  const handleDeselectAllFactores = () => {
+    setFactoresAnalizados([]);
+  };
+
   if (alternatives.length === 0) {
     return (
       <div className="space-y-4 bg-white p-4 border rounded-lg text-xs">
@@ -172,8 +194,12 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
           <h1 className="text-xl font-normal text-[#2980b9]">Localización</h1>
           <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
         </div>
-        <div className="p-4 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-lg">
-          No hay alternativas registradas en el proyecto. Por favor, diríjase a la pestaña de "Identificación" para crear las alternativas antes de realizar la localización.
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md flex gap-3 text-sm">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+          <div className="text-yellow-700">
+            <p className="font-bold">No hay alternativas que pasen a preparación.</p>
+            <p>Por favor, diríjase a la pestaña de "Identificación", módulo "Alternativas", y asegúrese de que al menos una alternativa tenga habilitada la opción "Pasa a preparación".</p>
+          </div>
         </div>
       </div>
     );
@@ -188,14 +214,14 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
 
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-6">
-        <label className="block text-sm font-semibold text-slate-800 mb-2">Alternativa</label>
+      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border mb-6">
+        <label className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
         <select
           value={selectedAlternativeId}
           onChange={(e) => handleAlternativeChange(e.target.value)}
-          className="w-full p-2.5 border border-slate-300 rounded-lg text-slate-800 text-sm focus:ring-2 focus:ring-[#006162] outline-none"
+          className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
         >
-          {alternatives.map((alt) => (
+          {alternatives.map((alt: any) => (
             <option key={alt.id} value={alt.id}>
               {alt.nombre}
             </option>
@@ -203,16 +229,20 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
         </select>
       </div>
 
-      {/* Seccion 1: Localizacion */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-medium text-slate-700 border-b pb-2">1. Localización de la alternativa</h2>
+      <MgaAccordion 
+        title="01 - Localización de la alternativa"
+        number="01"
+        open={true}
+        onToggle={() => {}}
+      >
+        <div className="space-y-4 p-2">
         
         <div className="flex justify-start">
           <button
-            onClick={() => alert("Funcionalidad en desarrollo: Utilizar localización de la población objetivo")}
-            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 flex items-center gap-2 transition-colors"
+            onClick={handleCopyPoblacionObjetivo}
+            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 flex items-center gap-2 transition-colors font-medium shadow-sm text-sm"
           >
-            <MapPin className="w-4 h-4" />
+            <MapPin className="w-4 h-4 text-[#2980b9]" />
             Utilizar localización de la población objetivo
           </button>
         </div>
@@ -398,49 +428,57 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </MgaAccordion>
 
       {/* Seccion 2: Factores Analizados */}
-      <div className="space-y-4 pt-6 mt-6 border-t">
-        <h2 className="text-lg font-medium text-slate-700 border-b pb-2">2. Factores Analizados</h2>
-        
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFactoresAnalizados([...FACTORES_ANALIZADOS_MGA])}
-            className="px-3 py-1.5 text-xs bg-slate-100 border text-slate-700 hover:bg-slate-200 rounded transition-colors"
-          >
-            Seleccionar todo
-          </button>
-          <button
-            onClick={() => setFactoresAnalizados([])}
-            className="px-3 py-1.5 text-xs bg-slate-100 border text-slate-700 hover:bg-slate-200 rounded transition-colors"
-          >
-            Deseleccionar todo
-          </button>
-        </div>
+      <MgaAccordion 
+        title="02 - Factores analizados"
+        number="02"
+        open={true}
+        onToggle={() => {}}
+      >
+        <div className="space-y-4 p-2">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-lg border">
+            {FACTORES_ANALIZADOS_MGA.map((factor) => {
+              const isSelected = factoresAnalizados.includes(factor);
+              return (
+                <label 
+                  key={factor} 
+                  className={`flex items-start gap-2 p-2 rounded cursor-pointer transition-colors ${
+                    isSelected ? 'bg-blue-50/50 text-blue-900' : 'hover:bg-white text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleFactorToggle(factor)}
+                    className="mt-1 w-4 h-4 text-[#006162] rounded border-slate-300 focus:ring-[#006162]"
+                  />
+                  <span className="text-sm leading-tight">{factor}</span>
+                </label>
+              );
+            })}
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-lg border">
-          {FACTORES_ANALIZADOS_MGA.map((factor) => {
-            const isSelected = factoresAnalizados.includes(factor);
-            return (
-              <label 
-                key={factor} 
-                className={`flex items-start gap-2 p-2 rounded cursor-pointer transition-colors ${
-                  isSelected ? 'bg-blue-50/50 text-blue-900' : 'hover:bg-white text-slate-700'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => handleFactorToggle(factor)}
-                  className="mt-1 w-4 h-4 text-[#006162] rounded border-slate-300 focus:ring-[#006162]"
-                />
-                <span className="text-sm leading-tight">{factor}</span>
-              </label>
-            );
-          })}
+          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200">
+            <button
+              onClick={handleSelectAllFactores}
+              className="px-3 py-1.5 text-xs bg-slate-100 border text-slate-700 hover:bg-slate-200 rounded transition-colors"
+            >
+              Seleccionar todo
+            </button>
+            <button
+              onClick={handleDeselectAllFactores}
+              className="px-3 py-1.5 text-xs bg-slate-100 border text-slate-700 hover:bg-slate-200 rounded transition-colors"
+            >
+              Deseleccionar todo
+            </button>
+          </div>
+
         </div>
-      </div>
+      </MgaAccordion>
       
     </div>
   );

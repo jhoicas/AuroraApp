@@ -164,59 +164,59 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
 
       <div className="space-y-6">
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <AIAssistedField
-            id="sector-dropdown"
-            label="Sector"
-            description="Seleccione el sector correspondiente a su proyecto."
-            placeholder="Seleccione un sector..."
-            value={sectorCode}
-            onChange={handleSectorChange}
-            disabled={isLoadingSectors}
-            projectContext={fieldProjectContext}
-            options={sectors.map(s => ({ value: s.id, label: `${s.code} - ${s.name}` }))}
-          />
+          <AIAssistedField label="Sector" projectContext={fieldProjectContext}>
+            <select
+              value={sectorCode}
+              onChange={(e) => handleSectorChange(e.target.value)}
+              disabled={isLoadingSectors}
+              className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none"
+            >
+              <option value="">Seleccione un sector...</option>
+              {sectors.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
+            </select>
+          </AIAssistedField>
         </div>
 
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <AIAssistedField
-            id="programa-dropdown"
-            label="Programa"
-            description="Seleccione el programa (depende del sector)."
-            placeholder="Seleccione un programa..."
-            value={programaCode}
-            onChange={handleProgramChange}
-            disabled={!sectorCode || isLoadingPrograms}
-            projectContext={fieldProjectContext}
-            options={programs.map(p => ({ value: p.code, label: `${p.code} - ${p.name}` }))}
-          />
+          <AIAssistedField label="Programa" projectContext={fieldProjectContext}>
+            <select
+              value={programaCode}
+              onChange={(e) => handleProgramChange(e.target.value)}
+              disabled={!sectorCode || isLoadingPrograms}
+              className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none"
+            >
+              <option value="">Seleccione un programa...</option>
+              {programs.map(p => <option key={p.code} value={p.code}>{p.code} - {p.name}</option>)}
+            </select>
+          </AIAssistedField>
         </div>
 
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <AIAssistedField
-            id="producto-dropdown"
-            label="Producto"
-            description="Seleccione el producto (depende del programa)."
-            placeholder="Seleccione un producto..."
-            value={productoCode}
-            onChange={handleProductChange}
-            disabled={!programaCode || isLoadingProducts}
-            projectContext={fieldProjectContext}
-            options={catalogProducts.map(p => ({ value: p.codigo_del_producto, label: `${p.codigo_del_producto} - ${p.producto}` }))}
-          />
+          <AIAssistedField label="Producto" projectContext={fieldProjectContext}>
+            <select
+              value={productoCode}
+              onChange={(e) => handleProductChange(e.target.value)}
+              disabled={!programaCode || isLoadingProducts}
+              className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none"
+            >
+              <option value="">Seleccione un producto...</option>
+              {catalogProducts.map(p => <option key={p.codigo_del_producto} value={p.codigo_del_producto}>{p.codigo_del_producto} - {p.producto}</option>)}
+            </select>
+          </AIAssistedField>
         </div>
 
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-          <AIAssistedField
-            id="edt-dropdown"
-            label="EDT / Actividad"
-            description="Seleccione el EDT o actividad (depende del producto)."
-            placeholder="Seleccione un EDT..."
-            value={edtId}
-            onChange={setEdtId}
-            disabled={!productoCode || isLoadingEdt}
-            projectContext={fieldProjectContext}
-            options={catalogEdt.map(e => ({ value: e.id, label: `${e.codigo_actividad} - ${e.actividad}` }))}
-          />
+          <AIAssistedField label="EDT / Actividad" projectContext={fieldProjectContext}>
+            <select
+              value={edtId}
+              onChange={(e) => setEdtId(e.target.value)}
+              disabled={!productoCode || isLoadingEdt}
+              className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none"
+            >
+              <option value="">Seleccione un EDT...</option>
+              {catalogEdt.map(e => <option key={e.id} value={e.id}>{e.codigo_actividad} - {e.actividad}</option>)}
+            </select>
+          </AIAssistedField>
         </div>
       </div>
     </div>

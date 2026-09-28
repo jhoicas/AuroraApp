@@ -206,14 +206,6 @@ export default function ProjectCreationAssistant({
     setLocalizaciones((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const getDepartamentos = useCallback(
-    (regionId: number | null) => {
-      if (regionId === null) return [];
-      return regions.find((r) => r.id === regionId)?.departamentos ?? [];
-    },
-    [regions],
-  );
-
   const getMunicipios = useCallback(
     (depId: number | null) => {
       if (depId === null) return [];

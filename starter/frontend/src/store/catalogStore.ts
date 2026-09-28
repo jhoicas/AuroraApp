@@ -1211,7 +1211,7 @@ export const useCatalogStore = create<CatalogState>()((set, _get) => ({
   },
 
   fetchMunicipalities: async (departmentId: number) => {
-    if (get().municipalitiesByDept[departmentId]) return;
+    if (_get().municipalitiesByDept[departmentId]) return;
     set({ isLoadingDivipola: true, error: null });
     try {
       const muns = await fetchMunsApi(departmentId);

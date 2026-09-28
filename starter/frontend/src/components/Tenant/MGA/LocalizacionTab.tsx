@@ -40,8 +40,6 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const {
     tiposAgrupacion,
     agrupaciones,
-    isLoadingTiposAgrupacion,
-    isLoadingAgrupaciones,
     fetchTiposAgrupacion,
     fetchAgrupaciones,
   } = useLocationStore();
@@ -338,7 +336,6 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     }
 
     const parsed = parsePopulationLocations(popObjetivo.locations);
-    const munNames = (parsed.municipalities || []).map((m) => m.toLowerCase().trim());
     const deptoNames = (parsed.departments || []).map((d) => d.toLowerCase().trim());
 
     let matchedRow: LocalizacionRow | null = null;

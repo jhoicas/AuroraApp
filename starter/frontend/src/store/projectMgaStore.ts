@@ -125,9 +125,32 @@ export type EvaluacionesJson = {
   multicriterio: boolean;
 };
 
+export type ArbolNodoEfecto = {
+  id: string;
+  descripcion: string;
+  tipo: 'directo' | 'indirecto';
+  parentId?: string;
+};
+
+export type ArbolNodoCausa = {
+  id: string;
+  descripcion: string;
+  tipo: 'directa' | 'indirecta';
+  parentId?: string;
+};
+
+export type ProblematicaJson = {
+  problemaCentral: string;
+  efectos: ArbolNodoEfecto[];
+  causas: ArbolNodoCausa[];
+  descripcionSituacion: string;
+  magnitudIndicadores: string;
+};
+
 export type IdentificacionData = {
   alternativas?: AlternativaJson[];
   evaluaciones?: EvaluacionesJson;
+  problematica?: ProblematicaJson;
 };
 
 export type CadenaValorData = {

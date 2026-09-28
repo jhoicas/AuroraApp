@@ -88,7 +88,10 @@ export default function FocalizacionTab({ project }: { project: Project }) {
     cadenaValor.objetivos.forEach((obj: any) => {
       if (obj.productos && Array.isArray(obj.productos)) {
         obj.productos.forEach((prod: any) => {
-          allProducts.push(prod);
+          allProducts.push({
+            ...prod,
+            objetivoPadre: obj.descripcion || 'Objetivo Específico'
+          });
         });
       }
     });
@@ -247,7 +250,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
     setOpenRowsDist(prev => ({ ...prev, [locId]: !prev[locId] }));
   };
 
-  const handleUpdateDist = (locId: string, periodo: number, field: 'costo' | 'meta', value: string) => {
+  const handleUpdateDist = (locId: string, periodo: number, field: 'costosCategoria' | 'metaCategoria', value: string) => {
     if (!selectedProductId || !activePolSinId) return;
     const numValue = Number(value) || 0;
     
@@ -284,6 +287,17 @@ export default function FocalizacionTab({ project }: { project: Project }) {
   }
   const totalMetaOriginal = selectedProduct?.cantidad || 0;
 
+  // Derive target and cost assigned in Regionalizacion per location/period for reference
+  const getRegData = (locId: string, pIndex: number) => {
+    const prodReg = regionalizacion[selectedProductId] || [];
+    const r = prodReg.find(x => x.localizacionId === locId);
+    if (!r) return { costo: 0, meta: 0 };
+    return {
+      costo: r.distribucionPeriodos?.[pIndex]?.costo || 0,
+      meta: r.distribucionPeriodos?.[pIndex]?.meta || 0
+    };
+  };
+
   let totalCostoDist = 0;
   let totalMetaDist = 0;
   
@@ -293,8 +307,8 @@ export default function FocalizacionTab({ project }: { project: Project }) {
       const locs = activePolObj.distribucion[selectedProductId].localizaciones;
       Object.values(locs).forEach(locData => {
         Object.values(locData.periodos).forEach(per => {
-          totalCostoDist += (per.costo || 0);
-          totalMetaDist += (per.meta || 0);
+          totalCostoDist += (per.costosCategoria || 0);
+          totalMetaDist += (per.metaCategoria || 0);
         });
       });
     }
@@ -302,7 +316,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
 
   const pendienteCosto = totalCostoOriginal - totalCostoDist;
   const pendienteMeta = totalMetaOriginal - totalMetaDist;
-  const isInvalidDist = pendienteCosto < 0 || pendienteMeta < 0;
+  const isInvalidDist = pendienteCosto !== 0 || pendienteMeta !== 0;
 
   // Acc 04 handlers
   const allPolicies = [
@@ -426,7 +440,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
           <div className="p-4 bg-white space-y-4">
             <table className="w-full text-left text-sm border">
               <thead className="bg-slate-100 text-slate-700 border-b">
-                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Subcategoría</th><th className="p-3 text-center w-24">Distribución</th><th className="p-3 text-center w-20">Acción</th></tr>
+                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Indicador</th><th className="p-3 text-center w-24">Distribución</th><th className="p-3 text-center w-20">Acción</th></tr>
               </thead>
               <tbody>
                 {(localFoc.politicasSinPoblacion || []).length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-slate-500">No hay políticas sin población adicionadas.</td></tr> :
@@ -434,7 +448,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
                     <tr key={p.id} className="border-b hover:bg-slate-50">
                       <td className="p-3 border-r font-medium text-slate-700">{p.politica}</td>
                       <td className="p-3 border-r text-slate-600">{p.categoria}</td>
-                      <td className="p-3 border-r text-slate-600">{p.subcategoria || '---'}</td>
+                      <td className="p-3 border-r text-slate-600 text-center">N/A</td>
                       <td className="p-3 border-r text-center">
                         <button onClick={() => { setActivePolSinId(p.id); setModalDistSinPobOpen(true); }} className="text-[#2980b9] hover:bg-blue-50 px-3 py-1.5 rounded flex items-center justify-center gap-1 mx-auto font-medium">
                           Ingresar <LogIn className="w-4 h-4" />
@@ -640,7 +654,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
       {/* MODAL 03: Matriz de Distribución (Ingresar) */}
       {modalDistSinPobOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl h-[95vh] flex flex-col">
             <div className="px-6 py-4 border-b flex items-center justify-between bg-slate-50 shrink-0">
               <h2 className="text-lg font-semibold text-slate-800">
                 Distribución de Política: {localFoc.politicasSinPoblacion?.find(p => p.id === activePolSinId)?.politica}
@@ -654,7 +668,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Producto a distribuir:</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Producto a focalizar:</label>
                     <select
                       value={selectedProductId}
                       onChange={(e) => setSelectedProductId(e.target.value)}
@@ -664,6 +678,15 @@ export default function FocalizacionTab({ project }: { project: Project }) {
                         <option key={prod.id} value={prod.id}>{prod.descripcion} (Meta: {prod.cantidad})</option>
                       ))}
                     </select>
+                  </div>
+                  
+                  {/* Tarjeta de Contexto */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div><span className="text-slate-500 block text-xs">Objetivo Específico</span><span className="font-medium">{selectedProduct?.objetivoPadre}</span></div>
+                    <div><span className="text-slate-500 block text-xs">Unidad de Medida</span><span className="font-medium">{selectedProduct?.unidadMedidaId || 'N/A'}</span></div>
+                    <div><span className="text-slate-500 block text-xs">Meta Total</span><span className="font-medium">{totalMetaOriginal}</span></div>
+                    <div><span className="text-slate-500 block text-xs">Costo Total</span><span className="font-medium">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalCostoOriginal)}</span></div>
+                    <div><span className="text-slate-500 block text-xs">Indicador Principal</span><span className="font-medium">N/A</span></div>
                   </div>
 
                   <div className="border rounded-lg overflow-hidden">
@@ -707,34 +730,41 @@ export default function FocalizacionTab({ project }: { project: Project }) {
                                           <thead className="bg-slate-100 text-slate-600 border-b">
                                             <tr>
                                               <th className="p-2 font-semibold w-24">Periodo</th>
-                                              <th className="p-2 font-semibold text-right">Costos categoría</th>
-                                              <th className="p-2 font-semibold text-right">Meta categoría</th>
+                                              <th className="p-2 font-semibold text-right text-slate-400">Costos periodo (Ref)</th>
+                                              <th className="p-2 font-semibold text-right text-[#2980b9]">Costos categoría</th>
+                                              <th className="p-2 font-semibold text-right text-slate-400">Meta periodo (Ref)</th>
+                                              <th className="p-2 font-semibold text-right text-[#2980b9]">Meta categoría</th>
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {Array.from({ length: durationYears + 1 }).map((_, i) => (
-                                              <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
-                                                <td className="p-2 font-medium text-slate-600 pl-4">Año {i}</td>
-                                                <td className="p-2">
-                                                  <input
-                                                    type="number" min="0" step="any"
-                                                    value={distObj[i]?.costo || ''}
-                                                    onChange={(e) => handleUpdateDist(loc.id, i, 'costo', e.target.value)}
-                                                    className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
-                                                    placeholder="0"
-                                                  />
-                                                </td>
-                                                <td className="p-2">
-                                                  <input
-                                                    type="number" min="0" step="any"
-                                                    value={distObj[i]?.meta || ''}
-                                                    onChange={(e) => handleUpdateDist(loc.id, i, 'meta', e.target.value)}
-                                                    className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
-                                                    placeholder="0"
-                                                  />
-                                                </td>
-                                              </tr>
-                                            ))}
+                                            {Array.from({ length: durationYears + 1 }).map((_, i) => {
+                                              const regRef = getRegData(loc.id, i);
+                                              return (
+                                                <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
+                                                  <td className="p-2 font-medium text-slate-600 pl-4">Año {i}</td>
+                                                  <td className="p-2 text-right text-slate-400 bg-slate-50">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(regRef.costo)}</td>
+                                                  <td className="p-2">
+                                                    <input
+                                                      type="number" min="0" step="any"
+                                                      value={distObj[i]?.costosCategoria || ''}
+                                                      onChange={(e) => handleUpdateDist(loc.id, i, 'costosCategoria', e.target.value)}
+                                                      className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
+                                                      placeholder="0"
+                                                    />
+                                                  </td>
+                                                  <td className="p-2 text-right text-slate-400 bg-slate-50">{regRef.meta}</td>
+                                                  <td className="p-2">
+                                                    <input
+                                                      type="number" min="0" step="any"
+                                                      value={distObj[i]?.metaCategoria || ''}
+                                                      onChange={(e) => handleUpdateDist(loc.id, i, 'metaCategoria', e.target.value)}
+                                                      className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
+                                                      placeholder="0"
+                                                    />
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
                                           </tbody>
                                         </table>
                                       </div>
@@ -751,24 +781,24 @@ export default function FocalizacionTab({ project }: { project: Project }) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                      <p className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b">Total Costo</p>
+                      <p className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b">Validación de Costos</p>
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-slate-500">Costo del producto:</span><span className="font-medium text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalCostoOriginal)}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Total distribuido:</span><span className="font-medium text-blue-600">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalCostoDist)}</span></div>
-                        <div className="flex justify-between pt-2 border-t"><span className="font-semibold text-slate-700">Pendiente:</span>
-                          <span className={`font-bold ${pendienteCosto < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                        <div className="flex justify-between"><span className="text-slate-500">Costo total del producto:</span><span className="font-medium text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalCostoOriginal)}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Total distribuido en política:</span><span className="font-medium text-blue-600">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalCostoDist)}</span></div>
+                        <div className="flex justify-between pt-2 border-t"><span className="font-semibold text-slate-700">Costo pendiente:</span>
+                          <span className={`font-bold ${pendienteCosto < 0 ? 'text-red-600' : pendienteCosto === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                             {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(pendienteCosto)}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                      <p className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b">Total Meta</p>
+                      <p className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b">Validación de Metas</p>
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-slate-500">Meta del producto:</span><span className="font-medium text-slate-800">{totalMetaOriginal}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Total distribuida:</span><span className="font-medium text-emerald-600">{totalMetaDist}</span></div>
-                        <div className="flex justify-between pt-2 border-t"><span className="font-semibold text-slate-700">Pendiente:</span>
-                          <span className={`font-bold ${pendienteMeta < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                        <div className="flex justify-between"><span className="text-slate-500">Meta total del producto:</span><span className="font-medium text-slate-800">{totalMetaOriginal}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Total meta distribuida:</span><span className="font-medium text-emerald-600">{totalMetaDist}</span></div>
+                        <div className="flex justify-between pt-2 border-t"><span className="font-semibold text-slate-700">Meta pendiente:</span>
+                          <span className={`font-bold ${pendienteMeta < 0 ? 'text-red-600' : pendienteMeta === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                             {pendienteMeta}
                           </span>
                         </div>
@@ -779,8 +809,12 @@ export default function FocalizacionTab({ project }: { project: Project }) {
               )}
             </div>
             
-            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
-              {isInvalidDist && <span className="text-red-500 text-sm font-medium self-center mr-4">El saldo pendiente no puede ser negativo.</span>}
+            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3 shrink-0 items-center">
+              {isInvalidDist ? (
+                <span className="text-red-500 text-sm font-medium mr-4 flex-1 text-right">Los saldos pendientes deben ser exactamente $0 y 0 para continuar.</span>
+              ) : (
+                <span className="text-emerald-600 text-sm font-medium mr-4 flex-1 text-right">Distribución completada correctamente.</span>
+              )}
               <button onClick={() => setModalDistSinPobOpen(false)} disabled={isInvalidDist} className="px-6 py-2 bg-[#2980b9] text-white rounded hover:bg-[#1a6698] font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                 Aceptar
               </button>

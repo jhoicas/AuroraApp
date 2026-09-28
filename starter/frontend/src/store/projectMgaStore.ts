@@ -380,8 +380,8 @@ export type PoliticaSinPoblacion = {
   distribucion: Record<string, { // Clave: productoId
     localizaciones: Record<string, { // Clave: localizacionId
       periodos: Record<number, { 
-        costo: number; 
-        meta: number; 
+        costosCategoria: number; 
+        metaCategoria: number; 
       }>
     }>
   }>;

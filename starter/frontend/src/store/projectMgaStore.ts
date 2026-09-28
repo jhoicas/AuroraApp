@@ -271,12 +271,36 @@ export type IngresoBeneficioJson = {
   proyecciones: ProyeccionIngresoJson[];
 };
 
+export type AmortizacionPeriodoJson = {
+  periodo: number;
+  saldoInicial: number;
+  cuota: number;
+  interes: number;
+  amortizacion: number;
+  saldoFinal: number;
+};
+
+export type PrestamoJson = {
+  id: string;
+  tipoCredito: 'Moneda Nacional' | 'Moneda Extranjera';
+  tasaCambio: number;
+  concepto: string;
+  tasaInteresAnual: number;
+  plazoAnos: number;
+  valorCredito: number;
+  valorCreditoCop: number;
+  amortizacionAnualCop: number;
+  periodoInicio: number;
+  tablaAmortizacion: AmortizacionPeriodoJson[];
+};
+
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
   analisisTecnico?: Record<string, { resumen: string }>;
   cadenaValorPrep?: Record<string, CadenaValorAlternativa>;
   riesgos?: Record<string, RiesgoJson[]>;
   ingresosBeneficios?: Record<string, IngresoBeneficioJson[]>;
+  prestamos?: Record<string, PrestamoJson[]>;
 };
 
 

@@ -16,7 +16,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
 
   const initialPlanDesarrollo = useProjectMgaStore.getState().getFormulation(project.id)?.planDesarrollo;
 
-  const [pndLinks, setPndLinks] = useState<PlanDesarrolloPndLink[]>(() => initialPlanDesarrollo?.pndLinks || []);
+  const [pnd, setPnd] = useState<PlanDesarrolloPndLink[]>(() => initialPlanDesarrollo?.pnd || []);
   
   const [depPlan, setDepPlan] = useState(() => initialPlanDesarrollo?.departamental?.plan || '');
   const [depEstrategia, setDepEstrategia] = useState(() => initialPlanDesarrollo?.departamental?.estrategia || '');
@@ -26,12 +26,8 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const [munEstrategia, setMunEstrategia] = useState(() => initialPlanDesarrollo?.municipal?.estrategia || '');
   const [munPrograma, setMunPrograma] = useState(() => initialPlanDesarrollo?.municipal?.programa || '');
 
-  const [etnicoComunidad, setEtnicoComunidad] = useState(() => initialPlanDesarrollo?.etnico?.tipoComunidad || '');
-  const [etnicoInstrumentos, setEtnicoInstrumentos] = useState(() => initialPlanDesarrollo?.etnico?.instrumentos || '');
-
-  const [otrosPlan, setOtrosPlan] = useState(() => initialPlanDesarrollo?.otros?.plan || '');
-  const [otrosEstrategia, setOtrosEstrategia] = useState(() => initialPlanDesarrollo?.otros?.estrategia || '');
-  const [otrosPrograma, setOtrosPrograma] = useState(() => initialPlanDesarrollo?.otros?.programa || '');
+  const [etniasComunidad, setEtniasComunidad] = useState(() => initialPlanDesarrollo?.etnias?.tipoComunidad || '');
+  const [etniasInstrumentos, setEtniasInstrumentos] = useState(() => initialPlanDesarrollo?.etnias?.instrumentos || '');
 
   const fieldProjectContext: ProjectContext = useMemo(() => ({
     projectName: project.name,
@@ -44,13 +40,11 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const reactiveContext = useMemo(() => ({
     depPlan, depEstrategia, depPrograma,
     munPlan, munEstrategia, munPrograma,
-    etnicoComunidad, etnicoInstrumentos,
-    otrosPlan, otrosEstrategia, otrosPrograma
+    etniasComunidad, etniasInstrumentos
   }), [
     depPlan, depEstrategia, depPrograma,
     munPlan, munEstrategia, munPrograma,
-    etnicoComunidad, etnicoInstrumentos,
-    otrosPlan, otrosEstrategia, otrosPrograma
+    etniasComunidad, etniasInstrumentos
   ]);
 
   const handleToggle = (id: string) => {
@@ -60,7 +54,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
   const prevProjectIdRef = useRef(project.id);
   const isFirstMount = useRef(true);
   const lastSavedRef = useRef<string>(JSON.stringify({
-    pndLinks: initialPlanDesarrollo?.pndLinks || [],
+    pnd: initialPlanDesarrollo?.pnd || [],
     departamental: {
       plan: initialPlanDesarrollo?.departamental?.plan || '',
       estrategia: initialPlanDesarrollo?.departamental?.estrategia || '',
@@ -71,15 +65,10 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
       estrategia: initialPlanDesarrollo?.municipal?.estrategia || '',
       programa: initialPlanDesarrollo?.municipal?.programa || '',
     },
-    etnico: {
-      tipoComunidad: initialPlanDesarrollo?.etnico?.tipoComunidad || '',
-      instrumentos: initialPlanDesarrollo?.etnico?.instrumentos || '',
-    },
-    otros: {
-      plan: initialPlanDesarrollo?.otros?.plan || '',
-      estrategia: initialPlanDesarrollo?.otros?.estrategia || '',
-      programa: initialPlanDesarrollo?.otros?.programa || '',
-    },
+    etnias: {
+      tipoComunidad: initialPlanDesarrollo?.etnias?.tipoComunidad || '',
+      instrumentos: initialPlanDesarrollo?.etnias?.instrumentos || '',
+    }
   }));
 
   // Sync state if project changes
@@ -87,20 +76,17 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
       const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.planDesarrollo;
-      setPndLinks(currentData?.pndLinks || []);
+      setPnd(currentData?.pnd || []);
       setDepPlan(currentData?.departamental?.plan || '');
       setDepEstrategia(currentData?.departamental?.estrategia || '');
       setDepPrograma(currentData?.departamental?.programa || '');
       setMunPlan(currentData?.municipal?.plan || '');
       setMunEstrategia(currentData?.municipal?.estrategia || '');
       setMunPrograma(currentData?.municipal?.programa || '');
-      setEtnicoComunidad(currentData?.etnico?.tipoComunidad || '');
-      setEtnicoInstrumentos(currentData?.etnico?.instrumentos || '');
-      setOtrosPlan(currentData?.otros?.plan || '');
-      setOtrosEstrategia(currentData?.otros?.estrategia || '');
-      setOtrosPrograma(currentData?.otros?.programa || '');
+      setEtniasComunidad(currentData?.etnias?.tipoComunidad || '');
+      setEtniasInstrumentos(currentData?.etnias?.instrumentos || '');
       lastSavedRef.current = JSON.stringify({
-        pndLinks: currentData?.pndLinks || [],
+        pnd: currentData?.pnd || [],
         departamental: {
           plan: currentData?.departamental?.plan || '',
           estrategia: currentData?.departamental?.estrategia || '',
@@ -111,15 +97,10 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
           estrategia: currentData?.municipal?.estrategia || '',
           programa: currentData?.municipal?.programa || '',
         },
-        etnico: {
-          tipoComunidad: currentData?.etnico?.tipoComunidad || '',
-          instrumentos: currentData?.etnico?.instrumentos || '',
-        },
-        otros: {
-          plan: currentData?.otros?.plan || '',
-          estrategia: currentData?.otros?.estrategia || '',
-          programa: currentData?.otros?.programa || '',
-        },
+        etnias: {
+          tipoComunidad: currentData?.etnias?.tipoComunidad || '',
+          instrumentos: currentData?.etnias?.instrumentos || '',
+        }
       });
     }
   }, [project.id]);
@@ -132,11 +113,10 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     }
 
     const data: PlanDesarrolloData = {
-      pndLinks,
+      pnd,
       departamental: { plan: depPlan, estrategia: depEstrategia, programa: depPrograma },
       municipal: { plan: munPlan, estrategia: munEstrategia, programa: munPrograma },
-      etnico: { tipoComunidad: etnicoComunidad, instrumentos: etnicoInstrumentos },
-      otros: { plan: otrosPlan, estrategia: otrosEstrategia, programa: otrosPrograma }
+      etnias: { tipoComunidad: etniasComunidad, instrumentos: etniasInstrumentos }
     };
 
     const serialized = JSON.stringify(data);
@@ -145,30 +125,29 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
 
     void savePlanDesarrollo(project.id, data);
   }, [
-    pndLinks, depPlan, depEstrategia, depPrograma, 
+    pnd, depPlan, depEstrategia, depPrograma, 
     munPlan, munEstrategia, munPrograma, 
-    etnicoComunidad, etnicoInstrumentos, 
-    otrosPlan, otrosEstrategia, otrosPrograma, 
+    etniasComunidad, etniasInstrumentos, 
     project.id, savePlanDesarrollo
   ]);
 
-  const addPndLink = (pnd: CatalogPnd) => {
-    setPndLinks([...pndLinks, { 
+  const addPndLink = (pndItem: CatalogPnd) => {
+    setPnd([...pnd, { 
       id: crypto.randomUUID(), 
-      transformacion: pnd.PillarDescription, 
-      pilar: pnd.ObjectiveDescription, 
-      catalizador: pnd.StrategyDescription, 
-      componente: pnd.ComponentDescription 
+      transformacion: pndItem.PillarDescription, 
+      pilar: pndItem.ObjectiveDescription, 
+      catalizador: pndItem.StrategyDescription, 
+      componente: pndItem.ComponentDescription 
     }]);
     setIsPndModalOpen(false);
   };
 
   const updatePndLink = (id: string, field: keyof PlanDesarrolloPndLink, value: string) => {
-    setPndLinks(pndLinks.map(link => link.id === id ? { ...link, [field]: value } : link));
+    setPnd(pnd.map(link => link.id === id ? { ...link, [field]: value } : link));
   };
 
   const deletePndLink = (id: string) => {
-    setPndLinks(pndLinks.filter(link => link.id !== id));
+    setPnd(pnd.filter(link => link.id !== id));
   };
 
   return (
@@ -214,7 +193,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {pndLinks.map((link) => (
+                  {pnd.map((link) => (
                     <tr key={link.id}>
                       <td className="px-2 py-2">
                         <input spellCheck={true} 
@@ -258,7 +237,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
                       </td>
                     </tr>
                   ))}
-                  {pndLinks.length === 0 && (
+                  {pnd.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-slate-500">
                         No hay alineaciones agregadas. Utilice el botón "+ Adicionar".
@@ -441,15 +420,14 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
           <div>
             <label className="block text-base font-medium text-slate-700 mb-1">Tipo de comunidad</label>
             <select 
-              value={etnicoComunidad} 
-              onChange={(e) => setEtnicoComunidad(e.target.value)} 
+              value={etniasComunidad} 
+              onChange={(e) => setEtniasComunidad(e.target.value)} 
               className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base bg-white"
             >
               <option value="">Seleccione</option>
-              <option value="Indígena">Indígena</option>
-              <option value="Afrocolombiana / Negra / Palenquera / Raizal">Afrocolombiana / Negra / Palenquera / Raizal</option>
-              <option value="Rrom / Gitana">Rrom / Gitana</option>
-              <option value="No aplica / Ninguna">No aplica / Ninguna</option>
+              <option value="Comunidades Afrocolombianas">Comunidades Afrocolombianas</option>
+              <option value="Pueblos y comunidades indígenas">Pueblos y comunidades indígenas</option>
+              <option value="Pueblos RROM o gitanos">Pueblos RROM o gitanos</option>
             </select>
           </div>
           <AIAssistedField
@@ -458,96 +436,25 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             fieldHelpKey="instrumentos_etnicos"
             projectContext={fieldProjectContext}
             reactiveContext={reactiveContext}
-            currentValue={etnicoInstrumentos}
-            onAutoFill={(v) => setEtnicoInstrumentos(v)}
+            currentValue={etniasInstrumentos}
+            onAutoFill={(v) => setEtniasInstrumentos(v)}
             maxLength={500}
           >
             <textarea spellCheck={true} 
               id="etnico-instrumentos"
               maxLength={500} 
               rows={3} 
-              value={etnicoInstrumentos} 
-              onChange={(e) => setEtnicoInstrumentos(e.target.value)} 
+              value={etniasInstrumentos} 
+              onChange={(e) => setEtniasInstrumentos(e.target.value)} 
               placeholder="Diligencie el nombre de los Instrumentos de planeación de grupos étnicos" 
               className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
-            <p className="text-xs text-slate-500 mt-1 text-right">{etnicoInstrumentos.length} / 500</p>
+            <p className="text-xs text-slate-500 mt-1 text-right">{etniasInstrumentos.length} / 500</p>
           </AIAssistedField>
         </div>
       </MgaAccordion>
 
-      <MgaAccordion
-        number="05"
-        title="Otros Instrumentos de Planeación"
-        open={openAccordion === '05'}
-        onToggle={() => handleToggle('05')}
-      >
-        <div className="space-y-4">
-          <AIAssistedField
-            label="Plan de Desarrollo"
-            htmlFor="otros-plan"
-            fieldHelpKey="plan_desarrollo"
-            projectContext={fieldProjectContext}
-            reactiveContext={reactiveContext}
-            currentValue={otrosPlan}
-            onAutoFill={(v) => setOtrosPlan(v)}
-            maxLength={1500}
-          >
-            <textarea spellCheck={true} 
-              id="otros-plan"
-              maxLength={1500} 
-              rows={3} 
-              value={otrosPlan} 
-              onChange={(e) => setOtrosPlan(e.target.value)} 
-              placeholder="Diligencie el nombre del Plan de Desarrollo si el proyecto es registrado por una Localidad..." 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
-            />
-            <p className="text-xs text-slate-500 mt-1 text-right">{otrosPlan.length} / 1500</p>
-          </AIAssistedField>
-          <AIAssistedField
-            label="Estrategia"
-            htmlFor="otros-estrategia"
-            fieldHelpKey="estrategia_desarrollo"
-            projectContext={fieldProjectContext}
-            reactiveContext={reactiveContext}
-            currentValue={otrosEstrategia}
-            onAutoFill={(v) => setOtrosEstrategia(v)}
-            maxLength={1500}
-          >
-            <textarea spellCheck={true} 
-              id="otros-estrategia"
-              maxLength={1500} 
-              rows={3} 
-              value={otrosEstrategia} 
-              onChange={(e) => setOtrosEstrategia(e.target.value)} 
-              placeholder="Diligencie el nombre de la estrategia" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
-            />
-            <p className="text-xs text-slate-500 mt-1 text-right">{otrosEstrategia.length} / 1500</p>
-          </AIAssistedField>
-          <AIAssistedField
-            label="Programa"
-            htmlFor="otros-programa"
-            fieldHelpKey="programa_desarrollo"
-            projectContext={fieldProjectContext}
-            reactiveContext={reactiveContext}
-            currentValue={otrosPrograma}
-            onAutoFill={(v) => setOtrosPrograma(v)}
-            maxLength={1500}
-          >
-            <textarea spellCheck={true} 
-              id="otros-programa"
-              maxLength={1500} 
-              rows={3} 
-              value={otrosPrograma} 
-              onChange={(e) => setOtrosPrograma(e.target.value)} 
-              placeholder="Diligencie el nombre del programa" 
-              className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
-            />
-            <p className="text-xs text-slate-500 mt-1 text-right">{otrosPrograma.length} / 1500</p>
-          </AIAssistedField>
-        </div>
-      </MgaAccordion>
+
 
     </div>
   );

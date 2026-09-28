@@ -75,7 +75,7 @@ export type PlanDesarrolloPndLink = {
 };
 
 export type PlanDesarrolloData = {
-  pndLinks: PlanDesarrolloPndLink[];
+  pnd: PlanDesarrolloPndLink[];
   departamental: {
     plan: string;
     estrategia: string;
@@ -86,14 +86,9 @@ export type PlanDesarrolloData = {
     estrategia: string;
     programa: string;
   };
-  etnico: {
+  etnias: {
     tipoComunidad: string;
     instrumentos: string;
-  };
-  otros: {
-    plan: string;
-    estrategia: string;
-    programa: string;
   };
 };
 

@@ -159,11 +159,27 @@ export type PoblacionJson = {
   objetivo: PoblacionDetalleJson;
 };
 
+export type IndicadorObjetivoJson = {
+  id: string;
+  indicador: string;
+  unidadMedida: string;
+  meta: number;
+  tipoFuente: string;
+  fuenteVerificacion: string;
+};
+
+export type ObjetivosJson = {
+  objetivoGeneral: string;
+  indicadores: IndicadorObjetivoJson[];
+  objetivosEspecificos: Record<string, string>;
+};
+
 export type IdentificacionData = {
   alternativas?: AlternativaJson[];
   evaluaciones?: EvaluacionesJson;
   problematica?: ProblematicaJson;
   poblacion?: PoblacionJson;
+  objetivos?: ObjetivosJson;
 };
 
 export type CadenaValorData = {

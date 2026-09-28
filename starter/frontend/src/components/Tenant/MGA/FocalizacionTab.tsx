@@ -99,6 +99,79 @@ export default function FocalizacionTab({ project }: { project: Project }) {
   const [selectedProductId, setSelectedProductId] = useState<string>(allProducts[0]?.id || '');
   const [openRowsDist, setOpenRowsDist] = useState<Record<string, boolean>>({});
 
+  const summaryData = React.useMemo(() => {
+    const result: { 
+      politica: string; 
+      categorias: Record<string, {
+        subcategorias: Record<string, number>;
+        total: number;
+      }>;
+      totalPolitica: number;
+    }[] = [];
+
+    // Procesar politicas con poblacion
+    Object.entries(localFoc.politicasConPoblacion || {}).forEach(([polName, { categoria }]) => {
+      // Como no hay matriz de distribución para las políticas con población en los requerimientos actuales, 
+      // el valor total será 0, pero deben aparecer en el reporte.
+      result.push({
+        politica: polName,
+        categorias: {
+          [categoria]: {
+            subcategorias: { 'N/A': 0 },
+            total: 0
+          }
+        },
+        totalPolitica: 0
+      });
+    });
+
+    // Procesar politicas sin poblacion
+    (localFoc.politicasSinPoblacion || []).forEach(pol => {
+      let totalPol = 0;
+      const subcatName = pol.subcategoria || 'N/A';
+      
+      // Sumar la distribución
+      if (pol.distribucion) {
+        Object.values(pol.distribucion).forEach(prodDist => {
+          if (prodDist.localizaciones) {
+            Object.values(prodDist.localizaciones).forEach(locDist => {
+              if (locDist.periodos) {
+                Object.values(locDist.periodos).forEach(per => {
+                  totalPol += (per.costosCategoria || 0);
+                });
+              }
+            });
+          }
+        });
+      }
+
+      const existingPolIndex = result.findIndex(r => r.politica === pol.politica);
+      if (existingPolIndex >= 0) {
+        const pObj = result[existingPolIndex];
+        if (!pObj.categorias[pol.categoria]) {
+          pObj.categorias[pol.categoria] = { subcategorias: {}, total: 0 };
+        }
+        const cObj = pObj.categorias[pol.categoria];
+        cObj.subcategorias[subcatName] = (cObj.subcategorias[subcatName] || 0) + totalPol;
+        cObj.total += totalPol;
+        pObj.totalPolitica += totalPol;
+      } else {
+        result.push({
+          politica: pol.politica,
+          categorias: {
+            [pol.categoria]: {
+              subcategorias: { [subcatName]: totalPol },
+              total: totalPol
+            }
+          },
+          totalPolitica: totalPol
+        });
+      }
+    });
+
+    return result;
+  }, [localFoc.politicasConPoblacion, localFoc.politicasSinPoblacion]);
+
   useEffect(() => {
     setLocalFoc({
       politicasPoblacionales: polPoblacionales,
@@ -511,34 +584,62 @@ export default function FocalizacionTab({ project }: { project: Project }) {
           05 - Resumen Focalización
         </button>
         {openAccordions['acc-foc-5'] && (
-          <div className="p-4 bg-white">
-            <table className="w-full text-left text-sm border">
-              <thead className="bg-slate-100 text-slate-700 border-b">
-                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Cruces de políticas</th></tr>
-              </thead>
-              <tbody>
-                {allPolicies.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-slate-500">No hay información de focalización para resumir.</td></tr> :
-                  allPolicies.map(pol => {
-                    let cat = '---';
-                    if (pol.id.startsWith('con_')) {
-                      const base = pol.id.replace('con_', '');
-                      cat = localFoc.politicasConPoblacion?.[base]?.categoria || '---';
-                    } else {
-                      const sin = (localFoc.politicasSinPoblacion || []).find(p => p.id === pol.id);
-                      if (sin) { cat = sin.categoria; }
-                    }
-                    const crucesStr = (localFoc.crucesPoliticas?.[pol.id] || []).map(getPolicyName).join(', ');
-                    return (
-                      <tr key={pol.id} className="border-b hover:bg-slate-50">
-                        <td className="p-3 border-r font-medium text-slate-700">{pol.name}</td>
-                        <td className="p-3 border-r text-slate-600">{cat}</td>
-                        <td className="p-3 border-r text-slate-600">{crucesStr || '---'}</td>
+          <div className="p-4 bg-white space-y-6">
+            {summaryData.length === 0 ? (
+              <p className="text-center text-slate-500">No hay información de focalización para resumir.</p>
+            ) : (
+              summaryData.map((polData, polIdx) => (
+                <div key={polIdx} className="border rounded-lg overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[#2980b9] text-white">
+                      <tr>
+                        <th className="p-3 w-1/4">POLÍTICA</th>
+                        <th className="p-3 w-1/4">Categoría</th>
+                        <th className="p-3 w-1/4">Subcategoría</th>
+                        <th className="p-3 w-1/4 text-right">VALOR</th>
                       </tr>
-                    );
-                  })
-                }
-              </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                      {Object.entries(polData.categorias).map(([catName, catData], catIdx) => (
+                        <React.Fragment key={catName}>
+                          {Object.entries(catData.subcategorias).map(([subcatName, val], subIdx) => (
+                            <tr key={`${catName}-${subcatName}`} className="border-b bg-white hover:bg-slate-50">
+                              {catIdx === 0 && subIdx === 0 && (
+                                <td className="p-3 border-r font-medium text-slate-700 align-top bg-white" rowSpan={Object.keys(catData.subcategorias).length + 1}>
+                                  {polData.politica}
+                                </td>
+                              )}
+                              {subIdx === 0 && (
+                                <td className="p-3 border-r text-slate-700 align-top" rowSpan={Object.keys(catData.subcategorias).length}>
+                                  {catName}
+                                </td>
+                              )}
+                              <td className="p-3 border-r text-slate-600">{subcatName}</td>
+                              <td className="p-3 text-right font-medium text-slate-700">
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(val)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="border-b bg-slate-100 font-semibold text-slate-800">
+                            {catIdx > 0 && <td className="p-3 border-r" />}
+                            <td colSpan={2} className="p-3 border-r text-right text-slate-600">Total categoría</td>
+                            <td className="p-3 text-right text-blue-700">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(catData.total)}
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      ))}
+                      <tr className="bg-slate-200 font-bold text-slate-900 border-t-2 border-slate-300">
+                        <td colSpan={3} className="p-3 border-r text-right uppercase tracking-wider">TOTAL POLÍTICA TRANSVERSAL</td>
+                        <td className="p-3 text-right text-emerald-700 text-base">
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(polData.totalPolitica)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

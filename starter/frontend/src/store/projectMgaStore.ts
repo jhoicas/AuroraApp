@@ -182,6 +182,31 @@ export type IdentificacionData = {
   objetivos?: ObjetivosJson;
 };
 
+export type NecesidadHistoricoJson = {
+  ano: number;
+  oferta: number;
+  demanda: number;
+  deficit: number;
+};
+
+export type NecesidadJson = {
+  id: string;
+  bienServicio: string;
+  descripcion: string;
+  descripcionOferta: string;
+  descripcionDemanda: string;
+  unidadMedidaId: string | number;
+  anoInicial: number;
+  anoFinal: number;
+  ultimoAnoProyectado: number;
+  historico: NecesidadHistoricoJson[];
+};
+
+export type PreparacionData = {
+  necesidades: Record<string, NecesidadJson[]>;
+};
+
+
 export type CadenaValorData = {
   sectorCode: string;
   programaCode: string;
@@ -215,6 +240,7 @@ export type ProjectMgaFormulation = {
   populations: MgaPopulation[];
   alternatives: MgaAlternative[];
   identificacion?: IdentificacionData;
+  preparacion?: PreparacionData;
   planDesarrollo?: PlanDesarrolloData;
   cadenaValor?: CadenaValorData;
   necesidades?: Record<string, any>;
@@ -295,6 +321,7 @@ type ProjectMgaState = {
   saveObjetivos: (projectId: string) => Promise<void>;
   saveCadenaDeValor: (projectId: string, data?: CadenaValorData) => Promise<void>;
   saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
+  savePreparacion: (projectId: string, data: PreparacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, alternativeId: string, data: { resumen: string }) => Promise<void>;
   saveLocalizacionPreparacion: (projectId: string, alternativeId: string, data: LocalizacionPreparacionData) => Promise<void>;
@@ -374,6 +401,7 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
     alternatives: data.alternatives ?? [],
     // As we don't have this in API yet, it will be undefined initially
     identificacion: undefined,
+    preparacion: undefined,
     planDesarrollo: undefined,
     necesidades: undefined,
     analisisTecnico: undefined,
@@ -444,6 +472,24 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       });
     } catch (err) {
       set({ isLoading: false, error: 'Error guardando plan de desarrollo', isSaving: false });
+      throw err;
+    }
+  },
+
+  savePreparacion: async (projectId, data) => {
+    set({ isSaving: true, error: null });
+    try {
+      set((state) => {
+        const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
+        const newCompleted = { ...formulation.completedSections, preparacion: true };
+        debouncedPatchProject(projectId, { preparacion: data, completedSections: newCompleted });
+        return {
+          byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, preparacion: data, completedSections: newCompleted } },
+          isSaving: false,
+        };
+      });
+    } catch (err) {
+      set({ isLoading: false, error: 'Error guardando preparacion', isSaving: false });
       throw err;
     }
   },

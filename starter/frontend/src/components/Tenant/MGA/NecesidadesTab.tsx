@@ -1,454 +1,523 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Edit3, HelpCircle, ArrowLeft, Check, PackageOpen } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { HelpCircle, Pencil, PlusCircle, Trash2, X, Check, AlertTriangle } from 'lucide-react';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import type { Project } from '../../../store/projectStore';
-import { useProjectMgaStore, type EstudioNecesidadItem } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, type NecesidadJson, type NecesidadHistoricoJson, type PreparacionData } from '../../../store/projectMgaStore';
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
-import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
-import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
+
+type NecesidadesTabProps = {
+  project: Project;
+};
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-const DEFAULT_FORM: EstudioNecesidadItem = {
-  id: '',
-  nombre: '',
-  descripcion: '',
-  descripcion_oferta: '',
-  descripcion_demanda: '',
-  unidad_medida_id: '',
-  ano_inicial: CURRENT_YEAR - 5,
-  ano_final: CURRENT_YEAR,
-  ultimo_ano_proyectado: CURRENT_YEAR + 10,
-};
-
-export default function NecesidadesTab({ project }: { project: Project }) {
-  const saveNecesidades = useProjectMgaStore((s) => s.saveNecesidades);
+export default function NecesidadesTab({ project }: NecesidadesTabProps) {
+  const getFormulation = useProjectMgaStore((s) => s.getFormulation);
+  const savePreparacion = useProjectMgaStore((s) => s.savePreparacion);
   const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const measurementUnits = useCatalogStore((s) => s.measurementUnits);
   const fetchAllMeasurementUnits = useCatalogStore((s) => s.fetchAllMeasurementUnits);
 
-  const initialItems = useMemo(() => {
-    const form = useProjectMgaStore.getState().getFormulation(project.id);
-    return form?.estudioNecesidades || form?.necesidades?.estudioNecesidades || [];
-  }, [project.id]);
+  const formulation = getFormulation(project.id);
+  const alternativas = formulation?.identificacion?.alternativas || [];
+  
+  const initialPreparacion = formulation?.preparacion;
 
-  const [items, setItems] = useState<EstudioNecesidadItem[]>(initialItems);
+  const [necesidadesPorAlternativa, setNecesidadesPorAlternativa] = useState<Record<string, NecesidadJson[]>>(() => initialPreparacion?.necesidades || {});
+  const [selectedAlternativaId, setSelectedAlternativaId] = useState<string>(alternativas.length > 0 ? alternativas[0].id : '');
+
+  const currentNecesidades = selectedAlternativaId ? (necesidadesPorAlternativa[selectedAlternativaId] || []) : [];
+
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<EstudioNecesidadItem>(DEFAULT_FORM);
 
-  const [message, setMessage] = useState<string | null>(null);
+  // Form draft
+  const [bienServicio, setBienServicio] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [descripcionOferta, setDescripcionOferta] = useState('');
+  const [descripcionDemanda, setDescripcionDemanda] = useState('');
+  const [unidadMedidaId, setUnidadMedidaId] = useState<string>('');
+  const [anoInicial, setAnoInicial] = useState<number>(CURRENT_YEAR - 5);
+  const [anoFinal, setAnoFinal] = useState<number>(CURRENT_YEAR);
+  const [ultimoAnoProyectado, setUltimoAnoProyectado] = useState<number>(CURRENT_YEAR + 10);
+  const [historico, setHistorico] = useState<NecesidadHistoricoJson[]>([]);
+
   const [error, setError] = useState<string | null>(null);
+
+  const prevProjectIdRef = useRef(project.id);
+  const isFirstMount = useRef(true);
+  const lastSavedRef = useRef<string>(JSON.stringify({
+    necesidades: initialPreparacion?.necesidades || {},
+  }));
 
   useEffect(() => {
     void fetchAllMeasurementUnits();
   }, [fetchAllMeasurementUnits]);
 
-  const fieldProjectContext: ProjectContext = useMemo(() => ({
-    projectName: project.name,
-    sector: project.sector || undefined,
-    productCode: project.product_code || undefined,
-    procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
-    objeto: (project as any)?.objeto || undefined,
-  }), [project.name, project.sector, project.product_code, (project as any)?.proceso_id, (project as any)?.objeto]);
+  // Sync state if project changes
+  useEffect(() => {
+    if (prevProjectIdRef.current !== project.id) {
+      prevProjectIdRef.current = project.id;
+      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.preparacion;
+      setNecesidadesPorAlternativa(currentData?.necesidades || {});
+      lastSavedRef.current = JSON.stringify({
+        necesidades: currentData?.necesidades || {},
+      });
+      const alts = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.alternativas || [];
+      setSelectedAlternativaId(alts.length > 0 ? alts[0].id : '');
+      setIsAdding(false);
+      setEditingId(null);
+    }
+  }, [project.id]);
 
-  const handleOpenCreate = () => {
-    setEditingId(null);
-    setFormData({
-      ...DEFAULT_FORM,
-      id: crypto.randomUUID(),
-    });
-    setError(null);
-    setMessage(null);
-    setIsAdding(true);
-  };
-
-  const handleOpenEdit = (item: EstudioNecesidadItem) => {
-    setEditingId(item.id);
-    setFormData({ ...item });
-    setError(null);
-    setMessage(null);
-    setIsAdding(true);
-  };
-
-  const handleCancel = () => {
-    setIsAdding(false);
-    setEditingId(null);
-    setFormData(DEFAULT_FORM);
-    setError(null);
-  };
-
-  const handleAccept = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!formData.nombre.trim()) {
-      setError('El nombre del bien o servicio es obligatorio.');
+  // Auto-save effect
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
       return;
     }
-    if (!formData.unidad_medida_id) {
+
+    const data: PreparacionData = {
+      necesidades: necesidadesPorAlternativa,
+    };
+
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+
+    void savePreparacion(project.id, data);
+  }, [necesidadesPorAlternativa, project.id, savePreparacion]);
+
+  // Regenerate historico dynamically when dates change during editing
+  useEffect(() => {
+    if (isAdding) {
+      setHistorico(prevHistorico => {
+        const newHistorico: NecesidadHistoricoJson[] = [];
+        if (anoInicial <= anoFinal) {
+          for (let y = anoInicial; y <= anoFinal; y++) {
+            const existing = prevHistorico.find(h => h.ano === y);
+            newHistorico.push({
+              ano: y,
+              oferta: existing?.oferta || 0,
+              demanda: existing?.demanda || 0,
+              deficit: (existing?.oferta || 0) - (existing?.demanda || 0)
+            });
+          }
+        }
+        return newHistorico;
+      });
+    }
+  }, [anoInicial, anoFinal, isAdding]);
+
+  const updateHistoricoRow = (index: number, field: 'oferta' | 'demanda', value: number) => {
+    setHistorico(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      copy[index].deficit = copy[index].oferta - copy[index].demanda;
+      return copy;
+    });
+  };
+
+  const openForm = (item?: NecesidadJson) => {
+    setError(null);
+    if (item) {
+      setEditingId(item.id);
+      setBienServicio(item.bienServicio);
+      setDescripcion(item.descripcion);
+      setDescripcionOferta(item.descripcionOferta);
+      setDescripcionDemanda(item.descripcionDemanda);
+      setUnidadMedidaId(String(item.unidadMedidaId));
+      setAnoInicial(item.anoInicial);
+      setAnoFinal(item.anoFinal);
+      setUltimoAnoProyectado(item.ultimoAnoProyectado);
+      setHistorico(item.historico || []);
+    } else {
+      setEditingId(null);
+      setBienServicio('');
+      setDescripcion('');
+      setDescripcionOferta('');
+      setDescripcionDemanda('');
+      setUnidadMedidaId('');
+      setAnoInicial(CURRENT_YEAR - 5);
+      setAnoFinal(CURRENT_YEAR);
+      setUltimoAnoProyectado(CURRENT_YEAR + 10);
+      setHistorico([]);
+    }
+    setIsAdding(true);
+  };
+
+  const closeForm = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setError(null);
+  };
+
+  const handleSave = () => {
+    if (!selectedAlternativaId) {
+      setError('Debe seleccionar una alternativa.');
+      return;
+    }
+    if (!bienServicio.trim()) {
+      setError('El Bien o Servicio es obligatorio.');
+      return;
+    }
+    if (!unidadMedidaId) {
       setError('Debe seleccionar una unidad de medida.');
       return;
     }
-
-    let updatedItems: EstudioNecesidadItem[];
-    if (editingId) {
-      updatedItems = items.map((it) => (it.id === editingId ? { ...formData } : it));
-    } else {
-      updatedItems = [...items, { ...formData, id: formData.id || crypto.randomUUID() }];
+    if (anoInicial > anoFinal) {
+      setError('El Año inicial no puede ser mayor al Año final.');
+      return;
     }
-
-    setItems(updatedItems);
-    setIsAdding(false);
-    setEditingId(null);
-    setFormData(DEFAULT_FORM);
+    if (ultimoAnoProyectado < anoFinal) {
+      setError('El Último año proyectado debe ser mayor o igual al Año final.');
+      return;
+    }
     setError(null);
 
-    try {
-      await saveNecesidades(project.id, {
-        estudioNecesidades: updatedItems,
-        items: updatedItems,
-      });
-      setMessage('Estudio de necesidades guardado exitosamente.');
-    } catch (err) {
-      setError('Error al guardar el estudio de necesidades en el servidor.');
-    }
+    const newItem: NecesidadJson = {
+      id: editingId || crypto.randomUUID(),
+      bienServicio: bienServicio.trim(),
+      descripcion: descripcion.trim(),
+      descripcionOferta: descripcionOferta.trim(),
+      descripcionDemanda: descripcionDemanda.trim(),
+      unidadMedidaId,
+      anoInicial,
+      anoFinal,
+      ultimoAnoProyectado,
+      historico
+    };
+
+    setNecesidadesPorAlternativa(prev => {
+      const currentList = prev[selectedAlternativaId] || [];
+      if (editingId) {
+        return {
+          ...prev,
+          [selectedAlternativaId]: currentList.map(i => i.id === editingId ? newItem : i)
+        };
+      } else {
+        return {
+          ...prev,
+          [selectedAlternativaId]: [...currentList, newItem]
+        };
+      }
+    });
+
+    closeForm();
   };
 
-  const handleDelete = async (id: string) => {
-    const updatedItems = items.filter((it) => it.id !== id);
-    setItems(updatedItems);
-    try {
-      await saveNecesidades(project.id, {
-        estudioNecesidades: updatedItems,
-        items: updatedItems,
-      });
-      setMessage('Elemento eliminado exitosamente.');
-    } catch (err) {
-      setError('Error al actualizar el estudio de necesidades.');
-    }
+  const handleDelete = (id: string) => {
+    if (!window.confirm('¿Eliminar esta necesidad?')) return;
+    setNecesidadesPorAlternativa(prev => {
+      const currentList = prev[selectedAlternativaId] || [];
+      return {
+        ...prev,
+        [selectedAlternativaId]: currentList.filter(i => i.id !== id)
+      };
+    });
   };
 
-  const getUnitName = (unitId: number | string) => {
-    if (!unitId) return '—';
-    const found = measurementUnits.find((u) => String(u.id) === String(unitId));
-    return found ? found.name : `Unidad (${unitId})`;
-  };
+  if (alternativas.length === 0) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md flex gap-3 text-sm">
+        <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+        <div className="text-yellow-700">
+          <p className="font-bold">No hay alternativas creadas.</p>
+          <p>Para registrar las necesidades de su proyecto, primero debe crear al menos una alternativa en la pestaña de Identificación.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-5 bg-white p-6 border border-slate-200 rounded-xl shadow-sm">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-800">Estudio de necesidades</h1>
-            <HelpCircle className="w-5 h-5 text-slate-400" aria-hidden />
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Caracterice los bienes y servicios del proyecto, su unidad de medida y el balance entre oferta y demanda.
-          </p>
+    <div className="space-y-4 bg-white p-4 border rounded-lg text-xs">
+      <div className="flex items-center justify-between border-b pb-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-normal text-[#2980b9]">Estudio de necesidades</h1>
+          <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
         </div>
-
-        {!isAdding && (
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="inline-flex items-center justify-center gap-2 bg-[#006162] hover:bg-[#004f50] text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm transition-colors text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar
-          </button>
+        {isSaving && (
+          <div className="flex items-center gap-2 text-emerald-600 font-medium">
+             <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" /> Guardando...
+          </div>
         )}
       </div>
 
+      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
+        <label className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
+        <select
+          value={selectedAlternativaId}
+          onChange={(e) => {
+            setSelectedAlternativaId(e.target.value);
+            closeForm();
+          }}
+          className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+        >
+          {alternativas.map(alt => (
+            <option key={alt.id} value={alt.id}>{alt.nombre}</option>
+          ))}
+        </select>
+      </div>
+
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
-      {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
 
-      {/* VISTA 1: FORMULARIO */}
-      {isAdding ? (
-        <form onSubmit={handleAccept} className="space-y-6 bg-slate-50/70 p-6 rounded-xl border border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h2 className="text-base font-semibold text-slate-800">
-              {editingId ? 'Editar Bien o Servicio' : 'Adicionar Bien o Servicio'}
-            </h2>
+      {!isAdding ? (
+        <div className="space-y-4 mt-4">
+          <div className="flex justify-end">
             <button
               type="button"
-              onClick={handleCancel}
-              className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+              disabled={isSaving || !selectedAlternativaId}
+              onClick={() => openForm()}
+              className="flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white font-semibold rounded disabled:opacity-60"
             >
-              <ArrowLeft className="w-4 h-4" /> Volver a la tabla
+              <PlusCircle className="w-4 h-4" />
+              Adicionar
             </button>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Nombre del Bien o Servicio */}
-            <div className="md:col-span-2">
-              <AIAssistedField
-                label="Bien o servicio *"
-                htmlFor="necesidad-nombre"
-                fieldHelpKey="bien_servicio"
-                projectContext={fieldProjectContext}
-                reactiveContext={formData}
-                currentValue={formData.nombre}
-                onAutoFill={(v) => setFormData((prev) => ({ ...prev, nombre: v }))}
-                maxLength={500}
-              >
-                <input
-                  spellCheck={true}
-                  id="necesidad-nombre"
-                  type="text"
-                  required
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Ej: Servicio de suministro de agua potable tratada"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                />
-              </AIAssistedField>
-            </div>
-
-            {/* Unidad de Medida (Catálogo Dinámico) */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Medido a través de (Unidad de Medida) *
-              </label>
-              <select
-                required
-                value={formData.unidad_medida_id}
-                onChange={(e) => setFormData({ ...formData, unidad_medida_id: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              >
-                <option value="">Seleccione una unidad de medida...</option>
-                {measurementUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} (ID: {u.id})
-                  </option>
-                ))}
-              </select>
-              {measurementUnits.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">Cargando catálogo de unidades de medida...</p>
-              )}
-            </div>
-
-            {/* Descripción */}
-            <div className="md:col-span-2">
-              <AIAssistedField
-                label="Descripción"
-                htmlFor="necesidad-descripcion"
-                fieldHelpKey="descripcion_necesidad"
-                projectContext={fieldProjectContext}
-                reactiveContext={formData}
-                currentValue={formData.descripcion}
-                onAutoFill={(v) => setFormData((prev) => ({ ...prev, descripcion: v }))}
-                maxLength={1500}
-              >
-                <textarea
-                  spellCheck={true}
-                  id="necesidad-descripcion"
-                  rows={3}
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                  placeholder="Detalle las especificaciones técnicas y características del bien o servicio..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
-                />
-              </AIAssistedField>
-            </div>
-
-            {/* Descripción de la Oferta */}
-            <div>
-              <AIAssistedField
-                label="Descripción de la oferta"
-                htmlFor="necesidad-oferta"
-                fieldHelpKey="descripcion_oferta"
-                projectContext={fieldProjectContext}
-                reactiveContext={formData}
-                currentValue={formData.descripcion_oferta}
-                onAutoFill={(v) => setFormData((prev) => ({ ...prev, descripcion_oferta: v }))}
-                maxLength={1500}
-              >
-                <textarea
-                  spellCheck={true}
-                  id="necesidad-oferta"
-                  rows={3}
-                  value={formData.descripcion_oferta}
-                  onChange={(e) => setFormData({ ...formData, descripcion_oferta: e.target.value })}
-                  placeholder="Capacidad de producción o prestación actual del bien/servicio..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
-                />
-              </AIAssistedField>
-            </div>
-
-            {/* Descripción de la Demanda */}
-            <div>
-              <AIAssistedField
-                label="Descripción de la demanda"
-                htmlFor="necesidad-demanda"
-                fieldHelpKey="descripcion_demanda"
-                projectContext={fieldProjectContext}
-                reactiveContext={formData}
-                currentValue={formData.descripcion_demanda}
-                onAutoFill={(v) => setFormData((prev) => ({ ...prev, descripcion_demanda: v }))}
-                maxLength={1500}
-              >
-                <textarea
-                  spellCheck={true}
-                  id="necesidad-demanda"
-                  rows={3}
-                  value={formData.descripcion_demanda}
-                  onChange={(e) => setFormData({ ...formData, descripcion_demanda: e.target.value })}
-                  placeholder="Requerimientos y necesidades estimadas de la población objetivo..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
-                />
-              </AIAssistedField>
-            </div>
-
-            {/* Años de historia y proyección */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Inicio historia (Año Inicial)
-              </label>
-              <input
-                spellCheck={true}
-                type="number"
-                value={formData.ano_inicial}
-                onChange={(e) => setFormData({ ...formData, ano_inicial: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Final historia (Año Final)
-              </label>
-              <input
-                spellCheck={true}
-                type="number"
-                value={formData.ano_final}
-                onChange={(e) => setFormData({ ...formData, ano_final: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Último año proyectado
-              </label>
-              <input
-                spellCheck={true}
-                type="number"
-                value={formData.ultimo_ano_proyectado}
-                onChange={(e) => setFormData({ ...formData, ultimo_ano_proyectado: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none md:w-1/2"
-              />
-            </div>
-          </div>
-
-          {/* Botones de Acción */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-5 py-2 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-100 transition-colors text-sm"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-[#006162] hover:bg-[#004f50] text-white font-medium shadow-sm transition-colors text-sm disabled:opacity-50"
-            >
-              {isSaving ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              Aceptar
-            </button>
-          </div>
-        </form>
-      ) : (
-        /* VISTA 2: TABLA */
-        <div className="space-y-4">
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-left text-sm text-slate-700 divide-y divide-slate-200">
-              <thead className="bg-slate-50 text-slate-700 font-semibold">
+          <div className="overflow-x-auto border rounded">
+            <table className="w-full text-left">
+              <thead className="bg-[#6c757d] text-white">
                 <tr>
-                  <th className="px-4 py-3">Bien o servicio</th>
-                  <th className="px-4 py-3">Medido a través de</th>
-                  <th className="px-4 py-3">Descripción</th>
-                  <th className="px-4 py-3">Descripción de la oferta</th>
-                  <th className="px-4 py-3">Descripción de la demanda</th>
-                  <th className="px-3 py-3 text-center whitespace-nowrap">Inicio historia</th>
-                  <th className="px-3 py-3 text-center whitespace-nowrap">Final historia</th>
-                  <th className="px-3 py-3 text-center whitespace-nowrap">Último año</th>
-                  <th className="px-4 py-3 text-center w-24">Acciones</th>
+                  <th className="p-2 border">Acciones</th>
+                  <th className="p-2 border">Bien o servicio</th>
+                  <th className="p-2 border">Medido a través de</th>
+                  <th className="p-2 border">Descripción</th>
+                  <th className="p-2 border">Inicio historia</th>
+                  <th className="p-2 border">Final historia</th>
+                  <th className="p-2 border">Último año</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {items.length === 0 ? (
+              <tbody>
+                {currentNecesidades.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
-                      <PackageOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                      <p className="font-medium text-slate-600">No hay bienes o servicios registrados.</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Haga clic en "+ Adicionar" para crear el primer bien o servicio.
-                      </p>
+                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                      No se han adicionado bienes o servicios a esta alternativa.
                     </td>
                   </tr>
                 ) : (
-                  items.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-slate-900">{item.nombre}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {getUnitName(item.unidad_medida_id)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs truncate" title={item.descripcion}>
-                        {item.descripcion || '—'}
-                      </td>
-                      <td className="px-4 py-3 max-w-xs truncate" title={item.descripcion_oferta}>
-                        {item.descripcion_oferta || '—'}
-                      </td>
-                      <td className="px-4 py-3 max-w-xs truncate" title={item.descripcion_demanda}>
-                        {item.descripcion_demanda || '—'}
-                      </td>
-                      <td className="px-3 py-3 text-center">{item.ano_inicial || '—'}</td>
-                      <td className="px-3 py-3 text-center">{item.ano_final || '—'}</td>
-                      <td className="px-3 py-3 text-center">{item.ultimo_ano_proyectado || '—'}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                  currentNecesidades.map((item) => {
+                    const unidadNombre = measurementUnits.find(u => String(u.id) === String(item.unidadMedidaId))?.name || 'N/A';
+                    return (
+                      <tr key={item.id} className="border-b hover:bg-gray-50 align-top">
+                        <td className="p-2 border text-center whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Editar"
+                            onClick={() => openForm(item)}
+                            disabled={isSaving}
+                            className="p-1 bg-[#2980b9] text-white rounded mr-1 disabled:opacity-60"
+                            aria-label="Editar"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <Pencil className="w-3 h-3" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(item.id)}
-                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar"
+                            disabled={isSaving}
+                            className="p-1 bg-[#2980b9] text-white rounded disabled:opacity-60"
+                            aria-label="Eliminar"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="p-2 border font-medium text-slate-800">{item.bienServicio}</td>
+                        <td className="p-2 border">{unidadNombre}</td>
+                        <td className="p-2 border truncate max-w-xs" title={item.descripcion}>{item.descripcion}</td>
+                        <td className="p-2 border text-center">{item.anoInicial}</td>
+                        <td className="p-2 border text-center">{item.anoFinal}</td>
+                        <td className="p-2 border text-center">{item.ultimoAnoProyectado}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+        </div>
+      ) : (
+        <div className="border rounded p-4 bg-gray-50 space-y-4 mt-4">
+          <h3 className="font-semibold text-slate-700">{editingId ? 'Editar Necesidad' : 'Nueva Necesidad'}</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AIAssistedField
+              label="Bien o servicio"
+              htmlFor={`ns-bien-${project.id}`}
+              required
+              currentValue={bienServicio}
+              onAutoFill={setBienServicio}
+              maxLength={200}
+            >
+              <input
+                id={`ns-bien-${project.id}`}
+                type="text"
+                value={bienServicio}
+                onChange={(e) => setBienServicio(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+              />
+            </AIAssistedField>
 
-          <div className="flex justify-between items-center pt-2">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Unidad de medida <span className="text-red-500">*</span></label>
+              <select
+                value={unidadMedidaId}
+                onChange={(e) => setUnidadMedidaId(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+              >
+                <option value="">Seleccione una unidad...</option>
+                {measurementUnits.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="md:col-span-2">
+              <AIAssistedField
+                label="Descripción del bien o servicio"
+                htmlFor={`ns-desc-${project.id}`}
+                currentValue={descripcion}
+                onAutoFill={setDescripcion}
+                maxLength={500}
+              >
+                <textarea
+                  id={`ns-desc-${project.id}`}
+                  rows={2}
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </AIAssistedField>
+            </div>
+
+            <div>
+              <AIAssistedField
+                label="Descripción de la Oferta"
+                htmlFor={`ns-oferta-${project.id}`}
+                currentValue={descripcionOferta}
+                onAutoFill={setDescripcionOferta}
+                maxLength={500}
+              >
+                <textarea
+                  id={`ns-oferta-${project.id}`}
+                  rows={3}
+                  value={descripcionOferta}
+                  onChange={(e) => setDescripcionOferta(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </AIAssistedField>
+            </div>
+
+            <div>
+              <AIAssistedField
+                label="Descripción de la Demanda"
+                htmlFor={`ns-demanda-${project.id}`}
+                currentValue={descripcionDemanda}
+                onAutoFill={setDescripcionDemanda}
+                maxLength={500}
+              >
+                <textarea
+                  id={`ns-demanda-${project.id}`}
+                  rows={3}
+                  value={descripcionDemanda}
+                  onChange={(e) => setDescripcionDemanda(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </AIAssistedField>
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-slate-700 mb-3 text-sm">Configuración de Serie Histórica</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-slate-600 mb-1">Año inicial</label>
+                <input
+                  type="number"
+                  value={anoInicial}
+                  onChange={(e) => setAnoInicial(Number(e.target.value))}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 mb-1">Año final</label>
+                <input
+                  type="number"
+                  value={anoFinal}
+                  onChange={(e) => setAnoFinal(Number(e.target.value))}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 mb-1">Último año proyectado</label>
+                <input
+                  type="number"
+                  value={ultimoAnoProyectado}
+                  onChange={(e) => setUltimoAnoProyectado(Number(e.target.value))}
+                  className="w-full p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+                />
+              </div>
+            </div>
+
+            {historico.length > 0 && (
+              <div className="overflow-x-auto border rounded bg-white">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-slate-700">
+                    <tr>
+                      <th className="p-2 border w-24 text-center">Año</th>
+                      <th className="p-2 border">Oferta</th>
+                      <th className="p-2 border">Demanda</th>
+                      <th className="p-2 border">Déficit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historico.map((row, index) => (
+                      <tr key={row.ano} className="border-b">
+                        <td className="p-2 border text-center font-medium bg-slate-50">{row.ano}</td>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            step="any"
+                            value={row.oferta}
+                            onChange={(e) => updateHistoricoRow(index, 'oferta', Number(e.target.value))}
+                            className="w-full p-1 border border-slate-300 rounded outline-none"
+                          />
+                        </td>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            step="any"
+                            value={row.demanda}
+                            onChange={(e) => updateHistoricoRow(index, 'demanda', Number(e.target.value))}
+                            className="w-full p-1 border border-slate-300 rounded outline-none"
+                          />
+                        </td>
+                        <td className="p-2 border text-right font-medium">
+                          <span className={row.deficit < 0 ? 'text-red-600' : 'text-slate-800'}>
+                            {row.deficit.toLocaleString('es-CO')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={handleOpenCreate}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-[#006162] text-[#006162] hover:bg-[#006162]/5 font-semibold rounded-lg text-sm transition-colors"
+              onClick={closeForm}
+              className="inline-flex items-center gap-1 px-4 py-1.5 border border-slate-300 text-slate-700 font-medium hover:bg-slate-100 transition-colors rounded text-sm"
             >
-              <Plus className="w-4 h-4" />
-              Adicionar Bien o Servicio
+              <X className="w-4 h-4" /> Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#2980b9] text-white font-medium hover:bg-[#20638f] transition-colors shadow-sm rounded text-sm"
+            >
+              <Check className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Aceptar'}
             </button>
           </div>
         </div>

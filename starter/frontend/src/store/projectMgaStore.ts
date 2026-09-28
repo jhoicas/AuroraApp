@@ -147,10 +147,23 @@ export type ProblematicaJson = {
   magnitudIndicadores: string;
 };
 
+export type PoblacionDetalleJson = {
+  tipoPoblacion: string;
+  numero: number;
+  fuenteInformacion: string;
+  localizaciones: UbicacionJson[];
+};
+
+export type PoblacionJson = {
+  afectada: PoblacionDetalleJson;
+  objetivo: PoblacionDetalleJson;
+};
+
 export type IdentificacionData = {
   alternativas?: AlternativaJson[];
   evaluaciones?: EvaluacionesJson;
   problematica?: ProblematicaJson;
+  poblacion?: PoblacionJson;
 };
 
 export type CadenaValorData = {

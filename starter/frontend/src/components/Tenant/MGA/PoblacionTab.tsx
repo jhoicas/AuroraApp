@@ -1,367 +1,380 @@
-import { useEffect, useState } from 'react';
-import { HelpCircle } from 'lucide-react';
-import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import { useState, useEffect, useRef } from 'react';
+import { HelpCircle, Plus, Trash2, MapPin } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
-import {
-  parsePopulationLocations,
-  useProjectMgaStore,
-  debouncedPatchProject,
-  type PopulationLocationsData,
-} from '../../../store/projectMgaStore';
-import type { MgaPopulationType } from '../../../lib/mgaApi';
+import { useProjectMgaStore, debouncedPatchProject, type PoblacionJson, type PoblacionDetalleJson, type UbicacionJson } from '../../../store/projectMgaStore';
+import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
-import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
+
+const EMPTY_POBLACION_DETALLE: PoblacionDetalleJson = {
+  tipoPoblacion: 'Personas',
+  numero: 0,
+  fuenteInformacion: '',
+  localizaciones: [],
+};
 
 type PoblacionTabProps = {
   project: Project;
 };
 
-type PopulationPanelState = {
-  total_number: string;
-  population_type: string;
-  source: string;
-  municipalities: string;
-  departments: string;
-  localization: string;
-  demographicNotes: string;
-};
-
-function emptyPanel(): PopulationPanelState {
-  return {
-    total_number: '',
-    population_type: 'Personas',
-    source: '',
-    municipalities: '',
-    departments: '',
-    localization: '',
-    demographicNotes: '',
-  };
-}
-
-function panelFromRecord(
-  populationType: MgaPopulationType,
-  populations: ReturnType<ReturnType<typeof useProjectMgaStore.getState>['getFormulation']>['populations'],
-): PopulationPanelState {
-  const record = populations.find((p) => p.population_type === populationType);
-  if (!record) return emptyPanel();
-
-  const loc = parsePopulationLocations(record.locations);
-  const popType =
-    loc.population_type ||
-    loc.population_unit ||
-    (record as any).population_type ||
-    (record as any).population_unit ||
-    'Personas';
-
-  return {
-    total_number: record.total_number > 0 ? String(record.total_number) : '',
-    population_type: popType,
-    source: record.source ?? '',
-    municipalities: (loc.municipalities ?? []).join(', '),
-    departments: (loc.departments ?? []).join(', '),
-    localization: loc.localization ?? '',
-    demographicNotes: loc.demographicNotes ?? '',
-  };
-}
-
-function buildLocations(panel: PopulationPanelState): PopulationLocationsData {
-  const municipalities = panel.municipalities
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const departments = panel.departments
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  return {
-    municipalities: municipalities.length > 0 ? municipalities : undefined,
-    departments: departments.length > 0 ? departments : undefined,
-    localization: panel.localization.trim() || undefined,
-    demographicNotes: panel.demographicNotes.trim() || undefined,
-    population_type: panel.population_type || 'Personas',
-    population_unit: panel.population_type || 'Personas',
-  };
-}
-
-type PopulationPanelProps = {
-  project: Project;
-  populationType: MgaPopulationType;
-  title: string;
-  number: string;
-};
-
-function PopulationPanel({ project, populationType, title, number }: PopulationPanelProps) {
-  const [open, setOpen] = useState(true);
-  const [panel, setPanel] = useState<PopulationPanelState>(emptyPanel);
-  const [message, setMessage] = useState<string | null>(null);
+export default function PoblacionTab({ project }: PoblacionTabProps) {
   const [error, setError] = useState<string | null>(null);
+  
+  const [openSections, setOpenSections] = useState({
+    afectada: true,
+    objetivo: true,
+  });
 
-  const getFormulation = useProjectMgaStore((s) => s.getFormulation);
-  const savePopulation = useProjectMgaStore((s) => s.savePopulation);
-  const isSaving = useProjectMgaStore((s) => s.isSaving);
+  const { departments, municipalitiesByDept, fetchDepartments, fetchMunicipalities } = useCatalogStore();
 
-  const populations = getFormulation(project.id).populations;
+  const [poblacion, setPoblacion] = useState<PoblacionJson>({
+    afectada: { ...EMPTY_POBLACION_DETALLE },
+    objetivo: { ...EMPTY_POBLACION_DETALLE },
+  });
 
-  const fieldProjectContext: ProjectContext = {
-    projectName: project.name,
-    sector: project.sector || undefined,
-    productCode: project.product_code || undefined,
-    procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
-    objeto: (project as any)?.objeto || undefined,
-    municipio: panel.municipalities || undefined,
-    departamento: panel.departments || undefined,
-  };
+  const prevProjectIdRef = useRef(project.id);
+  const isFirstMount = useRef(true);
+  const lastSavedRef = useRef<string>('');
 
   useEffect(() => {
-    setPanel(panelFromRecord(populationType, populations));
-  }, [populationType, populations]);
+    void fetchDepartments();
+  }, [fetchDepartments]);
 
-  const handleSave = async () => {
-    const total = Number.parseInt(panel.total_number.replace(/\D/g, ''), 10);
-    if (!Number.isFinite(total) || total <= 0) {
-      setError('Indique un número total válido de personas.');
+  useEffect(() => {
+    if (prevProjectIdRef.current !== project.id) {
+      prevProjectIdRef.current = project.id;
+      isFirstMount.current = true;
+    }
+    const storePoblacion = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.poblacion;
+    const initial = {
+      afectada: storePoblacion?.afectada || { ...EMPTY_POBLACION_DETALLE },
+      objetivo: storePoblacion?.objetivo || { ...EMPTY_POBLACION_DETALLE },
+    };
+    setPoblacion(initial);
+    lastSavedRef.current = JSON.stringify(initial);
+  }, [project.id]);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
       return;
     }
-    if (!panel.source.trim()) {
-      setError('La fuente de la información es obligatoria.');
-      return;
-    }
-    setError(null);
-    try {
-      const locData = buildLocations(panel);
-      await savePopulation(project.id, populationType, {
-        total_number: total,
-        source: panel.source.trim(),
-        locations: locData,
-      });
-      debouncedPatchProject(project.id, {
-        poblacion: {
-          [populationType]: {
-            total_number: total,
-            population_type: panel.population_type,
-            source: panel.source.trim(),
-            ...locData,
-          },
-        },
-      });
-      setMessage('Población guardada correctamente.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la población');
-    }
+    const serialized = JSON.stringify(poblacion);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+
+    const curData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+    debouncedPatchProject(project.id, {
+      identificacion_data: {
+        ...curData,
+        poblacion,
+      },
+    });
+  }, [poblacion, project.id]);
+
+  const copyAfectadaToObjetivo = () => {
+    setPoblacion((prev) => ({
+      ...prev,
+      objetivo: {
+        ...prev.afectada,
+        localizaciones: [...prev.afectada.localizaciones],
+      },
+    }));
   };
 
-  const label =
-    populationType === 'afectada' ? 'población afectada' : 'población objetivo';
+  const renderSection = (
+    key: 'afectada' | 'objetivo',
+    title: string,
+    numberStr: string
+  ) => {
+    const data = poblacion[key];
+    const updateData = (patch: Partial<PoblacionDetalleJson>) => {
+      setPoblacion((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], ...patch },
+      }));
+    };
 
-  return (
-    <MgaAccordion number={number} title={title} open={open} onToggle={() => setOpen((v) => !v)}>
-      <div className="space-y-3">
-        {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
-        {message && (
-          <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />
-        )}
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="font-semibold text-gray-600 block mb-1">Número total</label>
-            <input spellCheck={true}
-              type="number"
-              min="0"
-              maxLength={13}
-              inputMode="numeric"
-              onKeyDown={(e) => {
-                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-              value={panel.total_number}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val.length <= 13) setPanel((p) => ({ ...p, total_number: val }));
-              }}
-              className="w-full p-2 border rounded bg-white text-xs"
-              placeholder="Ej. 15000"
-            />
-          </div>
-          <div>
-            <label className="font-semibold text-gray-600 block mb-1">Tipo de población (Unidad)</label>
-            <select
-              id={`pop-type-${populationType}-${project.id}`}
-              name="population_type"
-              value={panel.population_type}
-              onChange={(e) => setPanel((p) => ({ ...p, population_type: e.target.value }))}
-              className="w-full p-2 border rounded bg-white text-xs"
-            >
-              <option value="Personas">Personas</option>
-              <option value="Familias">Familias</option>
-              <option value="Hectáreas">Hectáreas</option>
-              <option value="Productores">Productores</option>
-              <option value="Viviendas">Viviendas</option>
-              <option value="Estudiantes">Estudiantes</option>
-              <option value="Comunidades">Comunidades</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div>
-            <AIAssistedField
-              label="Fuente"
-              htmlFor={`pop-source-${populationType}-${project.id}`}
-              compact
-              guidance="Identifica la fuente utilizada para establecer la población."
-              askPrompt={`¿Qué fuente de información puedo usar para la ${label} del proyecto "${project.name}"?`}
-              fieldHelpKey="fuente_informacion_poblacion"
-              projectContext={fieldProjectContext}
-              reactiveContext={panel}
-              currentValue={panel.source}
-              onAutoFill={(v) => setPanel((p) => ({ ...p, source: v }))}
-              maxLength={500}
-            >
-              <input spellCheck={true}
-                type="text"
-                id={`pop-source-${populationType}-${project.id}`}
-                name="source"
-                maxLength={500}
-                value={panel.source}
-                onChange={(e) => setPanel((p) => ({ ...p, source: e.target.value }))}
-                className="w-full p-2 border rounded bg-white text-xs mt-1"
-                placeholder="Ej. DANE, censo, encuesta…"
+    return (
+      <MgaAccordion 
+        title={title} 
+        number={numberStr} 
+        open={openSections[key]} 
+        onToggle={() => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))}
+      >
+        <div className="space-y-6 p-1">
+          {key === 'objetivo' && (
+            <div className="flex justify-end">
+              <button
+                onClick={copyAfectadaToObjetivo}
+                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 flex items-center gap-2 transition-colors text-sm"
+              >
+                <MapPin className="w-4 h-4" />
+                Utilizar población afectada
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Tipo de población *</label>
+              <select
+                value={data.tipoPoblacion}
+                onChange={(e) => updateData({ tipoPoblacion: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
+              >
+                <option value="Personas">Personas</option>
+                <option value="Familias">Familias</option>
+                <option value="Empresas">Empresas</option>
+                <option value="Hectáreas">Hectáreas</option>
+                <option value="Instituciones">Instituciones</option>
+                <option value="Municipios">Municipios</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Número *</label>
+              <input
+                type="number"
+                min="0"
+                value={data.numero}
+                onChange={(e) => updateData({ numero: parseInt(e.target.value) || 0 })}
+                className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
               />
-            </AIAssistedField>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Fuente de la información *</label>
+              <input
+                spellCheck={true}
+                type="text"
+                value={data.fuenteInformacion}
+                onChange={(e) => updateData({ fuenteInformacion: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
+              />
+            </div>
           </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="font-semibold text-gray-600 block mb-1">Departamentos</label>
-            <input spellCheck={true}
-              type="text"
-              value={panel.departments}
-              onChange={(e) => setPanel((p) => ({ ...p, departments: e.target.value }))}
-              className="w-full p-2 border rounded bg-white"
-              placeholder="Separados por coma"
-            />
-          </div>
-          <div>
-            <label className="font-semibold text-gray-600 block mb-1">Municipios</label>
-            <input spellCheck={true}
-              type="text"
-              value={panel.municipalities}
-              onChange={(e) => setPanel((p) => ({ ...p, municipalities: e.target.value }))}
-              className="w-full p-2 border rounded bg-white"
-              placeholder="Separados por coma"
-            />
-          </div>
-        </div>
-
-        <AIAssistedField
-          label="Localización / territorio"
-          htmlFor={`pop-loc-${populationType}-${project.id}`}
-          compact
-          guidance="Describa la zona geográfica donde se ubica la población: barrios, veredas, corregimientos o áreas de influencia del proyecto."
-          askPrompt={`¿Cómo describo la localización de la ${label} del proyecto "${project.name}" en formulación MGA?`}
-          fieldHelpKey="localizacion_poblacion"
-          projectContext={fieldProjectContext}
-          reactiveContext={panel}
-          currentValue={panel.localization}
-          onAutoFill={(v) => setPanel((p) => ({ ...p, localization: v }))}
-        >
-          <textarea spellCheck={true}
-            id={`pop-loc-${populationType}-${project.id}`}
-            rows={2}
-            value={panel.localization}
-            onChange={(e) => setPanel((p) => ({ ...p, localization: e.target.value }))}
-            className="w-full p-2 border rounded bg-white mt-1"
+          
+          <LocalizacionSubSection 
+            localizaciones={data.localizaciones}
+            onChange={(locs) => updateData({ localizaciones: locs })}
+            departments={departments}
+            municipalitiesByDept={municipalitiesByDept}
+            fetchMunicipalities={fetchMunicipalities}
           />
-        </AIAssistedField>
-
-        <AIAssistedField
-          label="Características demográficas"
-          htmlFor={`pop-demo-${populationType}-${project.id}`}
-          compact
-          guidance="Incluya sexo, edad, grupo étnico, condición socioeconómica u otras variables relevantes según el manual MGA."
-          askPrompt={`¿Qué características demográficas debo registrar para la ${label} del proyecto "${project.name}"?`}
-          fieldHelpKey={populationType === 'afectada' ? 'poblacion_afectada' : 'poblacion_objetivo'}
-          projectContext={fieldProjectContext}
-          reactiveContext={panel}
-          currentValue={panel.demographicNotes}
-          onAutoFill={(v) => setPanel((p) => ({ ...p, demographicNotes: v }))}
-        >
-          <textarea spellCheck={true}
-            id={`pop-demo-${populationType}-${project.id}`}
-            rows={3}
-            value={panel.demographicNotes}
-            onChange={(e) => setPanel((p) => ({ ...p, demographicNotes: e.target.value }))}
-            className="w-full p-2 border rounded bg-white mt-1"
-          />
-        </AIAssistedField>
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={() => void handleSave()}
-            className="px-4 py-1.5 bg-[#2980b9] text-white font-semibold rounded disabled:opacity-60"
-          >
-            {isSaving ? 'Guardando…' : 'Guardar población'}
-          </button>
         </div>
-      </div>
-    </MgaAccordion>
-  );
-}
-
-export default function PoblacionTab({ project }: PoblacionTabProps) {
-  const savePoblacion = useProjectMgaStore((s) => s.savePoblacion);
-  const isSaving = useProjectMgaStore((s) => s.isSaving);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSaveSection = async () => {
-    try {
-      await savePoblacion(project.id);
-      setSuccessMessage('Poblaciones guardadas exitosamente.');
-    } catch (err) {
-      setError('Error al guardar la sección.');
-    }
+      </MgaAccordion>
+    );
   };
 
   return (
-    <div className="space-y-4 bg-white p-4 border rounded-lg text-xs">
-      <div className="flex items-center gap-2 border-b pb-3">
+    <div className="space-y-4 max-w-6xl mx-auto pb-12">
+      <div className="flex items-center gap-2 border-b border-gray-200 pb-3">
         <h1 className="text-xl font-normal text-[#2980b9]">Población</h1>
-        <HelpCircle className="w-5 h-5 text-[#3498db]" aria-hidden />
+        <HelpCircle className="h-5 w-5 text-[#3498db]" aria-hidden />
       </div>
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
-      {successMessage && <MgaAlert message={successMessage} variant="success" onDismiss={() => setSuccessMessage(null)} />}
 
-      <PopulationPanel
-        project={project}
-        populationType="afectada"
-        number="01"
-        title="Población afectada"
-      />
-      <PopulationPanel
-        project={project}
-        populationType="objetivo"
-        number="02"
-        title="Población objetivo"
-      />
-
-      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
-        <button 
-          type="button"
-          onClick={handleSaveSection} 
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-          Guardar Población
-        </button>
+      <div className="space-y-4 mt-6">
+        {renderSection('afectada', 'Población afectada por el problema', '01')}
+        {renderSection('objetivo', 'Población objetivo de la intervención', '02')}
       </div>
+    </div>
+  );
+}
 
+// Separate component for the Localization part to keep things clean
+function LocalizacionSubSection({
+  localizaciones,
+  onChange,
+  departments,
+  municipalitiesByDept,
+  fetchMunicipalities
+}: {
+  localizaciones: UbicacionJson[],
+  onChange: (l: UbicacionJson[]) => void,
+  departments: any[],
+  municipalitiesByDept: Record<number, any[]>,
+  fetchMunicipalities: (id: number) => void
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<UbicacionJson>>({ georeferenciada: false });
+
+  const handleDepartmentChange = (deptId: string) => {
+    setFormData((prev) => ({ ...prev, departamento: deptId, municipio: '' }));
+    if (deptId) {
+      void fetchMunicipalities(Number(deptId));
+    }
+  };
+
+  const handleAddSubmit = () => {
+    if (!formData.departamento || !formData.municipio) {
+      setError("Departamento y Municipio son obligatorios");
+      return;
+    }
+
+    const deptObj = departments.find(d => d.id.toString() === formData.departamento);
+    const munObj = municipalitiesByDept[Number(formData.departamento)]?.find(m => m.id.toString() === formData.municipio);
+
+    const newUbicacion: UbicacionJson = {
+      id: crypto.randomUUID(),
+      region: 'N/A',
+      departamento: deptObj?.name || formData.departamento || '',
+      municipio: munObj?.name || formData.municipio || '',
+      tipoAgrupacion: formData.tipoAgrupacion || '',
+      agrupacion: formData.agrupacion || '',
+      especifica: formData.especifica || '',
+      latitud: formData.latitud || '',
+      longitud: formData.longitud || '',
+      georeferenciada: formData.georeferenciada || false,
+    };
+
+    onChange([...localizaciones, newUbicacion]);
+    setIsAdding(false);
+    setFormData({ georeferenciada: false });
+    setError(null);
+  };
+
+  const handleDelete = (id: string) => {
+    onChange(localizaciones.filter((u) => u.id !== id));
+  };
+
+  return (
+    <div className="space-y-4 mt-6 border-t pt-4">
+      <h4 className="text-sm font-semibold text-slate-700">Localización</h4>
+      {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
+      
+      {!isAdding ? (
+        <div className="space-y-4">
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b text-slate-600">
+                  <th className="p-2 font-medium">Departamento</th>
+                  <th className="p-2 font-medium">Municipio</th>
+                  <th className="p-2 font-medium">Tipo Agrupación</th>
+                  <th className="p-2 font-medium">Agrupación</th>
+                  <th className="p-2 font-medium">Específica</th>
+                  <th className="p-2 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {localizaciones.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center text-slate-500">
+                      No hay localizaciones registradas.
+                    </td>
+                  </tr>
+                ) : (
+                  localizaciones.map((ub) => (
+                    <tr key={ub.id} className="border-b hover:bg-slate-50">
+                      <td className="p-2">{ub.departamento}</td>
+                      <td className="p-2">{ub.municipio}</td>
+                      <td className="p-2">{ub.tipoAgrupacion || '-'}</td>
+                      <td className="p-2">{ub.agrupacion || '-'}</td>
+                      <td className="p-2 truncate max-w-[150px]" title={ub.especifica}>{ub.especifica || '-'}</td>
+                      <td className="p-2 text-center">
+                        <button
+                          onClick={() => handleDelete(ub.id)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 flex items-center gap-1.5 transition-colors font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Adicionar Ubicación
+          </button>
+        </div>
+      ) : (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+          <h5 className="font-medium text-slate-700 text-sm">Agregar Localización</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Departamento *</label>
+              <select
+                value={formData.departamento || ''}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
+              >
+                <option value="">Seleccione...</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Municipio *</label>
+              <select
+                value={formData.municipio || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, municipio: e.target.value }))}
+                disabled={!formData.departamento}
+                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
+              >
+                <option value="">Seleccione...</option>
+                {formData.departamento && municipalitiesByDept[Number(formData.departamento)]?.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Agrupación</label>
+              <input
+                type="text"
+                value={formData.tipoAgrupacion || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, tipoAgrupacion: e.target.value }))}
+                placeholder="Ej. Resguardo, Vereda"
+                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Agrupación</label>
+              <input
+                type="text"
+                value={formData.agrupacion || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, agrupacion: e.target.value }))}
+                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Localización Específica</label>
+              <textarea
+                value={formData.especifica || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))}
+                rows={2}
+                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200">
+            <button
+              onClick={() => {
+                setIsAdding(false);
+                setFormData({ georeferenciada: false });
+                setError(null);
+              }}
+              className="px-3 py-1.5 border text-slate-600 rounded hover:bg-slate-100 transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleAddSubmit}
+              className="px-3 py-1.5 bg-[#006162] text-white rounded hover:bg-[#004d4e] transition-colors text-sm"
+            >
+              Guardar Localización
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

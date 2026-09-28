@@ -372,11 +372,29 @@ export type PoliticaFocalizada = {
   subcategoriaNombre?: string;
 };
 
+export type PoliticaSinPoblacion = {
+  id: string;
+  politica: string;
+  categoria: string;
+  subcategoria?: string;
+  distribucion: Record<string, { // Clave: productoId
+    localizaciones: Record<string, { // Clave: localizacionId
+      periodos: Record<number, { 
+        costo: number; 
+        meta: number; 
+      }>
+    }>
+  }>;
+};
+
 export type ProgramacionData = {
   indicadoresProducto?: Record<string, IndicadorProductoProgramado[]>; // Clave: ID del Producto (Cadena Valor)
   regionalizacion?: Record<string, RegionalizacionProducto[]>; // Clave: ID del Producto
   focalizacion?: {
-    politicasPoblacionales: Record<string, PoliticaFocalizada[]>; 
+    politicasPoblacionales?: Record<string, PoliticaFocalizada[]>; 
+    politicasConPoblacion?: Record<string, { categoria: string; indicador: string }>;
+    politicasSinPoblacion?: PoliticaSinPoblacion[];
+    crucesPoliticas?: Record<string, string[]>;
   };
   fuentes?: any[];
   indicadores?: any[];

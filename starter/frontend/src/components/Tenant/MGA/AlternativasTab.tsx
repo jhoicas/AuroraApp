@@ -135,6 +135,17 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
 
   const toggleEvaluacion = (field: keyof EvaluacionesJson) => {
     if (alternativas.length === 0) return;
+
+    if (field === 'rentabilidad' && evaluaciones.rentabilidad) {
+      // Trying to uncheck rentabilidad
+      const confirmUncheck = window.confirm(
+        "Al no realizar la evaluación de 'Rentabilidad', algunos capítulos del módulo de preparación no serán visualizados, y perderá la información ya ingresada. ¿Está seguro de continuar?"
+      );
+      if (!confirmUncheck) {
+        return; // do not change the state if canceled
+      }
+    }
+
     setEvaluaciones(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
@@ -166,7 +177,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
                 <tr>
                   <th className="p-2 border">Acciones</th>
                   <th className="p-2 border">Alternativa</th>
-                  <th className="p-2 border text-center">Pasa a preparación</th>
+                  <th className="p-2 border text-center">Se evaluará con esta herramienta</th>
                   <th className="p-2 border text-center">Estado</th>
                 </tr>
               </thead>
@@ -205,7 +216,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
                         {alt.pasaPreparacion ? 'Sí' : 'No'}
                       </td>
                       <td className="p-2 border text-center">
-                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[10px] font-semibold">{alt.estado}</span>
+                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[10px] font-semibold">Completo</span>
                       </td>
                     </tr>
                   ))
@@ -276,7 +287,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
       <div className="mt-8 pt-4 border-t border-slate-200 space-y-3">
         <h3 className="font-semibold text-slate-700 text-sm">Evaluaciones a realizar</h3>
         <p className="text-slate-500 mb-2">Seleccione con qué herramienta se evaluarán las alternativas.</p>
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-col gap-3">
           <label className={`flex items-center gap-2 ${alternativas.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
@@ -295,7 +306,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
               onChange={() => toggleEvaluacion('costoEficiencia')}
               className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
             />
-            <span className="text-sm font-medium text-slate-700">Costo-Eficiencia</span>
+            <span className="text-sm font-medium text-slate-700">Costo - Eficiencia y Costo mínimo</span>
           </label>
           <label className={`flex items-center gap-2 ${alternativas.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
             <input
@@ -305,7 +316,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
               onChange={() => toggleEvaluacion('multicriterio')}
               className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
             />
-            <span className="text-sm font-medium text-slate-700">Multicriterio</span>
+            <span className="text-sm font-medium text-slate-700">Evaluación multicriterio</span>
           </label>
         </div>
         {isSaving && (

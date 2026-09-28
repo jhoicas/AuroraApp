@@ -294,6 +294,20 @@ export type PrestamoJson = {
   tablaAmortizacion: AmortizacionPeriodoJson[];
 };
 
+export type DepreciacionJson = {
+  id: string;
+  activo: string;
+  rpc: number;
+  descripcion: string;
+  vidaUtil: number;
+  periodoAdquisicion: number;
+  valorActivo: number;
+  periodoFinal: number;
+  depreciacionAnual: number;
+  depreciacionTotal: number;
+  valorSalvamento: number;
+};
+
 export type PreparacionData = {
   necesidades: Record<string, NecesidadJson[]>;
   analisisTecnico?: Record<string, { resumen: string }>;
@@ -301,6 +315,7 @@ export type PreparacionData = {
   riesgos?: Record<string, RiesgoJson[]>;
   ingresosBeneficios?: Record<string, IngresoBeneficioJson[]>;
   prestamos?: Record<string, PrestamoJson[]>;
+  depreciacion?: Record<string, DepreciacionJson[]>;
 };
 
 

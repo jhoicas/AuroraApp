@@ -18,6 +18,7 @@ import RiesgosTab from './RiesgosTab';
 import IngresosBeneficiosTab from './IngresosBeneficiosTab';
 import PrestamosTab from './PrestamosTab';
 import DepreciacionTab from './DepreciacionTab';
+import FlujoEvaluacionTab from './FlujoEvaluacionTab';
 import EvaluacionTab from './EvaluacionTab';
 import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
@@ -42,6 +43,7 @@ export type MgaLayoutTabId =
   | 'ingresos-beneficios'
   | 'prestamos'
   | 'depreciacion'
+  | 'flujo-evaluacion'
   | 'evaluacion'
   | 'programacion';
 
@@ -85,6 +87,7 @@ const SUB_SECTIONS_PREPARACION: MgaSubSection[] = [
 ];
 
 const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
+  { id: 'flujo-evaluacion', label: 'Ver Flujo' },
   { id: 'evaluacion', label: 'Evaluación Económica' },
 ];
 
@@ -159,6 +162,7 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'ingresos-beneficios',
   'prestamos',
   'depreciacion',
+  'flujo-evaluacion',
   'evaluacion',
   'programacion',
 ];
@@ -183,6 +187,7 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
       sectionId === 'plan-desarrollo' ||
       sectionId === 'identificacion' ||
       (sectionId === 'necesidades' && (hasMgaSectionData('alternativas', project, formulation, edtChain) || hasMgaSectionData('identificacion', project, formulation, edtChain))) ||
+      (sectionId === 'flujo-evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
 
@@ -267,6 +272,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <PrestamosTab project={project} />;
     case 'depreciacion':
       return <DepreciacionTab project={project} />;
+    case 'flujo-evaluacion':
+      return <FlujoEvaluacionTab project={project} />;
     case 'evaluacion':
       return <EvaluacionTab project={project} />;
     case 'programacion':

@@ -22,6 +22,7 @@ import FlujoEvaluacionTab from './FlujoEvaluacionTab';
 import IndicadoresDecisionTab from './IndicadoresDecisionTab';
 import EvaluacionTab from './EvaluacionTab';
 import IndicadoresProductoTab from './IndicadoresProductoTab';
+import RegionalizacionTab from './RegionalizacionTab';
 import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
 import { useProjectEdtStore, type ProjectEdtChainState } from '../../../store/projectEdtStore';
@@ -49,6 +50,7 @@ export type MgaLayoutTabId =
   | 'indicadores-decision'
   | 'evaluacion'
   | 'indicadores-producto'
+  | 'regionalizacion'
   | 'programacion';
 
 type MgaMainStage = {
@@ -98,6 +100,7 @@ const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
 
 const SUB_SECTIONS_PROGRAMACION: MgaSubSection[] = [
   { id: 'indicadores-producto', label: 'Indicadores de producto' },
+  { id: 'regionalizacion', label: 'Regionalización' },
   { id: 'programacion', label: 'Indicadores y Financiación' },
 ];
 
@@ -172,6 +175,7 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'indicadores-decision',
   'evaluacion',
   'indicadores-producto',
+  'regionalizacion',
   'programacion',
 ];
 
@@ -199,6 +203,7 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
       (sectionId === 'indicadores-decision' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'indicadores-producto' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
+      (sectionId === 'regionalizacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
       (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
 
     const isUnlocked =
@@ -290,6 +295,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <EvaluacionTab project={project} />;
     case 'indicadores-producto':
       return <IndicadoresProductoTab project={project} />;
+    case 'regionalizacion':
+      return <RegionalizacionTab project={project} />;
     case 'programacion':
       return <ProgramacionTab project={project} />;
     default:

@@ -355,8 +355,19 @@ export type IndicadorProductoProgramado = {
   metasPeriodo: Record<number, number>; // Clave: Periodo (0, 1, 2...), Valor: Meta programada
 };
 
+export type RegionalizacionProducto = {
+  id: string; // Generado
+  localizacionId: string; // ID de la ubicación (de la pestaña Localización)
+  distribucionPeriodos: Record<number, {
+    costo: number;
+    meta: number;
+    beneficiarios: number;
+  }>;
+};
+
 export type ProgramacionData = {
   indicadoresProducto?: Record<string, IndicadorProductoProgramado[]>; // Clave: ID del Producto (Cadena Valor)
+  regionalizacion?: Record<string, RegionalizacionProducto[]>; // Clave: ID del Producto
   fuentes?: any[];
   indicadores?: any[];
 };

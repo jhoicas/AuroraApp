@@ -365,9 +365,19 @@ export type RegionalizacionProducto = {
   }>;
 };
 
+export type PoliticaFocalizada = {
+  categoriaId: string;
+  categoriaNombre: string;
+  subcategoriaId?: string;
+  subcategoriaNombre?: string;
+};
+
 export type ProgramacionData = {
   indicadoresProducto?: Record<string, IndicadorProductoProgramado[]>; // Clave: ID del Producto (Cadena Valor)
   regionalizacion?: Record<string, RegionalizacionProducto[]>; // Clave: ID del Producto
+  focalizacion?: {
+    politicasPoblacionales: Record<string, PoliticaFocalizada[]>; 
+  };
   fuentes?: any[];
   indicadores?: any[];
 };

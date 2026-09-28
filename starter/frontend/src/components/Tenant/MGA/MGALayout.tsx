@@ -23,6 +23,7 @@ import IndicadoresDecisionTab from './IndicadoresDecisionTab';
 import EvaluacionTab from './EvaluacionTab';
 import IndicadoresProductoTab from './IndicadoresProductoTab';
 import RegionalizacionTab from './RegionalizacionTab';
+import FocalizacionTab from './FocalizacionTab';
 import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
 import { useProjectEdtStore, type ProjectEdtChainState } from '../../../store/projectEdtStore';
@@ -51,6 +52,7 @@ export type MgaLayoutTabId =
   | 'evaluacion'
   | 'indicadores-producto'
   | 'regionalizacion'
+  | 'focalizacion'
   | 'programacion';
 
 type MgaMainStage = {
@@ -101,6 +103,7 @@ const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
 const SUB_SECTIONS_PROGRAMACION: MgaSubSection[] = [
   { id: 'indicadores-producto', label: 'Indicadores de producto' },
   { id: 'regionalizacion', label: 'Regionalización' },
+  { id: 'focalizacion', label: 'Focalización' },
   { id: 'programacion', label: 'Indicadores y Financiación' },
 ];
 
@@ -176,6 +179,7 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'evaluacion',
   'indicadores-producto',
   'regionalizacion',
+  'focalizacion',
   'programacion',
 ];
 
@@ -204,6 +208,7 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
       (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
       (sectionId === 'indicadores-producto' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
       (sectionId === 'regionalizacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
+      (sectionId === 'focalizacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
       (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
 
     const isUnlocked =
@@ -297,6 +302,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <IndicadoresProductoTab project={project} />;
     case 'regionalizacion':
       return <RegionalizacionTab project={project} />;
+    case 'focalizacion':
+      return <FocalizacionTab project={project} />;
     case 'programacion':
       return <ProgramacionTab project={project} />;
     default:

@@ -337,6 +337,12 @@ export type UbicacionJson = {
   latitud?: string;
   longitud?: string;
   georeferenciada: boolean;
+  // Numeric IDs for DNP cascading dropdown state
+  regionId?: number;
+  departamentoId?: number;
+  municipioId?: number;
+  tipoAgrupacionId?: number;
+  agrupacionId?: number;
 };
 
 export type LocalizacionPreparacionData = {

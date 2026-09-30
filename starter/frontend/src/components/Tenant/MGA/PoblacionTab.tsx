@@ -1,10 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, debouncedPatchProject, type PoblacionJson, type PoblacionDetalleJson, type UbicacionJson } from '../../../store/projectMgaStore';
-import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
+import {
+  DNP_LOCATIONS,
+  getDepartmentsByRegion,
+  getMunicipalitiesByDepartment,
+  getGroupingTypesByMunicipality,
+  getGroupingsByType,
+  type DnpRegion,
+  type DnpDepartment,
+  type DnpMunicipality,
+  type DnpGroupingType,
+  type DnpGrouping,
+} from '../../../data/dnpLocations';
 
 const EMPTY_POBLACION_DETALLE: PoblacionDetalleJson = {
   tipoPoblacion: 'Personas',
@@ -25,8 +36,6 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
     objetivo: true,
   });
 
-  const { departments, municipalitiesByDept, fetchDepartments, fetchMunicipalities } = useCatalogStore();
-
   const [poblacion, setPoblacion] = useState<PoblacionJson>({
     afectada: { ...EMPTY_POBLACION_DETALLE },
     objetivo: { ...EMPTY_POBLACION_DETALLE },
@@ -35,10 +44,6 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
   const prevProjectIdRef = useRef(project.id);
   const isFirstMount = useRef(true);
   const lastSavedRef = useRef<string>('');
-
-  useEffect(() => {
-    void fetchDepartments();
-  }, [fetchDepartments]);
 
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
@@ -155,9 +160,6 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
           <LocalizacionSubSection 
             localizaciones={data.localizaciones}
             onChange={(locs) => updateData({ localizaciones: locs })}
-            departments={departments}
-            municipalitiesByDept={municipalitiesByDept}
-            fetchMunicipalities={fetchMunicipalities}
           />
         </div>
       </MgaAccordion>
@@ -181,62 +183,172 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
   );
 }
 
-// Separate component for the Localization part to keep things clean
+// ─── Cascading Dropdown Form State ─────────────────────────────────────
+type CascadeFormState = {
+  regionId: number | null;
+  departamentoId: number | null;
+  municipioId: number | null;
+  tipoAgrupacionId: number | null;
+  agrupacionId: number | null;
+  especifica: string;
+};
+
+const EMPTY_FORM: CascadeFormState = {
+  regionId: null,
+  departamentoId: null,
+  municipioId: null,
+  tipoAgrupacionId: null,
+  agrupacionId: null,
+  especifica: '',
+};
+
+// ─── Localization Sub-Section with DNP Cascading Dropdowns ──────────────
 function LocalizacionSubSection({
   localizaciones,
   onChange,
-  departments,
-  municipalitiesByDept,
-  fetchMunicipalities
 }: {
-  localizaciones: UbicacionJson[],
-  onChange: (l: UbicacionJson[]) => void,
-  departments: any[],
-  municipalitiesByDept: Record<number, any[]>,
-  fetchMunicipalities: (id: number) => void
+  localizaciones: UbicacionJson[];
+  onChange: (l: UbicacionJson[]) => void;
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<UbicacionJson>>({ georeferenciada: false });
+  const [form, setForm] = useState<CascadeFormState>({ ...EMPTY_FORM });
 
-  const handleDepartmentChange = (deptId: string) => {
-    setFormData((prev) => ({ ...prev, departamento: deptId, municipio: '' }));
-    if (deptId) {
-      void fetchMunicipalities(Number(deptId));
-    }
+  // ─── Derived cascading data ────────────────────────────────────────
+  const regions: DnpRegion[] = DNP_LOCATIONS;
+
+  const departments: DnpDepartment[] = form.regionId
+    ? getDepartmentsByRegion(form.regionId)
+    : [];
+
+  const municipalities: DnpMunicipality[] = form.departamentoId
+    ? getMunicipalitiesByDepartment(form.departamentoId)
+    : [];
+
+  const groupingTypes: DnpGroupingType[] = form.municipioId
+    ? getGroupingTypesByMunicipality(form.municipioId)
+    : [];
+
+  const groupings: DnpGrouping[] =
+    form.municipioId && form.tipoAgrupacionId
+      ? getGroupingsByType(form.municipioId, form.tipoAgrupacionId)
+      : [];
+
+  // Whether grouping type / grouping selects should be enabled
+  const hasGroupingTypes = groupingTypes.length > 0;
+
+  // ─── Cascade onChange handlers ─────────────────────────────────────
+  const handleRegionChange = useCallback((value: string) => {
+    const regionId = value ? Number(value) : null;
+    setForm({
+      regionId,
+      departamentoId: null,
+      municipioId: null,
+      tipoAgrupacionId: null,
+      agrupacionId: null,
+      especifica: form.especifica,
+    });
+  }, [form.especifica]);
+
+  const handleDepartamentoChange = useCallback((value: string) => {
+    const departamentoId = value ? Number(value) : null;
+    setForm((prev) => ({
+      ...prev,
+      departamentoId,
+      municipioId: null,
+      tipoAgrupacionId: null,
+      agrupacionId: null,
+    }));
+  }, []);
+
+  const handleMunicipioChange = useCallback((value: string) => {
+    const municipioId = value ? Number(value) : null;
+    setForm((prev) => ({
+      ...prev,
+      municipioId,
+      tipoAgrupacionId: null,
+      agrupacionId: null,
+    }));
+  }, []);
+
+  const handleTipoAgrupacionChange = useCallback((value: string) => {
+    const tipoAgrupacionId = value ? Number(value) : null;
+    setForm((prev) => ({
+      ...prev,
+      tipoAgrupacionId,
+      agrupacionId: null,
+    }));
+  }, []);
+
+  const handleAgrupacionChange = useCallback((value: string) => {
+    const agrupacionId = value ? Number(value) : null;
+    setForm((prev) => ({
+      ...prev,
+      agrupacionId,
+    }));
+  }, []);
+
+  // ─── Resolve display names from IDs ────────────────────────────────
+  const resolveNames = (state: CascadeFormState) => {
+    const region = regions.find((r) => r.Id === state.regionId);
+    const department = departments.find((d) => d.Id === state.departamentoId);
+    const municipality = municipalities.find((m) => m.Id === state.municipioId);
+    const groupingType = groupingTypes.find((gt) => gt.Id === state.tipoAgrupacionId);
+    const grouping = groupings.find((g) => g.Id === state.agrupacionId);
+
+    return {
+      regionNombre: region?.Name ?? '',
+      departamentoNombre: department?.Name ?? '',
+      municipioNombre: municipality?.Name ?? '',
+      tipoAgrupacionNombre: groupingType?.Name ?? '',
+      agrupacionNombre: grouping?.Name ?? '',
+    };
   };
 
+  // ─── Submit (Adicionar) ────────────────────────────────────────────
   const handleAddSubmit = () => {
-    if (!formData.departamento || !formData.municipio) {
-      setError("Departamento y Municipio son obligatorios");
+    if (!form.regionId || !form.departamentoId || !form.municipioId) {
+      setError('Región, Departamento y Municipio son obligatorios.');
       return;
     }
 
-    const deptObj = departments.find(d => d.id.toString() === formData.departamento);
-    const munObj = municipalitiesByDept[Number(formData.departamento)]?.find(m => m.id.toString() === formData.municipio);
+    const names = resolveNames(form);
 
     const newUbicacion: UbicacionJson = {
       id: crypto.randomUUID(),
-      region: 'N/A',
-      departamento: deptObj?.name || formData.departamento || '',
-      municipio: munObj?.name || formData.municipio || '',
-      tipoAgrupacion: formData.tipoAgrupacion || '',
-      agrupacion: formData.agrupacion || '',
-      especifica: formData.especifica || '',
-      latitud: formData.latitud || '',
-      longitud: formData.longitud || '',
-      georeferenciada: formData.georeferenciada || false,
+      region: names.regionNombre,
+      departamento: names.departamentoNombre,
+      municipio: names.municipioNombre,
+      tipoAgrupacion: names.tipoAgrupacionNombre || '',
+      agrupacion: names.agrupacionNombre || '',
+      especifica: form.especifica || '',
+      latitud: '',
+      longitud: '',
+      georeferenciada: false,
+      // Persist numeric IDs for potential re-editing
+      regionId: form.regionId,
+      departamentoId: form.departamentoId,
+      municipioId: form.municipioId,
+      tipoAgrupacionId: form.tipoAgrupacionId ?? undefined,
+      agrupacionId: form.agrupacionId ?? undefined,
     };
 
     onChange([...localizaciones, newUbicacion]);
+    // Reset form for next entry
+    setForm({ ...EMPTY_FORM });
     setIsAdding(false);
-    setFormData({ georeferenciada: false });
     setError(null);
   };
 
+  // ─── Delete row ────────────────────────────────────────────────────
   const handleDelete = (id: string) => {
     onChange(localizaciones.filter((u) => u.id !== id));
   };
+
+  // ─── Shared select styles ─────────────────────────────────────────
+  const selectClass = 'w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white';
+  const selectDisabledClass = `${selectClass} bg-slate-100 text-slate-400 cursor-not-allowed`;
+  const labelClass = 'block text-xs font-semibold text-slate-700 mb-1';
 
   return (
     <div className="space-y-4 mt-6 border-t pt-4">
@@ -245,10 +357,12 @@ function LocalizacionSubSection({
       
       {!isAdding ? (
         <div className="space-y-4">
+          {/* ─── Results Table ─────────────────────────────────────── */}
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b text-slate-600">
+                  <th className="p-2 font-medium">Región</th>
                   <th className="p-2 font-medium">Departamento</th>
                   <th className="p-2 font-medium">Municipio</th>
                   <th className="p-2 font-medium">Tipo Agrupación</th>
@@ -260,13 +374,14 @@ function LocalizacionSubSection({
               <tbody>
                 {localizaciones.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-4 text-center text-slate-500">
+                    <td colSpan={7} className="p-4 text-center text-slate-500">
                       No hay localizaciones registradas.
                     </td>
                   </tr>
                 ) : (
                   localizaciones.map((ub) => (
                     <tr key={ub.id} className="border-b hover:bg-slate-50">
+                      <td className="p-2">{ub.region || '-'}</td>
                       <td className="p-2">{ub.departamento}</td>
                       <td className="p-2">{ub.municipio}</td>
                       <td className="p-2">{ub.tipoAgrupacion || '-'}</td>
@@ -287,6 +402,7 @@ function LocalizacionSubSection({
               </tbody>
             </table>
           </div>
+
           <button
             onClick={() => setIsAdding(true)}
             className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 flex items-center gap-1.5 transition-colors font-medium"
@@ -298,68 +414,136 @@ function LocalizacionSubSection({
       ) : (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
           <h5 className="font-medium text-slate-700 text-sm">Agregar Localización</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          
+          {/* ─── Row 1: Región, Departamento, Municipio ───────────── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Región */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Departamento *</label>
+              <label className={labelClass}>Región *</label>
               <select
-                value={formData.departamento || ''}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
+                value={form.regionId !== null ? String(form.regionId) : ''}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                className={selectClass}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Seleccione Región...</option>
+                {regions.map((r) => (
+                  <option key={r.Id} value={r.Id}>{r.Name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Departamento */}
+            <div>
+              <label className={labelClass}>Departamento *</label>
+              <select
+                value={form.departamentoId !== null ? String(form.departamentoId) : ''}
+                onChange={(e) => handleDepartamentoChange(e.target.value)}
+                disabled={!form.regionId}
+                className={form.regionId ? selectClass : selectDisabledClass}
+              >
+                <option value="">
+                  {form.regionId ? 'Seleccione Departamento...' : 'Primero seleccione Región...'}
+                </option>
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.Id} value={d.Id}>{d.Name}</option>
                 ))}
               </select>
             </div>
+
+            {/* Municipio */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Municipio *</label>
+              <label className={labelClass}>Municipio *</label>
               <select
-                value={formData.municipio || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, municipio: e.target.value }))}
-                disabled={!formData.departamento}
-                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
+                value={form.municipioId !== null ? String(form.municipioId) : ''}
+                onChange={(e) => handleMunicipioChange(e.target.value)}
+                disabled={!form.departamentoId}
+                className={form.departamentoId ? selectClass : selectDisabledClass}
               >
-                <option value="">Seleccione...</option>
-                {formData.departamento && municipalitiesByDept[Number(formData.departamento)]?.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
+                <option value="">
+                  {form.departamentoId ? 'Seleccione Municipio...' : 'Primero seleccione Departamento...'}
+                </option>
+                {municipalities.map((m) => (
+                  <option key={m.Id} value={m.Id}>{m.Name}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Agrupación</label>
-              <input
-                type="text"
-                value={formData.tipoAgrupacion || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, tipoAgrupacion: e.target.value }))}
-                placeholder="Ej. Resguardo, Vereda"
-                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Agrupación</label>
-              <input
-                type="text"
-                value={formData.agrupacion || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, agrupacion: e.target.value }))}
-                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Localización Específica</label>
-              <textarea
-                value={formData.especifica || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))}
-                rows={2}
-                className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
-              />
             </div>
           </div>
+
+          {/* ─── Row 2: Tipo Agrupación, Agrupación ───────────────── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Tipo de Agrupación */}
+            <div>
+              <label className={labelClass}>
+                Tipo de Agrupación
+                {!hasGroupingTypes && form.municipioId && (
+                  <span className="ml-1 text-[10px] text-slate-400 font-normal">(No aplica para este municipio)</span>
+                )}
+              </label>
+              <select
+                value={form.tipoAgrupacionId !== null ? String(form.tipoAgrupacionId) : ''}
+                onChange={(e) => handleTipoAgrupacionChange(e.target.value)}
+                disabled={!form.municipioId || !hasGroupingTypes}
+                className={form.municipioId && hasGroupingTypes ? selectClass : selectDisabledClass}
+              >
+                <option value="">
+                  {!form.municipioId
+                    ? 'Primero seleccione Municipio...'
+                    : !hasGroupingTypes
+                      ? 'No disponible para este municipio'
+                      : 'Seleccione Tipo de Agrupación...'}
+                </option>
+                {groupingTypes.map((gt) => (
+                  <option key={gt.Id} value={gt.Id}>{gt.Name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Agrupación */}
+            <div>
+              <label className={labelClass}>
+                Agrupación
+                {!hasGroupingTypes && form.municipioId && (
+                  <span className="ml-1 text-[10px] text-slate-400 font-normal">(No aplica)</span>
+                )}
+              </label>
+              <select
+                value={form.agrupacionId !== null ? String(form.agrupacionId) : ''}
+                onChange={(e) => handleAgrupacionChange(e.target.value)}
+                disabled={!form.tipoAgrupacionId || !hasGroupingTypes}
+                className={form.tipoAgrupacionId && hasGroupingTypes ? selectClass : selectDisabledClass}
+              >
+                <option value="">
+                  {!form.tipoAgrupacionId
+                    ? 'Primero seleccione Tipo de Agrupación...'
+                    : groupings.length === 0
+                      ? 'Sin agrupaciones para este tipo'
+                      : 'Seleccione Agrupación...'}
+                </option>
+                {groupings.map((g) => (
+                  <option key={g.Id} value={g.Id}>{g.Name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ─── Row 3: Localización Específica ────────────────────── */}
+          <div>
+            <label className={labelClass}>Localización Específica</label>
+            <textarea
+              value={form.especifica}
+              onChange={(e) => setForm((prev) => ({ ...prev, especifica: e.target.value }))}
+              rows={2}
+              placeholder="Descripción libre de la localización específica..."
+              className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
+            />
+          </div>
+
+          {/* ─── Action Buttons ────────────────────────────────────── */}
           <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200">
             <button
               onClick={() => {
                 setIsAdding(false);
-                setFormData({ georeferenciada: false });
+                setForm({ ...EMPTY_FORM });
                 setError(null);
               }}
               className="px-3 py-1.5 border text-slate-600 rounded hover:bg-slate-100 transition-colors text-sm"
@@ -368,9 +552,10 @@ function LocalizacionSubSection({
             </button>
             <button
               onClick={handleAddSubmit}
-              className="px-3 py-1.5 bg-[#006162] text-white rounded hover:bg-[#004d4e] transition-colors text-sm"
+              className="px-3 py-1.5 bg-[#006162] text-white rounded hover:bg-[#004d4e] transition-colors text-sm flex items-center gap-1.5"
             >
-              Guardar Localización
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar
             </button>
           </div>
         </div>

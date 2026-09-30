@@ -9,7 +9,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // AdminLocationHandler gestiona la carga y consulta de localizaciones DANE
@@ -41,65 +40,137 @@ func (h *AdminLocationHandler) ImportLocations(c *fiber.Ctx) error {
 		})
 	}
 
-	now := time.Now().UTC()
+
 	resp := dto.LocationImportResponse{
 		Status:  "success",
 		Message: "Localizaciones importadas correctamente",
 	}
 
 	err := h.db.WithContext(c.Context()).Transaction(func(tx *gorm.DB) error {
-		for _, regionDTO := range req.Localizaciones {
-			region := models.Region{
-				ID:        regionDTO.ID,
-				Name:      regionDTO.Name,
+		// Paso A: Limpieza Previa (TRUNCATE)
+		tables := []string{"agrupaciones", "tipos_agrupacion", "municipios", "departamentos", "regiones"}
+		for _, table := range tables {
+			if err := tx.Exec("TRUNCATE TABLE " + table + " CASCADE").Error; err != nil {
+				return err
+			}
+		}
+
+		now := time.Now().UTC()
+		
+		// Map for unique GroupingTypes
+		groupingTypesMap := make(map[int]models.TipoAgrupacion)
+		
+		var dbRegions []models.Region
+		var dbDepartments []models.Departamento
+		var dbMunicipalities []models.Municipio
+		var dbGroupings []models.Agrupacion
+		
+		for _, r := range req.Localizaciones {
+			dbRegions = append(dbRegions, models.Region{
+				ID:        r.ID,
+				Name:      r.Name,
 				IsActive:  true,
 				CreatedAt: now,
 				UpdatedAt: now,
+			})
+			
+			if len(r.Departments) == 0 {
+				continue
 			}
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"name", "updated_at"}),
-			}).Create(&region).Error; err != nil {
-				return err
-			}
-			resp.RegionsUpserted++
-
-			for _, depDTO := range regionDTO.Departamentos {
-				dep := models.Departamento{
-					ID:        depDTO.ID,
-					Name:      depDTO.Name,
-					RegionID:  regionDTO.ID,
+			
+			for _, d := range r.Departments {
+				dbDepartments = append(dbDepartments, models.Departamento{
+					ID:        d.ID,
+					Name:      d.Name,
+					RegionID:  r.ID,
 					IsActive:  true,
 					CreatedAt: now,
 					UpdatedAt: now,
+				})
+				
+				if len(d.Municipalities) == 0 {
+					continue
 				}
-				if err := tx.Clauses(clause.OnConflict{
-					Columns:   []clause.Column{{Name: "id"}},
-					DoUpdates: clause.AssignmentColumns([]string{"name", "region_id", "updated_at"}),
-				}).Create(&dep).Error; err != nil {
-					return err
-				}
-				resp.DepartamentosUpserted++
-
-				for _, munDTO := range depDTO.Municipios {
-					mun := models.Municipio{
-						ID:             munDTO.ID,
-						Name:           munDTO.Name,
-						DepartamentoID: depDTO.ID,
+				
+				for _, m := range d.Municipalities {
+					dbMunicipalities = append(dbMunicipalities, models.Municipio{
+						ID:             m.ID,
+						Name:           m.Name,
+						DepartamentoID: d.ID,
 						IsActive:       true,
 						CreatedAt:      now,
 						UpdatedAt:      now,
+					})
+					
+					if len(m.GroupingTypes) == 0 {
+						continue
 					}
-					if err := tx.Clauses(clause.OnConflict{
-						Columns:   []clause.Column{{Name: "id"}},
-						DoUpdates: clause.AssignmentColumns([]string{"name", "departamento_id", "updated_at"}),
-					}).Create(&mun).Error; err != nil {
-						return err
+					
+					for _, gt := range m.GroupingTypes {
+						if _, exists := groupingTypesMap[gt.ID]; !exists {
+							groupingTypesMap[gt.ID] = models.TipoAgrupacion{
+								ID:        gt.ID,
+								Name:      gt.Name,
+								IsActive:  true,
+								CreatedAt: now,
+								UpdatedAt: now,
+							}
+						}
+						
+						if len(gt.Groupings) == 0 {
+							continue
+						}
+						
+						for _, g := range gt.Groupings {
+							dbGroupings = append(dbGroupings, models.Agrupacion{
+								ID:               g.ID,
+								Name:             g.Name,
+								MunicipioID:      m.ID,
+								TipoAgrupacionID: gt.ID,
+								IsActive:         true,
+								CreatedAt:        now,
+								UpdatedAt:        now,
+							})
+						}
 					}
-					resp.MunicipiosUpserted++
 				}
 			}
 		}
+
+		if len(dbRegions) > 0 {
+			if err := tx.CreateInBatches(dbRegions, 100).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(dbDepartments) > 0 {
+			if err := tx.CreateInBatches(dbDepartments, 100).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(dbMunicipalities) > 0 {
+			if err := tx.CreateInBatches(dbMunicipalities, 100).Error; err != nil {
+				return err
+			}
+		}
+
+		var dbGroupingTypes []models.TipoAgrupacion
+		for _, gt := range groupingTypesMap {
+			dbGroupingTypes = append(dbGroupingTypes, gt)
+		}
+		if len(dbGroupingTypes) > 0 {
+			if err := tx.CreateInBatches(dbGroupingTypes, 100).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(dbGroupings) > 0 {
+			if err := tx.CreateInBatches(dbGroupings, 100).Error; err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 

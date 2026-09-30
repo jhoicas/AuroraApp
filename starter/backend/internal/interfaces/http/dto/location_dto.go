@@ -9,33 +9,39 @@ type LocationImportRequest struct {
 	Localizaciones []LocationRegionDTO `json:"Localizaciones" validate:"required,min=1,dive"`
 }
 
-// LocationRegionDTO región dentro del JSON de importación.
 type LocationRegionDTO struct {
+	ID          int                       `json:"Id"`
+	Name        string                    `json:"Name" validate:"required,min=1"`
+	Departments []LocationDepartamentoDTO `json:"Departments"`
+}
+
+type LocationDepartamentoDTO struct {
+	ID             int                    `json:"Id"`
+	Name           string                 `json:"Name" validate:"required,min=1"`
+	Municipalities []LocationMunicipioDTO `json:"Municipalities"`
+}
+
+type LocationMunicipioDTO struct {
 	ID            int                       `json:"Id"`
 	Name          string                    `json:"Name" validate:"required,min=1"`
-	Departamentos []LocationDepartamentoDTO `json:"Departamentos"`
+	GroupingTypes []LocationGroupingTypeDTO `json:"GroupingTypes"`
 }
 
-// LocationDepartamentoDTO departamento anidado dentro de una región.
-type LocationDepartamentoDTO struct {
-	ID         int                    `json:"Id"`
-	Name       string                 `json:"Name" validate:"required,min=1"`
-	Municipios []LocationMunicipioDTO `json:"Municipios"`
+type LocationGroupingTypeDTO struct {
+	ID        int                   `json:"Id"`
+	Name      string                `json:"Name"`
+	Groupings []LocationGroupingDTO `json:"Groupings"`
 }
 
-// LocationMunicipioDTO municipio anidado dentro de un departamento.
-type LocationMunicipioDTO struct {
+type LocationGroupingDTO struct {
 	ID   int    `json:"Id"`
-	Name string `json:"Name" validate:"required,min=1"`
+	Name string `json:"Name"`
 }
 
 // LocationImportResponse resultado de la importación masiva.
 type LocationImportResponse struct {
-	Status                 string `json:"status"`
-	Message                string `json:"message"`
-	RegionsUpserted        int    `json:"regions_upserted"`
-	DepartamentosUpserted  int    `json:"departamentos_upserted"`
-	MunicipiosUpserted     int    `json:"municipios_upserted"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
 // ──────────────────────────────────────────────

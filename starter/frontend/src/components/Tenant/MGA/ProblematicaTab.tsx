@@ -80,7 +80,7 @@ export default function ProblematicaTab({ project }: { project: Project }) {
     }));
 
     debouncedPatchProject(project.id, { 
-      identificacion_data: { 
+      identificacion: { 
         ...currentIdentificacion, 
         problematica: data 
       } 

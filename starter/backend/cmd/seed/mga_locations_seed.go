@@ -86,6 +86,11 @@ func SeedMgaLocations(db *gorm.DB) error {
 				CreatedAt: now,
 				UpdatedAt: now,
 			})
+			
+			if len(r.Departments) == 0 {
+				continue
+			}
+			
 			for _, d := range r.Departments {
 				dbDepartments = append(dbDepartments, models.Departamento{
 					ID:        d.Id,
@@ -95,6 +100,11 @@ func SeedMgaLocations(db *gorm.DB) error {
 					CreatedAt: now,
 					UpdatedAt: now,
 				})
+				
+				if len(d.Municipalities) == 0 {
+					continue
+				}
+				
 				for _, m := range d.Municipalities {
 					dbMunicipalities = append(dbMunicipalities, models.Municipio{
 						ID:             m.Id,
@@ -104,6 +114,11 @@ func SeedMgaLocations(db *gorm.DB) error {
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					})
+					
+					if len(m.GroupingTypes) == 0 {
+						continue
+					}
+					
 					for _, gt := range m.GroupingTypes {
 						if _, exists := groupingTypesMap[gt.Id]; !exists {
 							groupingTypesMap[gt.Id] = models.TipoAgrupacion{
@@ -114,6 +129,11 @@ func SeedMgaLocations(db *gorm.DB) error {
 								UpdatedAt: now,
 							}
 						}
+						
+						if len(gt.Groupings) == 0 {
+							continue
+						}
+						
 						for _, g := range gt.Groupings {
 							dbGroupings = append(dbGroupings, models.Agrupacion{
 								ID:               g.Id,

@@ -1512,6 +1512,42 @@ export const DNP_LOCATIONS: DnpRegion[] = [
       },
     ],
   },
+  {
+    Id: 7,
+    Name: "Nacional",
+    Departments: [
+      {
+        Id: 0,
+        Name: "Nacional",
+        Completed: true,
+        Municipalities: [],
+      },
+    ],
+  },
+  {
+    Id: 8,
+    Name: "País Ecuador",
+    Departments: [
+      {
+        Id: 901,
+        Name: "Ecuador",
+        Completed: true,
+        Municipalities: [],
+      },
+    ],
+  },
+  {
+    Id: 9,
+    Name: "País Perú",
+    Departments: [
+      {
+        Id: 902,
+        Name: "Perú",
+        Completed: true,
+        Municipalities: [],
+      },
+    ],
+  },
 ];
 
 // ─── Helpers de búsqueda rápida ────────────────────────────────────────

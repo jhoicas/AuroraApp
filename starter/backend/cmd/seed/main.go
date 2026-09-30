@@ -47,36 +47,34 @@ func main() {
 	if err == nil {
 		log.Printf("usuario ya existe: %s (id=%s) — no se modifica", email, existing.ID)
 		log.Printf("roles OK: %s, %s", constants.RoleSuperAdmin, constants.RoleTenantAdmin)
-		return
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Fatalf("buscar usuario: %v", err)
-	}
+	} else {
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("bcrypt: %v", err)
+		}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Fatalf("bcrypt: %v", err)
-	}
+		now := time.Now().UTC()
+		user := models.User{
+			ID:           uuid.New(),
+			TenantID:     nil, // SUPER_ADMIN es global
+			RoleID:       role.ID,
+			Email:        email,
+			PasswordHash: string(hash),
+			FullName:     "Super Admin",
+			IsActive:     true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		}
 
-	now := time.Now().UTC()
-	user := models.User{
-		ID:           uuid.New(),
-		TenantID:     nil, // SUPER_ADMIN es global
-		RoleID:       role.ID,
-		Email:        email,
-		PasswordHash: string(hash),
-		FullName:     "Super Admin",
-		IsActive:     true,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
+		if err := db.Create(&user).Error; err != nil {
+			log.Fatalf("crear usuario: %v", err)
+		}
 
-	if err := db.Create(&user).Error; err != nil {
-		log.Fatalf("crear usuario: %v", err)
+		log.Printf("usuario seed OK: %s | rol=%s | id=%s", user.Email, constants.RoleSuperAdmin, user.ID)
+		log.Printf("roles OK: %s, %s", constants.RoleSuperAdmin, constants.RoleTenantAdmin)
 	}
-
-	log.Printf("usuario seed OK: %s | rol=%s | id=%s", user.Email, constants.RoleSuperAdmin, user.ID)
-	log.Printf("roles OK: %s, %s", constants.RoleSuperAdmin, constants.RoleTenantAdmin)
 
 	// Catálogos relacionales MGA (actores, entidades, posiciones).
 	runMgaCatalogSeed(db)

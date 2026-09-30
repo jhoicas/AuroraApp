@@ -64,9 +64,24 @@ export default function ProblematicaTab({ project }: { project: Project }) {
     if (serialized === lastSavedRef.current) return;
     lastSavedRef.current = serialized;
 
+    const currentIdentificacion = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+
+    useProjectMgaStore.setState((state) => ({
+      byProjectId: {
+        ...state.byProjectId,
+        [project.id]: {
+          ...(state.byProjectId[project.id] ?? {}),
+          identificacion: {
+            ...currentIdentificacion,
+            problematica: data
+          }
+        }
+      }
+    }));
+
     debouncedPatchProject(project.id, { 
       identificacion_data: { 
-        ...useProjectMgaStore.getState().getFormulation(project.id)?.identificacion, 
+        ...currentIdentificacion, 
         problematica: data 
       } 
     });

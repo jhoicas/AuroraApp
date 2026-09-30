@@ -69,6 +69,20 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     lastSavedRef.current = serialized;
 
     const curData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+    
+    useProjectMgaStore.setState((state) => ({
+      byProjectId: {
+        ...state.byProjectId,
+        [project.id]: {
+          ...(state.byProjectId[project.id] ?? {}),
+          identificacion: {
+            ...curData,
+            objetivos,
+          }
+        }
+      }
+    }));
+
     debouncedPatchProject(project.id, {
       identificacion_data: {
         ...curData,

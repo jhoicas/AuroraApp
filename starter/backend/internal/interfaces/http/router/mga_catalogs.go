@@ -29,6 +29,12 @@ func RegisterMgaCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	public.Get("/actors/:id/entities", h.ListEntitiesByActor)
 	public.Get("/positions", h.ListPositions)
 
+	locHandler := handlers.NewLocationHandler(db)
+	public.Get("/regions", locHandler.ListRegions)
+	public.Get("/departments", locHandler.ListDepartments)
+	public.Get("/municipalities", locHandler.ListMunicipalities)
+	public.Get("/groupings", locHandler.ListGroupings)
+
 	// ── Rutas de administración (SUPER_ADMIN) ──
 	admin := app.Group("/api/v1/admin/mga/catalogs",
 		httpmw.RequireAuth(jwtSecret),

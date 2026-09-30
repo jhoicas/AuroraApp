@@ -5,17 +5,15 @@ import { useProjectMgaStore, debouncedPatchProject, type PoblacionJson, type Pob
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import {
-  DNP_LOCATIONS,
-  getDepartmentsByRegion,
-  getMunicipalitiesByDepartment,
-  getGroupingTypesByMunicipality,
-  getGroupingsByType,
-  type DnpRegion,
-  type DnpDepartment,
-  type DnpMunicipality,
-  type DnpGroupingType,
-  type DnpGrouping,
-} from '../../../data/dnpLocations';
+  fetchMgaRegions,
+  fetchMgaDepartments,
+  fetchMgaMunicipalities,
+  fetchMgaGroupings,
+  type MgaRegion,
+  type MgaDepartment,
+  type MgaMunicipality,
+  type MgaGrouping,
+} from '../../../lib/mgaApi';
 
 const EMPTY_POBLACION_DETALLE: PoblacionDetalleJson = {
   tipoPoblacion: 'Personas',
@@ -202,7 +200,7 @@ const EMPTY_FORM: CascadeFormState = {
   especifica: '',
 };
 
-// ─── Localization Sub-Section with DNP Cascading Dropdowns ──────────────
+// ─── Localization Sub-Section with API Cascading Dropdowns ──────────────
 function LocalizacionSubSection({
   localizaciones,
   onChange,
@@ -214,27 +212,48 @@ function LocalizacionSubSection({
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CascadeFormState>({ ...EMPTY_FORM });
 
-  // ─── Derived cascading data ────────────────────────────────────────
-  const regions: DnpRegion[] = DNP_LOCATIONS;
+  const [regions, setRegions] = useState<MgaRegion[]>([]);
+  const [departments, setDepartments] = useState<MgaDepartment[]>([]);
+  const [municipalities, setMunicipalities] = useState<MgaMunicipality[]>([]);
+  const [groupings, setGroupings] = useState<MgaGrouping[]>([]);
 
-  const departments: DnpDepartment[] = form.regionId
-    ? getDepartmentsByRegion(form.regionId)
+  useEffect(() => {
+    fetchMgaRegions().then(setRegions).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (form.regionId) {
+      fetchMgaDepartments(form.regionId).then(setDepartments).catch(console.error);
+    } else {
+      setDepartments([]);
+    }
+  }, [form.regionId]);
+
+  useEffect(() => {
+    if (form.departamentoId) {
+      fetchMgaMunicipalities(form.departamentoId).then(setMunicipalities).catch(console.error);
+    } else {
+      setMunicipalities([]);
+    }
+  }, [form.departamentoId]);
+
+  useEffect(() => {
+    if (form.municipioId) {
+      fetchMgaGroupings(form.municipioId).then(setGroupings).catch(console.error);
+    } else {
+      setGroupings([]);
+    }
+  }, [form.municipioId]);
+
+  const groupingTypesMap = new Map<number, { id: number; name: string }>();
+  groupings.forEach((g) => {
+    groupingTypesMap.set(g.tipo_agrupacion_id, { id: g.tipo_agrupacion_id, name: g.tipo_agrupacion });
+  });
+  const groupingTypes = Array.from(groupingTypesMap.values());
+  const filteredGroupings = form.tipoAgrupacionId 
+    ? groupings.filter(g => g.tipo_agrupacion_id === form.tipoAgrupacionId) 
     : [];
-
-  const municipalities: DnpMunicipality[] = form.departamentoId
-    ? getMunicipalitiesByDepartment(form.departamentoId)
-    : [];
-
-  const groupingTypes: DnpGroupingType[] = form.municipioId
-    ? getGroupingTypesByMunicipality(form.municipioId)
-    : [];
-
-  const groupings: DnpGrouping[] =
-    form.municipioId && form.tipoAgrupacionId
-      ? getGroupingsByType(form.municipioId, form.tipoAgrupacionId)
-      : [];
-
-  // Whether grouping type / grouping selects should be enabled
+  
   const hasGroupingTypes = groupingTypes.length > 0;
 
   // ─── Cascade onChange handlers ─────────────────────────────────────
@@ -290,18 +309,18 @@ function LocalizacionSubSection({
 
   // ─── Resolve display names from IDs ────────────────────────────────
   const resolveNames = (state: CascadeFormState) => {
-    const region = regions.find((r) => r.Id === state.regionId);
-    const department = departments.find((d) => d.Id === state.departamentoId);
-    const municipality = municipalities.find((m) => m.Id === state.municipioId);
-    const groupingType = groupingTypes.find((gt) => gt.Id === state.tipoAgrupacionId);
-    const grouping = groupings.find((g) => g.Id === state.agrupacionId);
+    const region = regions.find((r) => r.id === state.regionId);
+    const department = departments.find((d) => d.id === state.departamentoId);
+    const municipality = municipalities.find((m) => m.id === state.municipioId);
+    const groupingType = groupingTypes.find((gt) => gt.id === state.tipoAgrupacionId);
+    const grouping = groupings.find((g) => g.id === state.agrupacionId);
 
     return {
-      regionNombre: region?.Name ?? '',
-      departamentoNombre: department?.Name ?? '',
-      municipioNombre: municipality?.Name ?? '',
-      tipoAgrupacionNombre: groupingType?.Name ?? '',
-      agrupacionNombre: grouping?.Name ?? '',
+      regionNombre: region?.name ?? '',
+      departamentoNombre: department?.name ?? '',
+      municipioNombre: municipality?.name ?? '',
+      tipoAgrupacionNombre: groupingType?.name ?? '',
+      agrupacionNombre: grouping?.name ?? '',
     };
   };
 
@@ -427,7 +446,7 @@ function LocalizacionSubSection({
               >
                 <option value="">Seleccione Región...</option>
                 {regions.map((r) => (
-                  <option key={r.Id} value={r.Id}>{r.Name}</option>
+                  <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
             </div>
@@ -445,7 +464,7 @@ function LocalizacionSubSection({
                   {form.regionId ? 'Seleccione Departamento...' : 'Primero seleccione Región...'}
                 </option>
                 {departments.map((d) => (
-                  <option key={d.Id} value={d.Id}>{d.Name}</option>
+                  <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             </div>
@@ -463,7 +482,7 @@ function LocalizacionSubSection({
                   {form.departamentoId ? 'Seleccione Municipio...' : 'Primero seleccione Departamento...'}
                 </option>
                 {municipalities.map((m) => (
-                  <option key={m.Id} value={m.Id}>{m.Name}</option>
+                  <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
             </div>
@@ -493,7 +512,7 @@ function LocalizacionSubSection({
                       : 'Seleccione Tipo de Agrupación...'}
                 </option>
                 {groupingTypes.map((gt) => (
-                  <option key={gt.Id} value={gt.Id}>{gt.Name}</option>
+                  <option key={gt.id} value={gt.id}>{gt.name}</option>
                 ))}
               </select>
             </div>
@@ -519,8 +538,8 @@ function LocalizacionSubSection({
                       ? 'Sin agrupaciones para este tipo'
                       : 'Seleccione Agrupación...'}
                 </option>
-                {groupings.map((g) => (
-                  <option key={g.Id} value={g.Id}>{g.Name}</option>
+                {filteredGroupings.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
             </div>

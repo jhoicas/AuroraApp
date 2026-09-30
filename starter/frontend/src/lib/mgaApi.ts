@@ -466,3 +466,47 @@ export async function downloadTechnicalDocumentValle(
   window.URL.revokeObjectURL(url);
 }
 
+// --- Catálogos Geográficos (Localizaciones) ---
+export type MgaRegion = {
+  id: number;
+  name: string;
+};
+
+export type MgaDepartment = {
+  id: number;
+  name: string;
+  region_id: number;
+};
+
+export type MgaMunicipality = {
+  id: number;
+  name: string;
+  departamento_id: number;
+};
+
+export type MgaGrouping = {
+  id: number;
+  name: string;
+  tipo_agrupacion_id: number;
+  tipo_agrupacion: string;
+};
+
+export async function fetchMgaRegions(): Promise<MgaRegion[]> {
+  const { data } = await api.get<MgaRegion[]>('/mga/catalogs/regions');
+  return data;
+}
+
+export async function fetchMgaDepartments(regionId: number): Promise<MgaDepartment[]> {
+  const { data } = await api.get<MgaDepartment[]>(`/mga/catalogs/departments?regionId=${regionId}`);
+  return data;
+}
+
+export async function fetchMgaMunicipalities(departmentId: number): Promise<MgaMunicipality[]> {
+  const { data } = await api.get<MgaMunicipality[]>(`/mga/catalogs/municipalities?departmentId=${departmentId}`);
+  return data;
+}
+
+export async function fetchMgaGroupings(municipalityId: number): Promise<MgaGrouping[]> {
+  const { data } = await api.get<MgaGrouping[]>(`/mga/catalogs/groupings?municipalityId=${municipalityId}`);
+  return data;
+}

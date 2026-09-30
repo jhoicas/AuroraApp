@@ -272,6 +272,8 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		fieldRule = "Describe el problema cuantitativamente. Propone indicadores de referencia realistas o líneas base."
 	case "causas", "efectos":
 		fieldRule = "Redacta una única frase corta que exprese una condición negativa."
+	case "fuenteInformacion", "fuente_informacion":
+		fieldRule = "Indica la fuente de donde provienen los datos. IMPORTANTE: Tu respuesta DEBE tener un máximo absoluto de 500 caracteres. Sé conciso y directo."
 	}
 
 	// Reglas Metodológicas MGA (Marco Lógico)

@@ -80,6 +80,9 @@ func main() {
 
 	// Catálogos relacionales MGA (actores, entidades, posiciones).
 	runMgaCatalogSeed(db)
+	
+	// Catálogos geográficos MGA (regiones, departamentos, municipios, etc).
+	runMgaLocationsSeed(db)
 }
 
 func findRoleByCode(db *gorm.DB, code string) (models.Role, error) {

@@ -273,7 +273,7 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
     case 'poblacion':
       return <PoblacionTab project={project} />;
     case 'objetivos':
-      return <ObjetivosTab project={project} skipInitialFetch />;
+      return <ObjetivosTab project={project} />;
     case 'alternativas':
       return <AlternativasTab project={project} />;
     case 'necesidades':

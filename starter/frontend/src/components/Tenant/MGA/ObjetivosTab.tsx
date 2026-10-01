@@ -49,6 +49,24 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
 
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const problematica = formulation?.identificacion?.problematica;
+  const fetchFormulation = useProjectMgaStore((s) => s.fetchFormulation);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProblematica = async () => {
+      try {
+        await fetchFormulation(project.id);
+      } catch {
+        if (!cancelled) setError('No se pudo cargar la problemática del proyecto.');
+      }
+    };
+
+    void loadProblematica();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchFormulation, project.id]);
 
   useEffect(() => {
     console.log('[DEBUG ObjetivosTab] Received formulation data:', formulation?.identificacion);

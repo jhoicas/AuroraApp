@@ -21,6 +21,17 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Puente de Problemática hacia Objetivos MGA
+
+- **Objetivo:** Cargar automáticamente el problema central y las causas del proyecto al abrir la pestaña Objetivos.
+- **Frontend (React / TypeScript / Zustand):**
+  - [projectMgaStore.ts](starter/frontend/src/store/projectMgaStore.ts): se adaptan las causas y efectos del endpoint de formulación al modelo `identificacion.problematica`; el problema central, situación y magnitud usan los datos JSONB existentes y, como respaldo, los campos del proyecto.
+  - [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx): se invoca `fetchFormulation(project.id)` al montar la pestaña y se muestra un error visible si la carga falla.
+  - [MGALayout.tsx](starter/frontend/src/components/Tenant/MGA/MGALayout.tsx): Objetivos usa su carga de formulación al entrar.
+  - [projectMgaStore.test.ts](starter/frontend/src/store/projectMgaStore.test.ts): prueba del mapeo de problema central y causas hacia la ruta consumida por Objetivos.
+- **Validaciones:** `npx vitest run src/store/projectMgaStore.test.ts src/components/Tenant/MGA/MGALayout.test.tsx` pasó (3 pruebas); `npx tsc --noEmit` pasó; diagnósticos del editor sin errores.
+- **Riesgos:** no se modificó el contrato del backend; la carga de Objetivos puede repetir la consulta inicial de formulación del shell al abrirse por primera vez.
+
 ### 2026-09-26 - Antigravity - Expansión SODA: Catálogo EDT MGA con Resolución FK de Productos, Navegación Relacional y Regla de Oro UI
 
 - **Objetivo:** Expandir el motor de sincronización SODA DNP para el catálogo EDT (`catalogo_edt`), incorporando la llave foránea hacia Productos (`ProductID`), resolviendo en memoria la relación con productos existentes para omitir registros fantasma, implementando navegación relacional desde Productos hacia EDT con pre-filtrado automático y aplicando la Regla de Oro del spinner en la UI.

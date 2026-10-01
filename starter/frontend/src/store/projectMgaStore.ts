@@ -605,6 +605,26 @@ function formulationFromApi(data: FullMgaFormulation): ProjectMgaFormulation {
   };
 }
 
+function problematicaFromApi(data: FullMgaFormulation): ProblematicaJson {
+  return {
+    problemaCentral: '',
+    efectos: (data.effects ?? []).map((effect) => ({
+      id: effect.id,
+      descripcion: effect.description,
+      tipo: effect.effect_type,
+      ...(effect.parent_id ? { parentId: effect.parent_id } : {}),
+    })),
+    causas: (data.causes ?? []).map((cause) => ({
+      id: cause.id,
+      descripcion: cause.description,
+      tipo: cause.cause_type,
+      ...(cause.parent_id ? { parentId: cause.parent_id } : {}),
+    })),
+    descripcionSituacion: '',
+    magnitudIndicadores: '',
+  };
+}
+
 function patchFormulation(
   state: ProjectMgaState,
   projectId: string,
@@ -1058,6 +1078,23 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
           formulation.localizaciones_factores = pData.localizacion.factores_analizados;
         }
       }
+
+      const storedProblematica = formulation.identificacion?.problematica;
+      const apiProblematica = problematicaFromApi(data);
+      const hasStoredCauses = Boolean(storedProblematica?.causas?.length);
+      const hasStoredEffects = Boolean(storedProblematica?.efectos?.length);
+      const projectSituation = project?.situation ?? project?.situacion_existente ?? '';
+      const projectMagnitude = project?.magnitude ?? project?.magnitud_problema ?? '';
+      formulation.identificacion = {
+        ...(formulation.identificacion ?? {}),
+        problematica: {
+          problemaCentral: storedProblematica?.problemaCentral || project?.problem_description || '',
+          causas: hasStoredCauses ? storedProblematica!.causas : apiProblematica.causas,
+          efectos: hasStoredEffects ? storedProblematica!.efectos : apiProblematica.efectos,
+          descripcionSituacion: storedProblematica?.descripcionSituacion || projectSituation,
+          magnitudIndicadores: storedProblematica?.magnitudIndicadores || projectMagnitude,
+        },
+      };
 
       set((state) => ({
         byProjectId: { ...state.byProjectId, [projectId]: formulation },

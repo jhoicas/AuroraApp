@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PreparacionData } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
+import MgaActionButtons from './MgaActionButtons';
 
 type AnalisisTecnicoTabProps = {
   project: Project;
@@ -179,6 +180,10 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
           </div>
         </div>
       </MgaAccordion>
+
+      <div className="mt-8">
+        <MgaActionButtons project={project} />
+      </div>
     </div>
   );
 }

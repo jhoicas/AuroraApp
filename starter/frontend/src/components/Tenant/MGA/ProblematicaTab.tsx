@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, debouncedPatchProject, type ProblematicaJson, type ArbolNodoCausa, type ArbolNodoEfecto } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 
 export default function ProblematicaTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
@@ -295,6 +296,12 @@ export default function ProblematicaTab({ project }: { project: Project }) {
             placeholder="Indique la magnitud..."
           />
         </div>
+      </div>
+
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={async () => {
+          await useProjectMgaStore.getState().saveProblematica(project.id);
+        }} />
       </div>
     </div>
   );

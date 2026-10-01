@@ -5,6 +5,7 @@ import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizati
 import { useLocationStore, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 
 export const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -35,7 +36,6 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const currentProject = useProjectStore((state) => state.currentProject);
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const saveLocalizacion = useProjectMgaStore((s) => s.saveLocalizacion);
-  const isSaving = useProjectMgaStore((s) => s.isSaving);
 
   const {
     tiposAgrupacion,
@@ -729,16 +729,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       </div>
 
       {/* Botón Guardar */}
-      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-[#006162] text-white font-medium rounded-lg hover:bg-teal-800 flex items-center gap-2 transition-colors disabled:opacity-50 text-sm shadow-sm"
-        >
-          {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-          Guardar Localización
-        </button>
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={() => handleSave()} />
       </div>
     </div>
   );

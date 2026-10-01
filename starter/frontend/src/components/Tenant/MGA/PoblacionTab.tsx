@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, debouncedPatchProject, type PoblacionJson, type PoblacionDetalleJson, type UbicacionJson } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 import {
   fetchMgaRegions,
   fetchMgaDepartments,
@@ -180,6 +181,12 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
       <div className="space-y-4 mt-6">
         {renderSection('afectada', 'Población afectada por el problema', '01')}
         {renderSection('objetivo', 'Población objetivo de la intervención', '02')}
+      </div>
+      
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={async () => {
+          await useProjectMgaStore.getState().savePoblacion(project.id);
+        }} />
       </div>
     </div>
   );

@@ -5,14 +5,28 @@ import type { Project } from '../../../store/projectStore';
 
 export type MgaActionButtonsProps = {
   project: Project;
+  onSave?: () => Promise<void> | void;
 };
 
-export default function MgaActionButtons({ project }: MgaActionButtonsProps) {
+export default function MgaActionButtons({ project, onSave }: MgaActionButtonsProps) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const saveDocumentosSoporte = useProjectMgaStore((s) => s.saveDocumentosSoporte);
-  const isSaving = useProjectMgaStore((s) => s.isSaving);
+  const isSavingGlobal = useProjectMgaStore((s) => s.isSaving);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+
+  const handleSaveClick = async () => {
+    if (!onSave) return;
+    setSavedStatus('saving');
+    try {
+      await onSave();
+      setSavedStatus('success');
+      setTimeout(() => setSavedStatus('idle'), 3000);
+    } catch (error) {
+      setSavedStatus('idle');
+    }
+  };
 
   const handleExportXML = () => {
     // Generar XML estructurado simulado
@@ -68,27 +82,51 @@ export default function MgaActionButtons({ project }: MgaActionButtonsProps) {
   };
 
   return (
-    <div className="flex items-center justify-end gap-3 p-4 bg-slate-50 border-t print:hidden">
-      <button 
-        onClick={handleExportXML}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
-      >
-        <Download className="w-4 h-4" /> Generar XML
-      </button>
+    <div className="flex items-center justify-between p-4 bg-slate-50 border-t print:hidden">
+      <div className="flex items-center gap-2">
+        {onSave && (
+          <>
+            <button 
+              onClick={handleSaveClick}
+              disabled={savedStatus === 'saving'}
+              className="px-6 py-2 bg-[#2980b9] text-white font-medium rounded-lg hover:bg-[#1a6698] flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              {savedStatus === 'saving' ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : null}
+              Guardar y Continuar
+            </button>
+            {savedStatus === 'success' && (
+              <span className="text-green-600 text-sm font-medium flex items-center gap-1 ml-2 animate-pulse">
+                ✅ Guardado correctamente
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={handleExportXML}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
+        >
+          <Download className="w-4 h-4" /> Generar XML
+        </button>
 
-      <button 
-        onClick={handlePrint}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
-      >
-        <Printer className="w-4 h-4" /> Imprimir
-      </button>
+        <button 
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
+        >
+          <Printer className="w-4 h-4" /> Imprimir
+        </button>
 
-      <button 
-        onClick={() => setModalOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
-      >
-        <FileText className="w-4 h-4" /> Documentos de Soporte
-      </button>
+        <button 
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
+        >
+          <FileText className="w-4 h-4" /> Documentos de Soporte
+        </button>
+      </div>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -135,7 +173,7 @@ export default function MgaActionButtons({ project }: MgaActionButtonsProps) {
                             <td className="p-3 text-center">
                               <button 
                                 onClick={() => handleRemoveDoc(doc.id)}
-                                disabled={isSaving}
+                                disabled={isSavingGlobal}
                                 className="text-red-500 hover:text-red-700 p-1 rounded"
                                 title="Eliminar"
                               >

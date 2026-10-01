@@ -5,6 +5,7 @@ import { useProjectMgaStore, type UbicacionJson } from '../../../store/projectMg
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
+import MgaActionButtons from './MgaActionButtons';
 
 const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -480,6 +481,9 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
         </div>
       </MgaAccordion>
       
+      <div className="mt-8">
+        <MgaActionButtons project={project} />
+      </div>
     </div>
   );
 }

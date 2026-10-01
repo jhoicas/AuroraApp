@@ -14,6 +14,7 @@ import {
   getMgaPositions,
 } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type ParticipantesTabProps = {
@@ -570,18 +571,8 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
         </AIAssistedField>
       </div>
 
-      <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
-        <button
-          type="button"
-          onClick={handleSaveSection}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : null}
-          Guardar Participantes
-        </button>
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={handleSaveSection} />
       </div>
     </div>
   );

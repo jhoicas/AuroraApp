@@ -4,6 +4,7 @@ import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type AlternativaJson, type EvaluacionesJson, type IdentificacionData } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type AlternativasTabProps = {
@@ -319,11 +320,10 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
             <span className="text-sm font-medium text-slate-700">Evaluación multicriterio</span>
           </label>
         </div>
-        {isSaving && (
-          <div className="text-right flex items-center justify-end gap-2 text-emerald-600 font-medium">
-             <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" /> Guardando...
-          </div>
-        )}
+      </div>
+
+      <div className="mt-8">
+        <MgaActionButtons project={project} />
       </div>
 
     </div>

@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, debouncedPatchProject, type ObjetivosJson, type IndicadorObjetivoJson } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
+import MgaActionButtons from './MgaActionButtons';
 
 const EMPTY_OBJETIVOS: ObjetivosJson = {
   objetivoGeneral: '',
@@ -401,6 +402,12 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
           </div>
         </div>
       )}
+
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={async () => {
+          await useProjectMgaStore.getState().saveObjetivos(project.id);
+        }} />
+      </div>
     </div>
   );
 }

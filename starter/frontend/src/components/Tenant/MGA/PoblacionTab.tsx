@@ -45,18 +45,27 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
   const isFirstMount = useRef(true);
   const lastSavedRef = useRef<string>('');
 
+  const storePoblacion = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion?.poblacion);
+
+  useEffect(() => {
+    if (storePoblacion) {
+      const dataToCompare = {
+        afectada: storePoblacion.afectada || { ...EMPTY_POBLACION_DETALLE },
+        objetivo: storePoblacion.objetivo || { ...EMPTY_POBLACION_DETALLE }
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setPoblacion(dataToCompare);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storePoblacion]);
+
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
       isFirstMount.current = true;
     }
-    const storePoblacion = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.poblacion;
-    const initial = {
-      afectada: storePoblacion?.afectada || { ...EMPTY_POBLACION_DETALLE },
-      objetivo: storePoblacion?.objetivo || { ...EMPTY_POBLACION_DETALLE },
-    };
-    setPoblacion(initial);
-    lastSavedRef.current = JSON.stringify(initial);
   }, [project.id]);
 
   useEffect(() => {
@@ -69,11 +78,25 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
     lastSavedRef.current = serialized;
 
     const curData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+    
+    useProjectMgaStore.setState((state) => ({
+      byProjectId: {
+        ...state.byProjectId,
+        [project.id]: {
+          ...(state.byProjectId[project.id] ?? {}),
+          identificacion: {
+            ...curData,
+            poblacion,
+          }
+        }
+      }
+    }));
+
     debouncedPatchProject(project.id, {
       identificacion: {
         ...curData,
         poblacion,
-      },
+      }
     });
   }, [poblacion, project.id]);
 

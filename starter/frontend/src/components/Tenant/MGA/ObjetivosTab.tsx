@@ -50,6 +50,11 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const problematica = formulation?.identificacion?.problematica;
 
+  useEffect(() => {
+    console.log('[DEBUG ObjetivosTab] Received formulation data:', formulation?.identificacion);
+    console.log('[DEBUG ObjetivosTab] Extracted problematica:', problematica);
+  }, [formulation?.identificacion]);
+
   const storeObjetivos = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion?.objetivos);
 
   useEffect(() => {
@@ -94,10 +99,10 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     }));
 
     debouncedPatchProject(project.id, {
-      identificacion_data: {
+      identificacion: {
         ...curData,
         objetivos,
-      },
+      }
     });
   }, [objetivos, project.id]);
 

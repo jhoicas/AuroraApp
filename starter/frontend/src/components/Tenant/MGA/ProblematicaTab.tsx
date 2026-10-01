@@ -76,7 +76,8 @@ export default function ProblematicaTab({ project }: { project: Project }) {
     if (serialized === lastSavedRef.current) return;
     lastSavedRef.current = serialized;
 
-    const currentIdentificacion = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+    const currentFormulation = useProjectMgaStore.getState().getFormulation(project.id);
+    const currentIdentificacion = currentFormulation?.identificacion || {};
 
     useProjectMgaStore.setState((state) => ({
       byProjectId: {
@@ -91,15 +92,12 @@ export default function ProblematicaTab({ project }: { project: Project }) {
       }
     }));
 
-    const patchPayload = {
-      ...project.mga_formulation_data,
+    debouncedPatchProject(project.id, {
       identificacion: {
-        ...project.mga_formulation_data?.identificacion,
+        ...currentIdentificacion,
         problematica: data
       }
-    };
-
-    debouncedPatchProject(project.id, patchPayload);
+    });
   }, [
     problemaCentral, efectos, causas, descripcionSituacion, magnitudIndicadores, project.id
   ]);

@@ -26,5 +26,6 @@ jobs:
             git fetch origin main && git reset --hard origin/main
             cd starter
             docker compose down
+            docker builder prune -af
             docker compose up -d --build
             docker image prune -f

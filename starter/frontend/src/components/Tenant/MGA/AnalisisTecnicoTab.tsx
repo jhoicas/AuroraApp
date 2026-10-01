@@ -165,6 +165,10 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
               label="Resumen de la alternativa"
               htmlFor={`analisis-tecnico-${project.id}`}
               required
+              fieldHelpKey="analisis_tecnico_resumen"
+              projectContext={{ projectName: project.name, sector: project.sector }}
+              reactiveContext={{ resumen }}
+              onAutoFill={setResumen}
               guidance="Describa la viabilidad técnica, el alcance y los componentes principales de la alternativa."
               askPrompt={`Ayúdame a redactar el resumen técnico de la alternativa del proyecto ${project.name}.`}
             >

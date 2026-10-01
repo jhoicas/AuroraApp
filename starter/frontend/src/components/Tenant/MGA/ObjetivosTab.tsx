@@ -470,6 +470,10 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 label="Nombre del indicador"
                 htmlFor="indicador-nombre"
                 required
+                fieldHelpKey="indicador_objetivo_nombre"
+                projectContext={{ projectName: project.name, sector: project.sector }}
+                reactiveContext={{ objetivoGeneral: objetivos.objetivoGeneral }}
+                onAutoFill={(value) => setIndicatorForm((prev) => ({ ...prev, indicador: value }))}
                 guidance="Use un nombre breve, observable y directamente relacionado con el objetivo general."
                 validationValue={indicatorForm.indicador}
                 askPrompt="Ayúdame a redactar el nombre de un indicador MGA medible."
@@ -526,6 +530,10 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 label="Fuente de verificación"
                 htmlFor="indicador-fuente-verificacion"
                 required
+                fieldHelpKey="indicador_objetivo_fuente"
+                projectContext={{ projectName: project.name, sector: project.sector }}
+                reactiveContext={{ indicador: indicatorForm.indicador }}
+                onAutoFill={(value) => setIndicatorForm((prev) => ({ ...prev, fuenteVerificacion: value }))}
                 guidance="Describa el documento, registro o sistema donde podrá verificarse la medición."
                 validationValue={indicatorForm.fuenteVerificacion}
                 askPrompt="Ayúdame a describir una fuente de verificación para un indicador MGA."

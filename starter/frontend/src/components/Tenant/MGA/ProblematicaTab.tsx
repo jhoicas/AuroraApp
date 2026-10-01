@@ -161,28 +161,18 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         {directas.map(d => (
           <div key={d.id} className="border border-slate-200 rounded p-4 bg-slate-50 relative">
             <div className="flex gap-2 mb-2">
-              <input 
-                spellCheck={true}
-                type="text" 
-                value={d.descripcion} 
-                onChange={(e) => updateCausa(d.id, e.target.value)} 
-                placeholder="Causa Directa"
-                className="w-full border-slate-300 rounded px-2 py-1 text-sm"
-              />
+              <AIAssistedField label="Causa Directa" htmlFor={`causa-directa-${d.id}`} compact fieldHelpKey={`causa_directa_${d.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ problemaCentral }} onAutoFill={(value) => updateCausa(d.id, value)}>
+                <input id={`causa-directa-${d.id}`} spellCheck type="text" value={d.descripcion} onChange={(e) => updateCausa(d.id, e.target.value)} placeholder="Causa Directa" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
+              </AIAssistedField>
               <button onClick={() => deleteCausa(d.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="w-4 h-4"/></button>
             </div>
             
             <div className="pl-6 space-y-2 mt-2 border-l-2 border-dashed border-slate-300">
               {causas.filter(i => i.parentId === d.id).map(i => (
                 <div key={i.id} className="flex gap-2">
-                  <input 
-                    spellCheck={true}
-                    type="text" 
-                    value={i.descripcion} 
-                    onChange={(e) => updateCausa(i.id, e.target.value)} 
-                    placeholder="Causa Indirecta"
-                    className="w-full border-slate-300 rounded px-2 py-1 text-sm"
-                  />
+                  <AIAssistedField label="Causa Indirecta" htmlFor={`causa-indirecta-${i.id}`} compact fieldHelpKey={`causa_indirecta_${i.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ causaDirecta: d.descripcion }} onAutoFill={(value) => updateCausa(i.id, value)}>
+                    <input id={`causa-indirecta-${i.id}`} spellCheck type="text" value={i.descripcion} onChange={(e) => updateCausa(i.id, e.target.value)} placeholder="Causa Indirecta" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
+                  </AIAssistedField>
                   <button onClick={() => deleteCausa(i.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="w-4 h-4"/></button>
                 </div>
               ))}
@@ -213,28 +203,18 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         {directos.map(d => (
           <div key={d.id} className="border border-slate-200 rounded p-4 bg-slate-50 relative">
             <div className="flex gap-2 mb-2">
-              <input 
-                spellCheck={true}
-                type="text" 
-                value={d.descripcion} 
-                onChange={(e) => updateEfecto(d.id, e.target.value)} 
-                placeholder="Efecto Directo"
-                className="w-full border-slate-300 rounded px-2 py-1 text-sm"
-              />
+              <AIAssistedField label="Efecto Directo" htmlFor={`efecto-directo-${d.id}`} compact fieldHelpKey={`efecto_directo_${d.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ problemaCentral }} onAutoFill={(value) => updateEfecto(d.id, value)}>
+                <input id={`efecto-directo-${d.id}`} spellCheck type="text" value={d.descripcion} onChange={(e) => updateEfecto(d.id, e.target.value)} placeholder="Efecto Directo" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
+              </AIAssistedField>
               <button onClick={() => deleteEfecto(d.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="w-4 h-4"/></button>
             </div>
             
             <div className="pl-6 space-y-2 mt-2 border-l-2 border-dashed border-slate-300">
               {efectos.filter(i => i.parentId === d.id).map(i => (
                 <div key={i.id} className="flex gap-2">
-                  <input 
-                    spellCheck={true}
-                    type="text" 
-                    value={i.descripcion} 
-                    onChange={(e) => updateEfecto(i.id, e.target.value)} 
-                    placeholder="Efecto Indirecto"
-                    className="w-full border-slate-300 rounded px-2 py-1 text-sm"
-                  />
+                  <AIAssistedField label="Efecto Indirecto" htmlFor={`efecto-indirecto-${i.id}`} compact fieldHelpKey={`efecto_indirecto_${i.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ efectoDirecto: d.descripcion }} onAutoFill={(value) => updateEfecto(i.id, value)}>
+                    <input id={`efecto-indirecto-${i.id}`} spellCheck type="text" value={i.descripcion} onChange={(e) => updateEfecto(i.id, e.target.value)} placeholder="Efecto Indirecto" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
+                  </AIAssistedField>
                   <button onClick={() => deleteEfecto(i.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="w-4 h-4"/></button>
                 </div>
               ))}
@@ -269,7 +249,7 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         
         {/* Problema Central (Middle) */}
         <div className="p-4 border-2 border-blue-200 bg-blue-50 rounded-lg text-center">
-          <AIAssistedField label="Problema Central" htmlFor={`problema-central-${project.id}`} guidance="Describa una situación negativa real y verificable, no la ausencia de una solución." askPrompt={`Ayúdame a redactar el problema central del proyecto ${project.name}.`}>
+          <AIAssistedField label="Problema Central" htmlFor={`problema-central-${project.id}`} fieldHelpKey="problema_central_legacy" projectContext={{ projectName: project.name, sector: project.sector }} onAutoFill={setProblemaCentral} guidance="Describa una situación negativa real y verificable, no la ausencia de una solución." askPrompt={`Ayúdame a redactar el problema central del proyecto ${project.name}.`}>
             <CountedTextarea id={`problema-central-${project.id}`} spellCheck maxLength={500} value={problemaCentral} onChange={(e) => setProblemaCentral(e.target.value)} className="w-full resize-none rounded border-slate-300 p-2 text-center focus:ring-2 focus:ring-blue-500" rows={2} placeholder="Describa el problema central..." />
           </AIAssistedField>
         </div>
@@ -280,13 +260,13 @@ export default function ProblematicaTab({ project }: { project: Project }) {
 
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
         <div>
-          <AIAssistedField label="Descripción de la situación existente con respecto al problema" htmlFor={`situacion-problema-${project.id}`} required guidance="Describa el estado actual del territorio con información verificable." askPrompt={`Ayúdame a redactar la situación existente del proyecto ${project.name}.`}>
+          <AIAssistedField label="Descripción de la situación existente con respecto al problema" htmlFor={`situacion-problema-${project.id}`} required fieldHelpKey="situacion_existente_legacy" projectContext={{ projectName: project.name, sector: project.sector }} onAutoFill={setDescripcionSituacion} guidance="Describa el estado actual del territorio con información verificable." askPrompt={`Ayúdame a redactar la situación existente del proyecto ${project.name}.`}>
             <CountedTextarea id={`situacion-problema-${project.id}`} spellCheck maxLength={500} value={descripcionSituacion} onChange={(e) => setDescripcionSituacion(e.target.value)} className="min-h-[100px] w-full rounded border-slate-300 px-3 py-2 text-base" placeholder="Describa la situación..." />
           </AIAssistedField>
         </div>
         
         <div>
-          <AIAssistedField label="Magnitud actual del problema e indicadores de referencia" htmlFor={`magnitud-problema-${project.id}`} required guidance="Incluya indicadores y cifras que dimensionen la magnitud del problema." askPrompt={`Ayúdame a redactar la magnitud del problema del proyecto ${project.name}.`}>
+          <AIAssistedField label="Magnitud actual del problema e indicadores de referencia" htmlFor={`magnitud-problema-${project.id}`} required fieldHelpKey="magnitud_problema_legacy" projectContext={{ projectName: project.name, sector: project.sector }} onAutoFill={setMagnitudIndicadores} guidance="Incluya indicadores y cifras que dimensionen la magnitud del problema." askPrompt={`Ayúdame a redactar la magnitud del problema del proyecto ${project.name}.`}>
             <CountedTextarea id={`magnitud-problema-${project.id}`} spellCheck maxLength={500} value={magnitudIndicadores} onChange={(e) => setMagnitudIndicadores(e.target.value)} className="min-h-[100px] w-full rounded border-slate-300 px-3 py-2 text-base" placeholder="Indique la magnitud..." />
           </AIAssistedField>
         </div>

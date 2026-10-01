@@ -124,6 +124,9 @@ function DepreciacionForm({ item: initial, periodoFinalGeneral, onSave, onClose 
             label="Descripción del activo"
             htmlFor={`depreciacion-descripcion-${draft.id}`}
             required
+            fieldHelpKey="depreciacion_descripcion"
+            reactiveContext={{ activo: draft.activo }}
+            onAutoFill={(value) => updateField('descripcion', value)}
             guidance="Describa el activo, su función en el proyecto y las condiciones relevantes para su depreciación."
             askPrompt="Ayúdame a redactar la descripción de un activo para la formulación MGA."
           >

@@ -140,6 +140,9 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                 label="Descripción"
                 htmlFor={`ingreso-descripcion-${draft.id}`}
                 required
+                fieldHelpKey="ingreso_beneficio_descripcion"
+                reactiveContext={{ tipo: draft.tipo }}
+                onAutoFill={(value) => updateField('descripcion', value)}
                 guidance="Describa el ingreso o beneficio y su relación con el bien o servicio del proyecto."
                 askPrompt="Ayúdame a redactar la descripción de un ingreso o beneficio MGA."
               >
@@ -150,6 +153,9 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                 <AIAssistedField
                   label="Descripción de la cantidad"
                   htmlFor={`ingreso-cantidad-${draft.id}`}
+                  fieldHelpKey="ingreso_beneficio_cantidad"
+                  reactiveContext={{ descripcion: draft.descripcion }}
+                  onAutoFill={(value) => updateField('descripcionCantidad', value)}
                   guidance="Explique qué representa la cantidad y cómo se cuantifica en el proyecto."
                   askPrompt="Ayúdame a describir la cantidad de un ingreso o beneficio MGA."
                 >
@@ -158,6 +164,9 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                 <AIAssistedField
                   label="Descripción del valor unitario"
                   htmlFor={`ingreso-valor-unitario-${draft.id}`}
+                  fieldHelpKey="ingreso_beneficio_valor_unitario"
+                  reactiveContext={{ descripcion: draft.descripcion }}
+                  onAutoFill={(value) => updateField('descripcionValorUnitario', value)}
                   guidance="Explique cómo se determina el valor unitario utilizado en la proyección."
                   askPrompt="Ayúdame a describir el valor unitario de un ingreso o beneficio MGA."
                 >

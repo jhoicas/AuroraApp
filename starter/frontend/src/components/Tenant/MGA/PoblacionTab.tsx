@@ -170,7 +170,7 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
               />
             </div>
             <div>
-              <AIAssistedField label="Fuente de la información" htmlFor={`poblacion-fuente-${key}`} required guidance="Indique la fuente oficial utilizada para caracterizar la población." askPrompt="Ayúdame a redactar la fuente de información demográfica de una población MGA.">
+              <AIAssistedField label="Fuente de la información" htmlFor={`poblacion-fuente-${key}`} required fieldHelpKey={`poblacion_${key}_fuente`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ tipoPoblacion: data.tipoPoblacion }} onAutoFill={(value) => updateData({ fuenteInformacion: value })} guidance="Indique la fuente oficial utilizada para caracterizar la población." askPrompt="Ayúdame a redactar la fuente de información demográfica de una población MGA.">
                 <CountedTextarea id={`poblacion-fuente-${key}`} spellCheck maxLength={500} rows={3} value={data.fuenteInformacion} onChange={(e) => updateData({ fuenteInformacion: e.target.value.substring(0, 500) })} className="w-full resize-y rounded border-slate-300 p-2.5 text-sm outline-none focus:ring-1 focus:ring-[#006162]" />
               </AIAssistedField>
             </div>
@@ -574,7 +574,7 @@ function LocalizacionSubSection({
 
           {/* ─── Row 3: Localización Específica ────────────────────── */}
           <div>
-            <AIAssistedField label="Localización Específica" htmlFor="poblacion-localizacion-especifica" guidance="Precise el lugar o referencia territorial asociada a esta población." askPrompt="Ayúdame a describir una localización específica de población para un proyecto MGA.">
+            <AIAssistedField label="Localización Específica" htmlFor="poblacion-localizacion-especifica" fieldHelpKey="poblacion_localizacion_especifica" reactiveContext={{ municipio: form.municipioId, localizacion: form.especifica }} onAutoFill={(value) => setForm((prev) => ({ ...prev, especifica: value }))} guidance="Precise el lugar o referencia territorial asociada a esta población." askPrompt="Ayúdame a describir una localización específica de población para un proyecto MGA.">
               <CountedTextarea id="poblacion-localizacion-especifica" value={form.especifica} onChange={(e) => setForm((prev) => ({ ...prev, especifica: e.target.value }))} rows={2} maxLength={500} placeholder="Descripción libre de la localización específica..." className="w-full rounded border p-2 text-sm outline-none focus:ring-1 focus:ring-[#006162]" />
             </AIAssistedField>
           </div>

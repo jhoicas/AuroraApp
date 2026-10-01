@@ -135,6 +135,9 @@ function PrestamoForm({ item: initial, onSave, onClose }: PrestamoFormProps) {
             label="Concepto del préstamo"
             htmlFor={`prestamo-concepto-${draft.id}`}
             required
+            fieldHelpKey="prestamo_concepto"
+            reactiveContext={{ tipoCredito: draft.tipoCredito }}
+            onAutoFill={(value) => updateField('concepto', value)}
             guidance="Describa el destino del crédito y su relación con la financiación del proyecto."
             askPrompt="Ayúdame a redactar el concepto de un préstamo para un proyecto MGA."
           >

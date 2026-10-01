@@ -338,7 +338,7 @@ export default function IndicadoresProductoTab({ project }: { project: Project }
                       </select>
                     </div>
                     <div>
-                      <AIAssistedField label="Detalle Fuente de Verificación" htmlFor="indicador-producto-fuente-detalle" required guidance="Especifique el documento, registro o sistema donde se puede consultar la evidencia." askPrompt="Ayúdame a redactar el detalle de una fuente de verificación de un indicador MGA.">
+                      <AIAssistedField label="Detalle Fuente de Verificación" htmlFor="indicador-producto-fuente-detalle" required fieldHelpKey="indicador_producto_fuente" projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ indicador: wIndicator.nombre }} onAutoFill={setWDetalle} guidance="Especifique el documento, registro o sistema donde se puede consultar la evidencia." askPrompt="Ayúdame a redactar el detalle de una fuente de verificación de un indicador MGA.">
                         <CountedTextarea id="indicador-producto-fuente-detalle" value={wDetalle} onChange={(e) => setWDetalle(e.target.value)} className="w-full resize-none rounded border bg-white p-2" rows={2} maxLength={500} placeholder="Especifique dónde se encuentra o cómo acceder a esta fuente..." />
                       </AIAssistedField>
                     </div>

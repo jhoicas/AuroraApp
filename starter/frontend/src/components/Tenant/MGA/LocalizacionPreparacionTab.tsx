@@ -383,7 +383,7 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
               </div>
               
               <div className="md:col-span-2">
-                <AIAssistedField label="Localización Específica" htmlFor="localizacion-preparacion-especifica" guidance="Precise el lugar, sector o referencia territorial donde se ejecutará la intervención." askPrompt="Ayúdame a describir una localización específica para un proyecto MGA.">
+                <AIAssistedField label="Localización Específica" htmlFor="localizacion-preparacion-especifica" fieldHelpKey="localizacion_preparacion_especifica" reactiveContext={{ municipio: formData.municipioId, localizacion: formData.especifica }} onAutoFill={(value) => setFormData(prev => ({ ...prev, especifica: value }))} guidance="Precise el lugar, sector o referencia territorial donde se ejecutará la intervención." askPrompt="Ayúdame a describir una localización específica para un proyecto MGA.">
                   <CountedTextarea id="localizacion-preparacion-especifica" value={formData.especifica || ''} onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))} rows={2} maxLength={500} className="w-full rounded border p-2 outline-none focus:ring-1 focus:ring-[#006162]" />
                 </AIAssistedField>
               </div>

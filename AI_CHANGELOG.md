@@ -21,6 +21,17 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Auditoría Global de Campos Descriptivos Inline
+
+- **Objetivo:** Garantizar que los campos descriptivos MGA usen la pastilla inline `[Usar]` con clave, contexto y callback de auto-fill.
+- **Frontend (React / TypeScript):**
+  - [AIAssistedField.tsx](starter/frontend/src/components/AuroraAsistente/AIAssistedField.tsx): se mantiene `suggestMgaField` como única acción de foco cuando existe `fieldHelpKey`; no se abre el chat lateral por defecto.
+  - Se completaron `fieldHelpKey`, `reactiveContext`/`projectContext` y `onAutoFill` en campos descriptivos de Problemática, Población, Objetivos, Análisis Técnico, Depreciación, Ingresos/Beneficios, Préstamos, Riesgos, Cadena de Valor, Localización e Indicadores de Producto.
+  - Las actividades conservan claves con `actividad` y su contexto `WEAK_VERBS`; Objetivos conserva `STRONG_VERBS`.
+  - Focalización solo contiene entradas numéricas de costos/metas, sin textos descriptivos pendientes.
+- **Validaciones:** `pnpm run build` pasó con Exit Code 0; pruebas focalizadas MGA pasaron (3 pruebas); `npx tsc --noEmit` pasó.
+- **Advertencias:** pnpm reporta la configuración futura de `onlyBuiltDependencies`; Vite reporta chunks mayores a 500 kB.
+
 ### 2026-10-01 - GitHub Copilot - Sugerencia Inline en Objetivos MGA
 
 - **Objetivo:** Mostrar sugerencias IA en la pastilla inline con `[Usar]`, evitando abrir el chat lateral al enfocar campos MGA con `fieldHelpKey`.

@@ -236,6 +236,9 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
             label="Descripción del riesgo"
             htmlFor={`riesgo-descripcion-${draft.id}`}
             required
+            fieldHelpKey="riesgo_descripcion"
+            reactiveContext={{ tipo: draft.tipo }}
+            onAutoFill={(value) => updateField('descripcion', value)}
             guidance="Describa el evento incierto, su causa y la forma en que puede afectar el proyecto."
             askPrompt="Ayúdame a redactar la descripción de un riesgo MGA."
           >
@@ -272,6 +275,9 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           <AIAssistedField
             label="Efectos del riesgo"
             htmlFor={`riesgo-efectos-${draft.id}`}
+            fieldHelpKey="riesgo_efectos"
+            reactiveContext={{ riesgo: draft.descripcion }}
+            onAutoFill={(value) => updateField('efectos', value)}
             guidance="Describa las consecuencias esperadas si el riesgo llega a materializarse."
             askPrompt="Ayúdame a redactar los efectos de un riesgo MGA."
           >
@@ -282,6 +288,9 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           <AIAssistedField
             label="Medidas de mitigación"
             htmlFor={`riesgo-mitigacion-${draft.id}`}
+            fieldHelpKey="riesgo_mitigacion"
+            reactiveContext={{ riesgo: draft.descripcion }}
+            onAutoFill={(value) => updateField('medidasMitigacion', value)}
             guidance="Describa las acciones concretas para reducir la probabilidad o el impacto del riesgo."
             askPrompt="Ayúdame a redactar medidas de mitigación para un riesgo MGA."
           >

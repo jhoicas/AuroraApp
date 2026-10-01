@@ -300,13 +300,13 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
               <input type="text" value={product.productoId} onChange={e => updateField('productoId', e.target.value)} placeholder="Nombre o código del producto" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
             </div>
             <div>
-              <AIAssistedField label="Complemento" htmlFor={`producto-complemento-${product.id}`} guidance="Precise las características que complementan el producto del proyecto." askPrompt="Ayúdame a redactar el complemento de un producto MGA.">
+              <AIAssistedField label="Complemento" htmlFor={`producto-complemento-${product.id}`} fieldHelpKey={`producto_complemento_${product.id}`} reactiveContext={{ producto: product.productoId, etapa: product.etapa }} onAutoFill={(value) => updateField('complemento', value)} guidance="Precise las características que complementan el producto del proyecto." askPrompt="Ayúdame a redactar el complemento de un producto MGA.">
                 <input id={`producto-complemento-${product.id}`} type="text" value={product.complemento} onChange={e => updateField('complemento', e.target.value)} placeholder="Complemento del producto" className="w-full rounded border border-slate-300 p-2 text-xs outline-none focus:ring-1 focus:ring-[#2980b9]" />
               </AIAssistedField>
             </div>
           </div>
 
-          <AIAssistedField label="Descripción del producto" htmlFor={`producto-descripcion-${product.id}`} guidance="Describa el producto, sus características y el resultado que entrega el proyecto." askPrompt="Ayúdame a redactar la descripción de un producto MGA.">
+          <AIAssistedField label="Descripción del producto" htmlFor={`producto-descripcion-${product.id}`} fieldHelpKey={`producto_descripcion_${product.id}`} reactiveContext={{ producto: product.productoId, complemento: product.complemento, etapa: product.etapa }} onAutoFill={(value) => updateField('descripcion', value)} guidance="Describa el producto, sus características y el resultado que entrega el proyecto." askPrompt="Ayúdame a redactar la descripción de un producto MGA.">
             <CountedTextarea id={`producto-descripcion-${product.id}`} value={product.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} placeholder="Describa el producto..." className="w-full resize-y rounded border border-slate-300 p-2 text-xs outline-none focus:ring-1 focus:ring-[#2980b9]" />
           </AIAssistedField>
 
@@ -358,7 +358,7 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
                 </select>
               </div>
               <div>
-                <AIAssistedField label="Descripción de población" htmlFor={`producto-poblacion-${product.id}`} compact guidance="Describa la población vinculada a la entrega del producto." askPrompt="Ayúdame a describir la población asociada a un producto MGA.">
+                <AIAssistedField label="Descripción de población" htmlFor={`producto-poblacion-${product.id}`} compact fieldHelpKey={`producto_poblacion_${product.id}`} reactiveContext={{ producto: product.productoId, cantidad: product.cantidad }} onAutoFill={(value) => updateField('poblacion', { ...product.poblacion, descripcion: value })} guidance="Describa la población vinculada a la entrega del producto." askPrompt="Ayúdame a describir la población asociada a un producto MGA.">
                   <input id={`producto-poblacion-${product.id}`} type="text" value={product.poblacion.descripcion} onChange={e => updateField('poblacion', { ...product.poblacion, descripcion: e.target.value })} className="w-full rounded border border-blue-200 bg-white p-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" placeholder="Descripción..." />
                 </AIAssistedField>
               </div>
@@ -384,6 +384,9 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
                       htmlFor={`actividad-${act.id}`}
                       compact
                       className="min-w-0 flex-1"
+                      fieldHelpKey={`actividad_descripcion_${act.id}`}
+                      reactiveContext={{ producto: product.productoId, etapa: act.etapa }}
+                      onAutoFill={(value) => updateActividad(ai, { nombre: value })}
                       guidance="Las actividades describen acciones operativas concretas para producir los entregables del proyecto."
                       aiContext={`Actúa como experto en MGA. Redacta la descripción de esta actividad. REGLA ESTRICTA e INQUEBRANTABLE: La primera frase DEBE iniciar con uno de estos verbos débiles: ${WEAK_VERBS.join(', ')}. Genera solo el texto de la actividad, sin introducciones.`}
                     >

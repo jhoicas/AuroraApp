@@ -577,14 +577,15 @@ export default function IndicadoresDecisionTab({ project }: { project: Project }
   // Sync from store when evaluacion data changes externally
   useEffect(() => {
     const ed = formulation.evaluacion || {};
-    if (ed.multicriterio) {
-      setMulticriterio({
-        criteriosSeleccionados: ed.multicriterio.criteriosSeleccionados || [],
-        comparaciones: ed.multicriterio.comparaciones || {},
-      });
-    }
-    if (ed.alternativaSeleccionadaId) {
-      setAlternativaSeleccionadaId(ed.alternativaSeleccionadaId);
+    const dataToCompare = {
+      multicriterio: ed.multicriterio || { criteriosSeleccionados: [], comparaciones: {} },
+      alternativaSeleccionadaId: ed.alternativaSeleccionadaId || '',
+    };
+    const serialized = JSON.stringify(dataToCompare);
+    if (serialized !== lastSavedRef.current) {
+      setMulticriterio(dataToCompare.multicriterio as any);
+      setAlternativaSeleccionadaId(dataToCompare.alternativaSeleccionadaId);
+      lastSavedRef.current = serialized;
     }
   }, [formulation.evaluacion]);
 

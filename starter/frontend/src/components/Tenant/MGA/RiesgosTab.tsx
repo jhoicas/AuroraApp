@@ -343,6 +343,19 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
     lastSavedRef.current = JSON.stringify(altRiesgos);
   }, [project.id]);
 
+  const storeRiesgos = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.riesgos);
+
+  useEffect(() => {
+    if (storeRiesgos && selectedAlternativeId) {
+      const altRiesgos = storeRiesgos[selectedAlternativeId] || [];
+      const serialized = JSON.stringify(altRiesgos);
+      if (serialized !== lastSavedRef.current) {
+        setRiesgos(altRiesgos);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeRiesgos, selectedAlternativeId]);
+
   // ── Project change sync ──
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {

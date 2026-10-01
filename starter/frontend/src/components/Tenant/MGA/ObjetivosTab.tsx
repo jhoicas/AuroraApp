@@ -50,15 +50,23 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const problematica = formulation?.identificacion?.problematica;
 
+  const storeObjetivos = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion?.objetivos);
+
+  useEffect(() => {
+    if (storeObjetivos) {
+      const serialized = JSON.stringify(storeObjetivos);
+      if (serialized !== lastSavedRef.current) {
+        setObjetivos(storeObjetivos);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeObjetivos]);
+
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
       isFirstMount.current = true;
     }
-    const storeObjetivos = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.objetivos;
-    const initial = storeObjetivos || { ...EMPTY_OBJETIVOS };
-    setObjetivos(initial);
-    lastSavedRef.current = JSON.stringify(initial);
   }, [project.id]);
 
   useEffect(() => {

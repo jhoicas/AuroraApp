@@ -213,6 +213,19 @@ export default function PrestamosTab({ project }: PrestamosTabProps) {
     lastSavedRef.current = JSON.stringify(altItems);
   }, [project.id]);
 
+  const storePrestamos = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.prestamos);
+
+  useEffect(() => {
+    if (storePrestamos && selectedAlternativeId) {
+      const altItems = storePrestamos[selectedAlternativeId] || [];
+      const serialized = JSON.stringify(altItems);
+      if (serialized !== lastSavedRef.current) {
+        setItems(altItems);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storePrestamos, selectedAlternativeId]);
+
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;

@@ -267,6 +267,19 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
     lastSavedRef.current = JSON.stringify(altItems);
   }, [project.id]);
 
+  const storeIngresos = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.ingresosBeneficios);
+
+  useEffect(() => {
+    if (storeIngresos && selectedAlternativeId) {
+      const altItems = storeIngresos[selectedAlternativeId] || [];
+      const serialized = JSON.stringify(altItems);
+      if (serialized !== lastSavedRef.current) {
+        setItems(altItems);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeIngresos, selectedAlternativeId]);
+
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;

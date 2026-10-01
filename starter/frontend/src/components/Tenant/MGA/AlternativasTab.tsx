@@ -44,25 +44,45 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
     evaluaciones: initialIdentificacion?.evaluaciones || DEFAULT_EVALUACIONES,
   }));
 
-  const fieldProjectContext: ProjectContext = useMemo(() => ({
-    projectName: project.name,
-    sector: project.sector || undefined,
-    productCode: project.product_code || undefined,
-    procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
-    objeto: (project as any)?.objeto || undefined,
-  }), [project.name, project.sector, project.product_code, (project as any)?.proceso_id, (project as any)?.objeto]);
+  const fieldProjectContext: ProjectContext = useMemo(() => {
+    const formulation = useProjectMgaStore.getState().getFormulation(project.id);
+    const objDict = formulation?.identificacion?.objetivos?.objetivosEspecificos || {};
+    const objetivosList = Object.values(objDict).filter(Boolean);
 
-  // Sync state if project changes
+    return {
+      projectName: project.name,
+      sector: project.sector || undefined,
+      productCode: project.product_code || undefined,
+      procesoName: (project as any)?.proceso_id ? String((project as any)?.proceso_id) : undefined,
+      objeto: (project as any)?.objeto || undefined,
+      additionalContext: objetivosList.length > 0 
+        ? `Objetivos específicos generados previamente: ${objetivosList.join('; ')}`
+        : undefined,
+    };
+  }, [project.name, project.sector, project.product_code, (project as any)?.proceso_id, (project as any)?.objeto, project.id]);
+
+  const storeIdentificacion = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion);
+
+  // Sync state from store
+  useEffect(() => {
+    if (storeIdentificacion) {
+      const dataToCompare = {
+        alternativas: storeIdentificacion.alternativas || [],
+        evaluaciones: storeIdentificacion.evaluaciones || DEFAULT_EVALUACIONES,
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setAlternativas(dataToCompare.alternativas);
+        setEvaluaciones(dataToCompare.evaluaciones);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeIdentificacion]);
+
+  // Reset form when project changes
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
-      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
-      setAlternativas(currentData?.alternativas || []);
-      setEvaluaciones(currentData?.evaluaciones || DEFAULT_EVALUACIONES);
-      lastSavedRef.current = JSON.stringify({
-        alternativas: currentData?.alternativas || [],
-        evaluaciones: currentData?.evaluaciones || DEFAULT_EVALUACIONES,
-      });
       setIsAdding(false);
       setEditingId(null);
     }

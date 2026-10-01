@@ -33,6 +33,21 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
   // Guardamos un ref para controlar qué hemos guardado en todo "analisisTecnico"
   const lastSavedRef = useRef<string>(JSON.stringify(initialPreparacion?.analisisTecnico || {}));
 
+  const storePreparacion = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion);
+
+  useEffect(() => {
+    if (storePreparacion?.analisisTecnico) {
+      const dataToCompare = storePreparacion.analisisTecnico;
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        if (selectedAlternativeId && dataToCompare[selectedAlternativeId]) {
+          setResumen(dataToCompare[selectedAlternativeId].resumen || '');
+        }
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storePreparacion, selectedAlternativeId]);
+
   // Initial load and project change sync
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
@@ -44,13 +59,9 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
       
       if (alts.length > 0) {
         setSelectedAlternativeId(alts[0].id);
-        const currentData = currentFormulation.preparacion?.analisisTecnico || {};
-        setResumen(currentData[alts[0].id]?.resumen || '');
-        lastSavedRef.current = JSON.stringify(currentData);
       } else {
         setSelectedAlternativeId('');
         setResumen('');
-        lastSavedRef.current = '{}';
       }
     }
   }, [project.id]);

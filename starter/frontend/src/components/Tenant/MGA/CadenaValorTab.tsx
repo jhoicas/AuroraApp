@@ -476,6 +476,19 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
     lastSavedRef.current = JSON.stringify(altData);
   }, [project.id]);
 
+  const storeCadenaValorPrep = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.cadenaValorPrep);
+
+  useEffect(() => {
+    if (storeCadenaValorPrep && selectedAlternativeId) {
+      const altData = storeCadenaValorPrep[selectedAlternativeId] || { objetivos: {} };
+      const serialized = JSON.stringify(altData);
+      if (serialized !== lastSavedRef.current) {
+        setCadenaData(altData);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeCadenaValorPrep, selectedAlternativeId]);
+
   // Project change sync
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {

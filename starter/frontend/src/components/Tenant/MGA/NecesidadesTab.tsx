@@ -57,15 +57,25 @@ export default function NecesidadesTab({ project }: NecesidadesTabProps) {
     void fetchAllMeasurementUnits();
   }, [fetchAllMeasurementUnits]);
 
+  const storeNecesidades = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.necesidades);
+
+  useEffect(() => {
+    if (storeNecesidades) {
+      const dataToCompare = {
+        necesidades: storeNecesidades
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setNecesidadesPorAlternativa(storeNecesidades);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeNecesidades]);
+
   // Sync state if project changes
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
-      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.preparacion;
-      setNecesidadesPorAlternativa(currentData?.necesidades || {});
-      lastSavedRef.current = JSON.stringify({
-        necesidades: currentData?.necesidades || {},
-      });
       const alts = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.alternativas || [];
       setSelectedAlternativaId(alts.length > 0 ? alts[0].id : '');
       setIsAdding(false);

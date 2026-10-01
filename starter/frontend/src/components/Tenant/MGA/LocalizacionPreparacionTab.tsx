@@ -108,6 +108,24 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
     isFirstMount.current = true;
   };
 
+  const storeLocalizacion = useProjectMgaStore((s) => s.getFormulation(project.id)?.localizacionPreparacion);
+
+  useEffect(() => {
+    if (storeLocalizacion && selectedAlternativeId) {
+      const data = storeLocalizacion[selectedAlternativeId];
+      const dataToCompare = {
+        ubicaciones: data?.ubicaciones || [],
+        factoresAnalizados: data?.factoresAnalizados || []
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setUbicaciones(dataToCompare.ubicaciones);
+        setFactoresAnalizados(dataToCompare.factoresAnalizados);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeLocalizacion, selectedAlternativeId]);
+
   // Auto-save effect
   useEffect(() => {
     if (isFirstMount.current) {

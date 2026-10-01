@@ -73,37 +73,47 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
     }
   }));
 
+  const storePlanDesarrollo = useProjectMgaStore((s) => s.getFormulation(project.id)?.planDesarrollo);
+
+  useEffect(() => {
+    if (storePlanDesarrollo) {
+      const dataToCompare = {
+        pnd: storePlanDesarrollo.pnd || [],
+        departamental: {
+          plan: storePlanDesarrollo.departamental?.plan || '',
+          estrategia: storePlanDesarrollo.departamental?.estrategia || '',
+          programa: storePlanDesarrollo.departamental?.programa || '',
+        },
+        municipal: {
+          plan: storePlanDesarrollo.municipal?.plan || '',
+          estrategia: storePlanDesarrollo.municipal?.estrategia || '',
+          programa: storePlanDesarrollo.municipal?.programa || '',
+        },
+        etnias: {
+          tipoComunidad: storePlanDesarrollo.etnias?.tipoComunidad || '',
+          instrumentos: storePlanDesarrollo.etnias?.instrumentos || '',
+        }
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setPnd(dataToCompare.pnd);
+        setDepPlan(dataToCompare.departamental.plan);
+        setDepEstrategia(dataToCompare.departamental.estrategia);
+        setDepPrograma(dataToCompare.departamental.programa);
+        setMunPlan(dataToCompare.municipal.plan);
+        setMunEstrategia(dataToCompare.municipal.estrategia);
+        setMunPrograma(dataToCompare.municipal.programa);
+        setEtniasComunidad(dataToCompare.etnias.tipoComunidad);
+        setEtniasInstrumentos(dataToCompare.etnias.instrumentos);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storePlanDesarrollo]);
+
   // Sync state if project changes
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
-      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.planDesarrollo;
-      setPnd(currentData?.pnd || []);
-      setDepPlan(currentData?.departamental?.plan || '');
-      setDepEstrategia(currentData?.departamental?.estrategia || '');
-      setDepPrograma(currentData?.departamental?.programa || '');
-      setMunPlan(currentData?.municipal?.plan || '');
-      setMunEstrategia(currentData?.municipal?.estrategia || '');
-      setMunPrograma(currentData?.municipal?.programa || '');
-      setEtniasComunidad(currentData?.etnias?.tipoComunidad || '');
-      setEtniasInstrumentos(currentData?.etnias?.instrumentos || '');
-      lastSavedRef.current = JSON.stringify({
-        pnd: currentData?.pnd || [],
-        departamental: {
-          plan: currentData?.departamental?.plan || '',
-          estrategia: currentData?.departamental?.estrategia || '',
-          programa: currentData?.departamental?.programa || '',
-        },
-        municipal: {
-          plan: currentData?.municipal?.plan || '',
-          estrategia: currentData?.municipal?.estrategia || '',
-          programa: currentData?.municipal?.programa || '',
-        },
-        etnias: {
-          tipoComunidad: currentData?.etnias?.tipoComunidad || '',
-          instrumentos: currentData?.etnias?.instrumentos || '',
-        }
-      });
     }
   }, [project.id]);
 

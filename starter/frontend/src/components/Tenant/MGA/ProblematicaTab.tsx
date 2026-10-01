@@ -27,23 +27,33 @@ export default function ProblematicaTab({ project }: { project: Project }) {
     magnitudIndicadores: initialProblematica?.magnitudIndicadores || ''
   }));
 
+  const storeProblematica = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion?.problematica);
+
+  useEffect(() => {
+    if (storeProblematica) {
+      const dataToCompare = {
+        problemaCentral: storeProblematica.problemaCentral || '',
+        efectos: storeProblematica.efectos || [],
+        causas: storeProblematica.causas || [],
+        descripcionSituacion: storeProblematica.descripcionSituacion || '',
+        magnitudIndicadores: storeProblematica.magnitudIndicadores || ''
+      };
+      const serialized = JSON.stringify(dataToCompare);
+      if (serialized !== lastSavedRef.current) {
+        setProblemaCentral(dataToCompare.problemaCentral);
+        setEfectos(dataToCompare.efectos);
+        setCausas(dataToCompare.causas);
+        setDescripcionSituacion(dataToCompare.descripcionSituacion);
+        setMagnitudIndicadores(dataToCompare.magnitudIndicadores);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeProblematica]);
+
   // Sync state if project changes
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;
-      const currentData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion?.problematica;
-      setProblemaCentral(currentData?.problemaCentral || '');
-      setEfectos(currentData?.efectos || []);
-      setCausas(currentData?.causas || []);
-      setDescripcionSituacion(currentData?.descripcionSituacion || '');
-      setMagnitudIndicadores(currentData?.magnitudIndicadores || '');
-      lastSavedRef.current = JSON.stringify({
-        problemaCentral: currentData?.problemaCentral || '',
-        efectos: currentData?.efectos || [],
-        causas: currentData?.causas || [],
-        descripcionSituacion: currentData?.descripcionSituacion || '',
-        magnitudIndicadores: currentData?.magnitudIndicadores || ''
-      });
     }
   }, [project.id]);
 

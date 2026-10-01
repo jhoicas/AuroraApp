@@ -226,6 +226,19 @@ export default function DepreciacionTab({ project }: DepreciacionTabProps) {
     lastSavedRef.current = JSON.stringify(altItems);
   }, [project.id]);
 
+  const storeDepreciacion = useProjectMgaStore((s) => s.getFormulation(project.id)?.preparacion?.depreciacion);
+
+  useEffect(() => {
+    if (storeDepreciacion && selectedAlternativeId) {
+      const altItems = storeDepreciacion[selectedAlternativeId] || [];
+      const serialized = JSON.stringify(altItems);
+      if (serialized !== lastSavedRef.current) {
+        setItems(altItems);
+        lastSavedRef.current = serialized;
+      }
+    }
+  }, [storeDepreciacion, selectedAlternativeId]);
+
   useEffect(() => {
     if (prevProjectIdRef.current !== project.id) {
       prevProjectIdRef.current = project.id;

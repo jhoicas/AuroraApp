@@ -619,7 +619,10 @@ function patchFormulation(
 
 export const debouncedPatchProject = debounce(async (projectId: string, patchData: Record<string, any>) => {
   try {
-    await useProjectStore.getState().patchProject(projectId, { mga_formulation_data: patchData });
+    const currentFormulation = useProjectMgaStore.getState().byProjectId[projectId] || {};
+    await useProjectStore.getState().patchProject(projectId, { 
+      mga_formulation_data: { ...currentFormulation, ...patchData } 
+    });
   } catch (err) {
     console.error('Auto-save error', err);
   }
@@ -1036,15 +1039,14 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       const project = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
       if (project?.mga_formulation_data) {
         const pData = project.mga_formulation_data;
-        if (pData.identificacion) formulation.identificacion = pData.identificacion as IdentificacionData;
-        if (pData.planDesarrollo) formulation.planDesarrollo = pData.planDesarrollo as PlanDesarrolloData;
-        if (pData.necesidades) formulation.necesidades = pData.necesidades;
-        if (pData.estudioNecesidades) formulation.estudioNecesidades = pData.estudioNecesidades;
-        else if (pData.necesidades?.estudioNecesidades) formulation.estudioNecesidades = pData.necesidades.estudioNecesidades;
-        if (pData.analisisTecnico) formulation.analisisTecnico = pData.analisisTecnico;
-        if (pData.localizacion) formulation.localizacion = pData.localizacion;
-        if (pData.localizaciones) formulation.localizaciones = pData.localizaciones;
-        else if (pData.localizacion?.localizaciones) formulation.localizaciones = pData.localizacion.localizaciones;
+        Object.assign(formulation, pData);
+        // Fallbacks for legacy/alternative structures if needed
+        if (!formulation.estudioNecesidades && pData.necesidades?.estudioNecesidades) {
+          formulation.estudioNecesidades = pData.necesidades.estudioNecesidades;
+        }
+        if (!formulation.localizaciones && pData.localizacion?.localizaciones) {
+          formulation.localizaciones = pData.localizacion.localizaciones;
+        }
         if (pData.factores_analizados) {
           formulation.factores_analizados = pData.factores_analizados;
           formulation.localizaciones_factores = pData.factores_analizados;
@@ -1055,13 +1057,6 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
           formulation.factores_analizados = pData.localizacion.factores_analizados;
           formulation.localizaciones_factores = pData.localizacion.factores_analizados;
         }
-        if (pData.riesgos) formulation.riesgos = pData.riesgos;
-        if (pData.ingresosBeneficios) formulation.ingresosBeneficios = pData.ingresosBeneficios;
-        if (pData.prestamos) formulation.prestamos = pData.prestamos;
-        if (pData.depreciacion) formulation.depreciacion = pData.depreciacion;
-        if (pData.evaluacion) formulation.evaluacion = pData.evaluacion;
-        if (pData.programacion) formulation.programacion = pData.programacion;
-        if (pData.completedSections) formulation.completedSections = pData.completedSections;
       }
 
       set((state) => ({

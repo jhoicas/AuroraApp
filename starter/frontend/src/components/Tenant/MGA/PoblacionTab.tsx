@@ -70,7 +70,7 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
 
     const curData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
     debouncedPatchProject(project.id, {
-      identificacion_data: {
+      identificacion: {
         ...curData,
         poblacion,
       },

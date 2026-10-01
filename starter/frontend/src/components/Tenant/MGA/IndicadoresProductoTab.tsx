@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type IndicadorProductoProgramado, type ProductoCvJson } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function IndicadoresProductoTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -337,17 +338,9 @@ export default function IndicadoresProductoTab({ project }: { project: Project }
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Detalle Fuente de Verificación <span className="text-red-500">*</span>
-                      </label>
-                      <CountedTextarea
-                        value={wDetalle}
-                        onChange={(e) => setWDetalle(e.target.value)}
-                        className="w-full p-2 border rounded bg-white resize-none"
-                        rows={2}
-                        maxLength={500}
-                        placeholder="Especifique dónde se encuentra o cómo acceder a esta fuente..."
-                      />
+                      <AIAssistedField label="Detalle Fuente de Verificación" htmlFor="indicador-producto-fuente-detalle" required guidance="Especifique el documento, registro o sistema donde se puede consultar la evidencia." askPrompt="Ayúdame a redactar el detalle de una fuente de verificación de un indicador MGA.">
+                        <CountedTextarea id="indicador-producto-fuente-detalle" value={wDetalle} onChange={(e) => setWDetalle(e.target.value)} className="w-full resize-none rounded border bg-white p-2" rows={2} maxLength={500} placeholder="Especifique dónde se encuentra o cómo acceder a esta fuente..." />
+                      </AIAssistedField>
                     </div>
                   </div>
                 </div>

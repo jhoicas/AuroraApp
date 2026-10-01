@@ -6,6 +6,7 @@ import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import {
   fetchMgaRegions,
   fetchMgaDepartments,
@@ -169,15 +170,9 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Fuente de la información *</label>
-              <CountedTextarea
-                spellCheck={true}
-                maxLength={500}
-                rows={3}
-                value={data.fuenteInformacion}
-                onChange={(e) => updateData({ fuenteInformacion: e.target.value.substring(0, 500) })}
-                className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm resize-y"
-              />
+              <AIAssistedField label="Fuente de la información" htmlFor={`poblacion-fuente-${key}`} required guidance="Indique la fuente oficial utilizada para caracterizar la población." askPrompt="Ayúdame a redactar la fuente de información demográfica de una población MGA.">
+                <CountedTextarea id={`poblacion-fuente-${key}`} spellCheck maxLength={500} rows={3} value={data.fuenteInformacion} onChange={(e) => updateData({ fuenteInformacion: e.target.value.substring(0, 500) })} className="w-full resize-y rounded border-slate-300 p-2.5 text-sm outline-none focus:ring-1 focus:ring-[#006162]" />
+              </AIAssistedField>
             </div>
           </div>
           
@@ -579,15 +574,9 @@ function LocalizacionSubSection({
 
           {/* ─── Row 3: Localización Específica ────────────────────── */}
           <div>
-            <label className={labelClass}>Localización Específica</label>
-            <CountedTextarea
-              value={form.especifica}
-              onChange={(e) => setForm((prev) => ({ ...prev, especifica: e.target.value }))}
-              rows={2}
-              maxLength={500}
-              placeholder="Descripción libre de la localización específica..."
-              className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
-            />
+            <AIAssistedField label="Localización Específica" htmlFor="poblacion-localizacion-especifica" guidance="Precise el lugar o referencia territorial asociada a esta población." askPrompt="Ayúdame a describir una localización específica de población para un proyecto MGA.">
+              <CountedTextarea id="poblacion-localizacion-especifica" value={form.especifica} onChange={(e) => setForm((prev) => ({ ...prev, especifica: e.target.value }))} rows={2} maxLength={500} placeholder="Descripción libre de la localización específica..." className="w-full rounded border p-2 text-sm outline-none focus:ring-1 focus:ring-[#006162]" />
+            </AIAssistedField>
           </div>
 
           {/* ─── Action Buttons ────────────────────────────────────── */}

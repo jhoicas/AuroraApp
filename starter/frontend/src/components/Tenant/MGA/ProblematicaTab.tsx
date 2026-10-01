@@ -5,6 +5,7 @@ import { useProjectMgaStore, debouncedPatchProject, type ProblematicaJson, type 
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 export default function ProblematicaTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
@@ -268,16 +269,9 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         
         {/* Problema Central (Middle) */}
         <div className="p-4 border-2 border-blue-200 bg-blue-50 rounded-lg text-center">
-          <label className="block font-semibold text-blue-800 mb-2">Problema Central</label>
-          <CountedTextarea 
-            spellCheck={true}
-            maxLength={500}
-            value={problemaCentral}
-            onChange={(e) => setProblemaCentral(e.target.value)}
-            className="w-full border-slate-300 rounded p-2 text-center resize-none focus:ring-2 focus:ring-blue-500"
-            rows={2}
-            placeholder="Describa el problema central..."
-          />
+          <AIAssistedField label="Problema Central" htmlFor={`problema-central-${project.id}`} guidance="Describa una situación negativa real y verificable, no la ausencia de una solución." askPrompt={`Ayúdame a redactar el problema central del proyecto ${project.name}.`}>
+            <CountedTextarea id={`problema-central-${project.id}`} spellCheck maxLength={500} value={problemaCentral} onChange={(e) => setProblemaCentral(e.target.value)} className="w-full resize-none rounded border-slate-300 p-2 text-center focus:ring-2 focus:ring-blue-500" rows={2} placeholder="Describa el problema central..." />
+          </AIAssistedField>
         </div>
 
         {/* Causas (Bottom) */}
@@ -286,27 +280,15 @@ export default function ProblematicaTab({ project }: { project: Project }) {
 
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
         <div>
-          <label className="block text-base font-medium text-slate-700 mb-1">Descripción de la situación existente con respecto al problema *</label>
-          <CountedTextarea 
-            spellCheck={true}
-            maxLength={500}
-            value={descripcionSituacion}
-            onChange={(e) => setDescripcionSituacion(e.target.value)}
-            className="w-full border-slate-300 rounded px-3 py-2 text-base min-h-[100px]"
-            placeholder="Describa la situación..."
-          />
+          <AIAssistedField label="Descripción de la situación existente con respecto al problema" htmlFor={`situacion-problema-${project.id}`} required guidance="Describa el estado actual del territorio con información verificable." askPrompt={`Ayúdame a redactar la situación existente del proyecto ${project.name}.`}>
+            <CountedTextarea id={`situacion-problema-${project.id}`} spellCheck maxLength={500} value={descripcionSituacion} onChange={(e) => setDescripcionSituacion(e.target.value)} className="min-h-[100px] w-full rounded border-slate-300 px-3 py-2 text-base" placeholder="Describa la situación..." />
+          </AIAssistedField>
         </div>
         
         <div>
-          <label className="block text-base font-medium text-slate-700 mb-1">Magnitud actual del problema e indicadores de referencia *</label>
-          <CountedTextarea 
-            spellCheck={true}
-            maxLength={500}
-            value={magnitudIndicadores}
-            onChange={(e) => setMagnitudIndicadores(e.target.value)}
-            className="w-full border-slate-300 rounded px-3 py-2 text-base min-h-[100px]"
-            placeholder="Indique la magnitud..."
-          />
+          <AIAssistedField label="Magnitud actual del problema e indicadores de referencia" htmlFor={`magnitud-problema-${project.id}`} required guidance="Incluya indicadores y cifras que dimensionen la magnitud del problema." askPrompt={`Ayúdame a redactar la magnitud del problema del proyecto ${project.name}.`}>
+            <CountedTextarea id={`magnitud-problema-${project.id}`} spellCheck maxLength={500} value={magnitudIndicadores} onChange={(e) => setMagnitudIndicadores(e.target.value)} className="min-h-[100px] w-full rounded border-slate-300 px-3 py-2 text-base" placeholder="Indique la magnitud..." />
+          </AIAssistedField>
         </div>
       </div>
 

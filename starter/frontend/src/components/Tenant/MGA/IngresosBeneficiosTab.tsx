@@ -9,6 +9,7 @@ import {
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -135,20 +136,33 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                 {productos.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay productos en la cadena de valor.</p>}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción <span className="text-red-500">*</span></label>
-                <CountedTextarea value={draft.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
-              </div>
+              <AIAssistedField
+                label="Descripción"
+                htmlFor={`ingreso-descripcion-${draft.id}`}
+                required
+                guidance="Describa el ingreso o beneficio y su relación con el bien o servicio del proyecto."
+                askPrompt="Ayúdame a redactar la descripción de un ingreso o beneficio MGA."
+              >
+                <CountedTextarea id={`ingreso-descripcion-${draft.id}`} value={draft.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
+              </AIAssistedField>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción de la cantidad</label>
-                  <CountedTextarea value={draft.descripcionCantidad} onChange={e => updateField('descripcionCantidad', e.target.value)} rows={2} maxLength={500} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción del valor unitario</label>
-                  <CountedTextarea value={draft.descripcionValorUnitario} onChange={e => updateField('descripcionValorUnitario', e.target.value)} rows={2} maxLength={500} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
-                </div>
+                <AIAssistedField
+                  label="Descripción de la cantidad"
+                  htmlFor={`ingreso-cantidad-${draft.id}`}
+                  guidance="Explique qué representa la cantidad y cómo se cuantifica en el proyecto."
+                  askPrompt="Ayúdame a describir la cantidad de un ingreso o beneficio MGA."
+                >
+                  <CountedTextarea id={`ingreso-cantidad-${draft.id}`} value={draft.descripcionCantidad} onChange={e => updateField('descripcionCantidad', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
+                </AIAssistedField>
+                <AIAssistedField
+                  label="Descripción del valor unitario"
+                  htmlFor={`ingreso-valor-unitario-${draft.id}`}
+                  guidance="Explique cómo se determina el valor unitario utilizado en la proyección."
+                  askPrompt="Ayúdame a describir el valor unitario de un ingreso o beneficio MGA."
+                >
+                  <CountedTextarea id={`ingreso-valor-unitario-${draft.id}`} value={draft.descripcionValorUnitario} onChange={e => updateField('descripcionValorUnitario', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
+                </AIAssistedField>
               </div>
 
               <div>

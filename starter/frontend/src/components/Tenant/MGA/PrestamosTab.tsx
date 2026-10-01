@@ -10,6 +10,7 @@ import {
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -130,10 +131,22 @@ function PrestamoForm({ item: initial, onSave, onClose }: PrestamoFormProps) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Concepto <span className="text-red-500">*</span></label>
-            <CountedTextarea value={draft.concepto} onChange={e => updateField('concepto', e.target.value)} rows={2} maxLength={250} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
-          </div>
+          <AIAssistedField
+            label="Concepto del préstamo"
+            htmlFor={`prestamo-concepto-${draft.id}`}
+            required
+            guidance="Describa el destino del crédito y su relación con la financiación del proyecto."
+            askPrompt="Ayúdame a redactar el concepto de un préstamo para un proyecto MGA."
+          >
+            <CountedTextarea
+              id={`prestamo-concepto-${draft.id}`}
+              value={draft.concepto}
+              onChange={e => updateField('concepto', e.target.value)}
+              rows={2}
+              maxLength={250}
+              className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]"
+            />
+          </AIAssistedField>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

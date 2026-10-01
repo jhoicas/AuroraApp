@@ -6,6 +6,7 @@ import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 type AnalisisTecnicoTabProps = {
   project: Project;
@@ -160,17 +161,23 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-2">
           <div className="md:col-span-2">
-            <label className="block text-sm font-semibold text-slate-800 mb-2">
-              Resumen de la alternativa <span className="text-red-500">*</span>
-            </label>
-            <CountedTextarea
-              value={resumen}
-              onChange={(e) => setResumen(e.target.value)}
-              maxLength={2000}
-              rows={8}
-              placeholder="Ingrese el resumen técnico de la alternativa..."
-              className="w-full p-3 border border-slate-300 rounded-lg text-slate-800 text-sm focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none resize-y"
-            />
+            <AIAssistedField
+              label="Resumen de la alternativa"
+              htmlFor={`analisis-tecnico-${project.id}`}
+              required
+              guidance="Describa la viabilidad técnica, el alcance y los componentes principales de la alternativa."
+              askPrompt={`Ayúdame a redactar el resumen técnico de la alternativa del proyecto ${project.name}.`}
+            >
+              <CountedTextarea
+                id={`analisis-tecnico-${project.id}`}
+                value={resumen}
+                onChange={(e) => setResumen(e.target.value)}
+                maxLength={2000}
+                rows={8}
+                placeholder="Ingrese el resumen técnico de la alternativa..."
+                className="w-full resize-y rounded-lg border border-slate-300 p-3 text-sm text-slate-800 outline-none focus:border-transparent focus:ring-2 focus:ring-[#006162]"
+              />
+            </AIAssistedField>
             <div className="flex justify-between items-center mt-2">
               <p className="text-xs text-slate-500">
                 Describa técnicamente la alternativa seleccionada.

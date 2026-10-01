@@ -21,6 +21,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Disparador Automático IA en Campos MGA
+
+- **Objetivo:** Estandarizar la generación automática de sugerencias al enfocar por primera vez cualquier campo envuelto en `AIAssistedField`.
+- **Frontend (React / TypeScript):**
+  - [AIAssistedField.tsx](starter/frontend/src/components/AuroraAsistente/AIAssistedField.tsx): `onFocusCapture` centralizado con `React.FocusEvent`, ejecución única por instancia, uso de `suggestMgaField` cuando existe contexto estructurado y fallback a `aiContext`/`askPrompt` sin exigir manejadores en cada tab.
+  - Se envolvieron campos descriptivos faltantes en Problemática, Población, Análisis Técnico, Depreciación, Ingresos/Beneficios, Préstamos, Riesgos, Cadena de Valor, Localización de Preparación e Indicadores de Producto.
+  - Se conservaron sin cambios los `aiContext` estrictos de [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx) y actividades de [CadenaValorTab.tsx](starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx).
+- **Validaciones:** `pnpm run build` pasó con Exit Code 0; pruebas focalizadas MGA pasaron (3 pruebas); TypeScript sin errores.
+- **Advertencias:** pnpm reporta la configuración futura de `onlyBuiltDependencies`; Vite reporta chunks mayores a 500 kB.
+
 ### 2026-10-01 - GitHub Copilot - Contextos IA para Verbos MGA
 
 - **Objetivo:** Forzar mediante contexto directivo el uso de verbos fuertes en objetivos y verbos débiles en actividades MGA.

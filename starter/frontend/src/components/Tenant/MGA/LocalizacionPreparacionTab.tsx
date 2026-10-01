@@ -7,6 +7,7 @@ import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -382,14 +383,9 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Localización Específica</label>
-                <CountedTextarea
-                  value={formData.especifica || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))}
-                  rows={2}
-                  maxLength={500}
-                  className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
-                />
+                <AIAssistedField label="Localización Específica" htmlFor="localizacion-preparacion-especifica" guidance="Precise el lugar, sector o referencia territorial donde se ejecutará la intervención." askPrompt="Ayúdame a describir una localización específica para un proyecto MGA.">
+                  <CountedTextarea id="localizacion-preparacion-especifica" value={formData.especifica || ''} onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))} rows={2} maxLength={500} className="w-full rounded border p-2 outline-none focus:ring-1 focus:ring-[#006162]" />
+                </AIAssistedField>
               </div>
 
               <div className="md:col-span-2 flex items-center gap-2">

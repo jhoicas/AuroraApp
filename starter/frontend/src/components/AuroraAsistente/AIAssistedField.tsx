@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactElement,
+  type FocusEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -73,7 +74,6 @@ export default function AIAssistedField({
   fieldHelpKey,
   projectContext,
   reactiveContext,
-  currentValue,
   onAutoFill,
   prefilledSuggestions,
   onApplySuggestion,
@@ -84,6 +84,7 @@ export default function AIAssistedField({
   const tipId = useId();
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const automaticSuggestionTriggered = useRef(false);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
   const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
   const suggestMgaField = useAuroraCopilotStore((s) => s.suggestMgaField);
@@ -126,6 +127,19 @@ export default function AIAssistedField({
       askAurora(askPrompt || '');
     }
     setOpen(false);
+  };
+
+  const handleChildFocus = (_event: FocusEvent<HTMLElement>) => {
+    if (automaticSuggestionTriggered.current) return;
+    automaticSuggestionTriggered.current = true;
+
+    if (fieldHelpKey && projectContext) {
+      suggestMgaField(fieldHelpKey, { ...projectContext, ...(reactiveContext ?? {}) }, maxLength, isList, options);
+      return;
+    }
+
+    const prompt = aiContext || askPrompt;
+    if (prompt) askAurora(prompt);
   };
 
   const validationMessage =
@@ -274,12 +288,7 @@ export default function AIAssistedField({
         )}
       </div>
       <div
-        onFocusCapture={() => {
-          // Trigger bajo demanda cuando se hace Focus y está vacío
-          if (!currentValue && fieldHelpKey && projectContext && reactiveContext && !storeSuggestions) {
-            suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext }, maxLength, isList, options);
-          }
-        }}
+        onFocusCapture={handleChildFocus}
       >
         {isValidElement(children) && maxLength != null
           ? cloneElement(children as ReactElement<{ maxLength?: number }>, {

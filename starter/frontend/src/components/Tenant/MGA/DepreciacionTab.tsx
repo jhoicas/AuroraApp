@@ -8,6 +8,7 @@ import {
 } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -119,10 +120,23 @@ function DepreciacionForm({ item: initial, periodoFinalGeneral, onSave, onClose 
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción <span className="text-red-500">*</span></label>
-            <CountedTextarea value={draft.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" placeholder="Descripción del activo..." />
-          </div>
+          <AIAssistedField
+            label="Descripción del activo"
+            htmlFor={`depreciacion-descripcion-${draft.id}`}
+            required
+            guidance="Describa el activo, su función en el proyecto y las condiciones relevantes para su depreciación."
+            askPrompt="Ayúdame a redactar la descripción de un activo para la formulación MGA."
+          >
+            <CountedTextarea
+              id={`depreciacion-descripcion-${draft.id}`}
+              value={draft.descripcion}
+              onChange={e => updateField('descripcion', e.target.value)}
+              rows={2}
+              maxLength={500}
+              className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]"
+              placeholder="Descripción del activo..."
+            />
+          </AIAssistedField>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

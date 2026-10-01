@@ -1,14 +1,4 @@
-# AuroraApp — stack de producción / EC2 (Supabase Cloud)
-# Puertos en el host (evitan colisiones con otros servicios):
-#   Frontend  → 3001
-#   Backend   → 8081
-#
-# La base de datos es externa (Supabase). Define DATABASE_URL en backend/.env
-#
-# Uso:
-#   cp .env.example .env
-#   cp backend/.env.example backend/.env   # DATABASE_URL (Supabase), JWT, ANTHROPIC_API_KEY
-#   docker compose up --build -d
+
 
 services:
   backend:
@@ -23,7 +13,7 @@ services:
       PORT: "8080"
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
     ports:
-      - "8081:8080"
+      - "8080:8080"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 30s

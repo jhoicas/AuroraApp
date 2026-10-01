@@ -9,6 +9,7 @@ import {
 } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -231,17 +232,15 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           </div>
 
           {/* Descripción */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción del riesgo <span className="text-red-500">*</span></label>
-            <CountedTextarea
-              value={draft.descripcion}
-              onChange={e => updateField('descripcion', e.target.value)}
-              rows={3}
-              maxLength={500}
-              placeholder="Describa el riesgo identificado..."
-              className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#2980b9] outline-none resize-y"
-            />
-          </div>
+          <AIAssistedField
+            label="Descripción del riesgo"
+            htmlFor={`riesgo-descripcion-${draft.id}`}
+            required
+            guidance="Describa el evento incierto, su causa y la forma en que puede afectar el proyecto."
+            askPrompt="Ayúdame a redactar la descripción de un riesgo MGA."
+          >
+            <CountedTextarea id={`riesgo-descripcion-${draft.id}`} value={draft.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={3} maxLength={500} placeholder="Describa el riesgo identificado..." className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#2980b9]" />
+          </AIAssistedField>
 
           {/* Probabilidad + Impacto */}
           <div className="grid grid-cols-2 gap-4">
@@ -270,30 +269,24 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           </div>
 
           {/* Efectos */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Efectos</label>
-            <CountedTextarea
-              value={draft.efectos}
-              onChange={e => updateField('efectos', e.target.value)}
-              rows={2}
-              maxLength={500}
-              placeholder="Consecuencias si el riesgo se materializa..."
-              className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#2980b9] outline-none resize-y"
-            />
-          </div>
+          <AIAssistedField
+            label="Efectos del riesgo"
+            htmlFor={`riesgo-efectos-${draft.id}`}
+            guidance="Describa las consecuencias esperadas si el riesgo llega a materializarse."
+            askPrompt="Ayúdame a redactar los efectos de un riesgo MGA."
+          >
+            <CountedTextarea id={`riesgo-efectos-${draft.id}`} value={draft.efectos} onChange={e => updateField('efectos', e.target.value)} rows={2} maxLength={500} placeholder="Consecuencias si el riesgo se materializa..." className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#2980b9]" />
+          </AIAssistedField>
 
           {/* Medidas de mitigación */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Medidas de mitigación</label>
-            <CountedTextarea
-              value={draft.medidasMitigacion}
-              onChange={e => updateField('medidasMitigacion', e.target.value)}
-              rows={2}
-              maxLength={500}
-              placeholder="Acciones para reducir la probabilidad o impacto..."
-              className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#2980b9] outline-none resize-y"
-            />
-          </div>
+          <AIAssistedField
+            label="Medidas de mitigación"
+            htmlFor={`riesgo-mitigacion-${draft.id}`}
+            guidance="Describa las acciones concretas para reducir la probabilidad o el impacto del riesgo."
+            askPrompt="Ayúdame a redactar medidas de mitigación para un riesgo MGA."
+          >
+            <CountedTextarea id={`riesgo-mitigacion-${draft.id}`} value={draft.medidasMitigacion} onChange={e => updateField('medidasMitigacion', e.target.value)} rows={2} maxLength={500} placeholder="Acciones para reducir la probabilidad o impacto..." className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#2980b9]" />
+          </AIAssistedField>
         </div>
 
         {/* Footer */}

@@ -13,6 +13,8 @@ import {
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import { WEAK_VERBS } from '../../../constants/mgaVerbs';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -376,7 +378,24 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
               <div key={act.id} className="flex items-start gap-2 bg-orange-50/50 p-2 rounded border border-orange-100">
                 <div className="flex-1 space-y-1">
                   <div className="flex gap-2">
-                    <CountedTextarea value={act.nombre} onChange={e => updateActividad(ai, { nombre: e.target.value })} rows={1} maxLength={250} placeholder="Nombre de la actividad" className="flex-1 p-1.5 text-xs border border-orange-200 rounded focus:ring-1 focus:ring-orange-400 outline-none resize-y" />
+                    <AIAssistedField
+                      label="Descripción de la actividad"
+                      htmlFor={`actividad-${act.id}`}
+                      compact
+                      className="min-w-0 flex-1"
+                      guidance="Las actividades describen acciones operativas concretas para producir los entregables del proyecto."
+                      aiContext={`Actúa como experto en MGA. Redacta la descripción de esta actividad. REGLA ESTRICTA e INQUEBRANTABLE: La primera frase DEBE iniciar con uno de estos verbos débiles: ${WEAK_VERBS.join(', ')}. Genera solo el texto de la actividad, sin introducciones.`}
+                    >
+                      <CountedTextarea
+                        id={`actividad-${act.id}`}
+                        value={act.nombre}
+                        onChange={e => updateActividad(ai, { nombre: e.target.value })}
+                        rows={1}
+                        maxLength={250}
+                        placeholder="Nombre de la actividad"
+                        className="w-full resize-y rounded border border-orange-200 p-1.5 text-xs outline-none focus:ring-1 focus:ring-orange-400"
+                      />
+                    </AIAssistedField>
                     <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded self-start whitespace-nowrap">{act.etapa}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">

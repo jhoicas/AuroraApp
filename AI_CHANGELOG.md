@@ -21,6 +21,17 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Contextos IA para Verbos MGA
+
+- **Objetivo:** Forzar mediante contexto directivo el uso de verbos fuertes en objetivos y verbos débiles en actividades MGA.
+- **Frontend (React / TypeScript):**
+  - [mgaVerbs.ts](starter/frontend/src/constants/mgaVerbs.ts): nuevos catálogos exportados `STRONG_VERBS` y `WEAK_VERBS`.
+  - [AIAssistedField.tsx](starter/frontend/src/components/AuroraAsistente/AIAssistedField.tsx): nuevo prop `aiContext`, priorizado al abrir Aurora sobre prompts genéricos o ayuda de campo.
+  - [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx): contexto estricto con `STRONG_VERBS` para Objetivo General y Objetivos Específicos.
+  - [CadenaValorTab.tsx](starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx): contexto estricto con `WEAK_VERBS` en la descripción de actividades.
+- **Validaciones:** `pnpm run build` pasó con Exit Code 0; pruebas focalizadas MGA pasaron (3 pruebas); `npx tsc --noEmit` pasó.
+- **Advertencias:** pnpm reporta la migración futura de `onlyBuiltDependencies`; Vite reporta chunks mayores a 500 kB.
+
 ### 2026-10-01 - GitHub Copilot - Refactor MGA de Objetivos e Indicadores
 
 - **Objetivo:** Completar `ObjetivosTab.tsx` conforme al flujo MGA para indicadores del objetivo general y relación entre causas directas y objetivos específicos.

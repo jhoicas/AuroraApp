@@ -23,6 +23,8 @@ type AIAssistedFieldProps = {
   guidance?: string;
   /** Prompt inyectado al abrir Aurora Asistente (modo chat completo). */
   askPrompt?: string;
+  /** Contexto directivo adicional para imponer reglas metodológicas al prompt. */
+  aiContext?: string;
   /** Valor actual para validación normativa en pantalla. */
   validationValue?: string;
   /** Regla de validación MGA aplicada bajo el campo. */
@@ -62,6 +64,7 @@ export default function AIAssistedField({
   required = false,
   guidance,
   askPrompt,
+  aiContext,
   validationValue = '',
   validationRule,
   children,
@@ -115,7 +118,9 @@ export default function AIAssistedField({
 
 
   const handleAskFieldHelp = () => {
-    if (fieldHelpKey) {
+    if (aiContext) {
+      askAurora(aiContext);
+    } else if (fieldHelpKey) {
       askFieldHelp(fieldHelpKey, projectContext ?? {});
     } else {
       askAurora(askPrompt || '');

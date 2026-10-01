@@ -7,6 +7,7 @@ import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import { STRONG_VERBS } from '../../../constants/mgaVerbs';
 
 const MEASUREMENT_UNITS = [
   'Área',
@@ -78,6 +79,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
 
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const problematica = formulation?.identificacion?.problematica;
+  const problemaCentral = problematica?.problemaCentral || project.problem_description || '';
   const fetchFormulation = useProjectMgaStore((s) => s.fetchFormulation);
 
   useEffect(() => {
@@ -253,6 +255,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 validationRule="infinitive-verb"
                 fieldHelpKey="objetivo_especifico"
                 askPrompt={`Ayúdame a redactar un objetivo específico para la causa: ${causa.descripcion}`}
+                aiContext={`Actúa como experto en MGA. Redacta un Objetivo Específico para solucionar esta causa directa: '${causa.descripcion}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo.`}
               >
                 <CountedTextarea
                   id={`objetivo-especifico-${causa.id}`}
@@ -326,6 +329,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 validationRule="infinitive-verb"
                 fieldHelpKey="objetivo_general"
                 askPrompt={`Ayúdame a redactar el objetivo general del proyecto ${project.name}`}
+                aiContext={`Actúa como experto en Metodología General Ajustada (MGA). Redacta el Objetivo General basado en este problema central: '${problemaCentral}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo, sin introducciones.`}
               >
                 <CountedTextarea
                   id="objetivo-general"

@@ -228,7 +228,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             situacion_existente: sitVal,
             magnitud_problema: magVal,
           });
-          setMessage('Identificación del problema guardada.');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'No se pudo guardar la identificación');
         }
@@ -257,7 +256,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     try {
       await handleSaveIdentification();
       await saveProblematica(project.id);
-      setSuccessMessage('Problemática guardada exitosamente.');
     } catch (err) {
       setError('Error al guardar la sección.');
     }

@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
+import MgaActionButtons from './MgaActionButtons';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import PndSelectionModal from './PndSelectionModal';
 import { type CatalogPnd } from '../../../store/catalogStore';
@@ -148,6 +149,17 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
 
   const deletePndLink = (id: string) => {
     setPnd(pnd.filter(link => link.id !== id));
+  };
+
+  const handleSave = async () => {
+    const data: PlanDesarrolloData = {
+      pnd,
+      departamental: { plan: depPlan, estrategia: depEstrategia, programa: depPrograma },
+      municipal: { plan: munPlan, estrategia: munEstrategia, programa: munPrograma },
+      etnias: { tipoComunidad: etniasComunidad, instrumentos: etniasInstrumentos }
+    };
+    lastSavedRef.current = JSON.stringify(data);
+    return savePlanDesarrollo(project.id, data);
   };
 
   return (
@@ -454,7 +466,9 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
         </div>
       </MgaAccordion>
 
-
+      <div className="mt-8">
+        <MgaActionButtons project={project} onSave={handleSave} />
+      </div>
 
     </div>
   );

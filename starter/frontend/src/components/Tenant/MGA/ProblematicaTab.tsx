@@ -299,9 +299,7 @@ export default function ProblematicaTab({ project }: { project: Project }) {
       </div>
 
       <div className="mt-8">
-        <MgaActionButtons project={project} onSave={async () => {
-          await useProjectMgaStore.getState().saveProblematica(project.id);
-        }} />
+        <MgaActionButtons project={project} onSave={() => useProjectMgaStore.getState().saveProblematica(project.id)} />
       </div>
     </div>
   );

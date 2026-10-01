@@ -12,6 +12,7 @@ import {
 } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -304,7 +305,7 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
-            <textarea value={product.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} placeholder="Describa el producto..." className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none resize-y" />
+            <CountedTextarea value={product.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} placeholder="Describa el producto..." className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none resize-y" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

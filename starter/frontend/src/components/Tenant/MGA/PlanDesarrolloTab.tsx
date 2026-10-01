@@ -4,6 +4,7 @@ import { type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type PlanDesarrolloData, type PlanDesarrolloPndLink } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import PndSelectionModal from './PndSelectionModal';
 import { type CatalogPnd } from '../../../store/catalogStore';
@@ -452,7 +453,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setEtniasInstrumentos(v)}
             maxLength={500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="etnico-instrumentos"
               maxLength={500} 
               rows={3} 
@@ -461,7 +462,6 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
               placeholder="Diligencie el nombre de los Instrumentos de planeación de grupos étnicos" 
               className="w-full border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded px-3 py-2 text-base resize-none mt-1" 
             />
-            <p className="text-xs text-slate-500 mt-1 text-right">{etniasInstrumentos.length} / 500</p>
           </AIAssistedField>
         </div>
       </MgaAccordion>

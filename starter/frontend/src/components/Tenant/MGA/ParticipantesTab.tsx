@@ -15,6 +15,8 @@ import {
 } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedInput } from '../../ui/CountedInput';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type ParticipantesTabProps = {
@@ -303,7 +305,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             <label className="font-semibold text-gray-600 block mb-1">
               Nombre del Participante (Otro) <span className="text-red-500">*</span>
             </label>
-            <input
+            <CountedInput
               type="text"
               value={draft.otro_participante}
               onChange={(e) => setDraft((d) => ({ ...d, otro_participante: e.target.value }))}
@@ -383,7 +385,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             onAutoFill={(v) => setDraft((d) => ({ ...d, interests: v }))}
             maxLength={200}
           >
-            <textarea
+            <CountedTextarea
               spellCheck={true}
               id={`participant-interests-${project.id}`}
               rows={2}
@@ -411,7 +413,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
             onAutoFill={(v) => setDraft((d) => ({ ...d, contribution: v }))}
             maxLength={2000}
           >
-            <textarea
+            <CountedTextarea
               spellCheck={true}
               id={`participant-contribution-${project.id}`}
               rows={2}

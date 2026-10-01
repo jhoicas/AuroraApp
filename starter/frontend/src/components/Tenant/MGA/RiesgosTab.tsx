@@ -8,6 +8,7 @@ import {
   type ProductoCvJson,
 } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -232,7 +233,7 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           {/* Descripción */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción del riesgo <span className="text-red-500">*</span></label>
-            <textarea
+            <CountedTextarea
               value={draft.descripcion}
               onChange={e => updateField('descripcion', e.target.value)}
               rows={3}
@@ -240,7 +241,6 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
               placeholder="Describa el riesgo identificado..."
               className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#2980b9] outline-none resize-y"
             />
-            <p className="text-xs text-slate-400 text-right">{draft.descripcion.length}/500</p>
           </div>
 
           {/* Probabilidad + Impacto */}
@@ -272,7 +272,7 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           {/* Efectos */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Efectos</label>
-            <textarea
+            <CountedTextarea
               value={draft.efectos}
               onChange={e => updateField('efectos', e.target.value)}
               rows={2}
@@ -285,7 +285,7 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
           {/* Medidas de mitigación */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Medidas de mitigación</label>
-            <textarea
+            <CountedTextarea
               value={draft.medidasMitigacion}
               onChange={e => updateField('medidasMitigacion', e.target.value)}
               rows={2}

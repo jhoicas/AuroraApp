@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedInput } from '../../ui/CountedInput';
 
 export default function ProgramacionTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -118,7 +119,7 @@ export default function ProgramacionTab({ project }: { project: Project }) {
                         </button>
                       </td>
                       <td className="p-2 border">
-                        <input spellCheck={true}
+                        <CountedInput spellCheck={true}
                           type="text"
                           maxLength={500}
                           value={ind.nombre}

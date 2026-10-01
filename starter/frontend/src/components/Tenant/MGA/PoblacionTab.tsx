@@ -5,6 +5,7 @@ import { useProjectMgaStore, debouncedPatchProject, type PoblacionJson, type Pob
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 import {
   fetchMgaRegions,
   fetchMgaDepartments,
@@ -146,7 +147,7 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Fuente de la información *</label>
-              <textarea
+              <CountedTextarea
                 spellCheck={true}
                 maxLength={500}
                 rows={3}
@@ -154,9 +155,6 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
                 onChange={(e) => updateData({ fuenteInformacion: e.target.value.substring(0, 500) })}
                 className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm resize-y"
               />
-              <div className="text-xs text-gray-500 text-right mt-1">
-                {data.fuenteInformacion?.length || 0}/500
-              </div>
             </div>
           </div>
           

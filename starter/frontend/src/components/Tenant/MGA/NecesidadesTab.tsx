@@ -5,6 +5,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type NecesidadJson, type NecesidadHistoricoJson, type PreparacionData } from '../../../store/projectMgaStore';
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 type NecesidadesTabProps = {
   project: Project;
@@ -379,7 +380,7 @@ export default function NecesidadesTab({ project }: NecesidadesTabProps) {
                 onAutoFill={setDescripcion}
                 maxLength={500}
               >
-                <textarea
+                <CountedTextarea
                   id={`ns-desc-${project.id}`}
                   rows={2}
                   value={descripcion}
@@ -397,7 +398,7 @@ export default function NecesidadesTab({ project }: NecesidadesTabProps) {
                 onAutoFill={setDescripcionOferta}
                 maxLength={500}
               >
-                <textarea
+                <CountedTextarea
                   id={`ns-oferta-${project.id}`}
                   rows={3}
                   value={descripcionOferta}
@@ -415,7 +416,7 @@ export default function NecesidadesTab({ project }: NecesidadesTabProps) {
                 onAutoFill={setDescripcionDemanda}
                 maxLength={500}
               >
-                <textarea
+                <CountedTextarea
                   id={`ns-demanda-${project.id}`}
                   rows={3}
                   value={descripcionDemanda}

@@ -936,6 +936,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       const magVal = (curProj as any)?.magnitude ?? curProj?.magnitud_problema ?? '';
       const newCompleted = { ...formulation.completedSections, problematica: true, identificacion: true };
       debouncedPatchProject(projectId, {
+        ...formulation,
         situation: sitVal,
         magnitude: magVal,
         situacion_existente: sitVal,

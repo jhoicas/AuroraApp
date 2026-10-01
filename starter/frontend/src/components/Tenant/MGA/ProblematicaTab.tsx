@@ -79,12 +79,15 @@ export default function ProblematicaTab({ project }: { project: Project }) {
       }
     }));
 
-    debouncedPatchProject(project.id, { 
-      identificacion: { 
-        ...currentIdentificacion, 
-        problematica: data 
-      } 
-    });
+    const patchPayload = {
+      ...project.mga_formulation_data,
+      identificacion: {
+        ...project.mga_formulation_data?.identificacion,
+        problematica: data
+      }
+    };
+
+    debouncedPatchProject(project.id, patchPayload);
   }, [
     problemaCentral, efectos, causas, descripcionSituacion, magnitudIndicadores, project.id
   ]);

@@ -1,11 +1,41 @@
 import { useState, useEffect, useRef } from 'react';
 import { HelpCircle, Plus, Trash2, Pencil } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
-import { useProjectMgaStore, debouncedPatchProject, type ObjetivosJson, type IndicadorObjetivoJson } from '../../../store/projectMgaStore';
+import { useProjectMgaStore, debouncedPatchProject, type ArbolNodoCausa, type ObjetivosJson, type IndicadorObjetivoJson } from '../../../store/projectMgaStore';
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
+import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+
+const MEASUREMENT_UNITS = [
+  'Área',
+  'Bytes',
+  'Galones',
+  'Hectáreas',
+  'Kilogramos',
+  'Metros cuadrados',
+  'Metros cúbicos',
+  'Metros lineales',
+  'Millones de pesos',
+  'Número',
+  'Porcentaje',
+  'Toneladas',
+  'Semanas',
+  'Meses',
+  'Puntaje',
+];
+
+const SOURCE_TYPES = [
+  'Documento oficial',
+  'Encuesta',
+  'Entrevista',
+  'Estadísticas',
+  'Evaluación',
+  'Informe',
+  'Inspección',
+  'Registros contables',
+];
 
 const EMPTY_OBJETIVOS: ObjetivosJson = {
   objetivoGeneral: '',
@@ -18,13 +48,12 @@ const EMPTY_INDICATOR: IndicadorObjetivoJson = {
   indicador: '',
   unidadMedida: '',
   meta: 0,
-  tipoFuente: 'Secundaria',
+  tipoFuente: SOURCE_TYPES[0],
   fuenteVerificacion: '',
 };
 
 type ObjetivosTabProps = {
   project: Project;
-  skipInitialFetch?: boolean;
 };
 
 export default function ObjetivosTab({ project }: ObjetivosTabProps) {
@@ -68,11 +97,6 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     };
   }, [fetchFormulation, project.id]);
 
-  useEffect(() => {
-    console.log('[DEBUG ObjetivosTab] Received formulation data:', formulation?.identificacion);
-    console.log('[DEBUG ObjetivosTab] Extracted problematica:', problematica);
-  }, [formulation?.identificacion]);
-
   const storeObjetivos = useProjectMgaStore((s) => s.getFormulation(project.id)?.identificacion?.objetivos);
 
   useEffect(() => {
@@ -102,25 +126,34 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     lastSavedRef.current = serialized;
 
     const curData = useProjectMgaStore.getState().getFormulation(project.id)?.identificacion;
+    const updatedProblematica = curData?.problematica
+      ? {
+          ...curData.problematica,
+          causas: curData.problematica.causas.map((causa) =>
+            causa.tipo === 'directa' && Object.prototype.hasOwnProperty.call(objetivos.objetivosEspecificos, causa.id)
+              ? { ...causa, specificObjective: objetivos.objetivosEspecificos[causa.id] }
+              : causa,
+          ),
+        }
+      : undefined;
+    const updatedIdentificacion = {
+      ...curData,
+      ...(updatedProblematica ? { problematica: updatedProblematica } : {}),
+      objetivos,
+    };
     
     useProjectMgaStore.setState((state) => ({
       byProjectId: {
         ...state.byProjectId,
         [project.id]: {
           ...(state.byProjectId[project.id] ?? {}),
-          identificacion: {
-            ...curData,
-            objetivos,
-          }
+          identificacion: updatedIdentificacion,
         }
       }
     }));
 
     debouncedPatchProject(project.id, {
-      identificacion: {
-        ...curData,
-        objetivos,
-      }
+      identificacion: updatedIdentificacion,
     });
   }, [objetivos, project.id]);
 
@@ -185,6 +218,77 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
     }
   };
 
+  const causesByParent = (problematica?.causas ?? []).reduce<Record<string, ArbolNodoCausa[]>>(
+    (groups, causa) => {
+      if (causa.parentId) {
+        groups[causa.parentId] = [...(groups[causa.parentId] ?? []), causa];
+      }
+      return groups;
+    },
+    {},
+  );
+
+  const renderCauseRow = (causa: ArbolNodoCausa, isDirect: boolean) => {
+    const isEditing = isDirect && editingObjId === causa.id;
+    const currentObj = objetivos.objetivosEspecificos[causa.id] || causa.specificObjective || '';
+
+    return (
+      <tr key={causa.id} className={isDirect ? 'border-b hover:bg-slate-50' : 'border-b bg-slate-50/60'}>
+        <td className={`p-2 font-medium ${isDirect ? 'text-slate-700' : 'pl-8 text-slate-500'}`}>
+          {isDirect ? 'Causa directa' : 'Causa indirecta'}
+        </td>
+        <td className={`p-2 text-slate-700 ${!isDirect ? 'pl-8' : ''}`}>
+          {causa.descripcion || 'Sin descripción registrada'}
+        </td>
+        <td className="p-2">
+          {isDirect ? (
+            isEditing ? (
+              <AIAssistedField
+                label="Objetivo específico asociado"
+                htmlFor={`objetivo-especifico-${causa.id}`}
+                required
+                compact
+                guidance="Convierta la causa directa en un objetivo específico usando un verbo activo y un resultado medible."
+                validationValue={editingObjValue}
+                validationRule="infinitive-verb"
+                fieldHelpKey="objetivo_especifico"
+                askPrompt={`Ayúdame a redactar un objetivo específico para la causa: ${causa.descripcion}`}
+              >
+                <CountedTextarea
+                  id={`objetivo-especifico-${causa.id}`}
+                  value={editingObjValue}
+                  onChange={(e) => setEditingObjValue(e.target.value)}
+                  maxLength={500}
+                  rows={2}
+                  className="w-full rounded border border-blue-400 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </AIAssistedField>
+            ) : (
+              <span className={currentObj ? '' : 'text-slate-400 italic'}>
+                {currentObj || 'Sin objetivo específico...'}
+              </span>
+            )
+          ) : (
+            <span className="text-slate-400 italic">No aplica para causas indirectas</span>
+          )}
+        </td>
+        <td className="p-2 text-center">
+          {isDirect && (
+            <button
+              type="button"
+              onClick={() => toggleEditing(causa.id, currentObj)}
+              className="rounded p-2 text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              title={isEditing ? 'Guardar objetivo específico' : 'Editar objetivo específico'}
+              aria-label={isEditing ? 'Guardar objetivo específico' : 'Editar objetivo específico'}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="space-y-4 max-w-6xl mx-auto pb-12">
       <div className="flex items-center gap-2 border-b border-gray-200 pb-3">
@@ -213,16 +317,27 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Objetivo general - Propósito *</label>
-              <CountedTextarea
-                spellCheck={true}
-                value={objetivos.objetivoGeneral}
-                onChange={(e) => updateObjetivos({ objetivoGeneral: e.target.value })}
-                placeholder="Redacte el objetivo general..."
-                className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
-                rows={3}
-                maxLength={500}
-              />
+              <AIAssistedField
+                label="Objetivo general - Propósito"
+                htmlFor="objetivo-general"
+                required
+                guidance="Formule el propósito con un verbo activo, un resultado concreto y un alcance verificable."
+                validationValue={objetivos.objetivoGeneral}
+                validationRule="infinitive-verb"
+                fieldHelpKey="objetivo_general"
+                askPrompt={`Ayúdame a redactar el objetivo general del proyecto ${project.name}`}
+              >
+                <CountedTextarea
+                  id="objetivo-general"
+                  spellCheck
+                  value={objetivos.objetivoGeneral}
+                  onChange={(e) => updateObjetivos({ objetivoGeneral: e.target.value })}
+                  placeholder="Redacte el objetivo general..."
+                  className="w-full rounded border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-1 focus:ring-[#006162]"
+                  rows={3}
+                  maxLength={500}
+                />
+              </AIAssistedField>
             </div>
 
             <div>
@@ -312,48 +427,10 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                       </td>
                     </tr>
                   ) : (
-                    problematica.causas.map((causa) => {
-                      const isEditing = editingObjId === causa.id;
-                      const currentObj = objetivos.objetivosEspecificos[causa.id] || '';
-                      
-                      return (
-                        <tr key={causa.id} className="border-b hover:bg-slate-50">
-                          <td className="p-2 font-medium">{causa.tipo === 'directa' ? 'Causa directa' : 'Causa indirecta'}</td>
-                          <td className="p-2 text-slate-700">{causa.descripcion}</td>
-                          <td className="p-2">
-                            {isEditing ? (
-                              <input
-                                autoFocus
-                                type="text"
-                                value={editingObjValue}
-                                onChange={(e) => setEditingObjValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') toggleEditing(causa.id, currentObj);
-                                  if (e.key === 'Escape') {
-                                    setEditingObjId(null);
-                                    setEditingObjValue('');
-                                  }
-                                }}
-                                className="w-full p-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
-                            ) : (
-                              <span className={currentObj ? '' : 'text-slate-400 italic'}>
-                                {currentObj || 'Sin objetivo específico...'}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-2 text-center">
-                            <button
-                              onClick={() => toggleEditing(causa.id, currentObj)}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                              title={isEditing ? "Guardar" : "Editar"}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                    (problematica.causas.filter((causa) => causa.tipo === 'directa')).flatMap((causa) => [
+                      renderCauseRow(causa, true),
+                      ...(causesByParent[causa.id] ?? []).map((indirecta) => renderCauseRow(indirecta, false)),
+                    ])
                   )}
                 </tbody>
               </table>
@@ -371,24 +448,38 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
               </h3>
             </div>
             <div className="p-4 space-y-4 text-sm flex-1 overflow-y-auto">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Indicador *</label>
+              <AIAssistedField
+                label="Nombre del indicador"
+                htmlFor="indicador-nombre"
+                required
+                guidance="Use un nombre breve, observable y directamente relacionado con el objetivo general."
+                validationValue={indicatorForm.indicador}
+                askPrompt="Ayúdame a redactar el nombre de un indicador MGA medible."
+              >
                 <input
+                  id="indicador-nombre"
                   type="text"
                   value={indicatorForm.indicador}
                   onChange={(e) => setIndicatorForm(prev => ({ ...prev, indicador: e.target.value }))}
-                  className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
+                  className="w-full rounded border border-slate-300 p-2 outline-none focus:ring-1 focus:ring-[#006162]"
                 />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Medido a través de (Unidad) *</label>
-                <input
-                  type="text"
+              </AIAssistedField>
+              <AIAssistedField
+                label="Medido a través de"
+                htmlFor="indicador-unidad"
+                required
+                guidance="Seleccione la unidad que permite cuantificar el indicador de forma objetiva."
+              >
+                <select
+                  id="indicador-unidad"
                   value={indicatorForm.unidadMedida}
                   onChange={(e) => setIndicatorForm(prev => ({ ...prev, unidadMedida: e.target.value }))}
-                  className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
-                />
-              </div>
+                  className="w-full rounded border border-slate-300 bg-white p-2 outline-none focus:ring-1 focus:ring-[#006162]"
+                >
+                  <option value="">Seleccione una unidad</option>
+                  {MEASUREMENT_UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                </select>
+              </AIAssistedField>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Meta</label>
                 <input
@@ -398,26 +489,37 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                   className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
                 />
               </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tipo de fuente</label>
+              <AIAssistedField
+                label="Tipo de fuente"
+                htmlFor="indicador-tipo-fuente"
+                required
+                guidance="Seleccione el tipo de evidencia que respalda la medición del indicador."
+              >
                 <select
+                  id="indicador-tipo-fuente"
                   value={indicatorForm.tipoFuente}
                   onChange={(e) => setIndicatorForm(prev => ({ ...prev, tipoFuente: e.target.value }))}
-                  className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none bg-white"
+                  className="w-full rounded border border-slate-300 bg-white p-2 outline-none focus:ring-1 focus:ring-[#006162]"
                 >
-                  <option value="Primaria">Primaria</option>
-                  <option value="Secundaria">Secundaria</option>
+                  {SOURCE_TYPES.map((sourceType) => <option key={sourceType} value={sourceType}>{sourceType}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Fuente de verificación</label>
+              </AIAssistedField>
+              <AIAssistedField
+                label="Fuente de verificación"
+                htmlFor="indicador-fuente-verificacion"
+                required
+                guidance="Describa el documento, registro o sistema donde podrá verificarse la medición."
+                validationValue={indicatorForm.fuenteVerificacion}
+                askPrompt="Ayúdame a describir una fuente de verificación para un indicador MGA."
+              >
                 <input
+                  id="indicador-fuente-verificacion"
                   type="text"
                   value={indicatorForm.fuenteVerificacion}
                   onChange={(e) => setIndicatorForm(prev => ({ ...prev, fuenteVerificacion: e.target.value }))}
-                  className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
+                  className="w-full rounded border border-slate-300 p-2 outline-none focus:ring-1 focus:ring-[#006162]"
                 />
-              </div>
+              </AIAssistedField>
             </div>
             <div className="px-4 py-3 border-t bg-slate-50 flex justify-end gap-2">
               <button

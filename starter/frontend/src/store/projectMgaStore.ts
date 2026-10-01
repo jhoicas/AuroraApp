@@ -137,6 +137,7 @@ export type ArbolNodoCausa = {
   descripcion: string;
   tipo: 'directa' | 'indirecta';
   parentId?: string;
+  specificObjective?: string;
 };
 
 export type ProblematicaJson = {
@@ -619,6 +620,9 @@ function problematicaFromApi(data: FullMgaFormulation): ProblematicaJson {
       descripcion: cause.description,
       tipo: cause.cause_type,
       ...(cause.parent_id ? { parentId: cause.parent_id } : {}),
+      ...(cause.specific_objective?.description
+        ? { specificObjective: cause.specific_objective.description }
+        : {}),
     })),
     descripcionSituacion: '',
     magnitudIndicadores: '',

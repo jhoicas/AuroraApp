@@ -21,6 +21,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Refactor MGA de Objetivos e Indicadores
+
+- **Objetivo:** Completar `ObjetivosTab.tsx` conforme al flujo MGA para indicadores del objetivo general y relación entre causas directas y objetivos específicos.
+- **Frontend (React / TypeScript):**
+  - [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx): catálogos estáticos para unidades y tipos de fuente, selects accesibles, campos descriptivos con `AIAssistedField`, y edición con `CountedTextarea` limitado a 500 caracteres.
+  - [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx): tabla con columnas MGA, agrupación jerárquica por `parentId`, causas indirectas solo como contexto y objetivos específicos únicamente para causas directas.
+  - [projectMgaStore.ts](starter/frontend/src/store/projectMgaStore.ts): `ArbolNodoCausa` conserva `specificObjective`; el guardado sincroniza ese valor en la causa directa y en `objetivosEspecificos`, preservando el resto de `mga_formulation_data` mediante deep spread.
+- **Validaciones:** `pnpm run build` pasó con Exit Code 0; `pnpm exec vitest run src/store/projectMgaStore.test.ts src/components/Tenant/MGA/MGALayout.test.tsx` pasó (3 pruebas); `npx tsc --noEmit` pasó; diagnósticos del editor sin errores.
+- **Advertencias:** pnpm reporta que `onlyBuiltDependencies` debe migrarse a la configuración nueva; Vite reporta chunks mayores a 500 kB. Existe un `.env.production` no rastreado ajeno a esta sesión, no modificado.
+
 ### 2026-10-01 - GitHub Copilot - Puente de Problemática hacia Objetivos MGA
 
 - **Objetivo:** Cargar automáticamente el problema central y las causas del proyecto al abrir la pestaña Objetivos.

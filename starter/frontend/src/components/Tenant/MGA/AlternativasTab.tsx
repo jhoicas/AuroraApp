@@ -5,6 +5,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type AlternativaJson, type EvaluacionesJson, type IdentificacionData } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 import type { ProjectContext } from '../../../data/mgaFieldsKnowledge';
 
 type AlternativasTabProps = {
@@ -242,7 +243,7 @@ export default function AlternativasTab({ project }: AlternativasTabProps) {
             onAutoFill={(v) => setNombre(v)}
             maxLength={250}
           >
-            <textarea spellCheck={true}
+            <CountedTextarea spellCheck={true}
               id={`alt-desc-${project.id}`}
               rows={3}
               maxLength={250}

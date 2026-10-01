@@ -557,10 +557,11 @@ function LocalizacionSubSection({
           {/* ─── Row 3: Localización Específica ────────────────────── */}
           <div>
             <label className={labelClass}>Localización Específica</label>
-            <textarea
+            <CountedTextarea
               value={form.especifica}
               onChange={(e) => setForm((prev) => ({ ...prev, especifica: e.target.value }))}
               rows={2}
+              maxLength={500}
               placeholder="Descripción libre de la localización específica..."
               className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm"
             />

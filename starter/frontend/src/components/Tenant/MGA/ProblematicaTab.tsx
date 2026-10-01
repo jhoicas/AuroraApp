@@ -4,6 +4,7 @@ import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, debouncedPatchProject, type ProblematicaJson, type ArbolNodoCausa, type ArbolNodoEfecto } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 export default function ProblematicaTab({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
@@ -260,8 +261,9 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         {/* Problema Central (Middle) */}
         <div className="p-4 border-2 border-blue-200 bg-blue-50 rounded-lg text-center">
           <label className="block font-semibold text-blue-800 mb-2">Problema Central</label>
-          <textarea 
+          <CountedTextarea 
             spellCheck={true}
+            maxLength={500}
             value={problemaCentral}
             onChange={(e) => setProblemaCentral(e.target.value)}
             className="w-full border-slate-300 rounded p-2 text-center resize-none focus:ring-2 focus:ring-blue-500"
@@ -277,8 +279,9 @@ export default function ProblematicaTab({ project }: { project: Project }) {
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
         <div>
           <label className="block text-base font-medium text-slate-700 mb-1">Descripción de la situación existente con respecto al problema *</label>
-          <textarea 
+          <CountedTextarea 
             spellCheck={true}
+            maxLength={500}
             value={descripcionSituacion}
             onChange={(e) => setDescripcionSituacion(e.target.value)}
             className="w-full border-slate-300 rounded px-3 py-2 text-base min-h-[100px]"
@@ -288,8 +291,9 @@ export default function ProblematicaTab({ project }: { project: Project }) {
         
         <div>
           <label className="block text-base font-medium text-slate-700 mb-1">Magnitud actual del problema e indicadores de referencia *</label>
-          <textarea 
+          <CountedTextarea 
             spellCheck={true}
+            maxLength={500}
             value={magnitudIndicadores}
             onChange={(e) => setMagnitudIndicadores(e.target.value)}
             className="w-full border-slate-300 rounded px-3 py-2 text-base min-h-[100px]"

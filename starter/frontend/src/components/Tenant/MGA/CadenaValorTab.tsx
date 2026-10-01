@@ -376,7 +376,7 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
               <div key={act.id} className="flex items-start gap-2 bg-orange-50/50 p-2 rounded border border-orange-100">
                 <div className="flex-1 space-y-1">
                   <div className="flex gap-2">
-                    <textarea value={act.nombre} onChange={e => updateActividad(ai, { nombre: e.target.value })} rows={1} placeholder="Nombre de la actividad" className="flex-1 p-1.5 text-xs border border-orange-200 rounded focus:ring-1 focus:ring-orange-400 outline-none resize-y" />
+                    <CountedTextarea value={act.nombre} onChange={e => updateActividad(ai, { nombre: e.target.value })} rows={1} maxLength={250} placeholder="Nombre de la actividad" className="flex-1 p-1.5 text-xs border border-orange-200 rounded focus:ring-1 focus:ring-orange-400 outline-none resize-y" />
                     <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded self-start whitespace-nowrap">{act.etapa}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">

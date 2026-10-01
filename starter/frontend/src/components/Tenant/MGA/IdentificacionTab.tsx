@@ -12,6 +12,7 @@ import {
 } from '../../../lib/mgaAuroraAssist';
 import type { MgaEffect } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 import {
   groupCausesByParent,
   groupEffectsByParent,
@@ -428,7 +429,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               onAutoFill={(val) => setEditTarget({ kind: 'effect', id: effect.id, draft: val })}
               maxLength={250}
             >
-              <textarea spellCheck={true}
+              <CountedTextarea spellCheck={true}
                 id={`effect-${effect.id}`}
                 rows={3}
                 maxLength={250}
@@ -503,7 +504,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               onAutoFill={(val) => setEditTarget({ kind: 'cause', id: relation.id, draft: val })}
               maxLength={250}
             >
-              <textarea spellCheck={true}
+              <CountedTextarea spellCheck={true}
                 id={`cause-${relation.id}`}
                 rows={3}
                 maxLength={250}
@@ -657,7 +658,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               onAutoFill={(v) => patchCurrentProject({ problem_description: v })}
               maxLength={2000}
             >
-              <textarea spellCheck={true}
+              <CountedTextarea spellCheck={true}
                 id={`mga-problem-${project.id}`}
                 maxLength={2000}
                 value={problemDescription}
@@ -761,7 +762,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             onAutoFill={(v) => patchCurrentProject({ situacion_existente: v, situation: v } as any)}
             maxLength={2000}
           >
-            <textarea spellCheck={true}
+            <CountedTextarea spellCheck={true}
               id={`mga-situation-${project.id}`}
               name="situation"
               maxLength={2000}
@@ -787,7 +788,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
             onAutoFill={(v) => patchCurrentProject({ magnitud_problema: v, magnitude: v } as any)}
             maxLength={2000}
           >
-            <textarea spellCheck={true}
+            <CountedTextarea spellCheck={true}
               id={`mga-magnitude-${project.id}`}
               name="magnitude"
               maxLength={2000}

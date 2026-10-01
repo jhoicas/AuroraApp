@@ -5,6 +5,7 @@ import { useProjectMgaStore, type PreparacionData } from '../../../store/project
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 type AnalisisTecnicoTabProps = {
   project: Project;
@@ -151,7 +152,7 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
             <label className="block text-sm font-semibold text-slate-800 mb-2">
               Resumen de la alternativa <span className="text-red-500">*</span>
             </label>
-            <textarea
+            <CountedTextarea
               value={resumen}
               onChange={(e) => setResumen(e.target.value)}
               maxLength={2000}

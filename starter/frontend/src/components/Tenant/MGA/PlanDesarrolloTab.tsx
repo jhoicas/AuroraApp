@@ -294,7 +294,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setDepPlan(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="dep-plan"
               maxLength={1500} 
               rows={3} 
@@ -315,7 +315,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setDepEstrategia(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="dep-estrategia"
               maxLength={1500} 
               rows={3} 
@@ -336,7 +336,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setDepPrograma(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="dep-programa"
               maxLength={1500} 
               rows={3} 
@@ -367,7 +367,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setMunPlan(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="mun-plan"
               maxLength={1500} 
               rows={3} 
@@ -388,7 +388,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setMunEstrategia(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="mun-estrategia"
               maxLength={1500} 
               rows={3} 
@@ -409,7 +409,7 @@ export default function PlanDesarrolloTab({ project }: { project: Project }) {
             onAutoFill={(v) => setMunPrograma(v)}
             maxLength={1500}
           >
-            <textarea spellCheck={true} 
+            <CountedTextarea spellCheck={true} 
               id="mun-programa"
               maxLength={1500} 
               rows={3} 

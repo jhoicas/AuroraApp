@@ -3,6 +3,7 @@ import { HelpCircle, PlusCircle, Trash2, ChevronDown, ChevronRight, X } from 'lu
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore, type IndicadorProductoProgramado, type ProductoCvJson } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 export default function IndicadoresProductoTab({ project }: { project: Project }) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
@@ -339,11 +340,12 @@ export default function IndicadoresProductoTab({ project }: { project: Project }
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Detalle Fuente de Verificación <span className="text-red-500">*</span>
                       </label>
-                      <textarea
+                      <CountedTextarea
                         value={wDetalle}
                         onChange={(e) => setWDetalle(e.target.value)}
                         className="w-full p-2 border rounded bg-white resize-none"
                         rows={2}
+                        maxLength={500}
                         placeholder="Especifique dónde se encuentra o cómo acceder a esta fuente..."
                       />
                     </div>

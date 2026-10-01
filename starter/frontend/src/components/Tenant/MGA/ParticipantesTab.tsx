@@ -554,7 +554,7 @@ export default function ParticipantesTab({ project }: ParticipantesTabProps) {
           }
           maxLength={2500}
         >
-          <textarea
+          <CountedTextarea
             spellCheck={true}
             id={`mga-analisis-participantes-${project.id}`}
             maxLength={2500}

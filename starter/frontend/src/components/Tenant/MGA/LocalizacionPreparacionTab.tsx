@@ -6,6 +6,7 @@ import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -364,10 +365,11 @@ export default function LocalizacionPreparacionTab({ project }: LocalizacionPrep
               
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Localización Específica</label>
-                <textarea
+                <CountedTextarea
                   value={formData.especifica || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, especifica: e.target.value }))}
                   rows={2}
+                  maxLength={500}
                   className="w-full p-2 border rounded focus:ring-1 focus:ring-[#006162] outline-none"
                 />
               </div>

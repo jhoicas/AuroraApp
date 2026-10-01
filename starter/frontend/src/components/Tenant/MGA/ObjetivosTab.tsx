@@ -5,6 +5,7 @@ import { useProjectMgaStore, debouncedPatchProject, type ObjetivosJson, type Ind
 import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 const EMPTY_OBJETIVOS: ObjetivosJson = {
   objetivoGeneral: '',
@@ -172,22 +173,24 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
           <div className="space-y-6 p-1">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Problema central</label>
-              <textarea
+              <CountedTextarea
                 readOnly
                 value={problematica?.problemaCentral || 'No hay problema central definido en la pestaña de Problemática.'}
                 className="w-full p-2.5 border border-slate-300 rounded bg-slate-50 text-slate-600 outline-none text-sm resize-none"
                 rows={2}
+                maxLength={500}
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Objetivo general - Propósito *</label>
-              <textarea
+              <CountedTextarea
                 spellCheck={true}
                 value={objetivos.objetivoGeneral}
                 onChange={(e) => updateObjetivos({ objetivoGeneral: e.target.value })}
                 placeholder="Redacte el objetivo general..."
                 className="w-full p-2.5 border border-slate-300 rounded focus:ring-1 focus:ring-[#006162] outline-none text-sm bg-white"
                 rows={3}
+                maxLength={500}
               />
             </div>
 

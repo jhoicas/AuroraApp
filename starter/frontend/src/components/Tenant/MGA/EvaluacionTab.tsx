@@ -5,6 +5,7 @@ import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import MgaActionButtons from './MgaActionButtons';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 export type FinancialIndicators = {
   vpn: string;
@@ -241,7 +242,7 @@ export default function EvaluacionTab({ project }: { project: Project }) {
                 onAutoFill={(v) => setResumen(v)}
                 maxLength={2500}
               >
-                <textarea spellCheck={true}
+                <CountedTextarea spellCheck={true}
                   id={`eval-resumen-${project.id}`}
                   rows={4}
                   maxLength={2500}

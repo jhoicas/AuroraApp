@@ -9,6 +9,7 @@ import {
 } from '../../../store/projectMgaStore';
 import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
+import { CountedTextarea } from '../../ui/CountedTextarea';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ function PrestamoForm({ item: initial, onSave, onClose }: PrestamoFormProps) {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Concepto <span className="text-red-500">*</span></label>
-            <textarea value={draft.concepto} onChange={e => updateField('concepto', e.target.value)} rows={2} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
+            <CountedTextarea value={draft.concepto} onChange={e => updateField('concepto', e.target.value)} rows={2} maxLength={250} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] resize-y" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

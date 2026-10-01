@@ -296,8 +296,17 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre del Producto</label>
-              <input type="text" value={product.productoId} onChange={e => updateField('productoId', e.target.value)} placeholder="Nombre o código del producto" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
+              <AIAssistedField
+                label="Nombre del Producto"
+                htmlFor={`producto-nombre-${product.id}`}
+                fieldHelpKey={`producto_nombre_${product.id}`}
+                reactiveContext={{ etapa: product.etapa }}
+                onAutoFill={(value) => updateField('productoId', value)}
+                guidance="Ingrese el nombre o código del producto MGA."
+                askPrompt="Sugiere un nombre de producto MGA válido."
+              >
+                <input id={`producto-nombre-${product.id}`} type="text" value={product.productoId} onChange={e => updateField('productoId', e.target.value)} placeholder="Nombre o código del producto" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
+              </AIAssistedField>
             </div>
             <div>
               <AIAssistedField label="Complemento" htmlFor={`producto-complemento-${product.id}`} fieldHelpKey={`producto_complemento_${product.id}`} reactiveContext={{ producto: product.productoId, etapa: product.etapa }} onAutoFill={(value) => updateField('complemento', value)} guidance="Precise las características que complementan el producto del proyecto." askPrompt="Ayúdame a redactar el complemento de un producto MGA.">
@@ -312,8 +321,17 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Unidad de Medida</label>
-              <input type="text" value={product.unidadMedidaId} onChange={e => updateField('unidadMedidaId', e.target.value)} placeholder="Ej: Unidad, Metro, Kg" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
+              <AIAssistedField
+                label="Unidad de Medida"
+                htmlFor={`producto-unidad-${product.id}`}
+                fieldHelpKey={`producto_unidad_${product.id}`}
+                reactiveContext={{ producto: product.productoId }}
+                onAutoFill={(value) => updateField('unidadMedidaId', value)}
+                guidance="Ingrese la unidad de medida estándar."
+                askPrompt="Sugiere la unidad de medida para este producto."
+              >
+                <input id={`producto-unidad-${product.id}`} type="text" value={product.unidadMedidaId} onChange={e => updateField('unidadMedidaId', e.target.value)} placeholder="Ej: Unidad, Metro, Kg" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
+              </AIAssistedField>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Cantidad</label>

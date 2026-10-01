@@ -135,11 +135,7 @@ export default function AIAssistedField({
 
     if (fieldHelpKey) {
       suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
-      return;
     }
-
-    const prompt = aiContext || askPrompt;
-    if (prompt) askAurora(prompt);
   };
 
   const validationMessage =

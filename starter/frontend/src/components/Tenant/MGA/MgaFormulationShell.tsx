@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
@@ -49,7 +49,15 @@ export default function MgaFormulationShell({
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<MgaLayoutTabId>('identificacion');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState<MgaLayoutTabId>(() => {
+    const urlTab = searchParams.get('tab') as MgaLayoutTabId;
+    if (urlTab) return urlTab;
+    const storedTab = localStorage.getItem('mga_active_tab') as MgaLayoutTabId;
+    if (storedTab) return storedTab;
+    return 'identificacion';
+  });
   const [localError, setLocalError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -77,8 +85,13 @@ export default function MgaFormulationShell({
   useEffect(() => {
     if (!pendingTab) return;
     setActiveTab(pendingTab);
+    setSearchParams((prev) => {
+      prev.set('tab', pendingTab);
+      return prev;
+    }, { replace: true });
+    localStorage.setItem('mga_active_tab', pendingTab);
     onPendingTabConsumed?.();
-  }, [onPendingTabConsumed, pendingTab]);
+  }, [onPendingTabConsumed, pendingTab, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,10 +147,20 @@ export default function MgaFormulationShell({
 
   const handleChangeSubTab = (tab: MgaLayoutTabId) => {
     setActiveTab(tab);
+    setSearchParams((prev) => {
+      prev.set('tab', tab);
+      return prev;
+    }, { replace: true });
+    localStorage.setItem('mga_active_tab', tab);
   };
 
   const handleNavigateToAuditTab = (tabId: MgaTabId) => {
     setActiveTab(tabId);
+    setSearchParams((prev) => {
+      prev.set('tab', tabId);
+      return prev;
+    }, { replace: true });
+    localStorage.setItem('mga_active_tab', tabId);
   };
 
   const handlePresentar = async () => {

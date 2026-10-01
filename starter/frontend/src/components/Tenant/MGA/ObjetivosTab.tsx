@@ -254,6 +254,13 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 validationValue={editingObjValue}
                 validationRule="infinitive-verb"
                 fieldHelpKey="objetivo_especifico"
+                projectContext={{
+                  projectName: project.name,
+                  sector: project.sector,
+                  problemDescription: problemaCentral,
+                }}
+                reactiveContext={{ causa: causa.descripcion }}
+                onAutoFill={setEditingObjValue}
                 askPrompt={`Ayúdame a redactar un objetivo específico para la causa: ${causa.descripcion}`}
                 aiContext={`Actúa como experto en MGA. Redacta un Objetivo Específico para solucionar esta causa directa: '${causa.descripcion}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo.`}
               >
@@ -328,6 +335,13 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 validationValue={objetivos.objetivoGeneral}
                 validationRule="infinitive-verb"
                 fieldHelpKey="objetivo_general"
+                projectContext={{
+                  projectName: project.name,
+                  sector: project.sector,
+                  problemDescription: problemaCentral,
+                }}
+                reactiveContext={{ problemaCentral }}
+                onAutoFill={(value) => updateObjetivos({ objetivoGeneral: value })}
                 askPrompt={`Ayúdame a redactar el objetivo general del proyecto ${project.name}`}
                 aiContext={`Actúa como experto en Metodología General Ajustada (MGA). Redacta el Objetivo General basado en este problema central: '${problemaCentral}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo, sin introducciones.`}
               >

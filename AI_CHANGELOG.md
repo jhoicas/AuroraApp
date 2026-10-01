@@ -21,6 +21,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-01 - GitHub Copilot - Sugerencia Inline en Objetivos MGA
+
+- **Objetivo:** Mostrar sugerencias IA en la pastilla inline con `[Usar]`, evitando abrir el chat lateral al enfocar campos MGA con `fieldHelpKey`.
+- **Frontend (React / TypeScript):**
+  - [AIAssistedField.tsx](starter/frontend/src/components/AuroraAsistente/AIAssistedField.tsx): `onFocusCapture` y el botón de sugerencia usan `suggestMgaField` siempre que exista `fieldHelpKey`, incluso con contexto opcional; se conserva el callback de auto-fill y el `aiContext` para el flujo de chat secundario.
+  - [ObjetivosTab.tsx](starter/frontend/src/components/Tenant/MGA/ObjetivosTab.tsx): Objetivo General y Específico pasan `projectContext`, `reactiveContext` y `onAutoFill`; las reglas de `STRONG_VERBS` permanecen intactas.
+- **Validaciones:** `pnpm run build` pasó con Exit Code 0; pruebas focalizadas MGA pasaron (3 pruebas); TypeScript sin errores.
+- **Advertencias:** pnpm reporta la configuración futura de `onlyBuiltDependencies`; Vite reporta chunks mayores a 500 kB.
+
 ### 2026-10-01 - GitHub Copilot - Disparador Automático IA en Campos MGA
 
 - **Objetivo:** Estandarizar la generación automática de sugerencias al enfocar por primera vez cualquier campo envuelto en `AIAssistedField`.

@@ -133,8 +133,8 @@ export default function AIAssistedField({
     if (automaticSuggestionTriggered.current) return;
     automaticSuggestionTriggered.current = true;
 
-    if (fieldHelpKey && projectContext) {
-      suggestMgaField(fieldHelpKey, { ...projectContext, ...(reactiveContext ?? {}) }, maxLength, isList, options);
+    if (fieldHelpKey) {
+      suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
       return;
     }
 
@@ -206,8 +206,8 @@ export default function AIAssistedField({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    if (fieldHelpKey && projectContext && reactiveContext) {
-                      suggestMgaField(fieldHelpKey, { ...projectContext, ...reactiveContext }, maxLength, isList, options);
+                    if (fieldHelpKey) {
+                      suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
                       setOpen(false);
                     }
                   }}

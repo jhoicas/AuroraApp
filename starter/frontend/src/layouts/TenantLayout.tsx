@@ -24,17 +24,40 @@ export default function TenantLayout() {
     pathname.startsWith('/tenant/ai/') ||
     isImmersiveAssistant;
 
+  const isMobileViewport = () => typeof window !== 'undefined' && window.innerWidth < 768;
+  const closeSidebarOnMobile = () => {
+    if (isMobileViewport()) setIsSidebarOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 print:block print:h-auto print:bg-white">
+      {isSidebarOpen && (
+        <div
+          data-testid="sidebar-backdrop"
+          aria-hidden="true"
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden print:hidden"
+        />
+      )}
       <aside
         id="tenant-sidebar"
-        className={`${isSidebarOpen ? 'flex' : 'hidden'} w-64 bg-white border-r border-gray-200 flex-col p-4 print:hidden shrink-0 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl`}
+        className={`${isSidebarOpen ? 'flex' : 'hidden'} w-64 bg-white border-r border-gray-200 flex-col p-4 print:hidden shrink-0 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:shadow-xl`}
       >
-        <div className="mb-6 px-1">
-          <LogoAurora className="w-8 h-8 text-teal-600" />
-          <p className="text-sm text-gray-500 mt-2">Portal de inversión pública</p>
+        <div className="mb-6 px-1 flex items-start justify-between gap-2">
+          <div>
+            <LogoAurora className="w-8 h-8 text-teal-600" />
+            <p className="text-sm text-gray-500 mt-2">Portal de inversión pública</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Cerrar menú"
+            className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162]"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
         </div>
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) closeSidebarOnMobile(); }}>
           <NavLink to="/tenant/projects" className={linkClass}>
             <span className="material-symbols-outlined">dashboard</span>
             Proyectos

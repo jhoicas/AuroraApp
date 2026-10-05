@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { HelpCircle, Pencil, PlusCircle, Trash2, X, Check, AlertTriangle, Save } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Pencil, PlusCircle, Trash2, X, Check, AlertTriangle, Save } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import type { Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
@@ -60,6 +60,7 @@ function NeedYearsGrid({ projectId, need }: { projectId: string; need: MgaNeed }
   const [drafts, setDrafts] = useState<Record<number, NeedRowDraft>>({});
   const [savingYears, setSavingYears] = useState<Record<number, boolean>>({});
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
+  const [isSeriesExpanded, setIsSeriesExpanded] = useState(true);
 
   const setField = (anio: number, base: NeedRowDraft, field: keyof NeedRowDraft, value: string) => {
     setDrafts((prev) => ({ ...prev, [anio]: { ...(prev[anio] ?? base), [field]: value } }));
@@ -114,7 +115,19 @@ function NeedYearsGrid({ projectId, need }: { projectId: string; need: MgaNeed }
   }
 
   return (
-    <div className="overflow-x-auto border rounded bg-white">
+    <div className="border rounded bg-white">
+      <button
+        type="button"
+        onClick={() => setIsSeriesExpanded((v) => !v)}
+        aria-expanded={isSeriesExpanded}
+        aria-controls={`serie-anual-${need.id}`}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-left font-semibold text-slate-700"
+      >
+        <span>Serie anual / Proyección</span>
+        {isSeriesExpanded ? <ChevronUp className="w-4 h-4" aria-hidden /> : <ChevronDown className="w-4 h-4" aria-hidden />}
+      </button>
+      {isSeriesExpanded && (
+      <div id={`serie-anual-${need.id}`} className="overflow-x-auto">
       <table className="w-full text-left" aria-label={`Serie anual de ${need.bien_servicio}`}>
         <thead className="bg-slate-100 text-slate-700">
           <tr>
@@ -226,6 +239,8 @@ function NeedYearsGrid({ projectId, need }: { projectId: string; need: MgaNeed }
           })}
         </tbody>
       </table>
+      </div>
+      )}
     </div>
   );
 }
@@ -384,16 +399,16 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
 
       {/* Vista de lista (selector + tabla) y vista de formulario son excluyentes: al crear/editar solo se ve el formulario. */}
       {!isAdding && (
-        <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 bg-slate-50 p-3 rounded border min-w-0 overflow-hidden">
           <label htmlFor={`ns-alt-${project.id}`} className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
           <select
             id={`ns-alt-${project.id}`}
             value={selectedAlternativaId}
             onChange={(e) => setSelectedAlternativaId(e.target.value)}
-            className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+            className="w-full max-w-full min-w-0 flex-1 truncate text-ellipsis p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
           >
             {alternativas.map((alt) => (
-              <option key={alt.id} value={alt.id}>{alt.nombre}</option>
+              <option key={alt.id} value={alt.id} title={alt.nombre}>{alt.nombre}</option>
             ))}
           </select>
         </div>

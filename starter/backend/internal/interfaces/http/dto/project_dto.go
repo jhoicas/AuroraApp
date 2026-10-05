@@ -69,6 +69,10 @@ type ProjectResponse struct {
 	SituacionExistente string  `json:"situacion_existente,omitempty"`
 	MagnitudProblema   string  `json:"magnitud_problema,omitempty"`
 	FaseMaduracion     string                     `json:"fase_maduracion,omitempty"`
+	// BaseRegionID / BaseDepartamentoID: localización base inmutable del proyecto. En Población y
+	// Localización solo se pueden elegir municipios de este departamento.
+	BaseRegionID       *int                       `json:"base_region_id,omitempty"`
+	BaseDepartamentoID *int                       `json:"base_departamento_id,omitempty"`
 	RegionID           *int                       `json:"region_id,omitempty"`
 	DepartamentoID     *int                       `json:"departamento_id,omitempty"`
 	MunicipioID        *int                       `json:"municipio_id,omitempty"`

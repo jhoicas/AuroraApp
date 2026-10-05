@@ -184,4 +184,7 @@ type FullMgaFormulationResponse struct {
 	Participants []MgaParticipantResponse `json:"participants"`
 	Populations  []MgaPopulationResponse  `json:"populations"`
 	Alternatives []MgaAlternativeResponse `json:"alternatives"`
+	// Localización base del proyecto (ver ProjectResponse).
+	BaseRegionID       *int `json:"base_region_id,omitempty"`
+	BaseDepartamentoID *int `json:"base_departamento_id,omitempty"`
 }

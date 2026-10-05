@@ -13,6 +13,7 @@ import (
 
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -189,6 +190,8 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	if _, ok := mgaMap["objeto"]; !ok && req.Objeto != "" {
 		mgaMap["objeto"] = req.Objeto
 	}
+	// Fija el departamento base (regla de localización estricta).
+	withBaseLocation(c.Context(), h.db, mgaMap)
 	if b, err := json.Marshal(mgaMap); err == nil {
 		project.MgaFormulationData = datatypes.JSON(b)
 	}
@@ -404,6 +407,25 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 
 		patchMap := *req.MgaFormulationData
 
+		// La localización base es inmutable: el cliente no puede enviarla ni cambiarla.
+		delete(patchMap, services.BaseLocationKey)
+
+		// Regla de localización estricta: lo nuevo en Población/Localización debe caer en el
+		// departamento base. Las filas que ya estaban guardadas no se re-validan, para no bloquear
+		// proyectos con datos previos a la regla.
+		base := services.ResolveBaseLocation(existingMap)
+		newRefs := services.NewLocationRefs(
+			services.ExtractLocationRefs(patchMap),
+			services.ExtractLocationRefs(existingMap),
+		)
+		if violation := checkBaseDepartment(c.Context(), h.db, base, newRefs); violation != nil {
+			return violation.respond(c)
+		}
+		// Proyectos anteriores a la regla: se fija la base derivada para que no pueda moverse.
+		if _, hasStoredBase := existingMap[services.BaseLocationKey]; !hasStoredBase && base != nil {
+			existingMap[services.BaseLocationKey] = base.ToMap()
+		}
+
 		for k, v := range patchMap {
 			existingMap[k] = v
 		}
@@ -529,6 +551,13 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 	if p.MgaFormulationData != nil && len(p.MgaFormulationData) > 0 {
 		var mgaData map[string]interface{}
 		if err := json.Unmarshal(p.MgaFormulationData, &mgaData); err == nil {
+			// Departamento y región base del proyecto (regla de localización estricta).
+			if base := services.ResolveBaseLocation(mgaData); base != nil {
+				dep := base.DepartamentoID
+				resp.BaseDepartamentoID = &dep
+				resp.BaseRegionID = base.RegionID
+			}
+
 			var rawLocSlice []interface{}
 			if locs, ok := mgaData["localizaciones"].([]interface{}); ok && len(locs) > 0 {
 				rawLocSlice = locs

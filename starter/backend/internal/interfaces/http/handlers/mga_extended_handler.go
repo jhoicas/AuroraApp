@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/domain/services"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/dto"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -28,7 +29,8 @@ func (h *MgaHandler) GetFullFormulation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid project id"})
 	}
 
-	if _, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID); err != nil {
+	project, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID)
+	if err != nil {
 		if isNotFound(err) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "project not found"})
 		}
@@ -40,7 +42,13 @@ func (h *MgaHandler) GetFullFormulation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load mga formulation"})
 	}
 
-	return c.JSON(toFullMgaFormulationResponse(bundle))
+	resp := toFullMgaFormulationResponse(bundle)
+	if base := services.ResolveBaseLocation(projectFormulationMap(project)); base != nil {
+		dep := base.DepartamentoID
+		resp.BaseDepartamentoID = &dep
+		resp.BaseRegionID = base.RegionID
+	}
+	return c.JSON(resp)
 }
 
 // --- Efectos ---
@@ -402,6 +410,9 @@ func (h *MgaHandler) CreatePopulation(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+	if violation := h.checkPopulationLocations(c, projectID, tenantID, req.Locations, nil); violation != nil {
+		return violation.respond(c)
+	}
 
 	now := time.Now().UTC()
 	population := &models.MgaPopulation{
@@ -460,6 +471,11 @@ func (h *MgaHandler) UpdatePopulation(c *fiber.Ctx) error {
 		locations, err := normalizeMgaLocations(*req.Locations)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		// Las ubicaciones que ya estaban guardadas no se re-validan (datos previos a la regla).
+		existing := services.ExtractPopulationLocationRefs(json.RawMessage(population.Locations))
+		if violation := h.checkPopulationLocations(c, projectID, tenantID, *req.Locations, existing); violation != nil {
+			return violation.respond(c)
 		}
 		population.Locations = locations
 	}
@@ -643,6 +659,22 @@ func (h *MgaHandler) resolveMgaParentEffect(c *fiber.Ctx, parentIDRaw *string, p
 	}
 
 	return &parsed, nil
+}
+
+// checkPopulationLocations aplica la regla de localización estricta a las ubicaciones de una
+// población: solo departamento y municipios del departamento base del proyecto.
+func (h *MgaHandler) checkPopulationLocations(c *fiber.Ctx, projectID, tenantID uuid.UUID, raw json.RawMessage, existing []services.LocationRef) *locationRuleViolation {
+	incoming := services.NewLocationRefs(services.ExtractPopulationLocationRefs(raw), existing)
+	if len(incoming) == 0 {
+		return nil
+	}
+
+	project, err := loadOwnedProject(h.db, c.Context(), projectID, tenantID)
+	if err != nil {
+		return &locationRuleViolation{status: fiber.StatusInternalServerError, message: "failed to verify project ownership"}
+	}
+	base := services.ResolveBaseLocation(projectFormulationMap(project))
+	return checkBaseDepartment(c.Context(), h.db, base, incoming)
 }
 
 func normalizeMgaLocations(raw json.RawMessage) (string, error) {

@@ -507,10 +507,17 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
               />
             </AIAssistedField>
 
-            <div>
-              <label htmlFor={`ns-unidad-${project.id}`} className="block text-slate-700 font-semibold mb-1">
-                Unidad de medida <span className="text-red-500">*</span>
-              </label>
+            <AIAssistedField
+              label="Unidad de medida"
+              htmlFor={`ns-unidad-${project.id}`}
+              required
+              fieldHelpKey="necesidad_unidad_medida"
+              projectContext={{ projectName: project.name, sector: project.sector }}
+              reactiveContext={{ bienServicio: form.bienServicio }}
+              onAutoFill={(v: string) => setFormField('unidadMedidaId', v)}
+              guidance="Elija la unidad en la que se mide el bien o servicio."
+              askPrompt="Ayúdame a elegir la unidad de medida de un bien o servicio MGA."
+            >
               <select
                 id={`ns-unidad-${project.id}`}
                 value={form.unidadMedidaId}
@@ -522,7 +529,7 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
-            </div>
+            </AIAssistedField>
 
             <div className="md:col-span-2">
               <AIAssistedField

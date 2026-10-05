@@ -499,9 +499,18 @@ function LocalizacionSubSection({
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Región */}
-            <div>
-              <label className={labelClass}>Región *</label>
+            <AIAssistedField
+              label="Región"
+              htmlFor="poblacion-region"
+              required
+              compact
+              fieldHelpKey="poblacion_region"
+              onAutoFill={handleRegionChange}
+              guidance="Seleccione la región del país donde se localiza la población."
+              askPrompt="Ayúdame a elegir la región de localización de una población MGA."
+            >
               <select
+                id="poblacion-region"
                 value={form.regionId !== null ? String(form.regionId) : ''}
                 onChange={(e) => handleRegionChange(e.target.value)}
                 className={selectClass}
@@ -511,12 +520,22 @@ function LocalizacionSubSection({
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
-            </div>
+            </AIAssistedField>
 
             {/* Departamento */}
-            <div>
-              <label className={labelClass}>Departamento *</label>
+            <AIAssistedField
+              label="Departamento"
+              htmlFor="poblacion-departamento"
+              required
+              compact
+              fieldHelpKey="poblacion_departamento"
+              reactiveContext={{ regionId: form.regionId }}
+              onAutoFill={handleDepartamentoChange}
+              guidance="Seleccione el departamento de la región elegida donde se localiza la población."
+              askPrompt="Ayúdame a elegir el departamento de localización de una población MGA."
+            >
               <select
+                id="poblacion-departamento"
                 value={form.departamentoId !== null ? String(form.departamentoId) : ''}
                 onChange={(e) => handleDepartamentoChange(e.target.value)}
                 disabled={!form.regionId}
@@ -529,7 +548,7 @@ function LocalizacionSubSection({
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
-            </div>
+            </AIAssistedField>
 
             {/* Municipio */}
             <div>

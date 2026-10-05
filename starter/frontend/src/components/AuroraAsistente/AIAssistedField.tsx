@@ -10,6 +10,7 @@ import {
   useState,
   type ReactElement,
   type FocusEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -17,6 +18,7 @@ import {
   registerAutoFillCallback,
 } from '../../store/auroraCopilotStore';
 import { validateInfinitiveObjective } from '../../lib/mgaObjectiveValidation';
+import { extractSelectOptions, findSelectElement, resolveListSuggestion } from '../../lib/aiSelectOptions';
 import { getFieldKnowledge, type ProjectContext } from '../../data/mgaFieldsKnowledge';
 
 type AIAssistedFieldProps = {
@@ -81,10 +83,16 @@ export default function AIAssistedField({
   prefilledSuggestions,
   onApplySuggestion,
   maxLength,
-  isList,
-  options,
+  isList: isListProp,
+  options: optionsProp,
 }: AIAssistedFieldProps) {
   const tipId = useId();
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  // Si el hijo es un <select>, las opciones se leen de sus <option>.
+  const hasSelectChild = findSelectElement(children);
+  const selectOptions = hasSelectChild ? extractSelectOptions(children) : [];
+  const isList = isListProp ?? (hasSelectChild ? true : undefined);
+  const options = optionsProp ?? (hasSelectChild ? selectOptions : undefined);
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -160,12 +168,33 @@ export default function AIAssistedField({
     setOpen(false);
   };
 
-  const handleChildFocus = (_event: FocusEvent<HTMLElement>) => {
+  const requestSuggestion = () => {
+    if (!fieldHelpKey) return;
+    suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
+  };
+
+  // Foco o clic en el campo: pide sugerencia una sola vez por montaje.
+  const triggerAutomaticSuggestion = () => {
     if (automaticSuggestionTriggered.current) return;
     automaticSuggestionTriggered.current = true;
+    requestSuggestion();
+  };
 
-    if (fieldHelpKey) {
-      suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
+  const handleChildFocus = (_event: FocusEvent<HTMLElement>) => triggerAutomaticSuggestion();
+  const handleChildClick = (_event: ReactMouseEvent<HTMLElement>) => triggerAutomaticSuggestion();
+
+  /** Aplica un valor; en <select> sin callbacks, dispara el cambio nativo para React. */
+  const applyValue = (value: string) => {
+    const final = !hasSelectChild && maxLength ? value.substring(0, maxLength) : value;
+    onApplySuggestion?.(final);
+    onAutoFill?.(final);
+    if (hasSelectChild && !onApplySuggestion && !onAutoFill) {
+      const select = wrapperRef.current?.querySelector('select');
+      if (select) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+        setter?.call(select, final);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }
   };
 
@@ -239,7 +268,7 @@ export default function AIAssistedField({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (fieldHelpKey) {
-                      suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
+                      requestSuggestion();
                       setOpen(false);
                     }
                   }}
@@ -291,11 +320,19 @@ export default function AIAssistedField({
               }
 
               let displayValue = sug;
-              let applyValue = sug;
+              let applyTarget = sug;
 
-              if (sug.includes('|||')) {
+              if (hasSelectChild) {
+                // Solo se muestran sugerencias que coincidan estrictamente con una <option>.
+                const resolved = resolveListSuggestion(sug, selectOptions);
+                if (!resolved) return null;
+                applyTarget = resolved.value;
+                displayValue = resolved.explanation
+                  ? `${resolved.label} — ${resolved.explanation}`
+                  : resolved.label;
+              } else if (sug.includes('|||')) {
                 const parts = sug.split('|||');
-                applyValue = parts[0].trim();
+                applyTarget = parts[0].trim();
                 displayValue = parts.slice(1).join('|||').trim();
               }
 
@@ -306,9 +343,7 @@ export default function AIAssistedField({
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      const finalValue = maxLength ? applyValue.substring(0, maxLength) : applyValue;
-                      onApplySuggestion?.(finalValue);
-                      onAutoFill?.(finalValue);
+                      applyValue(applyTarget);
                     }}
                     className="ml-1 font-semibold hover:underline text-[#006162]"
                   >
@@ -322,7 +357,9 @@ export default function AIAssistedField({
         )}
       </div>
       <div
+        ref={wrapperRef}
         onFocusCapture={handleChildFocus}
+        onClickCapture={handleChildClick}
       >
         {isValidElement(children) && maxLength != null
           ? cloneElement(children as ReactElement<{ maxLength?: number }>, {

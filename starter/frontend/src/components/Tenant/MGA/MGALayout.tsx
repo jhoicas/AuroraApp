@@ -200,39 +200,22 @@ function isSectionMarkedCompleted(
   );
 }
 
-function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState | null) {
+function useMgaSectionStatuses(project: Project, _edtChain?: ProjectEdtChainState | null) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
 
   const statuses = {} as Record<MgaLayoutTabId, SectionStatus>;
 
   for (let i = 0; i < ALL_MGA_SECTIONS.length; i++) {
     const sectionId = ALL_MGA_SECTIONS[i];
-    const hasData = hasMgaSectionData(sectionId, project, formulation, edtChain);
-
     const prevSectionId = i > 0 ? ALL_MGA_SECTIONS[i - 1] : null;
     const isCompleted = isSectionMarkedCompleted(sectionId, project, formulation);
     const prevIsCompleted = prevSectionId
       ? isSectionMarkedCompleted(prevSectionId, project, formulation)
       : false;
 
-    // Secciones que marcan inicio de etapa o accesibles por datos previos
-    const isStageStart =
-      sectionId === 'plan-desarrollo' ||
-      sectionId === 'identificacion' ||
-      (sectionId === 'necesidades' && (hasMgaSectionData('alternativas', project, formulation, edtChain) || hasMgaSectionData('identificacion', project, formulation, edtChain))) ||
-      (sectionId === 'flujo-evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
-      (sectionId === 'indicadores-decision' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
-      (sectionId === 'evaluacion' && (hasMgaSectionData('depreciacion', project, formulation, edtChain) || hasMgaSectionData('cadena-valor', project, formulation, edtChain))) ||
-      (sectionId === 'indicadores-producto' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
-      (sectionId === 'regionalizacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
-      (sectionId === 'focalizacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain)) ||
-      (sectionId === 'programacion' && hasMgaSectionData('evaluacion', project, formulation, edtChain));
-
-    const isUnlocked =
-      i === 0 ||
-      hasData ||
-      prevIsCompleted ||
-      isStageStart;
+    // Desbloqueo estricto: solo "Guardar y Continuar" en la sección previa habilita la siguiente.
+    // Los datos autoguardados nunca desbloquean tabs.
+    const isUnlocked = i === 0 || prevIsCompleted;
 
     if (isCompleted) {
       statuses[sectionId] = 'COMPLETED';

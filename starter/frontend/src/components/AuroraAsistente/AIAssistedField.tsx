@@ -91,6 +91,8 @@ export default function AIAssistedField({
   const isList = isListProp ?? (hasSelectChild ? true : undefined);
   const options = optionsProp ?? (hasSelectChild ? selectOptions : undefined);
   const [open, setOpen] = useState(false);
+  const [previewText, setPreviewText] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<string>('');
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const automaticSuggestionTriggered = useRef(false);
@@ -172,7 +174,7 @@ export default function AIAssistedField({
     validationRule === 'infinitive-verb' ? validateInfinitiveObjective(validationValue) : null;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-full max-w-full min-w-0 ${className}`}>
       <div className={`flex flex-wrap items-center gap-1.5 ${compact ? 'mb-0.5' : 'mb-1'}`}>
         <label
           htmlFor={htmlFor}
@@ -264,12 +266,11 @@ export default function AIAssistedField({
         )}
 
         {activeSuggestions && activeSuggestions.length > 0 && (
-          <span className="basis-full inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1 max-w-full">
-            ✨
+          <div className="basis-full w-full max-w-full min-w-0 box-border flex flex-col gap-1 text-xs text-teal-700 bg-teal-50 px-2 py-1 rounded border border-teal-100">
             {activeSuggestions.map((sug, i) => {
               if (sug === "CARGANDO") {
                 return (
-                  <span key={i} className="inline-flex items-center text-teal-600 font-medium ml-1 italic animate-pulse">
+                  <span key={i} className="inline-flex items-center text-teal-600 font-medium italic animate-pulse">
                     <span className="material-symbols-outlined text-[14px] mr-1 animate-spin">sync</span>
                     Generando sugerencia...
                   </span>
@@ -277,7 +278,7 @@ export default function AIAssistedField({
               }
               if (sug === "ESPERANDO_CUOTA") {
                 return (
-                  <span key={i} className="inline-flex items-center text-amber-600 font-medium ml-1">
+                  <span key={i} className="inline-flex items-center text-amber-600 font-medium">
                     ⏳ Límite alcanzado. Esperando para procesar sugerencia...
                   </span>
                 );
@@ -301,23 +302,34 @@ export default function AIAssistedField({
               }
 
               return (
-                <span key={i} className="inline-flex items-center">
-                  <span className="truncate max-w-[min(300px,70vw)]" title={displayValue}>{displayValue}</span>
+                <div key={i} className="flex w-full max-w-full min-w-0 items-center gap-2">
+                  <span aria-hidden>✨</span>
+                  <span className="flex-1 min-w-0 truncate" title={displayValue}>{displayValue}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPreviewTarget(applyTarget);
+                      setPreviewText(displayValue);
+                    }}
+                    className="shrink-0 font-semibold hover:underline text-[#006162]"
+                  >
+                    [Ver]
+                  </button>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       applyValue(applyTarget);
                     }}
-                    className="ml-1 font-semibold hover:underline text-[#006162]"
+                    className="shrink-0 font-semibold hover:underline text-[#006162]"
                   >
                     [Usar]
                   </button>
-                  {i < activeSuggestions.length - 1 && <span className="ml-2 text-teal-300">|</span>}
-                </span>
+                </div>
               );
             })}
-          </span>
+          </div>
         )}
       </div>
       <div
@@ -331,6 +343,44 @@ export default function AIAssistedField({
             })
           : children}
       </div>
+      {previewText !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setPreviewText(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Sugerencia de Aurora IA"
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl bg-white p-5 shadow-xl"
+          >
+            <h3 className="mb-3 text-base font-semibold text-[#006162]">Sugerencia de Aurora IA</h3>
+            <div className="flex-1 overflow-y-auto whitespace-pre-wrap break-words text-sm text-gray-700">
+              {previewText}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPreviewText(null)}
+                className="h-9 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  applyValue(previewTarget);
+                  setPreviewText(null);
+                }}
+                className="h-9 rounded-lg bg-[#006162] px-4 text-sm font-semibold text-white hover:bg-[#004f50]"
+              >
+                Usar esta sugerencia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {validationMessage && (
         <p role="alert" className="mt-1 text-xs text-amber-700 font-medium">
           {validationMessage}

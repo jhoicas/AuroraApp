@@ -127,7 +127,7 @@ function NeedYearsGrid({ projectId, need }: { projectId: string; need: MgaNeed }
         {isSeriesExpanded ? <ChevronUp className="w-4 h-4" aria-hidden /> : <ChevronDown className="w-4 h-4" aria-hidden />}
       </button>
       {isSeriesExpanded && (
-      <div id={`serie-anual-${need.id}`} className="overflow-x-auto">
+      <div id={`serie-anual-${need.id}`} className="overflow-x-auto w-full">
       <table className="w-full text-left" aria-label={`Serie anual de ${need.bien_servicio}`}>
         <thead className="bg-slate-100 text-slate-700">
           <tr>
@@ -399,13 +399,13 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
 
       {/* Vista de lista (selector + tabla) y vista de formulario son excluyentes: al crear/editar solo se ve el formulario. */}
       {!isAdding && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 bg-slate-50 p-3 rounded border min-w-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full max-w-full overflow-hidden bg-slate-50 p-3 rounded border">
           <label htmlFor={`ns-alt-${project.id}`} className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
           <select
             id={`ns-alt-${project.id}`}
             value={selectedAlternativaId}
             onChange={(e) => setSelectedAlternativaId(e.target.value)}
-            className="w-full max-w-full min-w-0 flex-1 truncate text-ellipsis p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+            className="w-full min-w-0 flex-1 truncate p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
           >
             {alternativas.map((alt) => (
               <option key={alt.id} value={alt.id} title={alt.nombre}>{alt.nombre}</option>

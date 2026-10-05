@@ -342,7 +342,7 @@ function MgaTabSaveBar({
   };
 
   return (
-    <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-3 sm:px-6">
+    <div className="sticky bottom-0 z-30 shrink-0 bg-white border-t p-3 shadow-md flex justify-end">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         {error && <p role="alert" className="text-sm text-red-600 sm:mr-auto">{error}</p>}
         <button

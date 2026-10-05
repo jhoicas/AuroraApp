@@ -266,11 +266,11 @@ export default function AIAssistedField({
         )}
 
         {activeSuggestions && activeSuggestions.length > 0 && (
-          <div className="basis-full w-full max-w-full min-w-0 box-border flex flex-col gap-1 text-xs text-teal-700 bg-teal-50 px-2 py-1 rounded border border-teal-100">
+          <div className="basis-full w-full max-w-full min-w-0 flex flex-col gap-1.5">
             {activeSuggestions.map((sug, i) => {
               if (sug === "CARGANDO") {
                 return (
-                  <span key={i} className="inline-flex items-center text-teal-600 font-medium italic animate-pulse">
+                  <span key={i} className="w-full max-w-full overflow-hidden flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded p-2 text-xs text-emerald-800 font-medium italic animate-pulse">
                     <span className="material-symbols-outlined text-[14px] mr-1 animate-spin">sync</span>
                     Generando sugerencia...
                   </span>
@@ -278,7 +278,7 @@ export default function AIAssistedField({
               }
               if (sug === "ESPERANDO_CUOTA") {
                 return (
-                  <span key={i} className="inline-flex items-center text-amber-600 font-medium">
+                  <span key={i} className="w-full max-w-full overflow-hidden flex items-center gap-2 bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-700 font-medium">
                     ⏳ Límite alcanzado. Esperando para procesar sugerencia...
                   </span>
                 );
@@ -302,9 +302,9 @@ export default function AIAssistedField({
               }
 
               return (
-                <div key={i} className="flex w-full max-w-full min-w-0 items-center gap-2">
-                  <span aria-hidden>✨</span>
-                  <span className="flex-1 min-w-0 truncate" title={displayValue}>{displayValue}</span>
+                <div key={i} className="w-full max-w-full overflow-hidden flex items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  <span className="flex-1 min-w-0 truncate text-xs text-emerald-800" title={displayValue}>✨ {displayValue}</span>
+                  <div className="flex-shrink-0 flex items-center gap-1">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -312,7 +312,7 @@ export default function AIAssistedField({
                       setPreviewTarget(applyTarget);
                       setPreviewText(displayValue);
                     }}
-                    className="shrink-0 font-semibold hover:underline text-[#006162]"
+                    className="shrink-0 px-1 text-xs font-semibold hover:underline text-[#006162]"
                   >
                     [Ver]
                   </button>
@@ -322,10 +322,11 @@ export default function AIAssistedField({
                       e.preventDefault();
                       applyValue(applyTarget);
                     }}
-                    className="shrink-0 font-semibold hover:underline text-[#006162]"
+                    className="shrink-0 px-1 text-xs font-semibold hover:underline text-[#006162]"
                   >
                     [Usar]
                   </button>
+                  </div>
                 </div>
               );
             })}

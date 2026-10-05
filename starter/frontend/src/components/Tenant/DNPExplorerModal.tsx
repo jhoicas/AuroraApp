@@ -194,35 +194,37 @@ export default function DNPExplorerModal({ open, onClose, onSelect }: DNPExplore
           )}
 
           {!isLoading && filteredProducts.length > 0 && (
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Código / BPIN</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Nombre del producto</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600 w-28">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-700 font-mono text-xs">
-                      {product.code_bpin || product.code}
-                    </td>
-                    <td className="px-4 py-3 text-gray-800">{product.name}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(product)}
-                        className="inline-flex items-center gap-1 rounded bg-[#006162] hover:bg-[#004f50] text-white px-3 py-1.5 text-xs font-medium"
-                      >
-                        <span className="material-symbols-outlined text-sm">check</span>
-                        Seleccionar
-                      </button>
-                    </td>
+            <div className="overflow-x-auto w-full">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Código / BPIN</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Nombre del producto</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600 w-28">Acción</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredProducts.map((product) => (
+                    <tr key={product.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-700 font-mono text-xs">
+                        {product.code_bpin || product.code}
+                      </td>
+                      <td className="px-4 py-3 text-gray-800">{product.name}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(product)}
+                          className="inline-flex items-center gap-1 rounded bg-[#006162] hover:bg-[#004f50] text-white px-3 py-1.5 text-xs font-medium"
+                        >
+                          <span className="material-symbols-outlined text-sm">check</span>
+                          Seleccionar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

@@ -158,7 +158,7 @@ export default function PndCatalogPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <button
               onClick={handleTriggerSync}
               disabled={isSyncing}
@@ -269,63 +269,65 @@ export default function PndCatalogPage() {
               </div>
             ) : null}
 
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#3f4949]">
-                <tr>
-                  <th className="p-4 font-semibold w-16">ID</th>
-                  <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Transformación</th>
-                  <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Pilar</th>
-                  <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Catalizador</th>
-                  <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Componente</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
-                {catalogPnd.length === 0 && !isLoadingPnd && !error ? (
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#3f4949]">
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-[#6f7979]">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <span className="material-symbols-outlined text-5xl text-[#CBD5E0]">
-                          find_in_page
-                        </span>
-                        <p className="text-lg">No se encontraron registros de PND</p>
-                        <p className="text-sm">Importa un archivo CSV o ajusta tu búsqueda.</p>
-                      </div>
-                    </td>
+                    <th className="p-4 font-semibold w-16">ID</th>
+                    <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Transformación</th>
+                    <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Pilar</th>
+                    <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Catalizador</th>
+                    <th className="p-4 font-semibold min-w-[200px] whitespace-normal">Componente</th>
                   </tr>
-                ) : (
-                  catalogPnd.map((item: CatalogPnd) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-[#F0FDF4] transition-colors group"
-                    >
-                      <td className="p-4 align-top text-[#6f7979] font-mono text-xs pt-5">
-                        #{item.id}
-                      </td>
-                      <td className="p-4 align-top whitespace-normal">
-                        <div className="text-[#121c2c] font-medium leading-relaxed">
-                          {cellText(item.PillarDescription)}
-                        </div>
-                      </td>
-                      <td className="p-4 align-top whitespace-normal">
-                        <div className="text-[#121c2c] font-medium leading-relaxed">
-                          {cellText(item.ObjectiveDescription)}
-                        </div>
-                      </td>
-                      <td className="p-4 align-top whitespace-normal">
-                        <div className="text-[#121c2c] leading-relaxed">
-                          {cellText(item.StrategyDescription)}
-                        </div>
-                      </td>
-                      <td className="p-4 align-top whitespace-normal">
-                        <div className="text-[#121c2c] leading-relaxed">
-                          {cellText(item.ComponentDescription)}
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0]">
+                  {catalogPnd.length === 0 && !isLoadingPnd && !error ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-[#6f7979]">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <span className="material-symbols-outlined text-5xl text-[#CBD5E0]">
+                            find_in_page
+                          </span>
+                          <p className="text-lg">No se encontraron registros de PND</p>
+                          <p className="text-sm">Importa un archivo CSV o ajusta tu búsqueda.</p>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    catalogPnd.map((item: CatalogPnd) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-[#F0FDF4] transition-colors group"
+                      >
+                        <td className="p-4 align-top text-[#6f7979] font-mono text-xs pt-5">
+                          #{item.id}
+                        </td>
+                        <td className="p-4 align-top whitespace-normal">
+                          <div className="text-[#121c2c] font-medium leading-relaxed">
+                            {cellText(item.PillarDescription)}
+                          </div>
+                        </td>
+                        <td className="p-4 align-top whitespace-normal">
+                          <div className="text-[#121c2c] font-medium leading-relaxed">
+                            {cellText(item.ObjectiveDescription)}
+                          </div>
+                        </td>
+                        <td className="p-4 align-top whitespace-normal">
+                          <div className="text-[#121c2c] leading-relaxed">
+                            {cellText(item.StrategyDescription)}
+                          </div>
+                        </td>
+                        <td className="p-4 align-top whitespace-normal">
+                          <div className="text-[#121c2c] leading-relaxed">
+                            {cellText(item.ComponentDescription)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
           {catalogPndMeta && catalogPnd.length > 0 && (
             <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">

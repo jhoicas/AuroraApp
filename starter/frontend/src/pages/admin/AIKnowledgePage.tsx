@@ -95,7 +95,7 @@ export default function AIKnowledgePage() {
                 Resumen de aprendizaje
               </p>
               <p className="mb-2">{lastIngest.message}</p>
-              <ul className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
                 <li>
                   Nodos: <strong>{lastIngest.nodes_created}</strong>
                 </li>

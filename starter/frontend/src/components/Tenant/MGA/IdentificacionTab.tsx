@@ -442,7 +442,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 autoFocus={!effect.description?.trim()}
               />
             </AIAssistedField>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={isSaving}
@@ -517,7 +517,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 autoFocus={!relation.causeDescription?.trim()}
               />
             </AIAssistedField>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={isSaving}
@@ -593,7 +593,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
           <p className="text-center text-sm text-gray-500">{emptyMessage}</p>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-2 text-sm font-semibold text-gray-500">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-gray-200 pb-2 text-sm font-semibold text-gray-500">
               <span>Directos</span>
               <span>Indirectos</span>
             </div>
@@ -605,7 +605,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
                 <div className="w-1/2">{renderParent(group.parent, index)}</div>
                 <div className="w-1/2 space-y-3 border-l-2 border-dashed border-gray-200 pl-4">
                   {group.children.map((child) => renderChild(child))}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       disabled={isSaving || disabled}
@@ -671,7 +671,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <div className="flex flex-1 flex-col gap-1">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     disabled={isSaving || !hasCauses}

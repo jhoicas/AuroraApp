@@ -62,31 +62,33 @@ export default function ProductDetailModal({ open, onClose, product, onSelect }:
               Indicadores Asociados
             </h4>
             <div className="bg-white rounded border border-gray-200 overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">Código</th>
-                    <th className="px-4 py-2 font-medium">Indicador</th>
-                    <th className="px-4 py-2 font-medium">Medido a través de</th>
-                    <th className="px-4 py-2 font-medium">Unidad</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr>
-                    <td className="px-4 py-3 text-gray-900 font-medium">
-                      {product.codigo_del_indicador_de_producto}
-                      {product.indicador_principal && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
-                          Principal
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{product.indicador_de_producto}</td>
-                    <td className="px-4 py-3 text-gray-700">{product.medido_a_traves_de}</td>
-                    <td className="px-4 py-3 text-gray-700">{product.unidad_de_medida}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">Código</th>
+                      <th className="px-4 py-2 font-medium">Indicador</th>
+                      <th className="px-4 py-2 font-medium">Medido a través de</th>
+                      <th className="px-4 py-2 font-medium">Unidad</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr>
+                      <td className="px-4 py-3 text-gray-900 font-medium">
+                        {product.codigo_del_indicador_de_producto}
+                        {product.indicador_principal && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                            Principal
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{product.indicador_de_producto}</td>
+                      <td className="px-4 py-3 text-gray-700">{product.medido_a_traves_de}</td>
+                      <td className="px-4 py-3 text-gray-700">{product.unidad_de_medida}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

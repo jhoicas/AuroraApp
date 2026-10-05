@@ -169,7 +169,7 @@ export default function ProblematicaTab({ project }: { project: Project }) {
             
             <div className="pl-6 space-y-2 mt-2 border-l-2 border-dashed border-slate-300">
               {causas.filter(i => i.parentId === d.id).map(i => (
-                <div key={i.id} className="flex gap-2">
+                <div key={i.id} className="flex flex-wrap gap-2">
                   <AIAssistedField label="Causa Indirecta" htmlFor={`causa-indirecta-${i.id}`} compact fieldHelpKey={`causa_indirecta_${i.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ causaDirecta: d.descripcion }} onAutoFill={(value) => updateCausa(i.id, value)}>
                     <input id={`causa-indirecta-${i.id}`} spellCheck type="text" value={i.descripcion} onChange={(e) => updateCausa(i.id, e.target.value)} placeholder="Causa Indirecta" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
                   </AIAssistedField>
@@ -211,7 +211,7 @@ export default function ProblematicaTab({ project }: { project: Project }) {
             
             <div className="pl-6 space-y-2 mt-2 border-l-2 border-dashed border-slate-300">
               {efectos.filter(i => i.parentId === d.id).map(i => (
-                <div key={i.id} className="flex gap-2">
+                <div key={i.id} className="flex flex-wrap gap-2">
                   <AIAssistedField label="Efecto Indirecto" htmlFor={`efecto-indirecto-${i.id}`} compact fieldHelpKey={`efecto_indirecto_${i.id}`} projectContext={{ projectName: project.name, sector: project.sector }} reactiveContext={{ efectoDirecto: d.descripcion }} onAutoFill={(value) => updateEfecto(i.id, value)}>
                     <input id={`efecto-indirecto-${i.id}`} spellCheck type="text" value={i.descripcion} onChange={(e) => updateEfecto(i.id, e.target.value)} placeholder="Efecto Indirecto" className="w-full rounded border-slate-300 px-2 py-1 text-sm" />
                   </AIAssistedField>

@@ -137,28 +137,30 @@ export default function AiAuditPanel() {
 
       <div className="max-h-[420px] overflow-y-auto rounded-lg border border-gray-100">
         {tab === 'usage' && (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr className="text-left text-xs uppercase text-gray-500">
-                <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Tenant</th>
-                <th className="px-3 py-2">Acción</th>
-                <th className="px-3 py-2">Usuario</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usageLogs.map((row) => (
-                <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-600">{formatDate(row.created_at)}</td>
-                  <td className="px-3 py-2">{row.tenant_name || 'N/A'}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{row.action}</td>
-                  <td className="px-3 py-2 text-xs text-gray-700 truncate max-w-[220px]" title={row.user_email}>
-                    {row.user_email || 'N/A'}
-                  </td>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr className="text-left text-xs uppercase text-gray-500">
+                  <th className="px-3 py-2">Fecha</th>
+                  <th className="px-3 py-2">Tenant</th>
+                  <th className="px-3 py-2">Acción</th>
+                  <th className="px-3 py-2">Usuario</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {usageLogs.map((row) => (
+                  <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{formatDate(row.created_at)}</td>
+                    <td className="px-3 py-2">{row.tenant_name || 'N/A'}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{row.action}</td>
+                    <td className="px-3 py-2 text-xs text-gray-700 truncate max-w-[220px]" title={row.user_email}>
+                      {row.user_email || 'N/A'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {tab === 'chat' && (

@@ -475,30 +475,32 @@ export default function FocalizacionTab({ project }: { project: Project }) {
         </button>
         {openAccordions['acc-foc-2'] && (
           <div className="p-4 bg-white">
-            <table className="w-full text-left text-sm border">
-              <thead className="bg-slate-100 text-slate-700 border-b">
-                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Indicador</th><th className="p-3 text-center">Acción</th></tr>
-              </thead>
-              <tbody>
-                {caractsActivas.length === 0 ? <tr><td colSpan={4} className="p-4 text-center text-slate-500">No hay políticas poblacionales activas.</td></tr> :
-                  caractsActivas.map(c => {
-                    const saved = localFoc.politicasConPoblacion?.[c];
-                    return (
-                      <tr key={c} className="border-b hover:bg-slate-50">
-                        <td className="p-3 border-r font-medium text-slate-700">{c}</td>
-                        <td className="p-3 border-r text-slate-600">{saved?.categoria || '---'}</td>
-                        <td className="p-3 border-r text-slate-600">{saved?.indicador || '---'}</td>
-                        <td className="p-3 text-center">
-                          <button onClick={() => handleOpenConPob(c)} className="text-[#2980b9] hover:bg-blue-50 p-1.5 rounded flex items-center justify-center gap-1 mx-auto">
-                            <Edit3 className="w-4 h-4" /> Ingresar
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                }
-              </tbody>
-            </table>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border">
+                <thead className="bg-slate-100 text-slate-700 border-b">
+                  <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Indicador</th><th className="p-3 text-center">Acción</th></tr>
+                </thead>
+                <tbody>
+                  {caractsActivas.length === 0 ? <tr><td colSpan={4} className="p-4 text-center text-slate-500">No hay políticas poblacionales activas.</td></tr> :
+                    caractsActivas.map(c => {
+                      const saved = localFoc.politicasConPoblacion?.[c];
+                      return (
+                        <tr key={c} className="border-b hover:bg-slate-50">
+                          <td className="p-3 border-r font-medium text-slate-700">{c}</td>
+                          <td className="p-3 border-r text-slate-600">{saved?.categoria || '---'}</td>
+                          <td className="p-3 border-r text-slate-600">{saved?.indicador || '---'}</td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => handleOpenConPob(c)} className="text-[#2980b9] hover:bg-blue-50 p-1.5 rounded flex items-center justify-center gap-1 mx-auto">
+                              <Edit3 className="w-4 h-4" /> Ingresar
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -511,30 +513,32 @@ export default function FocalizacionTab({ project }: { project: Project }) {
         </button>
         {openAccordions['acc-foc-3'] && (
           <div className="p-4 bg-white space-y-4">
-            <table className="w-full text-left text-sm border">
-              <thead className="bg-slate-100 text-slate-700 border-b">
-                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Indicador</th><th className="p-3 text-center w-24">Distribución</th><th className="p-3 text-center w-20">Acción</th></tr>
-              </thead>
-              <tbody>
-                {(localFoc.politicasSinPoblacion || []).length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-slate-500">No hay políticas sin población adicionadas.</td></tr> :
-                  (localFoc.politicasSinPoblacion || []).map(p => (
-                    <tr key={p.id} className="border-b hover:bg-slate-50">
-                      <td className="p-3 border-r font-medium text-slate-700">{p.politica}</td>
-                      <td className="p-3 border-r text-slate-600">{p.categoria}</td>
-                      <td className="p-3 border-r text-slate-600 text-center">N/A</td>
-                      <td className="p-3 border-r text-center">
-                        <button onClick={() => { setActivePolSinId(p.id); setModalDistSinPobOpen(true); }} className="text-[#2980b9] hover:bg-blue-50 px-3 py-1.5 rounded flex items-center justify-center gap-1 mx-auto font-medium">
-                          Ingresar <LogIn className="w-4 h-4" />
-                        </button>
-                      </td>
-                      <td className="p-3 text-center">
-                        <button onClick={() => handleRemoveSinPob(p.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded mx-auto"><Trash2 className="w-4 h-4" /></button>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border">
+                <thead className="bg-slate-100 text-slate-700 border-b">
+                  <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Categoría</th><th className="p-3 border-r">Indicador</th><th className="p-3 text-center w-24">Distribución</th><th className="p-3 text-center w-20">Acción</th></tr>
+                </thead>
+                <tbody>
+                  {(localFoc.politicasSinPoblacion || []).length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-slate-500">No hay políticas sin población adicionadas.</td></tr> :
+                    (localFoc.politicasSinPoblacion || []).map(p => (
+                      <tr key={p.id} className="border-b hover:bg-slate-50">
+                        <td className="p-3 border-r font-medium text-slate-700">{p.politica}</td>
+                        <td className="p-3 border-r text-slate-600">{p.categoria}</td>
+                        <td className="p-3 border-r text-slate-600 text-center">N/A</td>
+                        <td className="p-3 border-r text-center">
+                          <button onClick={() => { setActivePolSinId(p.id); setModalDistSinPobOpen(true); }} className="text-[#2980b9] hover:bg-blue-50 px-3 py-1.5 rounded flex items-center justify-center gap-1 mx-auto font-medium">
+                            Ingresar <LogIn className="w-4 h-4" />
+                          </button>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button onClick={() => handleRemoveSinPob(p.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded mx-auto"><Trash2 className="w-4 h-4" /></button>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
             <button onClick={() => { setSelPolSin(''); setSelCatSin(''); setSelSubcatSin(''); setModalSinPobOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#2980b9] text-white rounded-lg hover:bg-[#1a6698]">
               <PlusCircle className="w-4 h-4" /> Adicionar Política
             </button>
@@ -550,29 +554,31 @@ export default function FocalizacionTab({ project }: { project: Project }) {
         </button>
         {openAccordions['acc-foc-4'] && (
           <div className="p-4 bg-white">
-            <table className="w-full text-left text-sm border">
-              <thead className="bg-slate-100 text-slate-700 border-b">
-                <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Cruce políticas</th><th className="p-3 text-center">Acción</th></tr>
-              </thead>
-              <tbody>
-                {allPolicies.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-slate-500">No hay políticas disponibles para cruzar.</td></tr> :
-                  allPolicies.map(pol => {
-                    const crucesDePol = (localFoc.crucesPoliticas?.[pol.id] || []).map(getPolicyName).join(', ');
-                    return (
-                      <tr key={pol.id} className="border-b hover:bg-slate-50">
-                        <td className="p-3 border-r font-medium text-slate-700">{pol.name}</td>
-                        <td className="p-3 border-r text-slate-600">{crucesDePol || 'Ninguno'}</td>
-                        <td className="p-3 text-center">
-                          <button onClick={() => handleOpenCruce(pol.id)} className="text-[#2980b9] hover:bg-blue-50 p-1.5 rounded flex items-center justify-center gap-1 mx-auto">
-                            <Link className="w-4 h-4" /> Ingresar
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                }
-              </tbody>
-            </table>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border">
+                <thead className="bg-slate-100 text-slate-700 border-b">
+                  <tr><th className="p-3 border-r">Política</th><th className="p-3 border-r">Cruce políticas</th><th className="p-3 text-center">Acción</th></tr>
+                </thead>
+                <tbody>
+                  {allPolicies.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-slate-500">No hay políticas disponibles para cruzar.</td></tr> :
+                    allPolicies.map(pol => {
+                      const crucesDePol = (localFoc.crucesPoliticas?.[pol.id] || []).map(getPolicyName).join(', ');
+                      return (
+                        <tr key={pol.id} className="border-b hover:bg-slate-50">
+                          <td className="p-3 border-r font-medium text-slate-700">{pol.name}</td>
+                          <td className="p-3 border-r text-slate-600">{crucesDePol || 'Ninguno'}</td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => handleOpenCruce(pol.id)} className="text-[#2980b9] hover:bg-blue-50 p-1.5 rounded flex items-center justify-center gap-1 mx-auto">
+                              <Link className="w-4 h-4" /> Ingresar
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -590,53 +596,55 @@ export default function FocalizacionTab({ project }: { project: Project }) {
             ) : (
               summaryData.map((polData, polIdx) => (
                 <div key={polIdx} className="border rounded-lg overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-[#2980b9] text-white">
-                      <tr>
-                        <th className="p-3 w-1/4">POLÍTICA</th>
-                        <th className="p-3 w-1/4">Categoría</th>
-                        <th className="p-3 w-1/4">Subcategoría</th>
-                        <th className="p-3 w-1/4 text-right">VALOR</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(polData.categorias).map(([catName, catData], catIdx) => (
-                        <React.Fragment key={catName}>
-                          {Object.entries(catData.subcategorias).map(([subcatName, val], subIdx) => (
-                            <tr key={`${catName}-${subcatName}`} className="border-b bg-white hover:bg-slate-50">
-                              {catIdx === 0 && subIdx === 0 && (
-                                <td className="p-3 border-r font-medium text-slate-700 align-top bg-white" rowSpan={Object.keys(catData.subcategorias).length + 1}>
-                                  {polData.politica}
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-[#2980b9] text-white">
+                        <tr>
+                          <th className="p-3 w-1/4">POLÍTICA</th>
+                          <th className="p-3 w-1/4">Categoría</th>
+                          <th className="p-3 w-1/4">Subcategoría</th>
+                          <th className="p-3 w-1/4 text-right">VALOR</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(polData.categorias).map(([catName, catData], catIdx) => (
+                          <React.Fragment key={catName}>
+                            {Object.entries(catData.subcategorias).map(([subcatName, val], subIdx) => (
+                              <tr key={`${catName}-${subcatName}`} className="border-b bg-white hover:bg-slate-50">
+                                {catIdx === 0 && subIdx === 0 && (
+                                  <td className="p-3 border-r font-medium text-slate-700 align-top bg-white" rowSpan={Object.keys(catData.subcategorias).length + 1}>
+                                    {polData.politica}
+                                  </td>
+                                )}
+                                {subIdx === 0 && (
+                                  <td className="p-3 border-r text-slate-700 align-top" rowSpan={Object.keys(catData.subcategorias).length}>
+                                    {catName}
+                                  </td>
+                                )}
+                                <td className="p-3 border-r text-slate-600">{subcatName}</td>
+                                <td className="p-3 text-right font-medium text-slate-700">
+                                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(val)}
                                 </td>
-                              )}
-                              {subIdx === 0 && (
-                                <td className="p-3 border-r text-slate-700 align-top" rowSpan={Object.keys(catData.subcategorias).length}>
-                                  {catName}
-                                </td>
-                              )}
-                              <td className="p-3 border-r text-slate-600">{subcatName}</td>
-                              <td className="p-3 text-right font-medium text-slate-700">
-                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(val)}
+                              </tr>
+                            ))}
+                            <tr className="border-b bg-slate-100 font-semibold text-slate-800">
+                              {catIdx > 0 && <td className="p-3 border-r" />}
+                              <td colSpan={2} className="p-3 border-r text-right text-slate-600">Total categoría</td>
+                              <td className="p-3 text-right text-blue-700">
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(catData.total)}
                               </td>
                             </tr>
-                          ))}
-                          <tr className="border-b bg-slate-100 font-semibold text-slate-800">
-                            {catIdx > 0 && <td className="p-3 border-r" />}
-                            <td colSpan={2} className="p-3 border-r text-right text-slate-600">Total categoría</td>
-                            <td className="p-3 text-right text-blue-700">
-                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(catData.total)}
-                            </td>
-                          </tr>
-                        </React.Fragment>
-                      ))}
-                      <tr className="bg-slate-200 font-bold text-slate-900 border-t-2 border-slate-300">
-                        <td colSpan={3} className="p-3 border-r text-right uppercase tracking-wider">TOTAL POLÍTICA TRANSVERSAL</td>
-                        <td className="p-3 text-right text-emerald-700 text-base">
-                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(polData.totalPolitica)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          </React.Fragment>
+                        ))}
+                        <tr className="bg-slate-200 font-bold text-slate-900 border-t-2 border-slate-300">
+                          <td colSpan={3} className="p-3 border-r text-right uppercase tracking-wider">TOTAL POLÍTICA TRANSVERSAL</td>
+                          <td className="p-3 text-right text-emerald-700 text-base">
+                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(polData.totalPolitica)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ))
             )}
@@ -672,13 +680,15 @@ export default function FocalizacionTab({ project }: { project: Project }) {
               <div className="flex justify-end"><button onClick={handleAddPolicyPob} disabled={!catId} className="px-4 py-2 bg-[#2980b9] text-white rounded-lg hover:bg-[#1a6698]">Adicionar</button></div>
               <div>
                 <h3 className="font-semibold text-slate-700 mb-2">Políticas Agregadas</h3>
-                <table className="w-full text-left text-sm border"><thead className="bg-slate-100"><tr><th className="p-2">Política</th><th className="p-2">Subcategoría</th><th className="p-2 text-center">Acción</th></tr></thead>
-                  <tbody>
-                    {(localFoc.politicasPoblacionales?.[modalPobKey!] || []).map((item, idx) => (
-                      <tr key={idx} className="border-b"><td className="p-2">{item.categoriaNombre}</td><td className="p-2">{item.subcategoriaNombre || 'N/A'}</td><td className="p-2 text-center"><button onClick={() => handleRemovePolicyPob(idx)} className="text-red-500"><Trash2 className="w-4 h-4" /></button></td></tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left text-sm border"><thead className="bg-slate-100"><tr><th className="p-2">Política</th><th className="p-2">Subcategoría</th><th className="p-2 text-center">Acción</th></tr></thead>
+                    <tbody>
+                      {(localFoc.politicasPoblacionales?.[modalPobKey!] || []).map((item, idx) => (
+                        <tr key={idx} className="border-b"><td className="p-2">{item.categoriaNombre}</td><td className="p-2">{item.subcategoriaNombre || 'N/A'}</td><td className="p-2 text-center"><button onClick={() => handleRemovePolicyPob(idx)} className="text-red-500"><Trash2 className="w-4 h-4" /></button></td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             <div className="px-6 py-4 border-t bg-slate-50 flex justify-end"><button onClick={() => setModalPobOpen(false)} className="px-4 py-2 bg-[#2980b9] text-white rounded">Aceptar</button></div>
@@ -791,93 +801,95 @@ export default function FocalizacionTab({ project }: { project: Project }) {
                   </div>
 
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-100 text-slate-700 border-b">
-                        <tr>
-                          <th className="p-3 w-10"></th>
-                          <th className="p-3">Ubicación (Región / Departamento / Municipio)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ubicaciones.length === 0 ? (
-                          <tr><td colSpan={2} className="p-4 text-center text-slate-500">No hay localizaciones.</td></tr>
-                        ) : (
-                          ubicaciones.map((loc: any) => {
-                            const isOpen = openRowsDist[loc.id];
-                            const distObj = localFoc.politicasSinPoblacion?.find(p => p.id === activePolSinId)?.distribucion?.[selectedProductId]?.localizaciones?.[loc.id]?.periodos || {};
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-100 text-slate-700 border-b">
+                          <tr>
+                            <th className="p-3 w-10"></th>
+                            <th className="p-3">Ubicación (Región / Departamento / Municipio)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ubicaciones.length === 0 ? (
+                            <tr><td colSpan={2} className="p-4 text-center text-slate-500">No hay localizaciones.</td></tr>
+                          ) : (
+                            ubicaciones.map((loc: any) => {
+                              const isOpen = openRowsDist[loc.id];
+                              const distObj = localFoc.politicasSinPoblacion?.find(p => p.id === activePolSinId)?.distribucion?.[selectedProductId]?.localizaciones?.[loc.id]?.periodos || {};
                             
-                            return (
-                              <React.Fragment key={loc.id}>
-                                <tr className="border-b hover:bg-slate-50 transition-colors">
-                                  <td className="p-2 text-center">
-                                    <button onClick={() => handleToggleRowDist(loc.id)} className="p-1 hover:bg-slate-200 rounded text-slate-500">
-                                      {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                    </button>
-                                  </td>
-                                  <td className="p-3">
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="w-4 h-4 text-slate-400" />
-                                      <span className="font-medium text-slate-700">
-                                        {loc.region} {loc.departamento ? `> ${loc.departamento}` : ''} {loc.municipio ? `> ${loc.municipio}` : ''}
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-                                {isOpen && (
-                                  <tr className="bg-slate-50/50 border-b">
-                                    <td colSpan={2} className="p-4">
-                                      <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-                                        <table className="w-full text-left text-sm">
-                                          <thead className="bg-slate-100 text-slate-600 border-b">
-                                            <tr>
-                                              <th className="p-2 font-semibold w-24">Periodo</th>
-                                              <th className="p-2 font-semibold text-right text-slate-400">Costos periodo (Ref)</th>
-                                              <th className="p-2 font-semibold text-right text-[#2980b9]">Costos categoría</th>
-                                              <th className="p-2 font-semibold text-right text-slate-400">Meta periodo (Ref)</th>
-                                              <th className="p-2 font-semibold text-right text-[#2980b9]">Meta categoría</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {Array.from({ length: durationYears + 1 }).map((_, i) => {
-                                              const regRef = getRegData(loc.id, i);
-                                              return (
-                                                <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
-                                                  <td className="p-2 font-medium text-slate-600 pl-4">Año {i}</td>
-                                                  <td className="p-2 text-right text-slate-400 bg-slate-50">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(regRef.costo)}</td>
-                                                  <td className="p-2">
-                                                    <input
-                                                      type="number" min="0" step="any"
-                                                      value={distObj[i]?.costosCategoria || ''}
-                                                      onChange={(e) => handleUpdateDist(loc.id, i, 'costosCategoria', e.target.value)}
-                                                      className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
-                                                      placeholder="0"
-                                                    />
-                                                  </td>
-                                                  <td className="p-2 text-right text-slate-400 bg-slate-50">{regRef.meta}</td>
-                                                  <td className="p-2">
-                                                    <input
-                                                      type="number" min="0" step="any"
-                                                      value={distObj[i]?.metaCategoria || ''}
-                                                      onChange={(e) => handleUpdateDist(loc.id, i, 'metaCategoria', e.target.value)}
-                                                      className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
-                                                      placeholder="0"
-                                                    />
-                                                  </td>
-                                                </tr>
-                                              );
-                                            })}
-                                          </tbody>
-                                        </table>
+                              return (
+                                <React.Fragment key={loc.id}>
+                                  <tr className="border-b hover:bg-slate-50 transition-colors">
+                                    <td className="p-2 text-center">
+                                      <button onClick={() => handleToggleRowDist(loc.id)} className="p-1 hover:bg-slate-200 rounded text-slate-500">
+                                        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                      </button>
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-slate-400" />
+                                        <span className="font-medium text-slate-700">
+                                          {loc.region} {loc.departamento ? `> ${loc.departamento}` : ''} {loc.municipio ? `> ${loc.municipio}` : ''}
+                                        </span>
                                       </div>
                                     </td>
                                   </tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                                  {isOpen && (
+                                    <tr className="bg-slate-50/50 border-b">
+                                      <td colSpan={2} className="p-4">
+                                        <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                                          <table className="w-full text-left text-sm">
+                                            <thead className="bg-slate-100 text-slate-600 border-b">
+                                              <tr>
+                                                <th className="p-2 font-semibold w-24">Periodo</th>
+                                                <th className="p-2 font-semibold text-right text-slate-400">Costos periodo (Ref)</th>
+                                                <th className="p-2 font-semibold text-right text-[#2980b9]">Costos categoría</th>
+                                                <th className="p-2 font-semibold text-right text-slate-400">Meta periodo (Ref)</th>
+                                                <th className="p-2 font-semibold text-right text-[#2980b9]">Meta categoría</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {Array.from({ length: durationYears + 1 }).map((_, i) => {
+                                                const regRef = getRegData(loc.id, i);
+                                                return (
+                                                  <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
+                                                    <td className="p-2 font-medium text-slate-600 pl-4">Año {i}</td>
+                                                    <td className="p-2 text-right text-slate-400 bg-slate-50">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(regRef.costo)}</td>
+                                                    <td className="p-2">
+                                                      <input
+                                                        type="number" min="0" step="any"
+                                                        value={distObj[i]?.costosCategoria || ''}
+                                                        onChange={(e) => handleUpdateDist(loc.id, i, 'costosCategoria', e.target.value)}
+                                                        className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
+                                                        placeholder="0"
+                                                      />
+                                                    </td>
+                                                    <td className="p-2 text-right text-slate-400 bg-slate-50">{regRef.meta}</td>
+                                                    <td className="p-2">
+                                                      <input
+                                                        type="number" min="0" step="any"
+                                                        value={distObj[i]?.metaCategoria || ''}
+                                                        onChange={(e) => handleUpdateDist(loc.id, i, 'metaCategoria', e.target.value)}
+                                                        className="w-full p-1.5 border rounded text-right bg-white border-[#2980b9]/30 focus:border-[#2980b9] outline-none"
+                                                        placeholder="0"
+                                                      />
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

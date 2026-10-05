@@ -83,7 +83,7 @@ export default function MgaActionButtons({ project, onSave }: MgaActionButtonsPr
 
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 border-t print:hidden">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center flex-wrap gap-2">
         {onSave && (
           <>
             <button 
@@ -105,7 +105,7 @@ export default function MgaActionButtons({ project, onSave }: MgaActionButtonsPr
         )}
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center flex-wrap gap-3">
         <button 
           onClick={handleExportXML}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"

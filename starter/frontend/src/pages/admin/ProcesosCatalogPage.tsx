@@ -123,7 +123,7 @@ export default function ProcesosCatalogPage() {
             Gestione los verbos rectores utilizados en la MGA.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setIsImporterOpen(true)}
             className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50"
@@ -183,63 +183,65 @@ export default function ProcesosCatalogPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
-            <tr>
-              <th className="px-6 py-4 font-semibold">ID MGA</th>
-              <th className="px-6 py-4 font-semibold">Nombre</th>
-              <th className="px-6 py-4 font-semibold">Estado</th>
-              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoadingProcesos ? (
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
               <tr>
-                <td colSpan={4} className="py-12 text-center text-slate-500">
-                  Cargando procesos...
-                </td>
+                <th className="px-6 py-4 font-semibold">ID MGA</th>
+                <th className="px-6 py-4 font-semibold">Nombre</th>
+                <th className="px-6 py-4 font-semibold">Estado</th>
+                <th className="px-6 py-4 font-semibold text-right">Acciones</th>
               </tr>
-            ) : filteredProcesos.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-12 text-center text-slate-500">
-                  No se encontraron procesos.
-                </td>
-              </tr>
-            ) : (
-              filteredProcesos.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{p.id}</td>
-                  <td className="px-6 py-4">{p.name}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      p.is_active !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
-                    }`}>
-                      {p.is_active !== false ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => handleOpenEdit(p)}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]"
-                        title="Editar"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggle(p.id)}
-                        className={`rounded-lg p-2 ${p.is_active !== false ? 'text-amber-500 hover:bg-amber-50 hover:text-amber-700' : 'text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700'}`}
-                        title={p.is_active !== false ? 'Desactivar' : 'Activar'}
-                      >
-                        {p.is_active !== false ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {isLoadingProcesos ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-slate-500">
+                    Cargando procesos...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredProcesos.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-slate-500">
+                    No se encontraron procesos.
+                  </td>
+                </tr>
+              ) : (
+                filteredProcesos.map((p) => (
+                  <tr key={p.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{p.id}</td>
+                    <td className="px-6 py-4">{p.name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        p.is_active !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
+                      }`}>
+                        {p.is_active !== false ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button
+                          onClick={() => handleOpenEdit(p)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]"
+                          title="Editar"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggle(p.id)}
+                          className={`rounded-lg p-2 ${p.is_active !== false ? 'text-amber-500 hover:bg-amber-50 hover:text-amber-700' : 'text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700'}`}
+                          title={p.is_active !== false ? 'Desactivar' : 'Activar'}
+                        >
+                          {p.is_active !== false ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {procesosMeta && (
@@ -291,7 +293,7 @@ export default function ProcesosCatalogPage() {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162]"
                 />
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

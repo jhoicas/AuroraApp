@@ -170,113 +170,115 @@ export default function RegionalizacionTab({ project }: { project: Project }) {
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-100 text-slate-700 border-b">
-            <tr>
-              <th className="p-3 w-10"></th>
-              <th className="p-3">Ubicación (Región / Departamento / Municipio)</th>
-              <th className="p-3">Georeferenciada</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ubicaciones.length === 0 ? (
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-100 text-slate-700 border-b">
               <tr>
-                <td colSpan={3} className="p-4 text-center text-slate-500">
-                  No hay localizaciones definidas para esta alternativa.
-                </td>
+                <th className="p-3 w-10"></th>
+                <th className="p-3">Ubicación (Región / Departamento / Municipio)</th>
+                <th className="p-3">Georeferenciada</th>
               </tr>
-            ) : (
-              ubicaciones.map((loc: any) => {
-                const isOpen = openRows[loc.id];
-                const locReg = currentProdReg.find(r => r.localizacionId === loc.id)?.distribucionPeriodos || {};
+            </thead>
+            <tbody>
+              {ubicaciones.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="p-4 text-center text-slate-500">
+                    No hay localizaciones definidas para esta alternativa.
+                  </td>
+                </tr>
+              ) : (
+                ubicaciones.map((loc: any) => {
+                  const isOpen = openRows[loc.id];
+                  const locReg = currentProdReg.find(r => r.localizacionId === loc.id)?.distribucionPeriodos || {};
                 
-                return (
-                  <React.Fragment key={loc.id}>
-                    <tr className="border-b hover:bg-slate-50 transition-colors">
-                      <td className="p-2 text-center">
-                        <button
-                          onClick={() => handleToggleRow(loc.id)}
-                          className="p-1 hover:bg-slate-200 rounded text-slate-500"
-                        >
-                          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                          <span className="font-medium text-slate-700">
-                            {loc.region} {loc.departamento ? `> ${loc.departamento}` : ''} {loc.municipio ? `> ${loc.municipio}` : ''}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-slate-600">
-                        {loc.georeferenciada ? 'Sí' : 'No'}
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="bg-slate-50/50 border-b">
-                        <td colSpan={3} className="p-4">
-                          <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-                            <table className="w-full text-left text-sm">
-                              <thead className="bg-slate-100 text-slate-600 border-b">
-                                <tr>
-                                  <th className="p-2 font-semibold">Periodo</th>
-                                  <th className="p-2 font-semibold text-right">Costo Total</th>
-                                  <th className="p-2 font-semibold text-right">Meta Regionalizada</th>
-                                  <th className="p-2 font-semibold text-right">Beneficiarios</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {Array.from({ length: durationYears + 1 }).map((_, i) => (
-                                  <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
-                                    <td className="p-2 font-medium text-slate-600">Año {i}</td>
-                                    <td className="p-2">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        value={locReg[i]?.costo || ''}
-                                        onChange={(e) => handleUpdate(loc.id, i, 'costo', e.target.value)}
-                                        className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
-                                        placeholder="0"
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        value={locReg[i]?.meta || ''}
-                                        onChange={(e) => handleUpdate(loc.id, i, 'meta', e.target.value)}
-                                        className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
-                                        placeholder="0"
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        value={locReg[i]?.beneficiarios || ''}
-                                        onChange={(e) => handleUpdate(loc.id, i, 'beneficiarios', e.target.value)}
-                                        className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
-                                        placeholder="0"
-                                      />
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                  return (
+                    <React.Fragment key={loc.id}>
+                      <tr className="border-b hover:bg-slate-50 transition-colors">
+                        <td className="p-2 text-center">
+                          <button
+                            onClick={() => handleToggleRow(loc.id)}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-500"
+                          >
+                            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-slate-400" />
+                            <span className="font-medium text-slate-700">
+                              {loc.region} {loc.departamento ? `> ${loc.departamento}` : ''} {loc.municipio ? `> ${loc.municipio}` : ''}
+                            </span>
                           </div>
                         </td>
+                        <td className="p-3 text-slate-600">
+                          {loc.georeferenciada ? 'Sí' : 'No'}
+                        </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      {isOpen && (
+                        <tr className="bg-slate-50/50 border-b">
+                          <td colSpan={3} className="p-4">
+                            <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                              <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-100 text-slate-600 border-b">
+                                  <tr>
+                                    <th className="p-2 font-semibold">Periodo</th>
+                                    <th className="p-2 font-semibold text-right">Costo Total</th>
+                                    <th className="p-2 font-semibold text-right">Meta Regionalizada</th>
+                                    <th className="p-2 font-semibold text-right">Beneficiarios</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Array.from({ length: durationYears + 1 }).map((_, i) => (
+                                    <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
+                                      <td className="p-2 font-medium text-slate-600">Año {i}</td>
+                                      <td className="p-2">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="any"
+                                          value={locReg[i]?.costo || ''}
+                                          onChange={(e) => handleUpdate(loc.id, i, 'costo', e.target.value)}
+                                          className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td className="p-2">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="any"
+                                          value={locReg[i]?.meta || ''}
+                                          onChange={(e) => handleUpdate(loc.id, i, 'meta', e.target.value)}
+                                          className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td className="p-2">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="any"
+                                          value={locReg[i]?.beneficiarios || ''}
+                                          onChange={(e) => handleUpdate(loc.id, i, 'beneficiarios', e.target.value)}
+                                          className="w-full p-1.5 border rounded text-right bg-white focus:border-[#2980b9] outline-none"
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

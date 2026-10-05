@@ -186,66 +186,68 @@ export default function MgaEntitiesCatalogPage() {
 
         {/* Tabla */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
-              <tr>
-                <th className="px-6 py-4 font-semibold w-28">ID (Código)</th>
-                <th className="px-6 py-4 font-semibold w-64">Actor Asociado</th>
-                <th className="px-6 py-4 font-semibold">Nombre de la Entidad</th>
-                <th className="px-6 py-4 font-semibold text-right w-32">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-slate-500">
-                    Cargando entidades MGA...
-                  </td>
+                  <th className="px-6 py-4 font-semibold w-28">ID (Código)</th>
+                  <th className="px-6 py-4 font-semibold w-64">Actor Asociado</th>
+                  <th className="px-6 py-4 font-semibold">Nombre de la Entidad</th>
+                  <th className="px-6 py-4 font-semibold text-right w-32">Acciones</th>
                 </tr>
-              ) : filteredEntities.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-12 text-center text-slate-500">
-                    No se encontraron entidades MGA.
-                  </td>
-                </tr>
-              ) : (
-                filteredEntities.map((ent) => {
-                  const actorName = actorMap.get(ent.actor_id) || `Actor #${ent.actor_id}`;
-                  return (
-                    <tr key={ent.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-6 py-4 font-semibold text-slate-900">{ent.id}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center rounded-full bg-[#E6FFFA] px-2.5 py-0.5 text-xs font-medium text-[#006a68]">
-                          {actorName}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-800">{ent.name}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(ent)}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162] transition-colors"
-                            title="Editar"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(ent.id, ent.name)}
-                            className="rounded-lg p-2 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-500">
+                      Cargando entidades MGA...
+                    </td>
+                  </tr>
+                ) : filteredEntities.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-500">
+                      No se encontraron entidades MGA.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEntities.map((ent) => {
+                    const actorName = actorMap.get(ent.actor_id) || `Actor #${ent.actor_id}`;
+                    return (
+                      <tr key={ent.id} className="transition-colors hover:bg-slate-50">
+                        <td className="px-6 py-4 font-semibold text-slate-900">{ent.id}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center rounded-full bg-[#E6FFFA] px-2.5 py-0.5 text-xs font-medium text-[#006a68]">
+                            {actorName}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-medium text-slate-800">{ent.name}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(ent)}
+                              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162] transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(ent.id, ent.name)}
+                              className="rounded-lg p-2 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

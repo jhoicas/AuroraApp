@@ -409,7 +409,7 @@ export default function PrestamosTab({ project }: PrestamosTabProps) {
                       <td className="p-2 border text-right font-medium">{formatCurrency(it.valorCreditoCop)}</td>
                       <td className="p-2 border text-right">{formatCurrency(it.amortizacionAnualCop)}</td>
                       <td className="p-2 border text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center flex-wrap gap-1">
                           <button onClick={() => { setEditingItem(it); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => handleDelete(it.id)} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>

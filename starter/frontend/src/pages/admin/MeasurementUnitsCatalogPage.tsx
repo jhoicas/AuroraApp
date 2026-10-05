@@ -213,7 +213,7 @@ export default function MeasurementUnitsCatalogPage() {
                         {u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(u)}

@@ -88,47 +88,49 @@ export default function ProjectSummary() {
             3. Presupuesto
           </h2>
 
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-gray-300 text-left">
-                <th className="py-2 pr-2 font-semibold text-gray-700">#</th>
-                <th className="py-2 pr-2 font-semibold text-gray-700">Descripción</th>
-                <th className="py-2 pr-2 font-semibold text-gray-700">Producto DNP</th>
-                <th className="py-2 text-right font-semibold text-gray-700">Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {budget.length === 0 && (
+          <div className="overflow-x-auto w-full">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-300 text-left">
+                  <th className="py-2 pr-2 font-semibold text-gray-700">#</th>
+                  <th className="py-2 pr-2 font-semibold text-gray-700">Descripción</th>
+                  <th className="py-2 pr-2 font-semibold text-gray-700">Producto DNP</th>
+                  <th className="py-2 text-right font-semibold text-gray-700">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {budget.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-gray-500">
+                      No hay ítems de presupuesto registrados.
+                    </td>
+                  </tr>
+                )}
+                {budget.map((item, index) => (
+                  <tr key={item.id} className="border-b border-gray-100">
+                    <td className="py-2 pr-2 text-gray-500">{index + 1}</td>
+                    <td className="py-2 pr-2 text-gray-800">{item.description}</td>
+                    <td className="py-2 pr-2 text-gray-700">
+                      {item.product_id ? 'Vinculado' : '—'}
+                    </td>
+                    <td className="py-2 text-right font-medium tabular-nums text-gray-900">
+                      {formatMoney(item.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-500">
-                    No hay ítems de presupuesto registrados.
+                  <td colSpan={3} className="pt-4 text-right font-bold text-gray-900">
+                    Gran total
+                  </td>
+                  <td className="pt-4 text-right text-lg font-bold tabular-nums text-primary">
+                    {formatMoney(total)}
                   </td>
                 </tr>
-              )}
-              {budget.map((item, index) => (
-                <tr key={item.id} className="border-b border-gray-100">
-                  <td className="py-2 pr-2 text-gray-500">{index + 1}</td>
-                  <td className="py-2 pr-2 text-gray-800">{item.description}</td>
-                  <td className="py-2 pr-2 text-gray-700">
-                    {item.product_id ? 'Vinculado' : '—'}
-                  </td>
-                  <td className="py-2 text-right font-medium tabular-nums text-gray-900">
-                    {formatMoney(item.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} className="pt-4 text-right font-bold text-gray-900">
-                  Gran total
-                </td>
-                <td className="pt-4 text-right text-lg font-bold tabular-nums text-primary">
-                  {formatMoney(total)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+              </tfoot>
+            </table>
+          </div>
         </section>
 
         <footer className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">

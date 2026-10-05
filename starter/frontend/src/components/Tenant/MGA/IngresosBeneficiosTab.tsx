@@ -229,7 +229,7 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
           ) : (
             <div />
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
             {step === 1 ? (
               <button onClick={handleNext} className="px-5 py-2 text-sm bg-[#006162] text-white rounded-lg hover:bg-[#004d4e] transition-colors font-medium shadow-sm">Siguiente</button>
@@ -462,7 +462,7 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
                   <td className="p-2 border text-blue-700 text-[10px]">{getProductName(it.bienProducidoId)}</td>
                   <td className="p-2 border text-right">{it.rpc.toFixed(2)}</td>
                   <td className="p-2 border text-center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center flex-wrap gap-1">
                       <button onClick={() => { setEditingItem(it); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => handleDelete(it.id)} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>

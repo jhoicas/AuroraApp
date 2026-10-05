@@ -119,45 +119,47 @@ export default function DivipolaCatalogPage() {
               </div>
             ) : null}
 
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#3f4949]">
-                <tr>
-                  <th className="p-4 font-semibold w-24">Código DANE</th>
-                  <th className="p-4 font-semibold">Departamento</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
-                {departments.length === 0 && !isLoadingDivipola ? (
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#3f4949]">
                   <tr>
-                    <td colSpan={2} className="p-8 text-center text-[#6f7979]">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <span className="material-symbols-outlined text-5xl text-[#CBD5E0]">
-                          find_in_page
-                        </span>
-                        <p className="text-lg">No se encontraron departamentos</p>
-                        <p className="text-sm">Importa un archivo JSON de la DIVIPOLA.</p>
-                      </div>
-                    </td>
+                    <th className="p-4 font-semibold w-24">Código DANE</th>
+                    <th className="p-4 font-semibold">Departamento</th>
                   </tr>
-                ) : (
-                  departments.map((dep) => (
-                    <tr
-                      key={dep.id}
-                      className="hover:bg-[#F0FDF4] transition-colors group"
-                    >
-                      <td className="p-4 align-top text-[#6f7979] font-mono font-medium">
-                        {dep.code}
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="text-[#121c2c] font-medium leading-relaxed">
-                          {dep.name}
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0]">
+                  {departments.length === 0 && !isLoadingDivipola ? (
+                    <tr>
+                      <td colSpan={2} className="p-8 text-center text-[#6f7979]">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <span className="material-symbols-outlined text-5xl text-[#CBD5E0]">
+                            find_in_page
+                          </span>
+                          <p className="text-lg">No se encontraron departamentos</p>
+                          <p className="text-sm">Importa un archivo JSON de la DIVIPOLA.</p>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    departments.map((dep) => (
+                      <tr
+                        key={dep.id}
+                        className="hover:bg-[#F0FDF4] transition-colors group"
+                      >
+                        <td className="p-4 align-top text-[#6f7979] font-mono font-medium">
+                          {dep.code}
+                        </td>
+                        <td className="p-4 align-top">
+                          <div className="text-[#121c2c] font-medium leading-relaxed">
+                            {dep.name}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

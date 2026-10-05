@@ -1007,7 +1007,7 @@ export default function ProductsCatalogPage() {
               )}
 
               <div className="flex justify-between gap-3 pt-2 border-t border-[#E2E8F0]">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {activeSection !== 'A' && (
                     <button
                       type="button"
@@ -1027,7 +1027,7 @@ export default function ProductsCatalogPage() {
                     </button>
                   )}
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}

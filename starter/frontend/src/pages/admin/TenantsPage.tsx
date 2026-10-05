@@ -210,7 +210,7 @@ export default function TenantsPage() {
                   </div>
                 </div>
 
-                <div className="mt-auto grid grid-cols-2 gap-3">
+                <div className="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     disabled={togglingId === tenant.id}

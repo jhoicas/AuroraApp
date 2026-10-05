@@ -134,50 +134,52 @@ function CostModal({ title, costos: initialCostos, onSave, onClose }: CostModalP
 
         {/* Body - scrollable */}
         <div className="overflow-auto flex-1 p-4">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#2980b9] text-white">
-                <th className="p-2 text-left border border-[#2471a3] sticky left-0 bg-[#2980b9] z-10 min-w-[180px]">Insumo</th>
-                {Array.from({ length: MAX_PERIODOS }, (_, i) => (
-                  <th key={i} className="p-2 text-center border border-[#2471a3] min-w-[100px]">Periodo {i}</th>
-                ))}
-                <th className="p-2 text-center border border-[#2471a3] min-w-[120px] bg-[#1a5276]">Total fila</th>
-              </tr>
-            </thead>
-            <tbody>
-              {INSUMOS_MGA.map(insumo => {
-                const rowTotal = Object.values(matrix[insumo] || {}).reduce((s, v) => s + v, 0);
-                return (
-                  <tr key={insumo} className="border-b hover:bg-slate-50">
-                    <td className="p-2 font-medium text-slate-700 border sticky left-0 bg-white z-10">{insumo}</td>
-                    {Array.from({ length: MAX_PERIODOS }, (_, i) => (
-                      <td key={i} className="p-1 border">
-                        <input
-                          type="number"
-                          min="0"
-                          value={matrix[insumo]?.[i] || ''}
-                          onChange={e => handleCellChange(insumo, i, e.target.value)}
-                          className="w-full p-1.5 text-right border border-slate-200 rounded text-xs focus:ring-1 focus:ring-[#2980b9] outline-none"
-                          placeholder="0"
-                        />
-                      </td>
-                    ))}
-                    <td className="p-2 text-right font-semibold text-slate-800 border bg-slate-50">{formatCurrency(rowTotal)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-emerald-50 font-bold text-emerald-800">
-                <td className="p-2 border sticky left-0 bg-emerald-50 z-10">Total por periodo</td>
-                {Array.from({ length: MAX_PERIODOS }, (_, i) => {
-                  const colTotal = INSUMOS_MGA.reduce((acc, ins) => acc + (matrix[ins]?.[i] || 0), 0);
-                  return <td key={i} className="p-2 text-right border">{formatCurrency(colTotal)}</td>;
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#2980b9] text-white">
+                  <th className="p-2 text-left border border-[#2471a3] sticky left-0 bg-[#2980b9] z-10 min-w-[180px]">Insumo</th>
+                  {Array.from({ length: MAX_PERIODOS }, (_, i) => (
+                    <th key={i} className="p-2 text-center border border-[#2471a3] min-w-[100px]">Periodo {i}</th>
+                  ))}
+                  <th className="p-2 text-center border border-[#2471a3] min-w-[120px] bg-[#1a5276]">Total fila</th>
+                </tr>
+              </thead>
+              <tbody>
+                {INSUMOS_MGA.map(insumo => {
+                  const rowTotal = Object.values(matrix[insumo] || {}).reduce((s, v) => s + v, 0);
+                  return (
+                    <tr key={insumo} className="border-b hover:bg-slate-50">
+                      <td className="p-2 font-medium text-slate-700 border sticky left-0 bg-white z-10">{insumo}</td>
+                      {Array.from({ length: MAX_PERIODOS }, (_, i) => (
+                        <td key={i} className="p-1 border">
+                          <input
+                            type="number"
+                            min="0"
+                            value={matrix[insumo]?.[i] || ''}
+                            onChange={e => handleCellChange(insumo, i, e.target.value)}
+                            className="w-full p-1.5 text-right border border-slate-200 rounded text-xs focus:ring-1 focus:ring-[#2980b9] outline-none"
+                            placeholder="0"
+                          />
+                        </td>
+                      ))}
+                      <td className="p-2 text-right font-semibold text-slate-800 border bg-slate-50">{formatCurrency(rowTotal)}</td>
+                    </tr>
+                  );
                 })}
-                <td className="p-2 text-right border text-lg">{formatCurrency(totalGeneral)}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </tbody>
+              <tfoot>
+                <tr className="bg-emerald-50 font-bold text-emerald-800">
+                  <td className="p-2 border sticky left-0 bg-emerald-50 z-10">Total por periodo</td>
+                  {Array.from({ length: MAX_PERIODOS }, (_, i) => {
+                    const colTotal = INSUMOS_MGA.reduce((acc, ins) => acc + (matrix[ins]?.[i] || 0), 0);
+                    return <td key={i} className="p-2 text-right border">{formatCurrency(colTotal)}</td>;
+                  })}
+                  <td className="p-2 text-right border text-lg">{formatCurrency(totalGeneral)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
         {/* Footer */}
@@ -185,7 +187,7 @@ function CostModal({ title, costos: initialCostos, onSave, onClose }: CostModalP
           <div className="text-sm font-semibold text-emerald-700">
             Costo total: {formatCurrency(totalGeneral)}
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
               Cancelar
             </button>
@@ -277,7 +279,7 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
           <span className="text-sm font-medium text-slate-800">{product.complemento || product.productoId || 'Nuevo producto'}</span>
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{product.etapa}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center flex-wrap gap-3">
           <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">{formatCurrency(totalProducto)}</span>
           <button onClick={e => { e.stopPropagation(); onRemove(); }} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar producto">
             <Trash2 className="w-4 h-4" />

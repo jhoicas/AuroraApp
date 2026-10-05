@@ -8,7 +8,7 @@ type MgaModeToggleProps = {
  */
 export default function MgaModeToggle({ enabled, onChange }: MgaModeToggleProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center flex-wrap gap-3">
       <span className="text-sm text-gray-600">Vista Aurora</span>
       <button
         type="button"

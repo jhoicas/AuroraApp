@@ -170,41 +170,43 @@ export default function ProjectsDashboard() {
             </ResponsiveContainer>
           </div>
 
-          <table className="w-full mt-4 text-sm border-collapse">
-            <caption className="sr-only">Resumen de VPN y TIR por alternativa evaluada</caption>
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Proyecto</th>
-                <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Alternativa</th>
-                <th scope="col" className="py-2 pr-2 text-right font-semibold text-gray-700">VPN</th>
-                <th scope="col" className="py-2 text-right font-semibold text-gray-700">TIR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {evaluationSummary.map((item) => {
-                const project = projects.find((p) => p.id === item.project_id);
-                return (
-                  <tr
-                    key={`${item.project_id}-${item.alternative_name}-${item.created_at}`}
-                    className="border-b border-gray-100"
-                  >
-                    <td className="py-2 pr-2 text-gray-800">{project?.name ?? 'Proyecto sin nombre'}</td>
-                    <td className="py-2 pr-2 text-gray-700">{item.alternative_name}</td>
-                    <td
-                      className={`py-2 pr-2 text-right tabular-nums font-medium ${
-                        item.vpn >= 0 ? 'text-emerald-700' : 'text-red-700'
-                      }`}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full mt-4 text-sm border-collapse">
+              <caption className="sr-only">Resumen de VPN y TIR por alternativa evaluada</caption>
+              <thead>
+                <tr className="border-b border-gray-200 text-left">
+                  <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Proyecto</th>
+                  <th scope="col" className="py-2 pr-2 font-semibold text-gray-700">Alternativa</th>
+                  <th scope="col" className="py-2 pr-2 text-right font-semibold text-gray-700">VPN</th>
+                  <th scope="col" className="py-2 text-right font-semibold text-gray-700">TIR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluationSummary.map((item) => {
+                  const project = projects.find((p) => p.id === item.project_id);
+                  return (
+                    <tr
+                      key={`${item.project_id}-${item.alternative_name}-${item.created_at}`}
+                      className="border-b border-gray-100"
                     >
-                      {formatVPN(item.vpn)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums font-medium text-gray-900">
-                      {formatTIR(item.tir)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="py-2 pr-2 text-gray-800">{project?.name ?? 'Proyecto sin nombre'}</td>
+                      <td className="py-2 pr-2 text-gray-700">{item.alternative_name}</td>
+                      <td
+                        className={`py-2 pr-2 text-right tabular-nums font-medium ${
+                          item.vpn >= 0 ? 'text-emerald-700' : 'text-red-700'
+                        }`}
+                      >
+                        {formatVPN(item.vpn)}
+                      </td>
+                      <td className="py-2 text-right tabular-nums font-medium text-gray-900">
+                        {formatTIR(item.tir)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 

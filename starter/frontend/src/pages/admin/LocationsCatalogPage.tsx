@@ -205,7 +205,7 @@ export default function LocationsCatalogPage() {
             Gestione regiones, departamentos y municipios.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setIsImporterOpen(true)}
             className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50"
@@ -295,100 +295,102 @@ export default function LocationsCatalogPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
-            <tr>
-              <th className="px-6 py-4 font-semibold">{activeTab === 'tipos_agrupacion' || activeTab === 'agrupaciones' ? 'ID' : 'Código DANE'}</th>
-              <th className="px-6 py-4 font-semibold">Nombre</th>
-              {activeTab === 'departamentos' && <th className="px-6 py-4 font-semibold">Región</th>}
-              {activeTab === 'municipios' && <th className="px-6 py-4 font-semibold">Departamento</th>}
-              {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Municipio</th>}
-              {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Tipo Agrupación</th>}
-              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoadingLocations ? (
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-800">
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-500">Cargando...</td>
+                <th className="px-6 py-4 font-semibold">{activeTab === 'tipos_agrupacion' || activeTab === 'agrupaciones' ? 'ID' : 'Código DANE'}</th>
+                <th className="px-6 py-4 font-semibold">Nombre</th>
+                {activeTab === 'departamentos' && <th className="px-6 py-4 font-semibold">Región</th>}
+                {activeTab === 'municipios' && <th className="px-6 py-4 font-semibold">Departamento</th>}
+                {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Municipio</th>}
+                {activeTab === 'agrupaciones' && <th className="px-6 py-4 font-semibold">Tipo Agrupación</th>}
+                <th className="px-6 py-4 font-semibold text-right">Acciones</th>
               </tr>
-            ) : activeTab === 'regiones' ? (
-              adminLocations.map((r: any) => (
-                <tr key={r.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{r.id}</td>
-                  <td className="px-6 py-4">{r.name}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEdit(r)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {isLoadingLocations ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-500">Cargando...</td>
                 </tr>
-              ))
-            ) : activeTab === 'departamentos' ? (
-              adminLocations.map((d: any) => (
-                <tr key={d.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{d.id}</td>
-                  <td className="px-6 py-4">{d.name}</td>
-                  <td className="px-6 py-4 text-slate-500">{d.region_id}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEdit(d, d.region_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : activeTab === 'municipios' ? (
-              adminLocations.map((m: any) => (
-                <tr key={m.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{m.id}</td>
-                  <td className="px-6 py-4">{m.name}</td>
-                  <td className="px-6 py-4 text-slate-500">{m.departamento_id}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEdit(m, m.departamento_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : activeTab === 'tipos_agrupacion' ? (
-              adminLocations.map((t: any) => (
-                <tr key={t.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{t.id}</td>
-                  <td className="px-6 py-4">{t.name}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEdit(t)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              adminLocations.map((a: any) => (
-                <tr key={a.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{a.id}</td>
-                  <td className="px-6 py-4">{a.name}</td>
-                  <td className="px-6 py-4 text-slate-600">{a.municipio?.name || a.municipio_id}</td>
-                  <td className="px-6 py-4 text-slate-600">{a.tipo_agrupacion?.name || a.tipo_agrupacion_id}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleOpenEdit(a, a.municipio_id, a.tipo_agrupacion_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : activeTab === 'regiones' ? (
+                adminLocations.map((r: any) => (
+                  <tr key={r.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{r.id}</td>
+                    <td className="px-6 py-4">{r.name}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button onClick={() => handleOpenEdit(r)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : activeTab === 'departamentos' ? (
+                adminLocations.map((d: any) => (
+                  <tr key={d.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{d.id}</td>
+                    <td className="px-6 py-4">{d.name}</td>
+                    <td className="px-6 py-4 text-slate-500">{d.region_id}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button onClick={() => handleOpenEdit(d, d.region_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : activeTab === 'municipios' ? (
+                adminLocations.map((m: any) => (
+                  <tr key={m.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{m.id}</td>
+                    <td className="px-6 py-4">{m.name}</td>
+                    <td className="px-6 py-4 text-slate-500">{m.departamento_id}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button onClick={() => handleOpenEdit(m, m.departamento_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : activeTab === 'tipos_agrupacion' ? (
+                adminLocations.map((t: any) => (
+                  <tr key={t.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{t.id}</td>
+                    <td className="px-6 py-4">{t.name}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button onClick={() => handleOpenEdit(t)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                adminLocations.map((a: any) => (
+                  <tr key={a.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{a.id}</td>
+                    <td className="px-6 py-4">{a.name}</td>
+                    <td className="px-6 py-4 text-slate-600">{a.municipio?.name || a.municipio_id}</td>
+                    <td className="px-6 py-4 text-slate-600">{a.tipo_agrupacion?.name || a.tipo_agrupacion_id}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end flex-wrap gap-2">
+                        <button onClick={() => handleOpenEdit(a, a.municipio_id, a.tipo_agrupacion_id)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#006162]">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {adminLocationsMeta && (
@@ -530,7 +532,7 @@ export default function LocationsCatalogPage() {
                 </>
               )}
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

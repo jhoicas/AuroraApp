@@ -527,7 +527,7 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
               </td>
               <td className="p-2 border text-xs text-slate-600 max-w-[180px]">{r.efectos || '—'}</td>
               <td className="p-2 border text-center">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-center flex-wrap gap-1">
                   <button onClick={() => handleEditRisk(r)} className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" title="Editar">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>

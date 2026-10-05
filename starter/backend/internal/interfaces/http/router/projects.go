@@ -89,6 +89,13 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	projects.Put("/:id/mga/alternatives/:alternativeId", mh.UpdateAlternative)
 	projects.Delete("/:id/mga/alternatives/:alternativeId", mh.DeleteAlternative)
 
+	// Estudio de necesidades (bien/servicio + serie anual oferta/demanda)
+	projects.Get("/:id/mga/needs", mh.ListNeeds)
+	projects.Post("/:id/mga/needs", mh.CreateNeed)
+	projects.Put("/:id/mga/needs/:needId", mh.UpdateNeed)
+	projects.Put("/:id/mga/needs/:needId/annual-values/:anio", mh.UpdateNeedAnnualValue)
+	projects.Delete("/:id/mga/needs/:needId", mh.DeleteNeed)
+
 	// Cadena de valor EDT (Tipología A)
 	projects.Post("/:id/catalog-link", peh.LinkProduct)
 	projects.Get("/:id/edt-chain", peh.GetEdtChain)

@@ -39,6 +39,7 @@ func AllModels() []any {
 		&MgaParticipant{},
 		&MgaPopulation{},
 		&MgaAlternative{},
+		&MgaNeed{},
 		&ProjectCatalogLink{},
 		&ProjectEdtNode{},
 		&ProjectDeliverable{},

@@ -115,6 +115,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.MgaAlternative{}); err != nil {
 		log.Printf("automigrate MgaAlternative: %v", err)
 	}
+	if err := db.AutoMigrate(&models.MgaNeed{}); err != nil {
+		log.Printf("automigrate MgaNeed: %v", err)
+	}
 	if err := db.AutoMigrate(&models.ProjectCatalogLink{}); err != nil {
 		log.Printf("automigrate ProjectCatalogLink: %v", err)
 	}
@@ -1139,7 +1142,32 @@ func ensureMgaExtendedSchema(db *gorm.DB) {
 		log.Printf("ensure mga_alternatives schema: %v", err)
 	}
 
+	createNeedsSQL := `CREATE TABLE IF NOT EXISTS mga_needs (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			project_id UUID NOT NULL,
+			alternative_id VARCHAR(64) NOT NULL,
+			bien_servicio VARCHAR(200) NOT NULL,
+			descripcion TEXT NOT NULL DEFAULT '',
+			descripcion_oferta TEXT NOT NULL DEFAULT '',
+			descripcion_demanda TEXT NOT NULL DEFAULT '',
+			unidad_medida_id INTEGER NOT NULL,
+			anio_inicial INTEGER NOT NULL,
+			anio_final INTEGER NOT NULL,
+			ultimo_anio_proyectado INTEGER NOT NULL,
+			valores_anuales JSONB NOT NULL DEFAULT '[]',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
+		)`
+	if err := db.Exec(createNeedsSQL).Error; err != nil {
+		log.Printf("ensure mga_needs schema: %v", err)
+	}
+
 	statements := []string{
+		`CREATE INDEX IF NOT EXISTS idx_mga_needs_tenant_project ON mga_needs (tenant_id, project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_needs_alternative ON mga_needs (project_id, alternative_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_mga_needs_deleted_at ON mga_needs (deleted_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_mga_effects_tenant_project ON mga_effects (tenant_id, project_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_mga_effects_parent ON mga_effects (parent_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_mga_effects_deleted_at ON mga_effects (deleted_at)`,

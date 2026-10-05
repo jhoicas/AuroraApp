@@ -124,6 +124,46 @@ export type FullMgaFormulation = {
   alternatives: MgaAlternative[];
 };
 
+/** Fila anual de la grilla de una necesidad. deficit = demanda - oferta (lo calcula el backend). */
+export type MgaNeedAnnualValue = {
+  anio: number;
+  oferta: number;
+  demanda: number;
+  deficit: number;
+};
+
+export type MgaNeed = {
+  id: string;
+  tenant_id: string;
+  project_id: string;
+  alternative_id: string;
+  bien_servicio: string;
+  descripcion: string;
+  descripcion_oferta: string;
+  descripcion_demanda: string;
+  unidad_medida_id: number;
+  anio_inicial: number;
+  anio_final: number;
+  ultimo_anio_proyectado: number;
+  valores_anuales: MgaNeedAnnualValue[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateMgaNeedPayload = {
+  alternative_id: string;
+  bien_servicio: string;
+  descripcion: string;
+  descripcion_oferta: string;
+  descripcion_demanda: string;
+  unidad_medida_id: number;
+  anio_inicial: number;
+  anio_final: number;
+  ultimo_anio_proyectado: number;
+};
+
+export type UpdateMgaNeedPayload = Partial<Omit<CreateMgaNeedPayload, 'alternative_id'>>;
+
 /** @deprecated Usar FullMgaFormulation */
 export type MgaFormulation = FullMgaFormulation;
 
@@ -386,6 +426,46 @@ export async function deleteMgaPopulation(
   populationId: string,
 ): Promise<void> {
   await api.delete(`/projects/${projectId}/mga/populations/${populationId}`);
+}
+
+export async function listMgaNeeds(projectId: string): Promise<MgaNeed[]> {
+  const { data } = await api.get<MgaNeed[]>(`/projects/${projectId}/mga/needs`);
+  return (data ?? []).map((need) => ({ ...need, valores_anuales: need.valores_anuales ?? [] }));
+}
+
+export async function createMgaNeed(
+  projectId: string,
+  payload: CreateMgaNeedPayload,
+): Promise<MgaNeed> {
+  const { data } = await api.post<MgaNeed>(`/projects/${projectId}/mga/needs`, payload);
+  return data;
+}
+
+export async function updateMgaNeed(
+  projectId: string,
+  needId: string,
+  payload: UpdateMgaNeedPayload,
+): Promise<MgaNeed> {
+  const { data } = await api.put<MgaNeed>(`/projects/${projectId}/mga/needs/${needId}`, payload);
+  return data;
+}
+
+/** Guarda oferta/demanda de un año. Devuelve la necesidad completa con el déficit recalculado. */
+export async function updateMgaNeedAnnualValue(
+  projectId: string,
+  needId: string,
+  anio: number,
+  payload: { oferta: number; demanda: number },
+): Promise<MgaNeed> {
+  const { data } = await api.put<MgaNeed>(
+    `/projects/${projectId}/mga/needs/${needId}/annual-values/${anio}`,
+    payload,
+  );
+  return data;
+}
+
+export async function deleteMgaNeed(projectId: string, needId: string): Promise<void> {
+  await api.delete(`/projects/${projectId}/mga/needs/${needId}`);
 }
 
 export async function createMgaAlternative(

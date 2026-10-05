@@ -6,17 +6,22 @@ import {
   createMgaEffect,
   createMgaIndicator,
   createMgaParticipant,
+  createMgaNeed,
   createMgaPopulation,
   deleteMgaAlternative,
   deleteMgaCause,
   deleteMgaEffect,
   deleteMgaIndicator,
+  deleteMgaNeed,
   deleteMgaParticipant,
   deleteMgaPopulation,
   fetchMgaFormulation,
+  listMgaNeeds,
   updateMgaAlternative,
   updateMgaCause,
   updateMgaEffect,
+  updateMgaNeed,
+  updateMgaNeedAnnualValue,
   updateMgaObjective,
   updateMgaParticipant,
   updateMgaPopulation,
@@ -25,6 +30,7 @@ import {
   type CreateMgaCausePayload,
   type CreateMgaEffectPayload,
   type CreateMgaIndicatorPayload,
+  type CreateMgaNeedPayload,
   type CreateMgaParticipantPayload,
   type CreateMgaPopulationPayload,
   type FullMgaFormulation,
@@ -32,12 +38,14 @@ import {
   type MgaCause,
   type MgaEffect,
   type MgaIndicator,
+  type MgaNeed,
   type MgaParticipant,
   type MgaPopulation,
   type MgaPopulationType,
   type UpdateMgaAlternativePayload,
   type UpdateMgaCausePayload,
   type UpdateMgaEffectPayload,
+  type UpdateMgaNeedPayload,
   type UpdateMgaParticipantPayload,
   type UpdateMgaIndicatorPayload,
 } from '../lib/mgaApi';
@@ -446,9 +454,26 @@ export type ProjectMgaFormulation = {
 
 type ProjectMgaState = {
   byProjectId: Record<string, ProjectMgaFormulation>;
+  /**
+   * Necesidades (mga_needs) por proyecto. Va aparte de byProjectId a propósito:
+   * byProjectId se serializa completo en mga_formulation_data y las necesidades
+   * ya tienen su propia tabla.
+   */
+  needsByProjectId: Record<string, MgaNeed[]>;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
+  fetchNeeds: (projectId: string) => Promise<void>;
+  addNeed: (projectId: string, payload: CreateMgaNeedPayload) => Promise<MgaNeed>;
+  editNeed: (projectId: string, needId: string, payload: UpdateMgaNeedPayload) => Promise<MgaNeed>;
+  removeNeed: (projectId: string, needId: string) => Promise<void>;
+  /** Guarda una fila (año) de la grilla. No usa isSaving: cada fila lleva su propio estado. */
+  saveNeedAnnualValue: (
+    projectId: string,
+    needId: string,
+    anio: number,
+    values: { oferta: number; demanda: number },
+  ) => Promise<MgaNeed>;
   getFormulation: (projectId: string) => ProjectMgaFormulation;
   fetchFormulation: (projectId: string) => Promise<ProjectMgaFormulation>;
   seedDefaultFormulation: (
@@ -652,13 +677,100 @@ export const debouncedPatchProject = debounce(async (projectId: string, patchDat
   }
 }, 1000);
 
+function replaceNeed(needs: MgaNeed[], saved: MgaNeed): MgaNeed[] {
+  return needs.some((n) => n.id === saved.id)
+    ? needs.map((n) => (n.id === saved.id ? saved : n))
+    : [...needs, saved];
+}
+
 export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
   byProjectId: {},
+  needsByProjectId: {},
   isLoading: false,
   isSaving: false,
   error: null,
 
   clearError: () => set({ error: null }),
+
+  fetchNeeds: async (projectId) => {
+    try {
+      const needs = await listMgaNeeds(projectId);
+      set((state) => ({ needsByProjectId: { ...state.needsByProjectId, [projectId]: needs } }));
+    } catch (err) {
+      set({ error: extractError(err, 'No se pudieron cargar las necesidades') });
+    }
+  },
+
+  addNeed: async (projectId, payload) => {
+    set({ isSaving: true, error: null });
+    try {
+      const created = await createMgaNeed(projectId, payload);
+      set((state) => ({
+        needsByProjectId: {
+          ...state.needsByProjectId,
+          [projectId]: replaceNeed(state.needsByProjectId[projectId] ?? [], created),
+        },
+        isSaving: false,
+      }));
+      return created;
+    } catch (err) {
+      const message = extractError(err, 'No se pudo crear la necesidad');
+      set({ isSaving: false, error: message });
+      throw new Error(message);
+    }
+  },
+
+  editNeed: async (projectId, needId, payload) => {
+    set({ isSaving: true, error: null });
+    try {
+      const updated = await updateMgaNeed(projectId, needId, payload);
+      set((state) => ({
+        needsByProjectId: {
+          ...state.needsByProjectId,
+          [projectId]: replaceNeed(state.needsByProjectId[projectId] ?? [], updated),
+        },
+        isSaving: false,
+      }));
+      return updated;
+    } catch (err) {
+      const message = extractError(err, 'No se pudo actualizar la necesidad');
+      set({ isSaving: false, error: message });
+      throw new Error(message);
+    }
+  },
+
+  removeNeed: async (projectId, needId) => {
+    set({ isSaving: true, error: null });
+    try {
+      await deleteMgaNeed(projectId, needId);
+      set((state) => ({
+        needsByProjectId: {
+          ...state.needsByProjectId,
+          [projectId]: (state.needsByProjectId[projectId] ?? []).filter((n) => n.id !== needId),
+        },
+        isSaving: false,
+      }));
+    } catch (err) {
+      const message = extractError(err, 'No se pudo eliminar la necesidad');
+      set({ isSaving: false, error: message });
+      throw new Error(message);
+    }
+  },
+
+  saveNeedAnnualValue: async (projectId, needId, anio, values) => {
+    try {
+      const updated = await updateMgaNeedAnnualValue(projectId, needId, anio, values);
+      set((state) => ({
+        needsByProjectId: {
+          ...state.needsByProjectId,
+          [projectId]: replaceNeed(state.needsByProjectId[projectId] ?? [], updated),
+        },
+      }));
+      return updated;
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo guardar la fila'));
+    }
+  },
 
   isSectionManaged: (projectId, sectionId) => {
     const formulation = get().byProjectId[projectId] ?? EMPTY_FORMULATION;

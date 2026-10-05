@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
@@ -15,6 +16,7 @@ export default function TenantLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
   const isImmersiveAssistant = pathname === '/tenant/projects/create-assistant';
   /** En /tenant/ai y creación asistida el chat ya está embebido; ocultamos el FAB. */
   const hideFloatingFab =
@@ -24,7 +26,10 @@ export default function TenantLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50 print:block print:h-auto print:bg-white">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col p-4 print:hidden shrink-0">
+      <aside
+        id="tenant-sidebar"
+        className={`${isSidebarOpen ? 'flex' : 'hidden'} w-64 bg-white border-r border-gray-200 flex-col p-4 print:hidden shrink-0 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl`}
+      >
         <div className="mb-6 px-1">
           <LogoAurora className="w-8 h-8 text-teal-600" />
           <p className="text-sm text-gray-500 mt-2">Portal de inversión pública</p>
@@ -65,7 +70,19 @@ export default function TenantLayout() {
       <main className={`flex-1 overflow-y-auto print:overflow-visible print:w-full print:m-0 print:p-0 ${isImmersiveAssistant ? 'overflow-hidden' : ''}`}>
         {!isImmersiveAssistant && (
           <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center print:hidden sticky top-0 z-30">
-            <h2 className="text-lg font-semibold text-gray-800">Espacio de trabajo</h2>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen((v) => !v)}
+                aria-label={isSidebarOpen ? 'Ocultar menú' : 'Mostrar menú'}
+                aria-expanded={isSidebarOpen}
+                aria-controls="tenant-sidebar"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#006162] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162]"
+              >
+                <span className="material-symbols-outlined" aria-hidden>menu</span>
+              </button>
+              <h2 className="text-lg font-semibold text-gray-800">Espacio de trabajo</h2>
+            </div>
             <div className="text-sm text-gray-600">{user?.full_name || user?.email}</div>
           </header>
         )}

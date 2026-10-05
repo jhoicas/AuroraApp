@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Home, Check, Lock } from 'lucide-react';
+import { Home, Check, Lock, Menu } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectStore } from '../../../store/projectStore';
 import CreateProjectModal from '../CreateProjectModal';
@@ -327,6 +327,7 @@ export default function MGALayout({
   const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
   const sectionStatuses = useMgaSectionStatuses(project, edtChain);
   const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses, project, formulation, edtChain);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const currentProject = useProjectStore((state) => state.currentProject);
 
@@ -361,6 +362,16 @@ export default function MGALayout({
       {/* 1. Cabecera */}
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/50 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen((v) => !v)}
+            aria-label={isSidebarOpen ? 'Ocultar menú de secciones' : 'Mostrar menú de secciones'}
+            aria-expanded={isSidebarOpen}
+            aria-controls="mga-sidebar"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant/50 text-primary transition-colors hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Menu className="h-5 w-5" aria-hidden />
+          </button>
           <div
             className="flex h-11 w-11 items-center justify-center rounded-md border border-outline-variant/40 bg-surface-container-low text-xs font-bold text-primary"
             aria-label="Logo DNP"
@@ -482,7 +493,9 @@ export default function MGALayout({
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Columna izquierda: sub-tabs */}
         <aside
-          className="w-full shrink-0 border-b border-outline-variant/40 bg-surface-container-lowest lg:w-56 lg:border-b-0 lg:border-r"
+          id="mga-sidebar"
+          hidden={!isSidebarOpen}
+          className={`${isSidebarOpen ? '' : 'hidden'} w-full shrink-0 border-b border-outline-variant/40 bg-surface-container-lowest lg:w-56 lg:border-b-0 lg:border-r`}
           aria-label="Secciones de identificación"
         >
           <ul className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-visible lg:p-3">

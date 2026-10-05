@@ -255,6 +255,7 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
   const selectedAlternativaId = alternativas.some((a) => a.id === pickedAlternativaId)
     ? pickedAlternativaId
     : (alternativas[0]?.id ?? '');
+  const selectedAlternativa = alternativas.find((a) => a.id === selectedAlternativaId);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<NeedForm>(EMPTY_FORM);
@@ -381,22 +382,22 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
-        <label htmlFor={`ns-alt-${project.id}`} className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
-        <select
-          id={`ns-alt-${project.id}`}
-          value={selectedAlternativaId}
-          onChange={(e) => {
-            setSelectedAlternativaId(e.target.value);
-            closeForm();
-          }}
-          className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
-        >
-          {alternativas.map((alt) => (
-            <option key={alt.id} value={alt.id}>{alt.nombre}</option>
-          ))}
-        </select>
-      </div>
+      {/* Vista de lista (selector + tabla) y vista de formulario son excluyentes: al crear/editar solo se ve el formulario. */}
+      {!isAdding && (
+        <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
+          <label htmlFor={`ns-alt-${project.id}`} className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
+          <select
+            id={`ns-alt-${project.id}`}
+            value={selectedAlternativaId}
+            onChange={(e) => setSelectedAlternativaId(e.target.value)}
+            className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+          >
+            {alternativas.map((alt) => (
+              <option key={alt.id} value={alt.id}>{alt.nombre}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
 
@@ -481,7 +482,12 @@ function NecesidadesTabContent({ project }: NecesidadesTabProps) {
         </div>
       ) : (
         <div className="border rounded p-4 bg-gray-50 space-y-4 mt-4">
-          <h3 className="font-semibold text-slate-700">{editingId ? 'Editar Necesidad' : 'Nueva Necesidad'}</h3>
+          <h3 className="font-semibold text-slate-700">
+            {editingId ? 'Editar Necesidad' : 'Nueva Necesidad'}
+            {selectedAlternativa && (
+              <span className="ml-2 font-normal text-slate-500">— Alternativa: {selectedAlternativa.nombre}</span>
+            )}
+          </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AIAssistedField

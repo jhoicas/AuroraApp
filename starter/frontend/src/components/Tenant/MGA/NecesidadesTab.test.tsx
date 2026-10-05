@@ -65,6 +65,95 @@ beforeEach(() => {
   );
 });
 
+describe('NecesidadesTab - vista lista vs. formulario', () => {
+  const expectListVisible = () => {
+    expect(screen.getByLabelText('Alternativa:')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: /serie anual de agua potable/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Editar Necesidad|Nueva Necesidad/ })).not.toBeInTheDocument();
+  };
+
+  const expectOnlyFormVisible = (title: RegExp) => {
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Alternativa:')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Adicionar/ })).not.toBeInTheDocument();
+  };
+
+  it('al editar oculta selector, tabla y botón; Cancelar los vuelve a mostrar', async () => {
+    render(<NecesidadesTab project={project} />);
+    await screen.findByRole('table', { name: /serie anual de agua potable/i });
+    expectListVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    expectOnlyFormVisible(/Editar Necesidad/);
+    expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expectListVisible();
+  });
+
+  it('al crear oculta la lista y Cancelar la restaura', async () => {
+    render(<NecesidadesTab project={project} />);
+    await screen.findByRole('table', { name: /serie anual de agua potable/i });
+
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }));
+    expectOnlyFormVisible(/Nueva Necesidad/);
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expectListVisible();
+  });
+
+  it('al guardar la edición con éxito vuelve a mostrar la lista', async () => {
+    let called = false;
+    server.use(
+      http.put(apiUrl(`/projects/${project.id}/mga/needs/${baseNeed.id}`), () => {
+        called = true;
+        return HttpResponse.json({ ...baseNeed, bien_servicio: 'Agua tratada' });
+      }),
+    );
+
+    render(<NecesidadesTab project={project} />);
+    await screen.findByRole('table', { name: /serie anual de agua potable/i });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    // unidad_medida_id=1 debe preseleccionarse una vez cargado el catálogo
+    await waitFor(() =>
+      expect((document.getElementById(`ns-unidad-${project.id}`) as HTMLSelectElement).value).toBe('1'),
+    );
+    fireEvent.change(document.getElementById(`ns-bien-${project.id}`) as HTMLInputElement, {
+      target: { value: 'Agua tratada' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
+
+    await waitFor(() => expect(called).toBe(true));
+    expect(await screen.findByRole('table', { name: /serie anual de agua tratada/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Alternativa:')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Editar Necesidad/ })).not.toBeInTheDocument();
+  });
+
+  it('si el guardado falla se queda en el formulario con el error', async () => {
+    server.use(
+      http.put(apiUrl(`/projects/${project.id}/mga/needs/${baseNeed.id}`), () =>
+        HttpResponse.json({ error: 'boom' }, { status: 500 }),
+      ),
+    );
+
+    render(<NecesidadesTab project={project} />);
+    await screen.findByRole('table', { name: /serie anual de agua potable/i });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    await waitFor(() =>
+      expect((document.getElementById(`ns-unidad-${project.id}`) as HTMLSelectElement).value).toBe('1'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
+
+    await waitFor(() => expect(screen.getByText(/boom/)).toBeInTheDocument());
+    expectOnlyFormVisible(/Editar Necesidad/);
+  });
+});
+
 describe('NecesidadesTab - grilla anual', () => {
   it('renderiza una fila por año con oferta, demanda y déficit', async () => {
     render(<NecesidadesTab project={project} />);

@@ -25,6 +25,8 @@ export const defaultHandlers = [
     HttpResponse.json({ data: [], page: 1, page_size: 100, total: 0, total_pages: 1 }),
   ),
   http.get(apiUrl('/projects/evaluations/summary'), () => HttpResponse.json({ data: [] })),
+  // Catálogo jerárquico región → departamento → municipio (lo pide useProjectBaseLocation).
+  http.get(apiUrl('/locations'), () => HttpResponse.json({ data: [] })),
   http.get(apiUrl('/catalog/sectors'), () =>
     HttpResponse.json({ data: [], meta: { page: 1, limit: 20, total: 0, last_page: 1 } }),
   ),

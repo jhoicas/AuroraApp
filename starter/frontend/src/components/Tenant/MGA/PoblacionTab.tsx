@@ -7,6 +7,8 @@ import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import BaseLocationFields from './BaseLocationFields';
+import { useProjectBaseLocation, type ProjectBaseLocationInfo } from '../../../lib/useProjectBaseLocation';
 import {
   fetchMgaRegions,
   fetchMgaDepartments,
@@ -31,7 +33,9 @@ type PoblacionTabProps = {
 
 export default function PoblacionTab({ project }: PoblacionTabProps) {
   const [error, setError] = useState<string | null>(null);
-  
+  // Regla de localización estricta: solo el departamento base del proyecto.
+  const baseInfo = useProjectBaseLocation(project);
+
   const [openSections, setOpenSections] = useState({
     afectada: true,
     objetivo: true,
@@ -176,7 +180,9 @@ export default function PoblacionTab({ project }: PoblacionTabProps) {
             </div>
           </div>
           
-          <LocalizacionSubSection 
+          <LocalizacionSubSection
+            idPrefix={`poblacion-${key}`}
+            baseInfo={baseInfo}
             localizaciones={data.localizaciones}
             onChange={(locs) => updateData({ localizaciones: locs })}
           />
@@ -229,20 +235,30 @@ const EMPTY_FORM: CascadeFormState = {
 
 // ─── Localization Sub-Section with API Cascading Dropdowns ──────────────
 function LocalizacionSubSection({
+  idPrefix,
+  baseInfo,
   localizaciones,
   onChange,
 }: {
+  idPrefix: string;
+  baseInfo: ProjectBaseLocationInfo;
   localizaciones: UbicacionJson[];
   onChange: (l: UbicacionJson[]) => void;
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<CascadeFormState>({ ...EMPTY_FORM });
+  const [rawForm, setForm] = useState<CascadeFormState>({ ...EMPTY_FORM });
 
   const [regions, setRegions] = useState<MgaRegion[]>([]);
   const [departments, setDepartments] = useState<MgaDepartment[]>([]);
   const [municipalities, setMunicipalities] = useState<MgaMunicipality[]>([]);
   const [groupings, setGroupings] = useState<MgaGrouping[]>([]);
+
+  // Con departamento base, Región y Departamento quedan fijos (solo lectura) y no se pueden cambiar.
+  const { base } = baseInfo;
+  const form: CascadeFormState = base
+    ? { ...rawForm, regionId: base.regionId, departamentoId: base.departamentoId }
+    : rawForm;
 
   useEffect(() => {
     fetchMgaRegions().then(setRegions).catch(console.error);
@@ -343,8 +359,8 @@ function LocalizacionSubSection({
     const grouping = groupings.find((g) => g.id === state.agrupacionId);
 
     return {
-      regionNombre: region?.name ?? '',
-      departamentoNombre: department?.name ?? '',
+      regionNombre: region?.name ?? baseInfo.regionName ?? '',
+      departamentoNombre: department?.name ?? baseInfo.departamentoName ?? '',
       municipioNombre: municipality?.name ?? '',
       tipoAgrupacionNombre: groupingType?.name ?? '',
       agrupacionNombre: grouping?.name ?? '',
@@ -353,7 +369,12 @@ function LocalizacionSubSection({
 
   // ─── Submit (Adicionar) ────────────────────────────────────────────
   const handleAddSubmit = () => {
-    if (!form.regionId || !form.departamentoId || !form.municipioId) {
+    if (base) {
+      if (!form.municipioId) {
+        setError('Seleccione un Municipio del departamento base del proyecto.');
+        return;
+      }
+    } else if (!form.regionId || !form.departamentoId || !form.municipioId) {
       setError('Región, Departamento y Municipio son obligatorios.');
       return;
     }
@@ -372,9 +393,9 @@ function LocalizacionSubSection({
       longitud: '',
       georeferenciada: false,
       // Persist numeric IDs for potential re-editing
-      regionId: form.regionId,
-      departamentoId: form.departamentoId,
-      municipioId: form.municipioId,
+      regionId: form.regionId ?? undefined,
+      departamentoId: form.departamentoId ?? undefined,
+      municipioId: form.municipioId ?? undefined,
       tipoAgrupacionId: form.tipoAgrupacionId ?? undefined,
       agrupacionId: form.agrupacionId ?? undefined,
     };
@@ -462,6 +483,20 @@ function LocalizacionSubSection({
           <h5 className="font-medium text-slate-700 text-sm">Agregar Localización</h5>
           
           {/* ─── Row 1: Región, Departamento, Municipio ───────────── */}
+          {base ? (
+            <BaseLocationFields
+              idPrefix={idPrefix}
+              base={base}
+              regionName={regions.find((r) => r.id === base.regionId)?.name ?? baseInfo.regionName}
+              departamentoName={departments.find((d) => d.id === base.departamentoId)?.name ?? baseInfo.departamentoName}
+              municipioOptions={municipalities.map((m) => ({ id: m.id, label: m.name }))}
+              municipioId={form.municipioId}
+              onMunicipioChange={(id) => handleMunicipioChange(id === null ? '' : String(id))}
+              labels={{ region: 'Región *', departamento: 'Departamento *', municipio: 'Municipio *' }}
+              selectClassName={selectClass}
+              labelClassName={labelClass}
+            />
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Región */}
             <div>
@@ -514,6 +549,7 @@ function LocalizacionSubSection({
               </select>
             </div>
           </div>
+          )}
 
           {/* ─── Row 2: Tipo Agrupación, Agrupación ───────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

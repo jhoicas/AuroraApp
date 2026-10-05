@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2, Users, CheckSquare } from 'lucide-react';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
@@ -6,6 +6,9 @@ import { useLocationStore, type TipoAgrupacion, type Agrupacion } from '../../..
 import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
+import BaseLocationFields from './BaseLocationFields';
+import { useProjectBaseLocation } from '../../../lib/useProjectBaseLocation';
+import { applyBaseToRows } from '../../../lib/projectBaseLocation';
 
 export const FACTORES_ANALIZADOS_MGA = [
   'Aspectos administrativos y políticos',
@@ -53,6 +56,16 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LocalizacionRow[]>([]);
+
+  // Regla de localización estricta: todas las filas pertenecen al departamento base del proyecto.
+  const baseInfo = useProjectBaseLocation(project);
+  const { base } = baseInfo;
+  // Filas efectivas (render, guardado y carga de municipios): con base se fuerza región y departamento
+  // y, si una fila heredada apuntaba a otro departamento, se limpia su municipio.
+  const { rows: effectiveRows, adjusted: adjustedRows } = useMemo(
+    () => (base ? applyBaseToRows(rows, base) : { rows, adjusted: 0 }),
+    [rows, base],
+  );
   const [factores, setFactores] = useState<string[]>(() => {
     const saved =
       formulation.factores_analizados ||
@@ -88,12 +101,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
   // Carga de municipios cuando cambia un departamento
   useEffect(() => {
-    rows.forEach((r) => {
+    effectiveRows.forEach((r) => {
       if (r.departamento_id) {
         void fetchMunicipalities(r.departamento_id);
       }
     });
-  }, [rows, fetchMunicipalities]);
+  }, [effectiveRows, fetchMunicipalities]);
 
   // Helper de casteo ultra-seguro (string o number -> number | null)
   const toNumOrNull = (val: unknown): number | null => {
@@ -356,6 +369,11 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       }
     }
 
+    if (matchedRow && base && matchedRow.departamento_id !== base.departamentoId) {
+      setMessage('La población objetivo está en un departamento distinto al departamento base del proyecto; no se puede copiar su localización.');
+      return;
+    }
+
     if (matchedRow) {
       isUserEditedRef.current = true;
       setRows([matchedRow]);
@@ -401,8 +419,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     setRows((prev) => [
       ...prev,
       {
-        region_id: null,
-        departamento_id: null,
+        region_id: base?.regionId ?? null,
+        departamento_id: base?.departamentoId ?? null,
         municipio_id: null,
         tipo_agrupacion_id: null,
         agrupacion_id: null,
@@ -421,8 +439,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     setMessage(null);
 
     // Validación básica de completitud
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
+    for (let i = 0; i < effectiveRows.length; i++) {
+      const r = effectiveRows[i];
       if (!r.departamento_id || !r.municipio_id) {
         setError(`Fila #${i + 1}: Debe seleccionar Departamento y Municipio.`);
         return;
@@ -434,7 +452,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     }
 
     try {
-      const payload: ProjectMgaLocalizationItem[] = rows.map((r) => ({
+      const payload: ProjectMgaLocalizationItem[] = effectiveRows.map((r) => ({
         region_id: r.region_id,
         departamento_id: r.departamento_id,
         municipio_id: r.municipio_id,
@@ -451,6 +469,9 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       setError('Error al guardar las localizaciones. Por favor intente nuevamente.');
     }
   };
+
+  const baseDepartment = base ? departments.find((d) => Number(d.id) === base.departamentoId) : undefined;
+  const baseDepartmentLabel = baseDepartment ? `${baseDepartment.code} - ${baseDepartment.name}` : baseInfo.departamentoName;
 
   return (
     <div className="space-y-6 bg-white p-6 border rounded-xl shadow-sm text-sm">
@@ -482,6 +503,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
       {message && <MgaAlert message={message} variant="success" onDismiss={() => setMessage(null)} />}
+      {adjustedRows > 0 && (
+        <MgaAlert
+          variant="warning"
+          message={`${adjustedRows} localización(es) estaban fuera del departamento base del proyecto. Se limpió su municipio: seleccione uno del departamento base antes de guardar.`}
+        />
+      )}
 
       {/* Sub-encabezado y botón de acceso rápido */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
@@ -506,7 +533,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
       {/* Listado de Localizaciones */}
       <div className="space-y-4">
-        {rows.map((row, index) => {
+        {effectiveRows.map((row, index) => {
           // Filtrado en cascada con DIVIPOLA
           const municipiosDisponibles = row.departamento_id ? (municipalitiesByDept[row.departamento_id] || []) : [];
 
@@ -545,6 +572,27 @@ export default function LocalizacionTab({ project }: { project: Project }) {
               </div>
 
               {/* Grid de Selectores Geográficos */}
+              {base ? (
+                // Regla de localización estricta: Región y Departamento fijos (solo lectura) y
+                // Municipio limitado al departamento base del proyecto.
+                <BaseLocationFields
+                  idPrefix={`localizacion-${index}`}
+                  base={base}
+                  regionName={baseInfo.regionName}
+                  departamentoName={baseDepartmentLabel}
+                  municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: `${mun.code} - ${mun.name}` }))}
+                  municipioId={row.municipio_id ?? null}
+                  onMunicipioChange={(id) => updateRow(index, 'municipio_id', id)}
+                  labels={{
+                    region: 'Región',
+                    departamento: 'Departamento (DIVIPOLA)',
+                    municipio: <>Municipio (DIVIPOLA) <span className="text-red-500">*</span></>,
+                  }}
+                  labelClassName="block text-xs font-medium text-slate-700 mb-1.5"
+                  selectClassName="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                />
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* 2. Departamento */}
                 <div>
@@ -588,6 +636,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                   </select>
                 </div>
               </div>
+              )}
 
               {/* Lógica Condicional Étnica */}
               {isEthnic && (

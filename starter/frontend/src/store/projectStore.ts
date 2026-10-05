@@ -20,6 +20,9 @@ export type Project = {
   situation?: string;
   magnitude?: string;
   fase_maduracion?: string;
+  /** Localización base inmutable del proyecto: Población y Localización solo admiten su departamento. */
+  base_region_id?: number | null;
+  base_departamento_id?: number | null;
   region_id?: number | null;
   regionId?: number | null;
   departamento_id?: number | null;

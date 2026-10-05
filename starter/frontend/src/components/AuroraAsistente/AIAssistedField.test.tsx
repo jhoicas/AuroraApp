@@ -59,11 +59,13 @@ describe('AIAssistedField', () => {
     expect((screen.getByLabelText('sel') as HTMLSelectElement).value).toBe('2');
   });
 
-  it('renderiza el popover en document.body', () => {
+  it('renderiza el popover en el flujo normal (sin portal ni posición flotante)', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: /Ayuda metodológica/ }));
     const tip = screen.getByRole('tooltip');
-    expect(tip.parentElement).toBe(document.body);
+    expect(tip.parentElement).not.toBe(document.body);
+    expect(tip.className).not.toMatch(/absolute|fixed|z-\[100\]/);
+    expect(tip.closest('label')).toBeNull();
   });
 });
 

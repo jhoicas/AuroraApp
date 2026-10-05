@@ -1,8 +1,5 @@
-import { createPortal } from 'react-dom';
 import {
   cloneElement,
-  useCallback,
-  useLayoutEffect,
   isValidElement,
   useEffect,
   useId,
@@ -96,7 +93,6 @@ export default function AIAssistedField({
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; arrowLeft: number } | null>(null);
   const automaticSuggestionTriggered = useRef(false);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
   const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
@@ -126,32 +122,6 @@ export default function AIAssistedField({
     clearCloseTimer();
     closeTimer.current = setTimeout(() => setOpen(false), 180);
   };
-
-  // El popover se renderiza en document.body (portal) con posición fija para que
-  // ningún ancestro con overflow-hidden lo recorte ni quede bajo otros controles.
-  const updatePopoverPosition = useCallback(() => {
-    const el = triggerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const width = Math.min(window.innerWidth - 16, window.innerWidth >= 640 ? 320 : 288);
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    setPopoverPos({
-      top: rect.bottom + 8,
-      left,
-      arrowLeft: Math.max(8, Math.min(rect.left + rect.width / 2 - left - 6, width - 20)),
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    updatePopoverPosition();
-    window.addEventListener('resize', updatePopoverPosition);
-    window.addEventListener('scroll', updatePopoverPosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePopoverPosition);
-      window.removeEventListener('scroll', updatePopoverPosition, true);
-    };
-  }, [open, updatePopoverPosition]);
 
   const fieldKnowledge = fieldHelpKey ? getFieldKnowledge(fieldHelpKey) : null;
 
@@ -240,65 +210,59 @@ export default function AIAssistedField({
             <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
           </button>
 
-          {open && popoverPos && createPortal(
-            <div
-              id={tipId}
-              role="tooltip"
-              onMouseEnter={clearCloseTimer}
-              onMouseLeave={scheduleClose}
-              style={{ position: 'fixed', top: popoverPos.top, left: popoverPos.left }}
-              className="z-[100] w-72 max-w-[calc(100vw-1rem)] sm:w-80 rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl shadow-gray-900/10"
-            >
-              <p className="text-xs font-semibold text-[#006162] mb-1.5 inline-flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">lightbulb</span>
-                Guía metodológica
-              </p>
-              <p className="text-sm text-gray-600 leading-relaxed mb-3">{guidance}</p>
-
-              {/* Pattern hint from knowledge catalog */}
-              {fieldKnowledge && (
-                <p className="text-xs text-gray-500 mb-3 italic">
-                  Patrón: {fieldKnowledge.templatePattern}
-                </p>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    if (fieldHelpKey) {
-                      requestSuggestion();
-                      setOpen(false);
-                    }
-                  }}
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-teal-100 hover:bg-teal-200 text-teal-800`}
-                >
-                  <span className="material-symbols-outlined text-sm">magic_button</span>
-                  Sugerir con Aurora
-                </button>
-                {/* Secondary: Open chat with field-help */}
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={handleAskFieldHelp}
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-[#006162] hover:bg-[#004f50] text-white`}
-                >
-                  <span className="material-symbols-outlined text-sm">chat</span>
-                  Preguntar a Aurora
-                </button>
-              </div>
-
-              <span
-                style={{ left: popoverPos.arrowLeft }}
-                className="absolute -top-1.5 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
-                aria-hidden
-              />
-            </div>,
-            document.body,
-          )}
         </div>
-        
+
+        {open && (
+          <div
+            id={tipId}
+            role="tooltip"
+            onMouseEnter={clearCloseTimer}
+            onMouseLeave={scheduleClose}
+            className="basis-full w-full max-w-full sm:max-w-md rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm"
+          >
+            <p className="text-xs font-semibold text-[#006162] mb-1.5 inline-flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">lightbulb</span>
+              Guía metodológica
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">{guidance}</p>
+
+            {/* Pattern hint from knowledge catalog */}
+            {fieldKnowledge && (
+              <p className="text-xs text-gray-500 mb-3 italic">
+                Patrón: {fieldKnowledge.templatePattern}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (fieldHelpKey) {
+                    requestSuggestion();
+                    setOpen(false);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-teal-100 hover:bg-teal-200 text-teal-800`}
+              >
+                <span className="material-symbols-outlined text-sm">magic_button</span>
+                Sugerir con Aurora
+              </button>
+              {/* Secondary: Open chat with field-help */}
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleAskFieldHelp}
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors bg-[#006162] hover:bg-[#004f50] text-white`}
+              >
+                <span className="material-symbols-outlined text-sm">chat</span>
+                Preguntar a Aurora
+              </button>
+            </div>
+
+          </div>
+        )}
+
         {activeSuggestions && activeSuggestions.length > 0 && (
           <span className="basis-full inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1 max-w-full">
             ✨

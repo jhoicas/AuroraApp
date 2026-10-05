@@ -347,13 +347,13 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
       return {
         byProjectId: {
           ...state.byProjectId,
-          [project.id]: { ...fm, preparacion: newPrep, completedSections: { ...fm.completedSections, 'ingresos-beneficios': true } },
+          [project.id]: { ...fm, preparacion: newPrep, completedSections: fm.completedSections },
         },
         isSaving: true,
       };
     });
 
-    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: { ...f.completedSections, 'ingresos-beneficios': true } });
+    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: f.completedSections });
   }, [items, selectedAlternativeId, project.id]);
 
   const handleAlternativeChange = (newAltId: string) => {

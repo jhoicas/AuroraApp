@@ -298,13 +298,13 @@ export default function DepreciacionTab({ project }: DepreciacionTabProps) {
       return {
         byProjectId: {
           ...state.byProjectId,
-          [project.id]: { ...fm, preparacion: newPrep, completedSections: { ...fm.completedSections, 'depreciacion': true } },
+          [project.id]: { ...fm, preparacion: newPrep, completedSections: fm.completedSections },
         },
         isSaving: true,
       };
     });
 
-    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: { ...f.completedSections, 'depreciacion': true } });
+    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: f.completedSections });
   }, [items, selectedAlternativeId, project.id]);
 
   const handleAlternativeChange = (newAltId: string) => {

@@ -104,7 +104,8 @@ describe('Evaluación de datos MGA y Desbloqueo de Navegación', () => {
               proceeds_to_preparation: true,
             } as any,
           ],
-          completedSections: {},
+          // La completitud solo la marca "Guardar y Continuar" (aquí simulada).
+          completedSections: { identificacion: true, participantes: true, poblacion: true, objetivos: true, alternativas: true },
         },
       },
     }));
@@ -158,5 +159,17 @@ describe('Evaluación de datos MGA y Desbloqueo de Navegación', () => {
     // Verificar la presencia de badges de verificación para las secciones completas
     const checkBadges = screen.getAllByTitle('Sección con información gestionada');
     expect(checkBadges.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('no marca ni desbloquea la siguiente sección solo por tener datos', () => {
+    render(
+      <MGALayout
+        project={{ ...mockProjectWithData, id: 'proj-sin-completar', problem_description: 'Problema', mga_formulation_data: undefined }}
+        activeTab="identificacion"
+        onChangeSubTab={vi.fn()}
+      />,
+    );
+    expect(screen.queryAllByTitle('Sección con información gestionada')).toHaveLength(0);
+    expect(screen.getByRole('button', { name: /^Participantes$/i })).toBeDisabled();
   });
 });

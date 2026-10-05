@@ -284,13 +284,13 @@ export default function PrestamosTab({ project }: PrestamosTabProps) {
       return {
         byProjectId: {
           ...state.byProjectId,
-          [project.id]: { ...fm, preparacion: newPrep, completedSections: { ...fm.completedSections, 'prestamos': true } },
+          [project.id]: { ...fm, preparacion: newPrep, completedSections: fm.completedSections },
         },
         isSaving: true,
       };
     });
 
-    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: { ...f.completedSections, 'prestamos': true } });
+    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: f.completedSections });
   }, [items, selectedAlternativeId, project.id]);
 
   const handleAlternativeChange = (newAltId: string) => {

@@ -404,13 +404,13 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
       return {
         byProjectId: {
           ...state.byProjectId,
-          [project.id]: { ...fm, preparacion: newPrep, completedSections: { ...fm.completedSections, riesgos: true } },
+          [project.id]: { ...fm, preparacion: newPrep, completedSections: fm.completedSections },
         },
         isSaving: true,
       };
     });
 
-    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: { ...f.completedSections, riesgos: true } });
+    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: f.completedSections });
   }, [riesgos, selectedAlternativeId, project.id]);
 
   // ── Alternative change ──

@@ -183,6 +183,23 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'programacion',
 ];
 
+const COMPLETION_ALIASES: Partial<Record<MgaLayoutTabId, string[]>> = {
+  'analisis-tecnico': ['analisisTecnico'],
+  'ingresos-beneficios': ['ingresosBeneficios'],
+};
+
+/** Una sección solo está completada si el usuario pulsó "Guardar y Continuar" en ella. */
+function isSectionMarkedCompleted(
+  sectionId: MgaLayoutTabId,
+  project: Project,
+  formulation: ProjectMgaFormulation,
+): boolean {
+  const ids = [sectionId, ...(COMPLETION_ALIASES[sectionId] ?? [])];
+  return ids.some(
+    (id) => formulation.completedSections?.[id] || project.mga_formulation_data?.completedSections?.[id],
+  );
+}
+
 function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState | null) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
 
@@ -193,9 +210,9 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
     const hasData = hasMgaSectionData(sectionId, project, formulation, edtChain);
 
     const prevSectionId = i > 0 ? ALL_MGA_SECTIONS[i - 1] : null;
-    const prevHasData = prevSectionId ? hasMgaSectionData(prevSectionId, project, formulation, edtChain) : false;
+    const isCompleted = isSectionMarkedCompleted(sectionId, project, formulation);
     const prevIsCompleted = prevSectionId
-      ? Boolean(formulation.completedSections?.[prevSectionId] || project.mga_formulation_data?.completedSections?.[prevSectionId])
+      ? isSectionMarkedCompleted(prevSectionId, project, formulation)
       : false;
 
     // Secciones que marcan inicio de etapa o accesibles por datos previos
@@ -214,11 +231,10 @@ function useMgaSectionStatuses(project: Project, edtChain?: ProjectEdtChainState
     const isUnlocked =
       i === 0 ||
       hasData ||
-      prevHasData ||
       prevIsCompleted ||
       isStageStart;
 
-    if (hasData) {
+    if (isCompleted) {
       statuses[sectionId] = 'COMPLETED';
     } else if (isUnlocked) {
       statuses[sectionId] = 'ACTIVE';

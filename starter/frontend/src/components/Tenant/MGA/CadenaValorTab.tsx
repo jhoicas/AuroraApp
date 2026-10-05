@@ -580,13 +580,13 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
       return {
         byProjectId: {
           ...state.byProjectId,
-          [project.id]: { ...fm, preparacion: newPrep, completedSections: { ...fm.completedSections, 'cadena-valor': true } },
+          [project.id]: { ...fm, preparacion: newPrep, completedSections: fm.completedSections },
         },
         isSaving: true,
       };
     });
 
-    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: { ...f.completedSections, 'cadena-valor': true } });
+    debouncedPatchProject(project.id, { preparacion: newPrep, completedSections: f.completedSections });
   }, [cadenaData, selectedAlternativeId, project.id]);
 
   // ── Alternative change handler ──

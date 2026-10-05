@@ -789,7 +789,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, 'plan-desarrollo': true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { planDesarrollo: data, completedSections: newCompleted });
         return {
           byProjectId: {
@@ -814,7 +814,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, preparacion: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { preparacion: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, preparacion: data, completedSections: newCompleted } },
@@ -858,7 +858,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, necesidades: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { necesidades: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, necesidades: data, completedSections: newCompleted } },
@@ -878,7 +878,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         const currentAnalisis = formulation.analisisTecnico || {};
         const updatedAnalisis = { ...currentAnalisis, [alternativeId]: data };
-        const newCompleted = { ...formulation.completedSections, analisisTecnico: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { analisisTecnico: updatedAnalisis, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, analisisTecnico: updatedAnalisis, completedSections: newCompleted } },
@@ -898,7 +898,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
         const currentLocalizacion = formulation.localizacionPreparacion || {};
         const updatedLocalizacion = { ...currentLocalizacion, [alternativeId]: data };
-        const newCompleted = { ...formulation.completedSections, localizacionPreparacion: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { localizacionPreparacion: updatedLocalizacion, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, localizacionPreparacion: updatedLocalizacion, completedSections: newCompleted } },
@@ -916,7 +916,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, localizacion: true };
+        const newCompleted = formulation.completedSections;
         const localizacionesArray = data.localizaciones || (Array.isArray(data) ? data : formulation.localizaciones);
         const factoresArray = data.factores_analizados || data.factoresAnalizados || data.factores || formulation.factores_analizados;
         debouncedPatchProject(projectId, { 
@@ -952,7 +952,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, riesgos: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { riesgos: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, riesgos: data, completedSections: newCompleted } },
@@ -970,7 +970,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, ingresosBeneficios: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { ingresosBeneficios: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, ingresosBeneficios: data, completedSections: newCompleted } },
@@ -988,7 +988,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, prestamos: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { prestamos: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, prestamos: data, completedSections: newCompleted } },
@@ -1006,7 +1006,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, depreciacion: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { depreciacion: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, depreciacion: data, completedSections: newCompleted } },
@@ -1024,7 +1024,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, evaluacion: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { evaluacion: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, evaluacion: data, completedSections: newCompleted } },
@@ -1042,7 +1042,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, programacion: true };
+        const newCompleted = formulation.completedSections;
         debouncedPatchProject(projectId, { programacion: data, completedSections: newCompleted });
         return {
           byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, programacion: data, completedSections: newCompleted } },
@@ -1104,7 +1104,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       const curProj = (store.currentProject?.id === projectId ? store.currentProject : null) || store.projects.find((p) => p.id === projectId);
       const sitVal = (curProj as any)?.situation ?? curProj?.situacion_existente ?? '';
       const magVal = (curProj as any)?.magnitude ?? curProj?.magnitud_problema ?? '';
-      const newCompleted = { ...formulation.completedSections, problematica: true, identificacion: true };
+      const newCompleted = formulation.completedSections;
       debouncedPatchProject(projectId, {
         ...formulation,
         situation: sitVal,
@@ -1121,8 +1121,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, participantes: true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      const newCompleted = formulation.completedSections;
       return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
@@ -1131,8 +1130,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, poblacion: true };
-      debouncedPatchProject(projectId, { completedSections: newCompleted });
+      const newCompleted = formulation.completedSections;
       return { byProjectId: { ...state.byProjectId, [projectId]: { ...formulation, completedSections: newCompleted } }, isSaving: false };
     });
   },
@@ -1141,7 +1139,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, objetivos: true };
+      const newCompleted = formulation.completedSections;
       debouncedPatchProject(projectId, {
         completedSections: newCompleted,
         generalIndicators: formulation.generalIndicators,
@@ -1154,7 +1152,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     set({ isSaving: true, error: null });
     set((state) => {
       const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-      const newCompleted = { ...formulation.completedSections, 'cadena-valor': true };
+      const newCompleted = formulation.completedSections;
       const patchData: Record<string, any> = { completedSections: newCompleted };
       if (data) {
         patchData.cadena_valor = data;
@@ -1180,7 +1178,7 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
     try {
       set((state) => {
         const formulation = state.byProjectId[projectId] ?? EMPTY_FORMULATION;
-        const newCompleted = { ...formulation.completedSections, alternativas: true };
+        const newCompleted = formulation.completedSections;
         const newData = { ...(formulation.identificacion || {}), ...data };
         debouncedPatchProject(projectId, { identificacion: newData, completedSections: newCompleted });
         return {

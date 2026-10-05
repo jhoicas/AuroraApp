@@ -2,6 +2,14 @@
   "mcpServers": {
     "supabase": {
       "url": "https://mcp.supabase.com/mcp?project_ref=ktfbwyjhohkgjjteiaeq"
+    },
+    "workspace-filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
     }
   }
 }

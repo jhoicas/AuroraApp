@@ -21,6 +21,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-05 - GitHub Copilot - Configuracion de contexto para agentes
+
+- **Objetivo:** Reducir alucinaciones y consumo de contexto mediante reglas, conocimiento de esquema y logica MGA verificable.
+- **Configuracion:** `.cursorrules` ahora exige respuestas concisas, evidencia local, enrutamiento por frontend/backend y prohibe inventar tablas o columnas. Mantiene Fiber/GORM como stack backend real.
+- **MCP:** `.cursor/mcp.json` conserva Supabase y agrega `workspace-filesystem` restringido a `${workspaceFolder}`.
+- **Base de conocimiento:** Se crearon [database_schema.md](docs/kb/database_schema.md) y [MGA_BUSINESS_LOGIC.md](docs/kb/MGA_BUSINESS_LOGIC.md). Documentan relaciones verificadas y marcan como no verificadas las entidades funcionales ausentes de los scripts SQL disponibles.
+- **Validacion:** JSON MCP parseado correctamente y archivos requeridos comprobados con PowerShell.
+- **Pendientes:** Las tablas transaccionales MGA/EDT/IA mencionadas por el requerimiento deben agregarse a una migracion oficial antes de tratarlas como persistencia existente.
+
 ### 2026-10-01 - GitHub Copilot - Auditoría Global de Campos Descriptivos Inline
 
 - **Objetivo:** Garantizar que los campos descriptivos MGA usen la pastilla inline `[Usar]` con clave, contexto y callback de auto-fill.

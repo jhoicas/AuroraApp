@@ -1,4 +1,18 @@
-# AuroraApp - Reglas maestras para Cursor
+# AuroraApp - Reglas maestras para agentes
+
+## Economia de contexto y precision
+- Responde sin saludos, relleno ni explicaciones repetidas. Entrega primero la respuesta o el diff necesario.
+- No generes boilerplate, archivos completos ni abstracciones que no sean necesarios para la tarea.
+- Antes de afirmar algo, verifica el archivo, simbolo, esquema o prueba que lo sustenta. Si no existe evidencia, di `No verificado` y no lo inventes.
+- No inventes tablas, columnas, endpoints, tipos, relaciones, dependencias ni requisitos. La fuente SQL oficial es `docs/schema.sql`; contrasta tambien `docs/schema-antigravity.sql` y las migraciones cuando corresponda.
+- Si las fuentes discrepan, conserva los nombres implementados y reporta la discrepancia antes de proponer compatibilidad.
+- Para consultas de base de datos, usa solo tablas y columnas comprobadas en el esquema. No rellenes nombres plausibles por inferencia.
+
+## Enrutamiento obligatorio
+- Si tocas `starter/frontend/**`, lee y aplica `docs/kb/REACT_SUPABASE_STANDARDS.md` y las skills React pertinentes de `.github/skills/`.
+- Si tocas `starter/backend/**`, lee y aplica `docs/kb/GO_STANDARDS.md` y `.github/skills/go-backend-tenant/SKILL.md`. El backend actual usa Go, Fiber y GORM; no lo describas como Gin salvo que se solicite una migracion.
+- Si tocas SQL, persistencia, autenticacion o RLS, lee `docs/kb/database_schema.md`, `docs/kb/REACT_SUPABASE_STANDARDS.md` y la skill Supabase aplicable.
+- Si tocas MGA o formulacion, lee `docs/kb/MGA_BUSINESS_LOGIC.md` y `.github/skills/mga-business-logic/SKILL.md`.
 
 ## Rol y contexto obligatorio
 - Actua como Arquitecto de Software Principal y desarrollador Senior de Go, React, TypeScript y Supabase.

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { registerSectionSave } from './mgaSectionSave';
 import { Download, Printer, FileText, X, Trash2, Upload } from 'lucide-react';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
@@ -14,19 +15,14 @@ export default function MgaActionButtons({ project, onSave }: MgaActionButtonsPr
   const isSavingGlobal = useProjectMgaStore((s) => s.isSaving);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'success'>('idle');
-
-  const handleSaveClick = async () => {
-    if (!onSave) return;
-    setSavedStatus('saving');
-    try {
-      await onSave();
-      setSavedStatus('success');
-      setTimeout(() => setSavedStatus('idle'), 3000);
-    } catch (error) {
-      setSavedStatus('idle');
-    }
-  };
+  // El guardado lo dispara la barra única "Guardar y Continuar" de MGALayout; aquí solo se registra.
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const hasSave = Boolean(onSave);
+  useEffect(() => {
+    if (!hasSave) return undefined;
+    return registerSectionSave(() => onSaveRef.current?.());
+  }, [hasSave]);
 
   const handleExportXML = () => {
     // Generar XML estructurado simulado
@@ -84,25 +80,6 @@ export default function MgaActionButtons({ project, onSave }: MgaActionButtonsPr
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 border-t print:hidden">
       <div className="flex items-center flex-wrap gap-2">
-        {onSave && (
-          <>
-            <button 
-              onClick={handleSaveClick}
-              disabled={savedStatus === 'saving'}
-              className="px-6 py-2 bg-[#2980b9] text-white font-medium rounded-lg hover:bg-[#1a6698] flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              {savedStatus === 'saving' ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : null}
-              Guardar y Continuar
-            </button>
-            {savedStatus === 'success' && (
-              <span className="text-green-600 text-sm font-medium flex items-center gap-1 ml-2 animate-pulse">
-                ✅ Guardado correctamente
-              </span>
-            )}
-          </>
-        )}
       </div>
       
       <div className="flex items-center flex-wrap gap-3">

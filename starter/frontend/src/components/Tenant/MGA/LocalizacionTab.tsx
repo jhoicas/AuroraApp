@@ -99,6 +99,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     }
   }, [fetchDepartments, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
 
+  // Con base fija, pide los municipios del departamento base apenas monta (sin esperar a las filas).
+  const baseDepartamentoId = base?.departamentoId ?? null;
+  useEffect(() => {
+    if (baseDepartamentoId !== null) void fetchMunicipalities(baseDepartamentoId);
+  }, [baseDepartamentoId, fetchMunicipalities]);
+
   // Carga de municipios cuando cambia un departamento
   useEffect(() => {
     effectiveRows.forEach((r) => {
@@ -442,12 +448,14 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     for (let i = 0; i < effectiveRows.length; i++) {
       const r = effectiveRows[i];
       if (!r.departamento_id || !r.municipio_id) {
-        setError(`Fila #${i + 1}: Debe seleccionar Departamento y Municipio.`);
-        return;
+        const msg = `Fila #${i + 1}: Debe seleccionar Departamento y Municipio.`;
+        setError(msg);
+        throw new Error(msg);
       }
       if (isEthnic && (!r.tipo_agrupacion_id || !r.agrupacion_id)) {
-        setError(`Fila #${i + 1}: Por la tipología étnica del proyecto, debe seleccionar el Tipo de Agrupación y la Agrupación.`);
-        return;
+        const msg = `Fila #${i + 1}: Por la tipología étnica del proyecto, debe seleccionar el Tipo de Agrupación y la Agrupación.`;
+        setError(msg);
+        throw new Error(msg);
       }
     }
 
@@ -467,6 +475,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       setMessage('Localizaciones y factores analizados guardados exitosamente.');
     } catch (err) {
       setError('Error al guardar las localizaciones. Por favor intente nuevamente.');
+      throw err;
     }
   };
 
@@ -581,6 +590,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                   regionName={baseInfo.regionName}
                   departamentoName={baseDepartmentLabel}
                   municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: `${mun.code} - ${mun.name}` }))}
+                  loadingMunicipios={isLoadingDivipola}
                   municipioId={row.municipio_id ?? null}
                   onMunicipioChange={(id) => updateRow(index, 'municipio_id', id)}
                   labels={{

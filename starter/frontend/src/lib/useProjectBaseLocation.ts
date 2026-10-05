@@ -47,6 +47,6 @@ export function useProjectBaseLocation(project: Project): ProjectBaseLocationInf
     }
     const regionName = regionId !== null ? (regions.find((r) => r.id === regionId)?.name ?? null) : null;
 
-    return { base: { regionId, departamentoId: raw.departamentoId }, regionName, departamentoName };
+    return { base: { ...raw, regionId }, regionName, departamentoName };
   }, [raw, regions]);
 }

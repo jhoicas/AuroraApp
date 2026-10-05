@@ -699,15 +699,15 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
       {error && <MgaAlert message={error} onDismiss={() => setError(null)} />}
 
       {/* Alternative selector */}
-      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full max-w-full overflow-hidden bg-slate-50 p-3 rounded border">
         <label className="font-semibold text-slate-700 whitespace-nowrap">Alternativa:</label>
         <select
           value={selectedAlternativeId}
           onChange={(e) => handleAlternativeChange(e.target.value)}
-          className="flex-1 p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
+          className="w-full min-w-0 flex-1 truncate max-w-full box-border p-2 border border-slate-300 rounded bg-white focus:border-[#2980b9] focus:ring-[#2980b9] outline-none"
         >
           {alternatives.map((alt: any) => (
-            <option key={alt.id} value={alt.id}>{alt.nombre}</option>
+            <option key={alt.id} value={alt.id} title={alt.nombre}>{alt.nombre}</option>
           ))}
         </select>
       </div>

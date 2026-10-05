@@ -23,6 +23,7 @@ export type Project = {
   /** Localización base inmutable del proyecto: Población y Localización solo admiten su departamento. */
   base_region_id?: number | null;
   base_departamento_id?: number | null;
+  base_municipio_id?: number | null;
   region_id?: number | null;
   regionId?: number | null;
   departamento_id?: number | null;

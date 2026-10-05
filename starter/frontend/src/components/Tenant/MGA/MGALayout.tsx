@@ -1,3 +1,4 @@
+import { runSectionSave } from './mgaSectionSave';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Home, Check, Lock, Menu, Save } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
@@ -332,6 +333,7 @@ function MgaTabSaveBar({
     setIsSaving(true);
     setError(null);
     try {
+      await runSectionSave();
       await saveAndCompleteSection(projectId, activeTab);
       if (next) onChangeSubTab(next);
     } catch (err) {

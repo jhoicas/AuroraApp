@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { registerSectionSave } from './mgaSectionSave';
 import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import { useProjectStore, type Project } from '../../../store/projectStore';
@@ -111,7 +112,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
     (project.mga_formulation_data as any)?.magnitud_problema ??
     '';
   const patchCurrentProject = useProjectStore((s) => s.patchCurrentProject);
-  const isProjectSaving = useProjectStore((s) => s.isSaving);
 
   const getFormulation = useProjectMgaStore((s) => s.getFormulation);
   const updateCauseRelation = useProjectMgaStore((s) => s.updateCauseRelation);
@@ -251,7 +251,7 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       setError(
         `El Árbol de Problemas está incompleto. Según la metodología MGA, debe registrar obligatoriamente: ${missingParts.join(', ')} para poder guardar la problemática y continuar.`
       );
-      return;
+      throw new Error('Árbol de problemas incompleto');
     }
 
     try {
@@ -259,8 +259,14 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
       await saveProblematica(project.id);
     } catch (err) {
       setError('Error al guardar la sección.');
+      throw err;
     }
   };
+
+  // Guardado disparado por la barra única "Guardar y Continuar" de MGALayout.
+  const handleSaveSectionRef = useRef(handleSaveSection);
+  handleSaveSectionRef.current = handleSaveSection;
+  useEffect(() => registerSectionSave(() => handleSaveSectionRef.current()), []);
 
   const handleAddDirectEffect = async () => {
     if (!hasCauses) {
@@ -799,18 +805,6 @@ export default function IdentificacionTab({ project }: IdentificacionTabProps) {
               placeholder="Indique magnitud, fuentes y línea base del problema…"
             />
           </AIAssistedField>
-        </div>
-
-        <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
-          <button 
-            type="button"
-            onClick={handleSaveSection} 
-            disabled={isProjectSaving || isSaving}
-            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-          >
-            {(isProjectSaving || isSaving) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-            Guardar Problemática
-          </button>
         </div>
       </div>
     </div>

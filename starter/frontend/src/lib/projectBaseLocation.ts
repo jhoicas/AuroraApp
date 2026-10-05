@@ -8,6 +8,8 @@ import type { Project } from '../store/projectStore';
 export type ProjectBaseLocation = {
   regionId: number | null;
   departamentoId: number;
+  /** Solo si el proyecto se creó fijando hasta Municipio: entonces el municipio también es de solo lectura. */
+  municipioId?: number | null;
 };
 
 function toNum(value: unknown): number | null {
@@ -49,7 +51,9 @@ export function resolveProjectBaseLocation(
 
     const regionId =
       toNum(source.base_region_id) ?? pick(stored, 'region_id', 'regionId') ?? pick(src, 'region_id', 'regionId');
-    return { regionId, departamentoId };
+    const municipioId =
+      toNum(source.base_municipio_id) ?? pick(stored, 'municipio_id', 'municipioId');
+    return municipioId !== null ? { regionId, departamentoId, municipioId } : { regionId, departamentoId };
   }
   return null;
 }
@@ -69,6 +73,7 @@ export type BaseLocatedRow = {
 export function applyBaseToRow<T extends BaseLocatedRow>(row: T, base: ProjectBaseLocation): { row: T; adjusted: boolean } {
   const outside = row.departamento_id !== null && row.departamento_id !== undefined && row.departamento_id !== base.departamentoId;
   const next: T = { ...row, region_id: base.regionId ?? row.region_id, departamento_id: base.departamentoId };
+  if (base.municipioId != null) next.municipio_id = base.municipioId;
   if (outside) {
     next.municipio_id = null;
     if ('agrupacion_id' in next) next.agrupacion_id = null;

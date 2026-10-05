@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
@@ -7,6 +7,7 @@ import { useLocationStore } from '../../../store/locationStore';
 import { useCatalogStore } from '../../../store/catalogStore';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
+import { runSectionSave } from './mgaSectionSave';
 
 const DEPARTMENTS = [
   { id: 76, code: '76', name: 'Valle del Cauca' },
@@ -114,7 +115,8 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
 
     render(<LocalizacionTab project={baseProject()} />);
     fireEvent.change(selectByLabel(/^Municipio/), { target: { value: '76109' } });
-    fireEvent.click(screen.getByRole('button', { name: /Guardar y Continuar/i }));
+    // El guardado lo dispara la barra única de MGALayout ("Guardar y Continuar").
+    await act(async () => { await runSectionSave(); });
 
     await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1));
     expect(saveSpy).toHaveBeenCalledWith(
@@ -130,7 +132,7 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     useProjectMgaStore.setState({ saveLocalizacion: saveSpy as never });
 
     render(<LocalizacionTab project={baseProject()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Guardar y Continuar/i }));
+    await act(async () => { await runSectionSave().catch(() => undefined); });
 
     expect(await screen.findByText(/Debe seleccionar Departamento y Municipio/i)).toBeInTheDocument();
     expect(saveSpy).not.toHaveBeenCalled();

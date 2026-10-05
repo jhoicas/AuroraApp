@@ -156,8 +156,8 @@ export default function MgaActionButtons({ project, onSave }: MgaActionButtonsPr
                 {(!formulation.documentosSoporte || formulation.documentosSoporte.length === 0) ? (
                   <p className="text-sm text-slate-500 italic">No hay documentos de soporte adjuntos.</p>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full min-w-[480px] text-left text-sm">
                       <thead className="bg-slate-100">
                         <tr>
                           <th className="p-3 border-b">Nombre</th>

@@ -141,7 +141,7 @@ function DepreciacionForm({ item: initial, periodoFinalGeneral, onSave, onClose 
             />
           </AIAssistedField>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Razón Precio Cuenta (RPC)</label>
               <input type="number" readOnly value={draft.rpc} className="w-full p-2 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-500 outline-none" />
@@ -152,7 +152,7 @@ function DepreciacionForm({ item: initial, periodoFinalGeneral, onSave, onClose 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Valor del activo <span className="text-red-500">*</span></label>
               <input type="number" min="0" value={draft.valorActivo} onChange={e => updateField('valorActivo', parseFloat(e.target.value) || 0)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]" />
@@ -171,7 +171,7 @@ function DepreciacionForm({ item: initial, periodoFinalGeneral, onSave, onClose 
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3 mt-4">
              <h4 className="font-semibold text-slate-700 text-sm border-b pb-2">Cálculos de depreciación</h4>
              
-             <div className="grid grid-cols-2 gap-4 text-sm">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="block text-xs font-medium text-slate-500">Periodo final alternativa:</span>
                   <span className="font-semibold text-slate-800">Año {draft.periodoFinal}</span>

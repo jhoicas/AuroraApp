@@ -185,7 +185,7 @@ export default function IndicadoresProductoTab({ project }: { project: Project }
                         <p className="text-xs text-slate-500 font-semibold mb-1">Producto</p>
                         <p className="text-sm font-medium text-slate-800">{prod.descripcion}</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-slate-50 p-3 rounded border">
                           <p className="text-xs text-slate-500 font-semibold mb-1">Meta Total</p>
                           <p className="text-sm font-medium text-slate-800">{prod.cantidad || 0} {prod.unidadMedidaId}</p>

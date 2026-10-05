@@ -1,5 +1,8 @@
+import { createPortal } from 'react-dom';
 import {
   cloneElement,
+  useCallback,
+  useLayoutEffect,
   isValidElement,
   useEffect,
   useId,
@@ -84,6 +87,8 @@ export default function AIAssistedField({
   const tipId = useId();
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; arrowLeft: number } | null>(null);
   const automaticSuggestionTriggered = useRef(false);
   const askAurora = useAuroraCopilotStore((s) => s.askAurora);
   const askFieldHelp = useAuroraCopilotStore((s) => s.askFieldHelp);
@@ -114,6 +119,32 @@ export default function AIAssistedField({
     closeTimer.current = setTimeout(() => setOpen(false), 180);
   };
 
+  // El popover se renderiza en document.body (portal) con posición fija para que
+  // ningún ancestro con overflow-hidden lo recorte ni quede bajo otros controles.
+  const updatePopoverPosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const width = Math.min(window.innerWidth - 16, window.innerWidth >= 640 ? 320 : 288);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    setPopoverPos({
+      top: rect.bottom + 8,
+      left,
+      arrowLeft: Math.max(8, Math.min(rect.left + rect.width / 2 - left - 6, width - 20)),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
+
   const fieldKnowledge = fieldHelpKey ? getFieldKnowledge(fieldHelpKey) : null;
 
 
@@ -143,7 +174,7 @@ export default function AIAssistedField({
 
   return (
     <div className={`relative ${className}`}>
-      <div className={`flex items-center gap-1.5 ${compact ? 'mb-0.5' : 'mb-1'}`}>
+      <div className={`flex flex-wrap items-center gap-1.5 ${compact ? 'mb-0.5' : 'mb-1'}`}>
         <label
           htmlFor={htmlFor}
           className={`block font-medium text-gray-700 ${compact ? 'text-xs' : 'text-sm'}`}
@@ -160,6 +191,7 @@ export default function AIAssistedField({
           onMouseLeave={scheduleClose}
         >
           <button
+            ref={triggerRef}
             type="button"
             aria-label={`Ayuda metodológica: ${label}`}
             aria-expanded={open}
@@ -169,7 +201,8 @@ export default function AIAssistedField({
               setOpen((v) => !v);
             }}
             onBlur={(e) => {
-              if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+              const next = e.relatedTarget as Node | null;
+              if (!document.getElementById(tipId)?.contains(next)) {
                 setOpen(false);
               }
             }}
@@ -178,11 +211,14 @@ export default function AIAssistedField({
             <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
           </button>
 
-          {open && (
+          {open && popoverPos && createPortal(
             <div
               id={tipId}
               role="tooltip"
-              className="absolute left-0 top-full mt-2 z-40 w-72 sm:w-80 rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl shadow-gray-900/10"
+              onMouseEnter={clearCloseTimer}
+              onMouseLeave={scheduleClose}
+              style={{ position: 'fixed', top: popoverPos.top, left: popoverPos.left }}
+              className="z-[100] w-72 max-w-[calc(100vw-1rem)] sm:w-80 rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl shadow-gray-900/10"
             >
               <p className="text-xs font-semibold text-[#006162] mb-1.5 inline-flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">lightbulb</span>
@@ -225,15 +261,17 @@ export default function AIAssistedField({
               </div>
 
               <span
-                className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
+                style={{ left: popoverPos.arrowLeft }}
+                className="absolute -top-1.5 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
                 aria-hidden
               />
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
         
         {activeSuggestions && activeSuggestions.length > 0 && (
-          <span className="ml-1 inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1">
+          <span className="basis-full inline-flex flex-wrap items-center text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 gap-x-2 gap-y-1 max-w-full">
             ✨
             {activeSuggestions.map((sug, i) => {
               if (sug === "CARGANDO") {
@@ -263,7 +301,7 @@ export default function AIAssistedField({
 
               return (
                 <span key={i} className="inline-flex items-center">
-                  <span className="truncate max-w-[300px]" title={displayValue}>{displayValue}</span>
+                  <span className="truncate max-w-[min(300px,70vw)]" title={displayValue}>{displayValue}</span>
                   <button
                     type="button"
                     onClick={(e) => {

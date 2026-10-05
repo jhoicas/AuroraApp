@@ -655,7 +655,7 @@ export default function FocalizacionTab({ project }: { project: Project }) {
               <button onClick={() => setModalPobOpen(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <div className="p-6 overflow-y-auto space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Política Pública</label>
                   <select value={catId} onChange={(e) => { setCatId(e.target.value); setSubcatId(''); }} className="w-full p-2 border rounded-lg outline-none focus:border-[#2980b9] bg-white">

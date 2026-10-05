@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Home, Check, Lock, Menu } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Home, Check, Lock, Menu, Save } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectStore } from '../../../store/projectStore';
 import CreateProjectModal from '../CreateProjectModal';
@@ -311,6 +311,55 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
   }
 }
 
+/** Barra de guardado por tab: persiste, marca completitud y avanza a la siguiente sección. */
+function MgaTabSaveBar({
+  projectId,
+  activeTab,
+  onChangeSubTab,
+}: {
+  projectId: string;
+  activeTab: MgaLayoutTabId;
+  onChangeSubTab: (tab: MgaLayoutTabId) => void;
+}) {
+  const saveAndCompleteSection = useProjectMgaStore((s) => s.saveAndCompleteSection);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const idx = ALL_MGA_SECTIONS.indexOf(activeTab);
+  const next = idx >= 0 ? ALL_MGA_SECTIONS[idx + 1] : undefined;
+
+  useEffect(() => setError(null), [activeTab]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      await saveAndCompleteSection(projectId, activeTab);
+      if (next) onChangeSubTab(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        {error && <p role="alert" className="text-sm text-red-600 sm:mr-auto">{error}</p>}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#006162] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#004f50] disabled:opacity-60"
+        >
+          <Save className="h-4 w-4" aria-hidden />
+          {isSaving ? 'Guardando...' : next ? 'Guardar y Continuar' : 'Guardar'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MGALayout({
   project,
   activeTab,
@@ -587,6 +636,13 @@ export default function MGALayout({
               </div>
             </div>
           </div>
+          {formulation.estadoProyecto !== 'PRESENTADO' && sectionStatuses[activeTab] !== 'LOCKED' && (
+            <MgaTabSaveBar
+              projectId={project.id}
+              activeTab={activeTab}
+              onChangeSubTab={onChangeSubTab}
+            />
+          )}
           {footerSlot && (
             <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-4 sm:px-6">
               <div className="mx-auto w-full max-w-6xl">{footerSlot}</div>

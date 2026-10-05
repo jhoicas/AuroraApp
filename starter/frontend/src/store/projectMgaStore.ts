@@ -532,6 +532,11 @@ type ProjectMgaState = {
   saveAlternativas: (projectId: string, data: IdentificacionData) => Promise<void>;
   savePreparacion: (projectId: string, data: PreparacionData) => Promise<void>;
   saveNecesidades: (projectId: string, data: Record<string, any>) => Promise<void>;
+  /**
+   * Persiste la formulación completa en la API y, tras respuesta exitosa (2xx),
+   * marca la sección como completada para habilitar la siguiente.
+   */
+  saveAndCompleteSection: (projectId: string, sectionId: string) => Promise<void>;
   saveAnalisisTecnico: (projectId: string, alternativeId: string, data: { resumen: string }) => Promise<void>;
   saveLocalizacionPreparacion: (projectId: string, alternativeId: string, data: LocalizacionPreparacionData) => Promise<void>;
   saveLocalizacion: (projectId: string, data: Record<string, any>) => Promise<void>;
@@ -818,6 +823,32 @@ export const useProjectMgaStore = create<ProjectMgaState>((set, get) => ({
       });
     } catch (err) {
       set({ isLoading: false, error: 'Error guardando preparacion', isSaving: false });
+      throw err;
+    }
+  },
+
+  saveAndCompleteSection: async (projectId, sectionId) => {
+    set({ isSaving: true, error: null });
+    try {
+      // Descarta el guardado diferido pendiente: este envío lleva el estado completo.
+      debouncedPatchProject.cancel();
+      const formulation = get().byProjectId[projectId] ?? EMPTY_FORMULATION;
+      const completedSections = { ...formulation.completedSections, [sectionId]: true };
+      await useProjectStore.getState().patchProject(projectId, {
+        mga_formulation_data: { ...formulation, completedSections },
+      } as Partial<Project>);
+      set((state) => ({
+        byProjectId: {
+          ...state.byProjectId,
+          [projectId]: { ...(state.byProjectId[projectId] ?? formulation), completedSections },
+        },
+        isSaving: false,
+      }));
+    } catch (err) {
+      set({
+        isSaving: false,
+        error: err instanceof Error ? err.message : 'No se pudo guardar la sección.',
+      });
       throw err;
     }
   },

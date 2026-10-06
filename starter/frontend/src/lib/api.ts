@@ -42,6 +42,12 @@ type UnauthorizedHandler = () => void;
 let onUnauthorized: UnauthorizedHandler | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
+let onMaintenance: (() => void) | null = null;
+
+export const setMaintenanceHandler = (handler: () => void): void => {
+  onMaintenance = handler;
+};
+
 export const setUnauthorizedHandler = (handler: UnauthorizedHandler): void => {
   onUnauthorized = handler;
 };
@@ -86,6 +92,13 @@ api.interceptors.response.use(
 
       clearStoredToken();
       onUnauthorized?.();
+    }
+
+    if (
+      error.response?.status === 503 &&
+      (error.response.data as { code?: string } | undefined)?.code === 'MAINTENANCE_MODE'
+    ) {
+      onMaintenance?.();
     }
 
     if (error.response?.status === 403) {

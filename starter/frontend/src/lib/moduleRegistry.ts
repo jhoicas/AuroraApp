@@ -34,6 +34,7 @@ const lz = {
   tenants: lazy(() => import('../pages/admin/TenantsPage')),
   adminModules: lazy(() => import('../pages/admin/ModulesPage')),
   usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
+  adminSettings: lazy(() => import('../pages/admin/AdminSettingsPage')),
   roleTemplates: lazy(() => import('../pages/admin/RoleTemplatesPage')),
   adminProjects: lazy(() => import('../pages/admin/AdminProjectsPage')),
   adminProjectDetail: lazy(() => import('../pages/admin/AdminProjectDetailPage')),
@@ -149,7 +150,7 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.settings': {
     icon: 'settings',
     routes: [
-      { path: 'settings', Component: lz.comingSoon },
+      { path: 'settings', Component: lz.adminSettings },
       { path: 'security', Component: lz.comingSoon },
       { path: 'reports', Component: lz.comingSoon },
     ],

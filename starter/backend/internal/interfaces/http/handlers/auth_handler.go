@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/mail"
 	"strings"
@@ -21,6 +22,28 @@ import (
 type AuthHandler struct {
 	db        *gorm.DB
 	jwtSecret string
+	policy    SessionPolicy
+}
+
+// SessionPolicy entrega la vida útil de los tokens según la configuración global.
+type SessionPolicy interface {
+	// TokenTTLs devuelve (access, refresh). ok=false → usar los valores por defecto.
+	TokenTTLs(ctx context.Context) (access, refresh time.Duration, ok bool)
+}
+
+// WithSessionPolicy habilita TTL dinámico (system_settings).
+func (h *AuthHandler) WithSessionPolicy(p SessionPolicy) *AuthHandler {
+	h.policy = p
+	return h
+}
+
+func (h *AuthHandler) ttls(ctx context.Context) (time.Duration, time.Duration) {
+	if h.policy != nil {
+		if a, r, ok := h.policy.TokenTTLs(ctx); ok {
+			return a, r
+		}
+	}
+	return AccessTokenTTL, RefreshTokenTTL
 }
 
 func NewAuthHandler(db *gorm.DB, jwtSecret string) *AuthHandler {
@@ -58,13 +81,14 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "credenciales inválidas"})
 	}
 
+	accessTTL, refreshTTL := h.ttls(c.Context())
 	claims := httpmw.Claims{
 		UserID:       user.ID.String(),
 		Role:         strings.ToUpper(strings.TrimSpace(user.Role.Code)),
 		TokenType:    "access",
 		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			Subject:   user.ID.String(),
 		},
@@ -83,7 +107,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	refreshClaims := claims
 	refreshClaims.TokenType = "refresh"
 	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(RefreshTokenTTL)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(refreshTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		Subject:   user.ID.String(),
 	}
@@ -243,13 +267,14 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session revoked"})
 	}
 
+	accessTTL, refreshTTL := h.ttls(c.Context())
 	accessClaims := httpmw.Claims{
 		UserID:       user.ID.String(),
 		Role:         strings.ToUpper(strings.TrimSpace(user.Role.Code)),
 		TokenType:    "access",
 		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			Subject:   user.ID.String(),
 		},
@@ -268,7 +293,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	refreshClaims := accessClaims
 	refreshClaims.TokenType = "refresh"
 	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(RefreshTokenTTL)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(refreshTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		Subject:   user.ID.String(),
 	}

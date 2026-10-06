@@ -6,6 +6,8 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import FloatingAssistant from '../components/AuroraAsistente/FloatingAssistant';
 import NavFromModules from '../components/NavFromModules';
 import { useAccessStore } from '../store/accessStore';
+import GlobalBanner from '../components/system/GlobalBanner';
+import SystemStatusGate from '../components/system/SystemStatusGate';
 import { titleForPath } from '../lib/navModules';
 
 export default function TenantLayout() {
@@ -28,7 +30,10 @@ export default function TenantLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 print:block print:h-auto print:bg-white">
+    <SystemStatusGate onLogout={() => { logout(); navigate('/login'); }}>
+    <div className="flex h-screen flex-col bg-gray-50 print:block print:h-auto print:bg-white">
+      <GlobalBanner />
+      <div className="flex flex-1 min-h-0 print:block">
       {isSidebarOpen && (
         <div
           data-testid="sidebar-backdrop"
@@ -106,6 +111,8 @@ export default function TenantLayout() {
           <FloatingAssistant />
         </div>
       )}
+      </div>
     </div>
+    </SystemStatusGate>
   );
 }

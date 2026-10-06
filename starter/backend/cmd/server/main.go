@@ -5,6 +5,7 @@ import (
 
 	"aurora-backend/internal/application/access"
 	"aurora-backend/internal/application/accessadmin"
+	"aurora-backend/internal/application/systemsettings"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -41,6 +42,13 @@ func main() {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
+	// Configuración global + modo mantenimiento (antes de cualquier ruta de negocio).
+	settingsSvc := systemsettings.NewService(db)
+	app.Use(httpmw.MaintenanceGuard(cfg.JWTSecret, func(c *fiber.Ctx) bool {
+		return settingsSvc.Cached(c.Context()).MaintenanceMode
+	}))
+	router.RegisterSystemSettingsRoutes(app, settingsSvc, cfg.JWTSecret)
+
 	// PBAC (ADR-0001): servicio de acceso con caché de 30 s y guard por ruta.
 	// PBAC_ENFORCE: enforce (por defecto) | log (dry-run) | off.
 	accessSvc := access.NewService(db, access.DefaultCacheTTL)
@@ -55,7 +63,7 @@ func main() {
 	router.RegisterTenantAdminRoutes(app, db, cfg.JWTSecret, accessAdminSvc, guard)
 
 	// Auth (público) + /auth/me/access
-	router.RegisterAuthRoutes(app, db, cfg.JWTSecret, accessSvc)
+	router.RegisterAuthRoutes(app, db, cfg.JWTSecret, accessSvc, settingsSvc)
 
 	// Paso 3 — Tenants (SUPER_ADMIN)
 	router.RegisterAdminTenantRoutes(app, db, cfg.JWTSecret)

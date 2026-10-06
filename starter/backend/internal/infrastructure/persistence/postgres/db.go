@@ -73,6 +73,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.AiKnowledgeLink{}); err != nil {
 		log.Printf("automigrate AiKnowledgeLink: %v", err)
 	}
+	if err := db.AutoMigrate(&models.SystemSetting{}); err != nil {
+		log.Printf("automigrate SystemSetting: %v", err)
+	}
 	if err := db.AutoMigrate(&models.AiUsageLog{}); err != nil {
 		log.Printf("automigrate AiUsageLog: %v", err)
 	}

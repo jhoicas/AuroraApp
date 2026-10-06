@@ -8,8 +8,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterAuthRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, access handlers.AccessResolver) {
+func RegisterAuthRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, access handlers.AccessResolver, policy ...handlers.SessionPolicy) {
 	h := handlers.NewAuthHandler(db, jwtSecret)
+	if len(policy) > 0 {
+		h.WithSessionPolicy(policy[0])
+	}
 	// Endpoints públicos: limitados por IP para frenar fuerza bruta y abuso de registro.
 	app.Post("/api/v1/auth/login", httpmw.RateLimitPerUser(30), h.Login)
 	app.Post("/api/v1/auth/register", httpmw.RateLimitPerUser(10), h.Register)

@@ -6,6 +6,8 @@ import FloatingAssistant from '../components/AuroraAsistente/FloatingAssistant';
 import ErrorBoundary from '../components/ErrorBoundary';
 import NavFromModules from '../components/NavFromModules';
 import { useAccessStore } from '../store/accessStore';
+import GlobalBanner from '../components/system/GlobalBanner';
+import SystemStatusGate from '../components/system/SystemStatusGate';
 import { titleForPath } from '../lib/navModules';
 
 export default function SuperAdminLayout() {
@@ -16,7 +18,10 @@ export default function SuperAdminLayout() {
   const headerTitle = titleForPath(platformNav, pathname) ?? 'Dashboard';
 
   return (
-    <div className="flex h-screen bg-[#f9f9ff] font-body">
+    <SystemStatusGate onLogout={() => { logout(); navigate('/login'); }}>
+    <div className="flex h-screen flex-col bg-[#f9f9ff] font-body">
+      <GlobalBanner />
+      <div className="flex flex-1 min-h-0">
       <aside className="w-[280px] bg-white border-r border-[#bec9c8] flex flex-col p-6 shrink-0">
         <div className="mb-10">
           <LogoAurora className="w-8 h-8 text-[#006162]" />
@@ -74,6 +79,8 @@ export default function SuperAdminLayout() {
         </div>
       </main>
       <FloatingAssistant />
+      </div>
     </div>
+    </SystemStatusGate>
   );
 }

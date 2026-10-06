@@ -7,6 +7,12 @@ func AllModels() []any {
 		&Role{},
 		&Tenant{},
 		&User{},
+		// PBAC (ADR-0001): módulos antes de las tablas que los referencian.
+		&Module{},
+		&TenantModule{},
+		&RoleModuleDefault{},
+		&UserModulePermission{},
+		&AccessAuditLog{},
 		&Sector{},
 		// Maestros planos antes de las vistas ligeras (Program / Product comparten
 		// tabla con ellos): evita que la vista cree la tabla con columnas truncadas.

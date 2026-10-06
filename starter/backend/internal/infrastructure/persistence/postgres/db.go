@@ -206,6 +206,11 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		log.Printf("ensure measurement units seed: %v", err)
 	}
 
+	// PBAC (ADR-0001): sincroniza el manifiesto de módulos, defaults de rol y backfill.
+	if err := EnsureModulesSeed(db); err != nil {
+		log.Printf("ensure modules seed: %v", err)
+	}
+
 	log.Println("PostgreSQL connected and migrated via DATABASE_URL")
 	return db, nil
 }

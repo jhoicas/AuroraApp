@@ -21,6 +21,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 1: capa de datos y seeding de módulos
+
+- **Objetivo:** Base de datos y seed para PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)); sin enforcement todavía.
+- **Backend:** Modelos `Module`, `TenantModule`, `RoleModuleDefault`, `UserModulePermission`, `AccessAuditLog` ([module.go](starter/backend/internal/domain/models/module.go)) registrados en `AllModels()`; migración aditiva (tablas nuevas, sin tocar datos). Manifiesto declarativo en `internal/domain/modules` (`SeedVersion`, jerarquía MODULE→SECTION, rutas, defaults por rol, `Validate`). `EnsureModulesSeed` ([modules_seed.go](starter/backend/internal/infrastructure/persistence/postgres/modules_seed.go)) se ejecuta en `Connect`; un fallo solo se registra en log.
+- **Backfill:** todos los módulos TENANT quedan habilitados para los tenants existentes; usuarios no admin reciben los defaults de su rol (todos conservan `view`). Admins no reciben filas por usuario.
+- **Validación:** `go build ./...`, `go test ./...` (tests del manifiesto: sin duplicados, huérfanos ni ciclos; tests del seed sobre SQLite con DDL mínimo), `tsc -b`.
+- **Pendientes/riesgos:** el DDL de Postgres lo genera AutoMigrate y no se probó contra una instancia real en esta sesión; la matriz de defaults (qué rol edita qué) es una propuesta a revisar; ninguna ruta aplica aún `RequirePermission` (Fase 2).
+
 ### 2026-10-06 - Claude - PBAC Fase 0: endurecimiento previo y ADR
 
 - **Objetivo:** Limpiar rutas legacy y asegurar endpoints antes de construir PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).

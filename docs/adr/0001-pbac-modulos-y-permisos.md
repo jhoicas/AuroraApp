@@ -69,10 +69,23 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - [x] Fase 0: PND importa por `/api/v1/catalog/pnd/import` (autenticado).
 - [x] Fase 0: access token a 1 h (`AccessTokenTTL`), rate limit en login/register/refresh, fail-fast de `JWT_SECRET` en producción.
 - [x] Validación Fase 0: `go build ./...`, `go test ./...`, `tsc -b`, `vitest`.
-- [ ] Fase 1: migraciones `tenant_modules`, permisos por acción y asignación a usuarios.
+- [x] Fase 1: modelos GORM `Module`, `TenantModule`, `RoleModuleDefault`, `UserModulePermission`, `AccessAuditLog` (en `AllModels()`, migración aditiva por AutoMigrate), manifiesto declarativo con `SeedVersion` (`internal/domain/modules`) y `EnsureModulesSeed` en el arranque, con backfill.
 - [ ] Fase 1: middleware `RequirePermission(modulo, accion)` y pruebas de aislamiento entre tenants.
 - [ ] Fase 2: gestión de Tenant Admins con invariante del último administrador.
 - [ ] Fase 3: UI Super Admin (módulos por alcaldía) y UI Tenant Admin (permisos).
+
+## Esquema y seeding (Fase 1)
+
+- `modules(code único, kind MODULE|SECTION, scope TENANT|PLATFORM, parent_id, route, sort_order, is_active, seed_version)`.
+  La MGA es un MODULE con 5 SECTION (D6). Los módulos PLATFORM son solo de SUPER_ADMIN y no se asignan a tenants.
+- `tenant_modules(tenant_id, module_id único, is_enabled)`, `role_module_defaults(role_id, module_id único, can_view/create/edit/delete)`,
+  `user_module_permissions(user_id, module_id único, can_*, granted_by)`, `access_audit_logs` (sin FKs duras).
+- `EnsureModulesSeed` es idempotente y no destructivo: solo re-sincroniza módulos con `seed_version` menor; retira
+  módulos desactivándolos; habilita los módulos TENANT para tenants sin fila (nunca reactiva uno deshabilitado);
+  y copia los defaults de rol a usuarios no admin sin fila, solo para módulos nuevos/modificados (no pisa permisos
+  ya configurados). Defaults: todo rol no admin conserva `view` en todos los módulos (salvo `users`, solo TENANT_ADMIN).
+  Los admins se resuelven por rol y no reciben filas por usuario. Una fila existente, aunque todo `false`, cuenta como configurada.
+- Para agregar un módulo: editar `Manifest` y subir `SeedVersion`.
 
 ## Referencias
 

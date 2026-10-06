@@ -21,6 +21,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 6: UI de administración y modo enforce
+
+- **Objetivo:** Pantallas de administración de módulos, usuarios y permisos; `PBAC_ENFORCE` pasa a `enforce` por defecto (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).
+- **Frontend:** `pages/admin/ModulesPage.tsx` (`/admin/modules`: alta, edición, reordenar, activar; sin borrado en `IsSystem`), `pages/admin/UsersAdminPage.tsx` (reutilizada en `/admin/users` con selector de tenant solo para SUPER_ADMIN y en `/tenant/users`), modales de usuario/contraseña/estado, `components/admin/PermissionMatrix.tsx` + `lib/permissionMatrix.ts` (matriz módulo × Ver/Crear/Editar/Eliminar con cascada padre→hijos y "Aplicar plantilla de rol"), `lib/accessAdminApi.ts`. `App.tsx` ya no usa `allowedRoles`: cada ruta exige su módulo + `view`.
+- **Backend:** `PBAC_ENFORCE` por defecto (y ante valor inválido) = `enforce`; `ParseEnforceMode` igual. Se quitó `RequireRole` redundante de `GET /ai/knowledge/graph` (queda `guard.Require`). Nuevos endpoints: `PATCH /admin/users/:id`, `GET /admin/role-templates`, `GET /tenant/role-templates`. Manifiesto `SeedVersion` 4: módulos `admin.modules` y `admin.users`.
+- **Validación:** `tsc -b`, `go test ./internal/...` y Vitest (tests nuevos de matriz, módulos y UsersAdminPage). En Vitest siguen fallando 11 tests ya fallidos antes del cambio (CadenaValorTab, LocalizacionTab, auroraCopilotStore) y los specs Playwright no corren bajo Vitest. No se abrió la app en navegador.
+- **Riesgos/pendientes:** los grupos `/admin/*` conservan `RequireRole(SUPER_ADMIN)` a propósito (APIs privilegiadas, no negocio). Frontend y backend deben desplegarse juntos (SeedVersion 4).
+
 ### 2026-10-06 - Claude - PBAC Fase 5: frontend núcleo (store, registro, rutas y menú dinámicos)
 
 - **Objetivo:** El menú y las rutas salen del árbol de módulos del servidor, con diseño visual idéntico (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).

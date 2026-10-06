@@ -105,16 +105,23 @@ type TenantUpdateUserInput struct {
 // TenantUpdateUser edita nombre, email y rol de un usuario del tenant. Un cambio de rol
 // revoca sus sesiones y nunca puede llegar a SUPER_ADMIN ni dejar la entidad sin Tenant Admin.
 func (s *Service) TenantUpdateUser(ctx context.Context, p ActorPolicy, id uuid.UUID, in TenantUpdateUserInput) (*UserView, error) {
-	if in.RoleCode != nil {
-		if err := p.CheckRoleAssignable(*in.RoleCode); err != nil {
-			return nil, err
-		}
+	return s.updateUser(ctx, p.Actor(), p.scope(), id, in)
+}
+
+// UpdateUser es la variante de SUPER_ADMIN: sin restricción de tenant (scope nil).
+func (s *Service) UpdateUser(ctx context.Context, actor Actor, id uuid.UUID, in TenantUpdateUserInput) (*UserView, error) {
+	return s.updateUser(ctx, actor, nil, id, in)
+}
+
+func (s *Service) updateUser(ctx context.Context, actor Actor, scope *uuid.UUID, id uuid.UUID, in TenantUpdateUserInput) (*UserView, error) {
+	if in.RoleCode != nil && strings.EqualFold(strings.TrimSpace(*in.RoleCode), constants.RoleSuperAdmin) {
+		return nil, forbiddenf("no puedes asignar el rol SUPER_ADMIN")
 	}
 
 	var view *UserView
 	revokeUser := false
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		u, err := s.loadUserIn(ctx, tx, id, p.scope())
+		u, err := s.loadUserIn(ctx, tx, id, scope)
 		if err != nil {
 			return err
 		}
@@ -151,7 +158,7 @@ func (s *Service) TenantUpdateUser(ctx context.Context, p ActorPolicy, id uuid.U
 		if in.RoleCode != nil {
 			code := strings.ToUpper(strings.TrimSpace(*in.RoleCode))
 			if code != u.RoleCode {
-				if u.ID == p.UserID {
+				if u.ID == actor.UserID {
 					return validationf("no puedes cambiar tu propio rol")
 				}
 				var role models.Role
@@ -182,16 +189,16 @@ func (s *Service) TenantUpdateUser(ctx context.Context, p ActorPolicy, id uuid.U
 			}
 			// Pasar a un rol no admin: completar permisos faltantes con los defaults del rol.
 			if _, roleChanged := changes["role"]; roleChanged && newRole != constants.RoleTenantAdmin {
-				if err := s.fillMissingRoleDefaults(tx, u.ID, newRole, p.UserID, now); err != nil {
+				if err := s.fillMissingRoleDefaults(tx, u.ID, newRole, actor.UserID, now); err != nil {
 					return err
 				}
 			}
-			if err := s.audit(tx, p.Actor(), &p.TenantID, &u.ID, nil, models.AuditUserUpdated, map[string]any{"changes": changes}); err != nil {
+			if err := s.audit(tx, actor, u.TenantID, &u.ID, nil, models.AuditUserUpdated, map[string]any{"changes": changes}); err != nil {
 				return err
 			}
 		}
 
-		updated, err := s.loadUserIn(ctx, tx, id, p.scope())
+		updated, err := s.loadUserIn(ctx, tx, id, scope)
 		if err != nil {
 			return err
 		}
@@ -351,4 +358,52 @@ func (s *Service) assignableSet(ctx context.Context, tx *gorm.DB, tenantID uuid.
 		out = append(out, m)
 	}
 	return out, codes, nil
+}
+
+// RoleTemplate son los permisos por defecto de un rol, por módulo.
+type RoleTemplate struct {
+	Role    string                    `json:"role"`
+	Modules map[string]TemplateAction `json:"modules"`
+}
+
+// TemplateAction son las acciones de un módulo en una plantilla de rol.
+type TemplateAction struct {
+	CanView   bool `json:"can_view"`
+	CanCreate bool `json:"can_create"`
+	CanEdit   bool `json:"can_edit"`
+	CanDelete bool `json:"can_delete"`
+}
+
+// RoleTemplates devuelve los defaults (role_module_defaults) de los roles no administradores.
+// Los administradores se resuelven por rol y no tienen plantilla editable.
+func (s *Service) RoleTemplates(ctx context.Context) ([]RoleTemplate, error) {
+	var rows []struct {
+		RoleCode   string
+		ModuleCode string
+		models.ActionFlags
+	}
+	err := s.db.WithContext(ctx).Table("role_module_defaults AS d").
+		Select("r.code AS role_code, m.code AS module_code, d.can_view, d.can_create, d.can_edit, d.can_delete").
+		Joins("JOIN roles r ON r.id = d.role_id").
+		Joins("JOIN modules m ON m.id = d.module_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	byRole := map[string]*RoleTemplate{}
+	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleAnalista, constants.RoleViewer} {
+		byRole[code] = &RoleTemplate{Role: code, Modules: map[string]TemplateAction{}}
+	}
+	for _, r := range rows {
+		t, ok := byRole[r.RoleCode]
+		if !ok {
+			continue
+		}
+		t.Modules[r.ModuleCode] = TemplateAction{CanView: r.CanView, CanCreate: r.CanCreate, CanEdit: r.CanEdit, CanDelete: r.CanDelete}
+	}
+	out := make([]RoleTemplate, 0, len(byRole))
+	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleAnalista, constants.RoleViewer} {
+		out = append(out, *byRole[code])
+	}
+	return out, nil
 }

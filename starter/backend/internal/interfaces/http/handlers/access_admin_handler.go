@@ -306,3 +306,31 @@ func (h *AccessAdminHandler) SetUserStatus(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+func (h *AccessAdminHandler) UpdateUser(c *fiber.Ctx) error {
+	actor, err := actorFrom(c)
+	if err != nil {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	id, ok := paramUUID(c, "id")
+	if !ok {
+		return nil
+	}
+	var in accessadmin.TenantUpdateUserInput
+	if !bind(c, &in) {
+		return nil
+	}
+	u, err := h.svc.UpdateUser(c.UserContext(), actor, id, in)
+	if err != nil {
+		return respondAccessAdminError(c, err)
+	}
+	return c.JSON(u)
+}
+
+func (h *AccessAdminHandler) RoleTemplates(c *fiber.Ctx) error {
+	t, err := h.svc.RoleTemplates(c.UserContext())
+	if err != nil {
+		return respondAccessAdminError(c, err)
+	}
+	return c.JSON(fiber.Map{"data": t})
+}

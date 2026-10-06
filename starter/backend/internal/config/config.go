@@ -23,7 +23,7 @@ type Config struct {
 	EmbeddingProvider      string // huggingface | ollama | mock
 	EmbeddingModel         string
 	OllamaBaseURL          string
-	// PBACEnforce: off | log (por defecto, dry-run: solo registra) | enforce (403 real).
+	// PBACEnforce: enforce (por defecto, 403 real) | log (dry-run: solo registra) | off.
 	PBACEnforce string
 }
 
@@ -108,10 +108,10 @@ func LoadConfig() *Config {
 	switch pbacEnforce {
 	case "off", "log", "enforce":
 	case "":
-		pbacEnforce = "log"
+		pbacEnforce = "enforce"
 	default:
-		log.Printf("WARNING: PBAC_ENFORCE=%q inválido (usa off|log|enforce); se usa 'log'", pbacEnforce)
-		pbacEnforce = "log"
+		log.Printf("WARNING: PBAC_ENFORCE=%q inválido (usa off|log|enforce); se usa 'enforce'", pbacEnforce)
+		pbacEnforce = "enforce"
 	}
 
 	return &Config{

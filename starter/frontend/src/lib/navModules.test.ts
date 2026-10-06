@@ -3,9 +3,9 @@ import { buildNavItems, firstNavPath, isGroupActive, titleForPath } from './navM
 import { mod, platformModules, tenantModules } from '../test/accessFixtures';
 
 describe('navModules', () => {
-  it('buildNavItems: solo módulos con UI y enlace (sin mga ni users) y grupos con secciones', () => {
+  it('buildNavItems: solo módulos con UI y enlace (sin mga) y grupos con secciones', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(buildNavItems(tenantModules()).map((i) => i.node.code)).toEqual(['projects', 'catalog', 'ai', 'reports']);
+    expect(buildNavItems(tenantModules()).map((i) => i.node.code)).toEqual(['projects', 'catalog', 'ai', 'reports', 'users']);
 
     const items = buildNavItems(platformModules());
     expect(items.map((i) => i.node.code)).toEqual(['admin.tenants', 'admin.catalogs', 'admin.mga_catalogs', 'admin.ai', 'admin.settings']);

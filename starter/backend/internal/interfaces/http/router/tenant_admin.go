@@ -19,6 +19,7 @@ import (
 //	PATCH             /api/v1/tenant/users/:id/status
 //	GET/PUT           /api/v1/tenant/users/:id/permissions
 //	GET               /api/v1/tenant/modules/assignable
+//	GET               /api/v1/tenant/role-templates
 //
 // Cadena por ruta: RequireAuth → RequireTenant → RequireRole(TENANT_ADMIN) → verificación del
 // actor en BD → TenantTargetGuard (rutas con :id; otro tenant ⇒ 404) → permiso PBAC del módulo
@@ -45,4 +46,7 @@ func RegisterTenantAdminRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, sv
 
 	mods := app.Group("/api/v1/tenant/modules", chain...)
 	mods.Get("/assignable", guard.Require(modules.CodeUsers, modules.ActionView), h.AssignableModules)
+
+	roles := app.Group("/api/v1/tenant/role-templates", chain...)
+	roles.Get("/", guard.Require(modules.CodeUsers, modules.ActionView), h.RoleTemplates)
 }

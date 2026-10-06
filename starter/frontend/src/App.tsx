@@ -40,6 +40,7 @@ function fallbackRoute(home: string | null) {
 }
 
 function AppRoutes() {
+  // Control 100 % granular (PBAC): sin allowedRoles; cada ruta exige su módulo + `view`.
   // Las rutas de /admin y /tenant se inyectan desde el árbol de módulos del servidor.
   const nav = useAccessStore((s) => s.nav);
   const adminRoutes = buildModuleRoutes(nav.PLATFORM);
@@ -53,7 +54,7 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/" element={<LandingPage />} />
 
-      <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+      <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<SuperAdminLayout />}>
           <Route index element={adminHome ? <Navigate to={adminHome} replace /> : null} />
           {adminRoutes}
@@ -61,13 +62,7 @@ function AppRoutes() {
         </Route>
       </Route>
 
-      <Route
-        element={
-          <ProtectedRoute
-            allowedRoles={['TENANT_ADMIN', 'FORMULADOR', 'EVALUADOR', 'ANALISTA', 'VIEWER']}
-          />
-        }
-      >
+      <Route element={<ProtectedRoute />}>
         <Route path="/tenant" element={<TenantLayout />}>
           <Route index element={tenantHome ? <Navigate to={tenantHome} replace /> : null} />
           {tenantRoutes}

@@ -173,3 +173,11 @@ func (h *TenantAdminHandler) AssignableModules(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"data": mods})
 }
+
+func (h *TenantAdminHandler) RoleTemplates(c *fiber.Ctx) error {
+	t, err := h.svc.RoleTemplates(c.UserContext())
+	if err != nil {
+		return respondAccessAdminError(c, err)
+	}
+	return c.JSON(fiber.Map{"data": t})
+}

@@ -15,7 +15,7 @@ import (
 
 // SeedVersion identifica la versión del manifiesto. Súbela cada vez que cambies
 // Manifest: el seed solo re-sincroniza módulos con seed_version menor.
-const SeedVersion = 3
+const SeedVersion = 4
 
 // Kind de un nodo del manifiesto.
 const (
@@ -120,6 +120,8 @@ const (
 	CodeAdminAI       = "admin.ai"
 
 	CodeAdminMgaCatalogs = "admin.mga_catalogs"
+	CodeAdminModules     = "admin.modules"
+	CodeAdminUsers       = "admin.users"
 	CodeAdminSettings    = "admin.settings"
 )
 
@@ -187,6 +189,8 @@ var Manifest = []Def{
 	{Code: CodeAdminMgaCatalogs + ".actors", Name: "Actores MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-actors", Order: 126},
 	{Code: CodeAdminMgaCatalogs + ".entities", Name: "Entidades MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-entities", Order: 127},
 	{Code: CodeAdminMgaCatalogs + ".positions", Name: "Posiciones MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-positions", Order: 128},
+	{Code: CodeAdminModules, Name: "Módulos", Description: "Alta, orden y estado de los módulos de la plataforma", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/modules", Order: 130},
+	{Code: CodeAdminUsers, Name: "Usuarios", Description: "Usuarios y permisos de todas las entidades", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/users", Order: 135},
 	{Code: CodeAdminAI, Name: "Gestión IA Aurora", Description: "Gestión de la base de conocimiento de IA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/ai", Order: 140},
 	{Code: CodeAdminSettings, Name: "Settings", Description: "Configuración de la plataforma", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/settings", Order: 150},
 }

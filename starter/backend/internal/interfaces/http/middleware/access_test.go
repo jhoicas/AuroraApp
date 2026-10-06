@@ -72,7 +72,7 @@ func do(t *testing.T, app *fiber.App) (int, map[string]any) {
 }
 
 func TestParseEnforceMode(t *testing.T) {
-	cases := map[string]EnforceMode{"": EnforceLog, "log": EnforceLog, "LOG": EnforceLog, "enforce": EnforceOn, " Enforce ": EnforceOn, "off": EnforceOff, "basura": EnforceLog}
+	cases := map[string]EnforceMode{"": EnforceOn, "log": EnforceLog, "LOG": EnforceLog, "enforce": EnforceOn, " Enforce ": EnforceOn, "off": EnforceOff, "basura": EnforceOn}
 	for in, want := range cases {
 		require.Equal(t, want, ParseEnforceMode(in), "entrada %q", in)
 	}

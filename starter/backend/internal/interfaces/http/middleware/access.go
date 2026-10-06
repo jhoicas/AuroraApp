@@ -23,21 +23,21 @@ type EnforceMode string
 const (
 	// EnforceOff desactiva la verificación (no consulta nada).
 	EnforceOff EnforceMode = "off"
-	// EnforceLog (por defecto, dry-run) evalúa y registra lo que se habría denegado, sin bloquear.
+	// EnforceLog (dry-run) evalúa y registra lo que se habría denegado, sin bloquear.
 	EnforceLog EnforceMode = "log"
-	// EnforceOn bloquea con 403.
+	// EnforceOn (por defecto) bloquea con 403.
 	EnforceOn EnforceMode = "enforce"
 )
 
-// ParseEnforceMode normaliza PBAC_ENFORCE; cualquier valor desconocido es EnforceLog.
+// ParseEnforceMode normaliza PBAC_ENFORCE; cualquier valor desconocido (o vacío) es EnforceOn.
 func ParseEnforceMode(s string) EnforceMode {
 	switch EnforceMode(strings.ToLower(strings.TrimSpace(s))) {
 	case EnforceOff:
 		return EnforceOff
-	case EnforceOn:
-		return EnforceOn
-	default:
+	case EnforceLog:
 		return EnforceLog
+	default:
+		return EnforceOn
 	}
 }
 

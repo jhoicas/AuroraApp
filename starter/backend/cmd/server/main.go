@@ -42,7 +42,7 @@ func main() {
 	})
 
 	// PBAC (ADR-0001): servicio de acceso con caché de 30 s y guard por ruta.
-	// PBAC_ENFORCE: off | log (por defecto, dry-run) | enforce.
+	// PBAC_ENFORCE: enforce (por defecto) | log (dry-run) | off.
 	accessSvc := access.NewService(db, access.DefaultCacheTTL)
 	guard := httpmw.NewAccessGuard(accessSvc, httpmw.ParseEnforceMode(cfg.PBACEnforce))
 	log.Printf("PBAC_ENFORCE=%s", guard.Mode())

@@ -2,6 +2,7 @@ package accessadmin_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http/httptest"
@@ -441,4 +442,27 @@ func TestTenantAdmin_RoleChangeFillsMissingDefaults(t *testing.T) {
 	require.Positive(t, n)
 	status, _ = e.call(t, "PATCH", "/api/v1/tenant/users/"+id, tok, map[string]any{"role_code": "NO_EXISTE"})
 	require.Equal(t, 400, status)
+}
+
+func TestSuperAdmin_UpdateUserAndRoleTemplates(t *testing.T) {
+	e := newTenantEnv(t, httpmw.EnforceOn)
+	actor := accessadmin.Actor{UserID: uuid.New()}
+
+	name := "Nombre Nuevo"
+	role := constants.RoleEvaluador
+	v, err := e.svc.UpdateUser(context.Background(), actor, e.userB.ID, accessadmin.TenantUpdateUserInput{FullName: &name, RoleCode: &role})
+	require.NoError(t, err)
+	require.Equal(t, name, v.FullName)
+	require.Equal(t, constants.RoleEvaluador, v.Role)
+
+	sa := constants.RoleSuperAdmin
+	_, err = e.svc.UpdateUser(context.Background(), actor, e.userB.ID, accessadmin.TenantUpdateUserInput{RoleCode: &sa})
+	require.ErrorIs(t, err, accessadmin.ErrForbidden)
+
+	tpl, err := e.svc.RoleTemplates(context.Background())
+	require.NoError(t, err)
+	require.Len(t, tpl, 4)
+	require.Equal(t, constants.RoleFormulador, tpl[0].Role)
+	require.True(t, tpl[0].Modules[modules.CodeProjects].CanDelete)
+	require.False(t, tpl[3].Modules[modules.CodeProjects].CanCreate)
 }

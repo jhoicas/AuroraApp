@@ -15,6 +15,8 @@ import (
 //	/api/v1/admin/modules                      CRUD + PUT /order
 //	/api/v1/admin/tenants/:tenantId/users      GET, POST
 //	/api/v1/admin/tenants/:tenantId/modules    GET, PUT (techo de módulos del tenant)
+//	/api/v1/admin/role-templates               GET
+//	/api/v1/admin/users/:id                    PATCH
 //	/api/v1/admin/users/:id/permissions        GET, PUT
 //	/api/v1/admin/users/:id/password           PUT
 //	/api/v1/admin/users/:id/status             PUT
@@ -37,6 +39,8 @@ func RegisterAdminAccessRoutes(app *fiber.App, jwtSecret string, svc *accessadmi
 	admin.Get("/tenants/:tenantId/modules", h.GetTenantModules)
 	admin.Put("/tenants/:tenantId/modules", h.SetTenantModules)
 
+	admin.Get("/role-templates", h.RoleTemplates)
+	admin.Patch("/users/:id", h.UpdateUser)
 	admin.Get("/users/:id/permissions", h.GetUserPermissions)
 	admin.Put("/users/:id/permissions", h.SetUserPermissions)
 	admin.Put("/users/:id/password", h.SetUserPassword)

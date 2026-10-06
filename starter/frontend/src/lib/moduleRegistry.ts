@@ -32,6 +32,8 @@ const lz = {
   aiAssistant: lazy(() => import('../pages/tenant/AiAssistantPage')),
   reports: lazy(() => import('../pages/tenant/ReportsPage')),
   tenants: lazy(() => import('../pages/admin/TenantsPage')),
+  adminModules: lazy(() => import('../pages/admin/ModulesPage')),
+  usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
   aiKnowledge: lazy(() => import('../pages/admin/AIKnowledgePage')),
   sectors: lazy(() => import('../pages/admin/SectorsCatalogPage')),
   programs: lazy(() => import('../pages/admin/ProgramsCatalogPage')),
@@ -82,7 +84,7 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   catalog: { icon: 'category', routes: [{ path: 'catalog', Component: lz.catalog }] },
   ai: { icon: 'hub', routes: [{ path: 'ai', Component: lz.aiAssistant }] },
   reports: { icon: 'insert_chart', routes: [{ path: 'reports', Component: lz.reports }] },
-  // `users` (administración de usuarios) llega con su pantalla en la Fase 6: sin registro aún.
+  users: { icon: 'manage_accounts', routes: [{ path: 'users', Component: lz.usersAdmin }] },
 
   // ── Plataforma (PLATFORM) ──
   'admin.tenants': { icon: 'settings_suggest', routes: [{ path: 'tenants', Component: lz.tenants }] },
@@ -121,6 +123,8 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.mga_catalogs.actors': { routes: [{ path: 'catalogs/mga-actors', Component: lz.mgaActors }] },
   'admin.mga_catalogs.entities': { routes: [{ path: 'catalogs/mga-entities', Component: lz.mgaEntities }] },
   'admin.mga_catalogs.positions': { routes: [{ path: 'catalogs/mga-positions', Component: lz.mgaPositions }] },
+  'admin.modules': { icon: 'widgets', routes: [{ path: 'modules', Component: lz.adminModules }] },
+  'admin.users': { icon: 'manage_accounts', routes: [{ path: 'users', Component: lz.usersAdmin }] },
   'admin.ai': { icon: 'psychology', routes: [{ path: 'ai', Component: lz.aiKnowledge }] },
   'admin.settings': {
     icon: 'settings',
@@ -128,7 +132,6 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
       { path: 'settings', Component: lz.comingSoon },
       { path: 'security', Component: lz.comingSoon },
       { path: 'reports', Component: lz.comingSoon },
-      { path: 'users', Component: lz.comingSoon },
     ],
     titlePrefixes: ['/admin/security'],
   },

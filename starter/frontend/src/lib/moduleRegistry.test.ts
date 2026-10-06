@@ -32,8 +32,8 @@ describe('moduleRegistry', () => {
     const codes = out.map((o) => o.node.code);
     expect(codes).toContain('projects');
     expect(codes).not.toContain('algo.futuro');
-    // `users` aún no tiene pantalla (Fase 6): también se omite con aviso.
-    expect(codes).not.toContain('users');
+    // `users` ya tiene pantalla (Fase 6): se conserva.
+    expect(codes).toContain('users');
     expect(warn).toHaveBeenCalled();
   });
 

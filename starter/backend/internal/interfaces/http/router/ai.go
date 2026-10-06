@@ -49,17 +49,9 @@ func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, guard *ht
 	)
 	telemetryGroup.Post("/log", th.LogTelemetry)
 
-	// Lectura del Knowledge Graph: Super Admin + roles de entidad (solo lectura).
+	// Lectura del Knowledge Graph: autenticado; el acceso lo decide PBAC (módulo ai).
 	knowledgeRead := app.Group("/api/v1/ai/knowledge",
 		httpmw.RequireAuth(cfg.JWTSecret),
-		httpmw.RequireRole(
-			constants.RoleSuperAdmin,
-			constants.RoleTenantAdmin,
-			constants.RoleFormulador,
-			constants.RoleEvaluador,
-			constants.RoleAnalista,
-			constants.RoleViewer,
-		),
 	)
 	knowledgeRead.Get("/graph", guard.Require(modules.CodeAI, modules.ActionView), kh.GetKnowledgeGraph)
 

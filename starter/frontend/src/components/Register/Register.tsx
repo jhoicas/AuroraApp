@@ -1,26 +1,69 @@
-import { type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { isAxiosError } from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { homeForUser } from '../../lib/roles';
 import { LogoAurora } from '../LogoAurora';
+import { useToast } from '../ui/Toast';
+import { EMAIL_RE, humanizeAuthError } from '../../lib/authErrors';
 
-const inputClassName =
-  'h-14 border border-slate-300 rounded-lg px-6 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/30 transition-all';
+type Field = 'entityName' | 'nit' | 'fullName' | 'email' | 'password' | 'confirmPassword';
+type Values = Record<Field, string>;
+type Errors = Partial<Record<Field, string>>;
+
+function validate(v: Values): Errors {
+  const e: Errors = {};
+  if (!v.entityName.trim()) e.entityName = 'Por favor, ingresa el nombre de la entidad.';
+  if (!v.nit.trim()) e.nit = 'Por favor, ingresa el NIT de la entidad.';
+  if (!v.fullName.trim()) e.fullName = 'Por favor, ingresa tu nombre completo.';
+  if (!v.email.trim()) e.email = 'Por favor, ingresa tu correo institucional.';
+  else if (!EMAIL_RE.test(v.email.trim())) e.email = 'Revisa tu correo: parece que le falta algo (ej. admin@entidad.gov.co).';
+  if (!v.password) e.password = 'Por favor, crea una contraseña.';
+  else if (v.password.length < 6) e.password = 'Usa al menos 6 caracteres para tu contraseña.';
+  if (!v.confirmPassword) e.confirmPassword = 'Por favor, confirma tu contraseña.';
+  else if (v.password !== v.confirmPassword) e.confirmPassword = 'Las contraseñas no coinciden. Vuelve a escribirlas.';
+  return e;
+}
+
+const inputBase =
+  'h-14 w-full border rounded-lg px-6 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all';
+const inputOk = 'border-slate-300 focus:border-teal-600 focus:ring-teal-600/30';
+const inputBad = 'border-red-400 focus:border-red-500 focus:ring-red-500/30';
 
 export default function Register() {
   const { isAuthenticated, user, isLoading, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [entityName, setEntityName] = useState('');
-  const [nit, setNit] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [values, setValues] = useState<Values>({
+    entityName: '',
+    nit: '',
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
+
+  const errors = validate(values);
+  const hasErrors = Object.keys(errors).length > 0;
+  const showError = (f: Field) => ((submitted || touched[f]) && errors[f]) || undefined;
+  const fieldProps = (f: Field) => ({
+    value: values[f],
+    onChange: (e: ChangeEvent<HTMLInputElement>) => setValues((v) => ({ ...v, [f]: e.target.value })),
+    onBlur: () => setTouched((t) => ({ ...t, [f]: true })),
+    'aria-invalid': !!showError(f),
+    'aria-describedby': showError(f) ? `${f}-error` : undefined,
+    className: `${inputBase} ${showError(f) ? inputBad : inputOk}`,
+  });
+  const fieldError = (f: Field) =>
+    showError(f) ? (
+      <p id={`${f}-error`} className="text-sm text-red-600">
+        {errors[f]}
+      </p>
+    ) : null;
 
   if (!isLoading && isAuthenticated && user) {
     const dest = homeForUser(user);
@@ -33,38 +76,23 @@ export default function Register() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
+    setSubmitted(true);
+    if (hasErrors) return;
 
     setSubmitting(true);
     try {
       const { data } = await api.post<{ message: string }>('/auth/register', {
-        entity_name: entityName.trim(),
-        nit: nit.trim(),
-        full_name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        password,
+        entity_name: values.entityName.trim(),
+        nit: values.nit.trim(),
+        full_name: values.fullName.trim(),
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
       });
 
-      window.alert(data.message || 'Institución registrada correctamente. Ya puede iniciar sesión.');
+      toast.success(data.message || 'Institución registrada correctamente. Ya puedes iniciar sesión.');
       navigate('/login', { replace: true });
     } catch (err) {
-      if (isAxiosError(err)) {
-        setError(
-          (err.response?.data as { error?: string } | undefined)?.error ??
-            'No se pudo completar el registro. Intenta de nuevo.',
-        );
-      } else {
-        setError('No se pudo conectar con el servidor. Intenta de nuevo.');
-      }
+      toast.error(humanizeAuthError(err, 'No pudimos completar el registro. Revisa los datos e intenta de nuevo.'));
     } finally {
       setSubmitting(false);
     }
@@ -136,8 +164,8 @@ export default function Register() {
               </p>
             </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form className="space-y-8" onSubmit={handleSubmit} noValidate>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-2">
                   <label htmlFor="entity_name" className="font-semibold text-lg text-slate-800">
                     Nombre de la Entidad
@@ -146,11 +174,10 @@ export default function Register() {
                     type="text"
                     id="entity_name"
                     required
-                    value={entityName}
-                    onChange={(e) => setEntityName(e.target.value)}
                     placeholder="Ej. Alcaldía de Yumbo"
-                    className={inputClassName}
+                    {...fieldProps('entityName')}
                   />
+                {fieldError('entityName')}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="nit" className="font-semibold text-lg text-slate-800">
@@ -160,17 +187,16 @@ export default function Register() {
                     type="text"
                     id="nit"
                     required
-                    value={nit}
-                    onChange={(e) => setNit(e.target.value)}
                     placeholder="900.000.000-1"
-                    className={inputClassName}
+                    {...fieldProps('nit')}
                   />
+                {fieldError('nit')}
                 </div>
               </div>
 
               <hr className="border-slate-200 my-6" />
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="flex flex-col gap-2">
                   <label htmlFor="full_name" className="font-semibold text-lg text-slate-800">
                     Nombre completo (Administrador)
@@ -179,11 +205,10 @@ export default function Register() {
                     type="text"
                     id="full_name"
                     required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="Ingrese su nombre"
-                    className={inputClassName}
+                    {...fieldProps('fullName')}
                   />
+                {fieldError('fullName')}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="register_email" className="font-semibold text-lg text-slate-800">
@@ -194,13 +219,12 @@ export default function Register() {
                     id="register_email"
                     required
                     autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@entidad.gov.co"
-                    className={inputClassName}
+                    {...fieldProps('email')}
                   />
+                {fieldError('email')}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="flex flex-col gap-2">
                     <label htmlFor="register_password" className="font-semibold text-lg text-slate-800">
                       Contraseña
@@ -210,10 +234,9 @@ export default function Register() {
                       id="register_password"
                       required
                       autoComplete="new-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={inputClassName}
+                      {...fieldProps('password')}
                     />
+                  {fieldError('password')}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label htmlFor="confirm_password" className="font-semibold text-lg text-slate-800">
@@ -224,29 +247,23 @@ export default function Register() {
                       id="confirm_password"
                       required
                       autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={inputClassName}
+                      {...fieldProps('confirmPassword')}
                     />
+                  {fieldError('confirmPassword')}
                   </div>
                 </div>
               </div>
 
-              {error && (
-                <p role="alert" className="text-sm text-red-600 font-medium">
-                  {error}
-                </p>
-              )}
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (submitted && hasErrors)}
                 className="w-full h-14 bg-teal-700 hover:bg-[#006162] active:scale-95 disabled:opacity-60 text-white font-semibold text-lg rounded-lg shadow-md transition-all duration-300 flex items-center justify-center gap-2 mt-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-600"
               >
                 {submitting ? (
                   <>
                     <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                    Cargando...
+                    Creando cuenta...
                   </>
                 ) : (
                   <>

@@ -1,9 +1,25 @@
 import { type FormEvent, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { isAxiosError } from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { homeForUser, normalizeRole, Roles } from '../../lib/roles';
 import { LogoAurora } from '../LogoAurora';
+import { useToast } from '../ui/Toast';
+import { EMAIL_RE, humanizeAuthError } from '../../lib/authErrors';
+
+type Errors = { email?: string; password?: string };
+
+function validate(email: string, password: string): Errors {
+  const errors: Errors = {};
+  if (!email.trim()) errors.email = 'Por favor, ingresa tu correo electrónico.';
+  else if (!EMAIL_RE.test(email.trim())) errors.email = 'Revisa tu correo: parece que le falta algo (ej. nombre@entidad.gov).';
+  if (!password) errors.password = 'Por favor, ingresa tu contraseña.';
+  return errors;
+}
+
+const inputBase =
+  'w-full h-14 pl-14 border rounded-lg bg-white text-base text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all';
+const inputOk = 'border-slate-300 focus:border-teal-600';
+const inputBad = 'border-red-400 focus:border-red-500';
 
 export default function Login() {
   const { login, isAuthenticated, user, isLoading, logout } = useAuth();
@@ -13,7 +29,9 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+  const [submitted, setSubmitted] = useState(false);
+  const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
 
   const redirectAfterAuth = (authUser: { role: string; tenant_id: string | null }) => {
@@ -44,22 +62,22 @@ export default function Login() {
     return <Navigate to={dest} replace />;
   }
 
+  const errors = validate(email, password);
+  const show = (f: keyof Errors) => (submitted || touched[f]) && errors[f];
+  const hasErrors = Object.keys(errors).length > 0;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSubmitted(true);
+    if (hasErrors) return;
     setSubmitting(true);
     try {
       const loggedUser = await login(email, password);
       redirectAfterAuth(loggedUser);
     } catch (err) {
-      if (isAxiosError(err)) {
-        setError(
-          (err.response?.data as { error?: string } | undefined)?.error ??
-            'Credenciales inválidas. Verifica tu correo y contraseña.',
-        );
-      } else {
-        setError('No se pudo conectar con el servidor. Intenta de nuevo.');
-      }
+      toast.error(
+        humanizeAuthError(err, 'No pudimos iniciar sesión. Verifica tus datos e intenta de nuevo.'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -84,8 +102,8 @@ export default function Login() {
           <div className="flex justify-center mb-8">
             <LogoAurora className="w-12 h-12 text-teal-600" />
           </div>
-          <form className="flex flex-col gap-6" onSubmit={handleSubmit} noValidate>
-            <div className="flex flex-col gap-1">
+          <form className="flex flex-col gap-7" onSubmit={handleSubmit} noValidate>
+            <div className="flex flex-col gap-2">
               <label htmlFor="email" className="text-base font-semibold text-slate-800">
                 Correo electrónico
               </label>
@@ -100,13 +118,21 @@ export default function Login() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                  aria-invalid={!!show('email')}
+                  aria-describedby={show('email') ? 'email-error' : undefined}
                   placeholder="ejemplo@aurora.gov"
-                  className="w-full h-14 pl-14 pr-4 border border-slate-300 rounded-lg bg-white text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 transition-all"
+                  className={`${inputBase} pr-4 ${show('email') ? inputBad : inputOk}`}
                 />
               </div>
+              {show('email') && (
+                <p id="email-error" className="text-sm text-red-600">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <label htmlFor="password" className="text-base font-semibold text-slate-800">
                 Contraseña
               </label>
@@ -121,8 +147,11 @@ export default function Login() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                  aria-invalid={!!show('password')}
+                  aria-describedby={show('password') ? 'password-error' : undefined}
                   placeholder="••••••••"
-                  className="w-full h-14 pl-14 pr-14 border border-slate-300 rounded-lg bg-white text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 transition-all"
+                  className={`${inputBase} pr-14 ${show('password') ? inputBad : inputOk}`}
                 />
                 <button
                   type="button"
@@ -135,6 +164,11 @@ export default function Login() {
                   </span>
                 </button>
               </div>
+              {show('password') && (
+                <p id="password-error" className="text-sm text-red-600">
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between mt-1">
@@ -158,18 +192,9 @@ export default function Login() {
               </a>
             </div>
 
-            {error && (
-              <div
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {error}
-              </div>
-            )}
-
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || (submitted && hasErrors)}
               className="w-full h-14 mt-2 bg-teal-700 hover:bg-teal-600 active:scale-[0.98] disabled:opacity-60 text-white font-semibold text-lg rounded-lg shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-600"
             >
               {submitting ? (

@@ -15,6 +15,7 @@ import {
   registerAutoFillCallback,
 } from '../../store/auroraCopilotStore';
 import { validateInfinitiveObjective } from '../../lib/mgaObjectiveValidation';
+import { useReadOnly } from '../../context/ReadOnlyContext';
 import { extractSelectOptions, findSelectElement, resolveListSuggestion } from '../../lib/aiSelectOptions';
 import { getFieldKnowledge, type ProjectContext } from '../../data/mgaFieldsKnowledge';
 
@@ -84,6 +85,7 @@ export default function AIAssistedField({
   options: optionsProp,
 }: AIAssistedFieldProps) {
   const tipId = useId();
+  const { readOnly } = useReadOnly();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   // Si el hijo es un <select>, las opciones se leen de sus <option>.
   const hasSelectChild = findSelectElement(children);
@@ -141,7 +143,7 @@ export default function AIAssistedField({
   };
 
   const requestSuggestion = () => {
-    if (!fieldHelpKey) return;
+    if (!fieldHelpKey || readOnly) return;
     suggestMgaField(fieldHelpKey, { ...(projectContext ?? {}), ...(reactiveContext ?? {}) }, maxLength, isList, options);
   };
 

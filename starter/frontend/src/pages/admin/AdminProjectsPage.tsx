@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import CatalogPagination from '../../components/admin/CatalogPagination';
 import {
   adminProjectsApi,
@@ -155,13 +156,14 @@ export default function AdminProjectsPage() {
                 <th scope="col" className="px-4 py-3">Fase</th>
                 <th scope="col" className="px-4 py-3">Estado</th>
                 <th scope="col" className="px-4 py-3">Creado</th>
+                <th scope="col" className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e7eeff]">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-[#3f4949]">Cargando proyectos…</td></tr>
+                <tr><td colSpan={8} className="px-4 py-6 text-center text-[#3f4949]">Cargando proyectos…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-[#3f4949]">No se encontraron proyectos.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-6 text-center text-[#3f4949]">No se encontraron proyectos.</td></tr>
               ) : (
                 rows.map((p) => (
                   <tr key={p.id}>
@@ -175,6 +177,17 @@ export default function AdminProjectsPage() {
                     <td className="px-4 py-3">{p.fase_maduracion}</td>
                     <td className="px-4 py-3">{p.status}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{fmtDate(p.created_at)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <Link
+                        to={`/admin/projects/${p.id}`}
+                        title="Ver formulación y detalle (solo lectura)"
+                        aria-label={`Ver Formulación de ${p.name}`}
+                        className="inline-flex items-center gap-1 rounded border border-[#006162] px-3 py-1.5 text-sm font-medium text-[#006162] hover:bg-[#006162] hover:text-white"
+                      >
+                        <span className="material-symbols-outlined text-base" aria-hidden>visibility</span>
+                        Ver Formulación
+                      </Link>
+                    </td>
                   </tr>
                 ))
               )}

@@ -28,7 +28,9 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 
 	// Aislamiento por formulador: un FORMULADOR solo accede a proyectos propios (404 si no).
 	owner := httpmw.ProjectOwnerGuard(db)
-	projects.Use("/:id", owner)
+	// SUPER_ADMIN: solo lectura sobre cualquier proyecto (GET con el tenant del proyecto; escrituras 403).
+	adminScope := httpmw.SuperAdminProjectScope(db)
+	projects.Use("/:id", adminScope, owner)
 
 	// Ruta de exportación de Documento Técnico Valle del Cauca (Decreto 1278 de 2023)
 	projects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
@@ -38,7 +40,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 		httpmw.RequireAuth(jwtSecret),
 		httpmw.RequireTenant(),
 	)
-	tenantProjects.Use("/:id", owner)
+	tenantProjects.Use("/:id", adminScope, owner)
 	tenantProjects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
 
 	// Grupo de reportes de tenant (Visión Directiva e inversión)

@@ -21,6 +21,15 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - Super Admin: vista de formulación de proyectos en modo lectura
+
+- **Objetivo:** Desde `/admin/projects`, ver la formulación completa de cualquier proyecto en solo lectura; solo el formulador asignado edita.
+- **Backend:** `middleware.SuperAdminProjectScope` (antes de `ProjectOwnerGuard`, en `/projects/:id/**` y `/tenant/projects/:id/**`): para SUPER_ADMIN, GET resuelve el tenant del proyecto (los handlers de consulta funcionan sin cambios ni filtro por `creator_id`) y toda escritura responde 403 `SUPER_ADMIN_READ_ONLY`, salvo `PATCH …/reassign` (reasignación administrativa existente). Antes SUPER_ADMIN recibía 403 "tenant context" también al leer.
+- **Verificado (sin cambios):** `ProjectOwnerGuard` ya devuelve 404 a un FORMULADOR que no es el creador (lectura y escritura) o de otro tenant. Los roles TENANT_ADMIN/EVALUADOR/ANALISTA/VIEWER siguen regidos por PBAC, no por `creator_id`.
+- **Frontend:** `ReadOnlyContext` + `ReadOnlyScope` + `lib/readOnlyLock` (deshabilita inputs/selects/textareas/checkboxes/botones del área de trabajo, pie y presupuesto; respeta controles `aria-expanded`, `role="tab"` y `data-readonly-allow`); `ProjectDetailPage` con banner "Vista Previa / Modo Lectura (Super Admin)" y "Volver a Proyectos Admin"; sin Guardar y Continuar, Editar, Presentar ni Validar y Enviar; las sugerencias de IA no se solicitan. Ruta `/admin/projects/:id` (`AdminProjectDetailPage`) y columna "Ver Formulación" en `AdminProjectsPage`. `?mode=readonly` activa lo mismo en la ruta de la entidad (solo restringe).
+- **Validación:** `go vet`, `go test ./...` (middleware, handlers reales sobre SQLite y un test que recorre todas las rutas de escritura de proyecto), `tsc -b`, Vitest (11 fallos preexistentes, sin nuevos). No se probó en navegador.
+- **Riesgos/pendientes:** el bloqueo de controles es por DOM; un control que no sea input/select/textarea/button ni `[role=button]` con `onClick` no se bloquea (el servidor igual rechaza la escritura). Los PDF/exportaciones siguen disponibles. El FORMULADOR puede leer por ID solo sus proyectos (404 en otros), como ya estaba.
+
 ### 2026-10-06 - Claude - PBAC Fase 6: UI de administración y modo enforce
 
 - **Objetivo:** Pantallas de administración de módulos, usuarios y permisos; `PBAC_ENFORCE` pasa a `enforce` por defecto (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).

@@ -42,4 +42,9 @@ describe('moduleRegistry', () => {
     expect(codes).toContain('admin.catalogs.sectors');
     expect(codes).toContain('admin.mga_catalogs.actors');
   });
+
+  it('admin.projects registra el listado y el detalle de solo lectura', () => {
+    const paths = moduleRegistry['admin.projects'].routes?.map((r) => r.path);
+    expect(paths).toEqual(['projects', 'projects/:id']);
+  });
 });

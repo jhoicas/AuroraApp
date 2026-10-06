@@ -1,5 +1,7 @@
 import { runSectionSave } from './mgaSectionSave';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useReadOnly } from '../../../context/ReadOnlyContext';
+import ReadOnlyScope from '../../ui/ReadOnlyScope';
 import { Home, Check, Lock, Menu, Save } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import { useProjectStore } from '../../../store/projectStore';
@@ -399,6 +401,7 @@ export default function MGALayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const currentProject = useProjectStore((state) => state.currentProject);
+  const { readOnly } = useReadOnly();
 
   const resolvedTitle =
     projectTitle?.trim() ||
@@ -539,6 +542,7 @@ export default function MGALayout({
             <p className="text-sm font-medium leading-relaxed text-gray-800 sm:text-base">
               {resolvedTitle}
             </p>
+            {!readOnly && (
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-[#006162] focus:outline-none focus:ring-2 focus:ring-[#006162] focus:ring-offset-1 mt-0.5"
@@ -547,6 +551,7 @@ export default function MGALayout({
               <span className="material-symbols-outlined text-[16px]">edit</span>
               <span className="hidden sm:inline">Editar</span>
             </button>
+            )}
           </div>
 
           <div className="flex shrink-0 flex-col items-end gap-2">
@@ -651,12 +656,12 @@ export default function MGALayout({
                   </p>
                 </div>
               )}
-              <div className={formulation.estadoProyecto === 'PRESENTADO' ? 'mga-readonly' : ''}>
+              <ReadOnlyScope className={formulation.estadoProyecto === 'PRESENTADO' ? 'mga-readonly' : ''}>
                 {renderWorkArea(project, activeTab)}
-              </div>
+              </ReadOnlyScope>
             </div>
           </div>
-          {formulation.estadoProyecto !== 'PRESENTADO' && sectionStatuses[activeTab] !== 'LOCKED' && (
+          {!readOnly && formulation.estadoProyecto !== 'PRESENTADO' && sectionStatuses[activeTab] !== 'LOCKED' && (
             <MgaTabSaveBar
               projectId={project.id}
               activeTab={activeTab}
@@ -665,7 +670,7 @@ export default function MGALayout({
           )}
           {footerSlot && (
             <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-4 sm:px-6">
-              <div className="mx-auto w-full max-w-6xl">{footerSlot}</div>
+              <ReadOnlyScope className="mx-auto w-full max-w-6xl">{footerSlot}</ReadOnlyScope>
             </div>
           )}
         </main>

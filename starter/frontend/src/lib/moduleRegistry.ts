@@ -36,6 +36,7 @@ const lz = {
   usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
   roleTemplates: lazy(() => import('../pages/admin/RoleTemplatesPage')),
   adminProjects: lazy(() => import('../pages/admin/AdminProjectsPage')),
+  adminProjectDetail: lazy(() => import('../pages/admin/AdminProjectDetailPage')),
   aiKnowledge: lazy(() => import('../pages/admin/AIKnowledgePage')),
   sectors: lazy(() => import('../pages/admin/SectorsCatalogPage')),
   programs: lazy(() => import('../pages/admin/ProgramsCatalogPage')),
@@ -90,7 +91,14 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
 
   // ── Plataforma (PLATFORM) ──
   'admin.tenants': { icon: 'settings_suggest', routes: [{ path: 'tenants', Component: lz.tenants }] },
-  'admin.projects': { icon: 'folder_open', routes: [{ path: 'projects', Component: lz.adminProjects }] },
+  'admin.projects': {
+    icon: 'folder_open',
+    routes: [
+      { path: 'projects', Component: lz.adminProjects },
+      // Detalle y formulación del proyecto en modo lectura (Super Admin).
+      { path: 'projects/:id', Component: lz.adminProjectDetail },
+    ],
+  },
   'admin.catalogs': {
     icon: 'edit_document',
     routes: [

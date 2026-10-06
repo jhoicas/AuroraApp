@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useReadOnly } from '../../../context/ReadOnlyContext';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
 import { normalizeRole } from '../../../lib/roles';
@@ -48,6 +49,7 @@ export default function MgaFormulationShell({
 }: MgaFormulationShellProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { readOnly, backPath } = useReadOnly();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -167,7 +169,7 @@ export default function MgaFormulationShell({
     try {
       await presentarProyecto(project.id);
       setPresentarModalOpen(false);
-      navigate('/tenant/projects');
+      navigate(backPath);
     } catch (e) {
       setLocalError('No se pudo presentar el proyecto');
     }
@@ -182,7 +184,7 @@ export default function MgaFormulationShell({
       onChangeSubTab={handleChangeSubTab}
       userName={user?.full_name || user?.email || 'Usuario'}
       userRole={formatRoleLabel(user?.role)}
-      onNavigateHome={() => navigate('/tenant/projects')}
+      onNavigateHome={() => navigate(backPath)}
       bannerActions={
         <div className="flex flex-wrap items-center gap-2">
           <TechnicalDocumentValleExportButton
@@ -195,7 +197,7 @@ export default function MgaFormulationShell({
             formuladorType={formatRoleLabel(user?.role)}
             variant="outline"
           />
-          {!isPresentado && (
+          {!isPresentado && !readOnly && (
             <button 
               onClick={() => setPresentarModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-md bg-[#2980b9] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#1a6698] focus:outline-none focus:ring-2 focus:ring-[#2980b9] focus:ring-offset-1 transition-colors"

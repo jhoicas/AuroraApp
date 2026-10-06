@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import BudgetManager from '../../components/Tenant/BudgetManager';
 import ProjectFormulation from '../../components/Tenant/ProjectFormulation';
 import ProjectSummary from '../../components/Tenant/ProjectSummary';
@@ -9,12 +9,27 @@ import FormulationAuditPanel, {
 import MgaPdfExportButton from '../../components/Tenant/MGA/MgaPdfExportButton';
 import TechnicalDocumentValleExportButton from '../../components/Tenant/MGA/TechnicalDocumentValleExportButton';
 import { useAuth } from '../../context/AuthContext';
+import { ReadOnlyProvider } from '../../context/ReadOnlyContext';
+import ReadOnlyScope from '../../components/ui/ReadOnlyScope';
+import { isSuperAdmin } from '../../lib/roles';
 import { useProjectStore } from '../../store/projectStore';
 import { useFormulationAuditStore } from '../../store/formulationAuditStore';
 
 type Tab = 'formulation' | 'budget' | 'summary';
 
-export default function ProjectDetailPage() {
+type ProjectDetailPageProps = {
+  /** Fuerza el modo lectura. También se activa para SUPER_ADMIN y con `?mode=readonly`. */
+  readOnly?: boolean;
+  /** Destino del botón "volver" (por defecto /admin/projects para SUPER_ADMIN, /tenant/projects para el resto). */
+  backPath?: string;
+  backLabel?: string;
+};
+
+export default function ProjectDetailPage({
+  readOnly: readOnlyProp,
+  backPath: backPathProp,
+  backLabel: backLabelProp,
+}: ProjectDetailPageProps = {}) {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -34,6 +49,13 @@ export default function ProjectDetailPage() {
   );
 
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  // El modo lectura solo puede restringir: lo piden la ruta, el query param o el rol Super Admin
+  // (el servidor además le niega toda escritura sobre proyectos).
+  const isSuper = isSuperAdmin(user?.role);
+  const readOnly = Boolean(readOnlyProp) || isSuper || searchParams.get('mode') === 'readonly';
+  const backPath = backPathProp ?? (isSuper ? '/admin/projects' : '/tenant/projects');
+  const backLabel = backLabelProp ?? (isSuper ? 'Volver a Proyectos Admin' : 'Volver a proyectos');
 
   const [tab, setTab] = useState<Tab>('formulation');
   const [auditModalOpen, setAuditModalOpen] = useState(false);
@@ -77,27 +99,48 @@ export default function ProjectDetailPage() {
       <div className="bg-white rounded-lg shadow p-8 print:hidden">
         <p className="text-red-700">{error || 'Proyecto no encontrado'}</p>
         <Link
-          to="/tenant/projects"
+          to={backPath}
           className="inline-flex items-center gap-1 mt-4 text-[#006162] hover:underline"
         >
           <span className="material-symbols-outlined text-base">arrow_back</span>
-          Volver a proyectos
+          {backLabel}
         </Link>
       </div>
     );
   }
 
   return (
+    <ReadOnlyProvider readOnly={readOnly} backPath={backPath}>
     <div className="print:w-full print:m-0 print:p-0 print:bg-white">
-      <div className="mb-4 print:hidden">
-        <Link
-          to="/tenant/projects"
-          className="inline-flex items-center gap-1 text-sm text-[#006162] hover:underline"
+      {readOnly ? (
+        <div
+          role="status"
+          data-testid="readonly-banner"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 print:hidden"
         >
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Volver a proyectos
-        </Link>
-      </div>
+          <span className="inline-flex items-center gap-2 font-semibold">
+            <span className="material-symbols-outlined text-xl" aria-hidden>visibility</span>
+            Vista Previa / Modo Lectura{isSuper ? ' (Super Admin)' : ''}
+          </span>
+          <Link
+            to={backPath}
+            className="inline-flex items-center gap-1 rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+          >
+            <span className="material-symbols-outlined text-base" aria-hidden>arrow_back</span>
+            {backLabel}
+          </Link>
+        </div>
+      ) : (
+        <div className="mb-4 print:hidden">
+          <Link
+            to={backPath}
+            className="inline-flex items-center gap-1 text-sm text-[#006162] hover:underline"
+          >
+            <span className="material-symbols-outlined text-base">arrow_back</span>
+            {backLabel}
+          </Link>
+        </div>
+      )}
 
       <div className="w-full min-w-0 print:w-full print:m-0 print:p-0">
         <div className="bg-white rounded-lg shadow border border-gray-100 p-6 mb-6 print:hidden">
@@ -107,6 +150,7 @@ export default function ProjectDetailPage() {
               <p className="text-sm text-gray-500 mt-1">{currentProject.sector}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {!readOnly && (
               <button
                 type="button"
                 onClick={() => {
@@ -129,6 +173,7 @@ export default function ProjectDetailPage() {
                 </span>
                 {hasCriticalFindings ? 'Auditoría (Bloqueado)' : 'Validar y Enviar'}
               </button>
+              )}
               <TechnicalDocumentValleExportButton
                 projectId={currentProject.id}
                 projectName={currentProject.name}
@@ -220,14 +265,16 @@ export default function ProjectDetailPage() {
           />
         </div>
         <div className={tab === 'budget' ? 'block print:hidden' : 'hidden'}>
-          <BudgetManager projectId={currentProject.id} />
+          <ReadOnlyScope>
+            <BudgetManager projectId={currentProject.id} />
+          </ReadOnlyScope>
         </div>
         <div className={tab === 'summary' ? 'block' : 'hidden print:block'}>
           <ProjectSummary />
         </div>
       </div>
 
-      {auditModalOpen && (
+      {auditModalOpen && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden">
           <div
             role="dialog"
@@ -263,5 +310,6 @@ export default function ProjectDetailPage() {
         </div>
       )}
     </div>
+    </ReadOnlyProvider>
   );
 }

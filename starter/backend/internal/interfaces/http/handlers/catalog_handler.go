@@ -1429,30 +1429,3 @@ func escapeILIKE(s string) string {
 	s = strings.ReplaceAll(s, `_`, `\_`)
 	return s
 }
-
-// ListDepartments lista todos los departamentos.
-// GET /api/v1/catalog/departments
-func (h *CatalogHandler) ListDepartments(c *fiber.Ctx) error {
-	departments, err := h.repo.ListDepartments(c.Context())
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list departments"})
-	}
-	return c.JSON(departments)
-}
-
-// ListMunicipalities lista municipios, opcionalmente filtrados por department_id.
-// GET /api/v1/catalog/municipalities
-func (h *CatalogHandler) ListMunicipalities(c *fiber.Ctx) error {
-	var depID uint
-	if depStr := c.Query("department_id"); depStr != "" {
-		id, err := strconv.ParseUint(depStr, 10, 32)
-		if err == nil {
-			depID = uint(id)
-		}
-	}
-	municipalities, err := h.repo.ListMunicipalities(c.Context(), depID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list municipalities"})
-	}
-	return c.JSON(municipalities)
-}

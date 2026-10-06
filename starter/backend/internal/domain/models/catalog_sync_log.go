@@ -16,7 +16,7 @@ const (
 )
 
 // CatalogSyncLog registra la trazabilidad y auditoría de sincronizaciones
-// periódicas o manuales de catálogos gubernamentales (ej. SODA DNP PND, DIVIPOLA).
+// periódicas o manuales de catálogos gubernamentales (ej. SODA DNP PND).
 type CatalogSyncLog struct {
 	ID               uuid.UUID         `gorm:"column:id;type:uuid;primaryKey" json:"id"`
 	CatalogName      string            `gorm:"column:catalog_name;type:varchar(100);not null;index" json:"catalog_name"`

@@ -24,5 +24,4 @@ func RegisterAdminSyncRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	adminSync.Post("/programs", h.TriggerProgramsSync)
 	adminSync.Post("/products", h.TriggerProductsSync)
 	adminSync.Post("/edt", h.TriggerEdtSync)
-	adminSync.Post("/divipola", h.TriggerDivipolaSync)
 }

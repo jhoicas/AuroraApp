@@ -1619,23 +1619,3 @@ func escapeILIKE(s string) string {
 	s = strings.ReplaceAll(s, `_`, `\_`)
 	return s
 }
-
-func (r *CatalogRepository) ListDepartments(ctx context.Context) ([]models.Department, error) {
-	var items []models.Department
-	if err := r.db.WithContext(ctx).Order("code ASC").Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-func (r *CatalogRepository) ListMunicipalities(ctx context.Context, departmentID uint) ([]models.Municipality, error) {
-	var items []models.Municipality
-	q := r.db.WithContext(ctx)
-	if departmentID > 0 {
-		q = q.Where("department_id = ?", departmentID)
-	}
-	if err := q.Order("code ASC").Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
-}

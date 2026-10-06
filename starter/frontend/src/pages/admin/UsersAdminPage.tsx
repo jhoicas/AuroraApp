@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../lib/roles';
 import { useAccessStore } from '../../store/accessStore';
@@ -111,12 +112,20 @@ export default function UsersAdminPage() {
               {platform ? 'Administra los usuarios de cualquier entidad.' : 'Administra los usuarios de tu entidad.'}
             </p>
           </div>
-          {canCreate && (
-            <button type="button" onClick={() => setModal({ kind: 'create' })} disabled={needsTenant} className={primaryBtn}>
-              <span className="material-symbols-outlined text-base">person_add</span>
-              Nuevo usuario
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {platform && (
+              <Link to="/admin/roles" className="inline-flex items-center gap-1 rounded border border-[#006162] px-4 py-2 text-sm font-medium text-[#006162] hover:bg-[#f0f3ff]">
+                <span className="material-symbols-outlined text-base">rule_settings</span>
+                Plantillas de rol
+              </Link>
+            )}
+            {canCreate && (
+              <button type="button" onClick={() => setModal({ kind: 'create' })} disabled={needsTenant} className={primaryBtn}>
+                <span className="material-symbols-outlined text-base">person_add</span>
+                Nuevo usuario
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="bg-white rounded-xl border border-[#bec9c8] p-4 mb-6 flex flex-col md:flex-row gap-4">

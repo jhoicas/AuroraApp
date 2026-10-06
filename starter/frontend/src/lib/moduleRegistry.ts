@@ -34,6 +34,8 @@ const lz = {
   tenants: lazy(() => import('../pages/admin/TenantsPage')),
   adminModules: lazy(() => import('../pages/admin/ModulesPage')),
   usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
+  roleTemplates: lazy(() => import('../pages/admin/RoleTemplatesPage')),
+  adminProjects: lazy(() => import('../pages/admin/AdminProjectsPage')),
   aiKnowledge: lazy(() => import('../pages/admin/AIKnowledgePage')),
   sectors: lazy(() => import('../pages/admin/SectorsCatalogPage')),
   programs: lazy(() => import('../pages/admin/ProgramsCatalogPage')),
@@ -88,6 +90,7 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
 
   // ── Plataforma (PLATFORM) ──
   'admin.tenants': { icon: 'settings_suggest', routes: [{ path: 'tenants', Component: lz.tenants }] },
+  'admin.projects': { icon: 'folder_open', routes: [{ path: 'projects', Component: lz.adminProjects }] },
   'admin.catalogs': {
     icon: 'edit_document',
     routes: [
@@ -124,7 +127,16 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.mga_catalogs.entities': { routes: [{ path: 'catalogs/mga-entities', Component: lz.mgaEntities }] },
   'admin.mga_catalogs.positions': { routes: [{ path: 'catalogs/mga-positions', Component: lz.mgaPositions }] },
   'admin.modules': { icon: 'widgets', routes: [{ path: 'modules', Component: lz.adminModules }] },
-  'admin.users': { icon: 'manage_accounts', routes: [{ path: 'users', Component: lz.usersAdmin }] },
+  'admin.users': {
+    icon: 'manage_accounts',
+    routes: [
+      { path: 'users', Component: lz.usersAdmin },
+      // Plantillas de permisos por rol: cuelgan de Usuarios (no tienen módulo propio).
+      { path: 'roles', Component: lz.roleTemplates },
+    ],
+    activePrefixes: ['/admin/users', '/admin/roles'],
+    titlePrefixes: ['/admin/roles'],
+  },
   'admin.ai': { icon: 'psychology', routes: [{ path: 'ai', Component: lz.aiKnowledge }] },
   'admin.settings': {
     icon: 'settings',

@@ -59,6 +59,7 @@ func main() {
 
 	// Paso 3 — Tenants (SUPER_ADMIN)
 	router.RegisterAdminTenantRoutes(app, db, cfg.JWTSecret)
+	router.RegisterAdminProjectRoutes(app, db, cfg.JWTSecret)
 
 	// Paso 3b — Localizaciones y Procesos MGA (lectura: autenticado; import: SUPER_ADMIN)
 	router.RegisterAdminLocationRoutes(app, db, cfg.JWTSecret, guard)

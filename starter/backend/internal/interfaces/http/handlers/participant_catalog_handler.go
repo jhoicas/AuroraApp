@@ -119,7 +119,22 @@ func (h *ParticipantCatalogHandler) ListEntitiesByActor(c *fiber.Ctx) error {
 
 // ListEntities devuelve todas las entidades (admin).
 // GET /api/v1/admin/mga/catalogs/entities
+//
+// Con page/limit/search/actor_id responde {data,total,page,limit}; sin ellos, el arreglo completo.
 func (h *ParticipantCatalogHandler) ListEntities(c *fiber.Ctx) error {
+	if c.Query("page") != "" || c.Query("limit") != "" || c.Query("search") != "" || c.Query("q") != "" || c.Query("actor_id") != "" {
+		page, limit := parsePage(c, 20, 200)
+		actorID, _ := strconv.Atoi(c.Query("actor_id"))
+		entities, total, err := h.repo.ListEntitiesPage(c.Context(), actorID, c.Query("search", c.Query("q")), page, limit)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list entities"})
+		}
+		data := make([]dto.MgaCatalogEntityResponse, 0, len(entities))
+		for _, e := range entities {
+			data = append(data, dto.MgaCatalogEntityResponse{ID: e.ID, ActorID: e.ActorID, Name: e.Name})
+		}
+		return c.JSON(fiber.Map{"data": data, "total": total, "page": page, "limit": limit})
+	}
 	entities, err := h.repo.ListEntities(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list entities"})

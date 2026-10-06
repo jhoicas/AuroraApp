@@ -142,6 +142,40 @@ func (s *Service) ListModules(ctx context.Context) ([]ModuleView, error) {
 	return out, nil
 }
 
+// ListModulesPage devuelve una página de módulos (orden sort_order, código). search filtra
+// por nombre, código o código de la sección/módulo padre (sin distinguir mayúsculas).
+func (s *Service) ListModulesPage(ctx context.Context, search string, page, limit int) ([]ModuleView, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	_, codes, err := s.allModules(ctx, s.db)
+	if err != nil {
+		return nil, 0, err
+	}
+	q := s.db.WithContext(ctx).Model(&models.Module{})
+	if term := strings.ToLower(strings.TrimSpace(search)); term != "" {
+		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(term) + "%"
+		q = q.Where(`LOWER(modules.name) LIKE ? ESCAPE '\' OR LOWER(modules.code) LIKE ? ESCAPE '\' OR modules.parent_id IN (SELECT p.id FROM modules p WHERE LOWER(p.code) LIKE ? ESCAPE '\' OR LOWER(p.name) LIKE ? ESCAPE '\')`,
+			like, like, like, like)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var mods []models.Module
+	if err := q.Order("modules.sort_order ASC, modules.code ASC").Limit(limit).Offset((page - 1) * limit).Find(&mods).Error; err != nil {
+		return nil, 0, err
+	}
+	out := make([]ModuleView, 0, len(mods))
+	for _, m := range mods {
+		out = append(out, moduleView(m, codes))
+	}
+	return out, total, nil
+}
+
 // CreateModuleInput son los datos de un módulo nuevo (no de sistema).
 type CreateModuleInput struct {
 	Code        string `json:"code"`

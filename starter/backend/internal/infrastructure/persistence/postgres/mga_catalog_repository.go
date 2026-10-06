@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"strconv"
+	"strings"
 
 	"aurora-backend/internal/domain/models"
 
@@ -68,6 +70,36 @@ func (r *MgaCatalogRepository) ListEntities(ctx context.Context) ([]models.MgaCa
 	var entities []models.MgaCatalogEntity
 	err := r.db.WithContext(ctx).Order("actor_id ASC, id ASC").Find(&entities).Error
 	return entities, err
+}
+
+// ListEntitiesPage devuelve una página de entidades. actorID>0 filtra por actor; search busca
+// (sin distinguir mayúsculas) en el nombre o, si es numérico, en el id.
+func (r *MgaCatalogRepository) ListEntitiesPage(ctx context.Context, actorID int, search string, page, limit int) ([]models.MgaCatalogEntity, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	q := r.db.WithContext(ctx).Model(&models.MgaCatalogEntity{})
+	if actorID > 0 {
+		q = q.Where("actor_id = ?", actorID)
+	}
+	if term := strings.ToLower(strings.TrimSpace(search)); term != "" {
+		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(term) + "%"
+		if id, err := strconv.Atoi(term); err == nil {
+			q = q.Where(`LOWER(name) LIKE ? ESCAPE '\' OR id = ?`, like, id)
+		} else {
+			q = q.Where(`LOWER(name) LIKE ? ESCAPE '\'`, like)
+		}
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var entities []models.MgaCatalogEntity
+	err := q.Order("actor_id ASC, id ASC").Limit(limit).Offset((page - 1) * limit).Find(&entities).Error
+	return entities, total, err
 }
 
 func (r *MgaCatalogRepository) ListEntitiesByActor(ctx context.Context, actorID int) ([]models.MgaCatalogEntity, error) {

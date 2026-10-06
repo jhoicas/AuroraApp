@@ -99,7 +99,7 @@ func TestAdminAccessRoutes_OnlySuperAdmin(t *testing.T) {
 	e := newHTTPEnv(t)
 	id := uuid.NewString()
 	routes := []struct{ method, path string }{
-		{"GET", "/api/v1/admin/modules"}, {"POST", "/api/v1/admin/modules"},
+		{"GET", "/api/v1/admin/modules"}, {"POST", "/api/v1/admin/modules"}, {"PUT", "/api/v1/admin/role-templates/VIEWER"},
 		{"PUT", "/api/v1/admin/modules/order"}, {"PUT", "/api/v1/admin/modules/" + id}, {"DELETE", "/api/v1/admin/modules/" + id},
 		{"GET", "/api/v1/admin/tenants/" + id + "/users"}, {"POST", "/api/v1/admin/tenants/" + id + "/users"},
 		{"GET", "/api/v1/admin/tenants/" + id + "/modules"}, {"PUT", "/api/v1/admin/tenants/" + id + "/modules"},
@@ -204,4 +204,94 @@ func TestAdminAccessRoutes_Flow(t *testing.T) {
 	var n int64
 	e.db.Model(&models.AccessAuditLog{}).Where("action <> ?", models.AuditModulesSeeded).Count(&n)
 	require.GreaterOrEqual(t, n, int64(8))
+}
+
+func TestAdminAccessRoutes_ModulesPaginationAndSearch(t *testing.T) {
+	e := newHTTPEnv(t)
+
+	status, body := e.call(t, "GET", "/api/v1/admin/modules?page=1&limit=5", e.superTok, nil)
+	require.Equal(t, 200, status)
+	require.Len(t, body["data"], 5)
+	require.EqualValues(t, len(modules.Manifest), body["total"])
+	require.EqualValues(t, 5, body["limit"])
+
+	status, body = e.call(t, "GET", "/api/v1/admin/modules?page=2&limit=5", e.superTok, nil)
+	require.Equal(t, 200, status)
+	require.Len(t, body["data"], 5)
+	require.EqualValues(t, 2, body["page"])
+
+	// Búsqueda por nombre, código y por módulo padre (secciones).
+	status, body = e.call(t, "GET", "/api/v1/admin/modules?search=ENTIDADES", e.superTok, nil)
+	require.Equal(t, 200, status)
+	require.EqualValues(t, 1, body["total"])
+	status, body = e.call(t, "GET", "/api/v1/admin/modules?q=admin.mga_catalogs", e.superTok, nil)
+	require.Equal(t, 200, status)
+	require.EqualValues(t, 4, body["total"], "el módulo y sus 3 secciones")
+	status, body = e.call(t, "GET", "/api/v1/admin/modules?search=%25", e.superTok, nil)
+	require.Equal(t, 200, status)
+	require.EqualValues(t, 0, body["total"], "% se trata como literal")
+}
+
+func TestAdminAccessRoutes_SetRoleTemplate(t *testing.T) {
+	e := newHTTPEnv(t)
+	tenantPath := "/api/v1/admin/tenants/" + e.tenantID.String()
+
+	status, _ := e.call(t, "PUT", "/api/v1/admin/role-templates/VIEWER", "", map[string]any{})
+	require.Equal(t, 401, status)
+	status, _ = e.call(t, "PUT", "/api/v1/admin/role-templates/VIEWER", e.formTok, map[string]any{})
+	require.Equal(t, 403, status)
+
+	put := func(role string, mods map[string]any) (int, map[string]any) {
+		return e.call(t, "PUT", "/api/v1/admin/role-templates/"+role, e.superTok, map[string]any{"modules": mods})
+	}
+	status, _ = put("TENANT_ADMIN", map[string]any{})
+	require.Equal(t, 400, status, "TENANT_ADMIN se resuelve por rol")
+	status, _ = put("NOPE", map[string]any{})
+	require.Equal(t, 404, status)
+	status, _ = put("VIEWER", map[string]any{"projects": map[string]any{"can_create": true}})
+	require.Equal(t, 400, status, "create sin view")
+	status, _ = put("VIEWER", map[string]any{"no.existe": map[string]any{"can_view": true}})
+	require.Equal(t, 400, status)
+	status, _ = put("VIEWER", map[string]any{modules.CodeAdminTenants: map[string]any{"can_view": true}})
+	require.Equal(t, 400, status, "módulo de plataforma")
+
+	status, body := put("VIEWER", map[string]any{
+		modules.CodeProjects: map[string]any{"can_view": true, "can_create": true},
+		modules.CodeReports:  map[string]any{"can_view": true},
+	})
+	require.Equal(t, 200, status)
+	require.Equal(t, "VIEWER", body["role"])
+	mods := body["modules"].(map[string]any)
+	require.Len(t, mods, 2)
+	require.Equal(t, true, mods[modules.CodeProjects].(map[string]any)["can_create"])
+
+	// GET refleja lo guardado.
+	status, body = e.call(t, "GET", "/api/v1/admin/role-templates", e.superTok, nil)
+	require.Equal(t, 200, status)
+	for _, tpl := range body["data"].([]any) {
+		if tpl.(map[string]any)["role"] == "VIEWER" {
+			require.Len(t, tpl.(map[string]any)["modules"], 2)
+		}
+	}
+
+	// Un usuario nuevo recibe la plantilla guardada.
+	status, body = e.call(t, "POST", tenantPath+"/users", e.superTok, map[string]any{
+		"email": "tpl@x.co", "full_name": "Con Plantilla", "password": "secreto123", "role_code": "VIEWER",
+	})
+	require.Equal(t, 201, status)
+	status, body = e.call(t, "GET", "/api/v1/admin/users/"+body["id"].(string)+"/permissions", e.superTok, nil)
+	require.Equal(t, 200, status)
+	granted := 0
+	for _, p := range body["permissions"].([]any) {
+		pm := p.(map[string]any)
+		if pm["can_view"] == true {
+			granted++
+			require.Contains(t, []any{modules.CodeProjects, modules.CodeReports}, pm["module_code"])
+		}
+	}
+	require.Equal(t, 2, granted)
+
+	var audits int64
+	require.NoError(t, e.db.Model(&models.AccessAuditLog{}).Where("action = ?", models.AuditRoleTemplateUpdated).Count(&audits).Error)
+	require.EqualValues(t, 1, audits)
 }

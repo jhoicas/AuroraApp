@@ -226,6 +226,25 @@ export const adminListMgaEntities = async (): Promise<AdminMgaEntity[]> => {
   return data;
 };
 
+export type AdminMgaEntityPage = { data: AdminMgaEntity[]; total: number; page: number; limit: number };
+
+export const adminListMgaEntitiesPage = async (params: {
+  page: number;
+  limit: number;
+  search?: string;
+  actor_id?: number;
+}): Promise<AdminMgaEntityPage> => {
+  const { data } = await api.get<AdminMgaEntityPage>('/admin/mga/catalogs/entities', {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.actor_id ? { actor_id: params.actor_id } : {}),
+    },
+  });
+  return { ...data, data: data.data ?? [] };
+};
+
 export const adminListMgaEntitiesByActor = async (actorId: number): Promise<AdminMgaEntity[]> => {
   const { data } = await api.get<AdminMgaEntity[]>(`/admin/mga/catalogs/actors/${actorId}/entities`);
   return data;

@@ -15,7 +15,7 @@ import (
 
 // SeedVersion identifica la versión del manifiesto. Súbela cada vez que cambies
 // Manifest: el seed solo re-sincroniza módulos con seed_version menor.
-const SeedVersion = 4
+const SeedVersion = 5
 
 // Kind de un nodo del manifiesto.
 const (
@@ -116,6 +116,7 @@ const (
 	CodeMGAPresentar      = "mga.presentar"
 
 	CodeAdminTenants  = "admin.tenants"
+	CodeAdminProjects = "admin.projects"
 	CodeAdminCatalogs = "admin.catalogs"
 	CodeAdminAI       = "admin.ai"
 
@@ -173,6 +174,7 @@ var Manifest = []Def{
 		Defaults: map[string]Actions{}}, // solo TENANT_ADMIN
 
 	{Code: CodeAdminTenants, Name: "Gestión de Tenants", Description: "Alta, estado y módulos de cada entidad", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/tenants", Order: 100},
+	{Code: CodeAdminProjects, Name: "Proyectos", Description: "Vista global de proyectos de todas las entidades", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/projects", Order: 105},
 	{Code: CodeAdminCatalogs, Name: "Catálogos Maestros", Description: "Catálogos DNP, MGA y ubicaciones", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/catalogs", Order: 110},
 	{Code: CodeAdminCatalogs + ".sectors", Name: "Sectores", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/sectors", Order: 111},
 	{Code: CodeAdminCatalogs + ".programs", Name: "Programas", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/programs", Order: 112},

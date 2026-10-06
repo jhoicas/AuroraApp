@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { apiErrorMessage, modulesApi, type AdminModule } from '../../lib/accessAdminApi';
+import { apiErrorMessage, modulesApi, pageMeta, type AdminModule } from '../../lib/accessAdminApi';
+import CatalogPagination from '../../components/admin/CatalogPagination';
 import { useAccessStore } from '../../store/accessStore';
 import Modal, { ghostBtn, inputClass, primaryBtn } from '../../components/admin/Modal';
 
@@ -161,28 +162,50 @@ function ModuleForm({
   );
 }
 
+const PAGE_SIZE = 15;
+
 export default function ModulesPage() {
+  /** Lista completa: orden entre hermanos y selector de padres. La tabla usa `pageRows`. */
   const [mods, setMods] = useState<AdminModule[]>([]);
+  const [pageRows, setPageRows] = useState<AdminModule[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(null);
   const fetchAccess = useAccessStore((s) => s.fetchAccess);
 
+  // Búsqueda en tiempo real con debounce; cada búsqueda nueva vuelve a la página 1.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const load = useCallback(async () => {
     try {
-      setMods(await modulesApi.list());
+      const [all, paged] = await Promise.all([modulesApi.list(), modulesApi.listPage({ page, limit: PAGE_SIZE, search: query })]);
+      setMods(all);
+      setPageRows(paged.data);
+      setTotal(paged.total);
+      // La página quedó fuera de rango (p. ej. tras borrar el último ítem): retrocede.
+      if (paged.data.length === 0 && paged.total > 0 && page > 1) setPage(Math.ceil(paged.total / PAGE_SIZE));
     } catch (err) {
       setError(apiErrorMessage(err, 'No se pudieron cargar los módulos'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, query]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const rows = useMemo(() => flattenModules(mods), [mods]);
+  const rows = useMemo(() => pageRows.map((m) => ({ module: m, depth: m.parent_id ? 1 : 0 })), [pageRows]);
 
   /** Refresca la lista y el menú propio (los cambios afectan la navegación). */
   const refresh = async () => {
@@ -225,6 +248,18 @@ export default function ModulesPage() {
           <div role="alert" className="mb-4 rounded border border-[#ffdad6] bg-[#ffdad6]/80 px-4 py-3 text-sm text-[#93000a]">{error}</div>
         )}
 
+        <div className="mb-4">
+          <label htmlFor="module-search" className="block text-sm font-semibold mb-1">Buscar</label>
+          <input
+            id="module-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Nombre, código o sección"
+            className="w-full md:w-96 rounded border border-[#6f7979] px-3 py-2 bg-[#f9f9ff]"
+          />
+        </div>
+
         {loading ? (
           <p className="text-[#3f4949]">Cargando módulos…</p>
         ) : (
@@ -242,6 +277,11 @@ export default function ModulesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e7eeff]">
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-[#3f4949]">No se encontraron módulos.</td>
+                  </tr>
+                )}
                 {rows.map(({ module: m, depth }) => (
                   <tr key={m.id} className={m.is_active ? '' : 'opacity-60'}>
                     <td className={`px-4 py-3 ${depth ? 'pl-10' : 'font-semibold'}`}>
@@ -282,6 +322,7 @@ export default function ModulesPage() {
                 ))}
               </tbody>
             </table>
+            <CatalogPagination meta={pageMeta({ total, page, limit: PAGE_SIZE })} onPageChange={setPage} />
           </div>
         )}
       </div>

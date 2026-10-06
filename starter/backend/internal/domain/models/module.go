@@ -156,4 +156,5 @@ const (
 	AuditUserPasswordChanged  = "USER_PASSWORD_CHANGED"
 	AuditUserStatusChanged    = "USER_STATUS_CHANGED"
 	AuditUserUpdated          = "USER_UPDATED"
+	AuditRoleTemplateUpdated  = "ROLE_TEMPLATE_UPDATED"
 )

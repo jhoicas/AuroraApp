@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import {
-  adminListMgaEntities,
+  adminListMgaEntitiesPage,
   adminListMgaActors,
   adminCreateMgaEntity,
   adminUpdateMgaEntity,
@@ -9,6 +9,10 @@ import {
   type AdminMgaEntity,
   type AdminMgaActor,
 } from '../../lib/adminApi';
+import CatalogPagination from '../../components/admin/CatalogPagination';
+import { pageMeta } from '../../lib/accessAdminApi';
+
+const PAGE_SIZE = 20;
 
 export default function MgaEntitiesCatalogPage() {
   const [entities, setEntities] = useState<AdminMgaEntity[]>([]);
@@ -16,7 +20,10 @@ export default function MgaEntitiesCatalogPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [query, setQuery] = useState('');
   const [selectedActorFilter, setSelectedActorFilter] = useState<number>(0);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,26 +31,40 @@ export default function MgaEntitiesCatalogPage() {
   const [formData, setFormData] = useState({ id: 0, actor_id: 0, name: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadData = async () => {
+  // Búsqueda con debounce; cada búsqueda nueva vuelve a la página 1.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(searchTerm.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [entitiesData, actorsData] = await Promise.all([
-        adminListMgaEntities(),
+      const [pageData, actorsData] = await Promise.all([
+        adminListMgaEntitiesPage({ page, limit: PAGE_SIZE, search: query, actor_id: selectedActorFilter }),
         adminListMgaActors(),
       ]);
-      setEntities(entitiesData || []);
+      setEntities(pageData.data);
+      setTotal(pageData.total);
       setActors(actorsData || []);
+      // Página fuera de rango (p. ej. tras borrar el último ítem): retrocede.
+      if (pageData.data.length === 0 && pageData.total > 0 && page > 1) {
+        setPage(Math.ceil(pageData.total / PAGE_SIZE));
+      }
     } catch (err) {
       setError('Error al cargar datos de entidades y actores MGA.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, query, selectedActorFilter]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   const actorMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -51,20 +72,7 @@ export default function MgaEntitiesCatalogPage() {
     return map;
   }, [actors]);
 
-  const filteredEntities = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return entities.filter((ent) => {
-      const matchesActor = selectedActorFilter === 0 || ent.actor_id === selectedActorFilter;
-      if (!matchesActor) return false;
-      if (!term) return true;
-      const actorName = actorMap.get(ent.actor_id)?.toLowerCase() || '';
-      return (
-        ent.name.toLowerCase().includes(term) ||
-        ent.id.toString().includes(term) ||
-        actorName.includes(term)
-      );
-    });
-  }, [entities, searchTerm, selectedActorFilter, actorMap]);
+  const filteredEntities = entities;
 
   const handleOpenCreate = () => {
     setEditingEntity(null);
@@ -171,7 +179,10 @@ export default function MgaEntitiesCatalogPage() {
           <div className="w-full sm:w-64">
             <select
               value={selectedActorFilter}
-              onChange={(e) => setSelectedActorFilter(Number(e.target.value))}
+              onChange={(e) => {
+                setSelectedActorFilter(Number(e.target.value));
+                setPage(1);
+              }}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#006162] focus:outline-none focus:ring-1 focus:ring-[#006162] bg-white"
             >
               <option value={0}>Todos los actores</option>
@@ -248,6 +259,7 @@ export default function MgaEntitiesCatalogPage() {
               </tbody>
             </table>
           </div>
+          <CatalogPagination meta={pageMeta({ total, page, limit: PAGE_SIZE })} onPageChange={setPage} />
         </div>
       </div>
 

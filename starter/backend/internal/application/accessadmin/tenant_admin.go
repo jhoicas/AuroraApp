@@ -407,3 +407,84 @@ func (s *Service) RoleTemplates(ctx context.Context) ([]RoleTemplate, error) {
 	}
 	return out, nil
 }
+
+// SetRoleTemplate reemplaza los permisos por defecto (role_module_defaults) de un rol no
+// administrador. Los módulos ausentes del cuerpo quedan sin permiso por defecto. Solo
+// afecta a usuarios nuevos o a quienes apliquen la plantilla; no toca permisos ya otorgados.
+// TENANT_ADMIN y SUPER_ADMIN se resuelven por rol y no admiten plantilla.
+func (s *Service) SetRoleTemplate(ctx context.Context, actor Actor, roleCode string, mods map[string]TemplateAction) (*RoleTemplate, error) {
+	roleCode = strings.ToUpper(strings.TrimSpace(roleCode))
+	editable := false
+	for _, r := range modules.NonAdminRoles() {
+		if r == roleCode {
+			editable = true
+		}
+	}
+	if !editable {
+		if isAdminRole(roleCode) {
+			return nil, validationf("%s se resuelve por rol y no tiene plantilla editable", roleCode)
+		}
+		return nil, notFoundf("rol %q no existe", roleCode)
+	}
+	if mods == nil {
+		return nil, validationf("modules es obligatorio")
+	}
+	for code, a := range mods {
+		if (a.CanCreate || a.CanEdit || a.CanDelete) && !a.CanView {
+			return nil, validationf("%s: create/edit/delete requieren can_view", code)
+		}
+	}
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var role models.Role
+		if err := tx.Where("code = ?", roleCode).First(&role).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return notFoundf("rol %q no existe", roleCode)
+			}
+			return err
+		}
+		now := s.now()
+		rows := make([]models.RoleModuleDefault, 0, len(mods))
+		for code, a := range mods {
+			var m models.Module
+			if err := tx.Where("code = ?", code).First(&m).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return validationf("módulo %q no existe", code)
+				}
+				return err
+			}
+			if m.Scope != modules.ScopeTenant {
+				return validationf("el módulo %q es de plataforma", code)
+			}
+			rows = append(rows, models.RoleModuleDefault{
+				ID: uuid.New(), RoleID: role.ID, ModuleID: m.ID,
+				ActionFlags: models.ActionFlags{CanView: a.CanView, CanCreate: a.CanCreate, CanEdit: a.CanEdit, CanDelete: a.CanDelete},
+				CreatedAt:   now, UpdatedAt: now,
+			})
+		}
+		if err := tx.Where("role_id = ?", role.ID).Delete(&models.RoleModuleDefault{}).Error; err != nil {
+			return err
+		}
+		if len(rows) > 0 {
+			if err := tx.CreateInBatches(rows, 100).Error; err != nil {
+				return err
+			}
+		}
+		return s.audit(tx, actor, nil, nil, nil, models.AuditRoleTemplateUpdated, map[string]any{
+			"role": roleCode, "modules": len(rows),
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	all, err := s.RoleTemplates(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range all {
+		if t.Role == roleCode {
+			return &t, nil
+		}
+	}
+	return &RoleTemplate{Role: roleCode, Modules: map[string]TemplateAction{}}, nil
+}

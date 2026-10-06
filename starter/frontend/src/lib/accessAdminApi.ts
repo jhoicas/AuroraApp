@@ -148,6 +148,12 @@ export const modulesApi = {
     const { data } = await api.get<{ data: AdminModule[] }>('/admin/modules');
     return data.data ?? [];
   },
+  async listPage(params: { page: number; limit: number; search?: string }): Promise<Paged<AdminModule>> {
+    const { data } = await api.get<Paged<AdminModule>>('/admin/modules', {
+      params: { page: params.page, limit: params.limit, ...(params.search ? { search: params.search } : {}) },
+    });
+    return { ...data, data: data.data ?? [] };
+  },
   async create(payload: CreateModulePayload): Promise<AdminModule> {
     const { data } = await api.post<AdminModule>('/admin/modules', payload);
     return data;
@@ -161,6 +167,60 @@ export const modulesApi = {
   },
   async reorder(items: { id: string; sort_order: number }[]): Promise<void> {
     await api.put('/admin/modules/order', { items });
+  },
+};
+
+export type Paged<T> = { data: T[]; total: number; page: number; limit: number };
+
+/** Metadatos de paginación en la forma que espera CatalogPagination. */
+export function pageMeta(p: { total: number; page: number; limit: number }) {
+  return { total: p.total, page: p.page, limit: p.limit, last_page: Math.max(1, Math.ceil(p.total / p.limit)) };
+}
+
+// ── Plantillas de rol (solo SUPER_ADMIN) ────────────────────────────────────
+
+export const roleTemplatesApi = {
+  async list(): Promise<RoleTemplate[]> {
+    return usersApi.roleTemplates('platform');
+  },
+  async save(role: string, modules: RoleTemplate['modules']): Promise<RoleTemplate> {
+    const { data } = await api.put<RoleTemplate>(`/admin/role-templates/${role}`, { modules });
+    return { ...data, modules: data.modules ?? {} };
+  },
+};
+
+// ── Proyectos de todas las entidades (solo SUPER_ADMIN) ─────────────────────
+
+export type AdminProject = {
+  id: string;
+  name: string;
+  code_bpin?: string;
+  status: string;
+  fase_maduracion: string;
+  sector?: string;
+  tenant_id: string;
+  tenant_name: string;
+  creator_id: string;
+  creator_email: string;
+  creator_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminProjectFilters = {
+  tenant_id?: string;
+  created_by?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  limit?: number;
+};
+
+export const adminProjectsApi = {
+  async list(filters: AdminProjectFilters): Promise<Paged<AdminProject>> {
+    const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined && v !== ''));
+    const { data } = await api.get<Paged<AdminProject>>('/admin/projects', { params });
+    return { ...data, data: data.data ?? [] };
   },
 };
 

@@ -9,7 +9,7 @@ describe('moduleRegistry', () => {
     const expected = [
       'projects', 'mga', 'mga.identificacion', 'mga.preparacion', 'mga.evaluacion', 'mga.programacion', 'mga.presentar',
       'catalog', 'ai', 'reports',
-      'admin.tenants', 'admin.catalogs', 'admin.mga_catalogs', 'admin.ai', 'admin.settings',
+      'admin.tenants', 'admin.projects', 'admin.users', 'admin.catalogs', 'admin.mga_catalogs', 'admin.ai', 'admin.settings',
       ...['sectors', 'programs', 'products', 'edt', 'deliverables', 'activities', 'ods', 'pnd', 'procesos', 'locations', 'measurement-units']
         .map((k) => `admin.catalogs.${k}`),
       ...['actors', 'entities', 'positions'].map((k) => `admin.mga_catalogs.${k}`),

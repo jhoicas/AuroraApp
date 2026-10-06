@@ -75,11 +75,37 @@ func bind(c *fiber.Ctx, dst any) bool {
 // ── Módulos ────────────────────────────────────────────────────────────────
 
 func (h *AccessAdminHandler) ListModules(c *fiber.Ctx) error {
-	mods, err := h.svc.ListModules(c.UserContext())
+	// Sin page/limit/search/q se devuelve la lista completa (la usan el orden y el selector de padres).
+	if c.Query("page") == "" && c.Query("limit") == "" && c.Query("search") == "" && c.Query("q") == "" {
+		mods, err := h.svc.ListModules(c.UserContext())
+		if err != nil {
+			return respondAccessAdminError(c, err)
+		}
+		return c.JSON(fiber.Map{"data": mods})
+	}
+	page, limit := parsePage(c, 20, 100)
+	search := c.Query("search", c.Query("q"))
+	mods, total, err := h.svc.ListModulesPage(c.UserContext(), search, page, limit)
 	if err != nil {
 		return respondAccessAdminError(c, err)
 	}
-	return c.JSON(fiber.Map{"data": mods})
+	return c.JSON(fiber.Map{"data": mods, "total": total, "page": page, "limit": limit})
+}
+
+// parsePage lee page/limit con valores por defecto y tope.
+func parsePage(c *fiber.Ctx, defLimit, maxLimit int) (page, limit int) {
+	page, _ = strconv.Atoi(c.Query("page", "1"))
+	limit, _ = strconv.Atoi(c.Query("limit", strconv.Itoa(defLimit)))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = defLimit
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	return page, limit
 }
 
 func (h *AccessAdminHandler) CreateModule(c *fiber.Ctx) error {
@@ -333,4 +359,24 @@ func (h *AccessAdminHandler) RoleTemplates(c *fiber.Ctx) error {
 		return respondAccessAdminError(c, err)
 	}
 	return c.JSON(fiber.Map{"data": t})
+}
+
+// SetRoleTemplate reemplaza los permisos por defecto de un rol.
+// PUT /api/v1/admin/role-templates/:role  {"modules": {"projects": {"can_view": true, ...}}}
+func (h *AccessAdminHandler) SetRoleTemplate(c *fiber.Ctx) error {
+	actor, err := actorFrom(c)
+	if err != nil {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	var body struct {
+		Modules map[string]accessadmin.TemplateAction `json:"modules"`
+	}
+	if !bind(c, &body) {
+		return nil
+	}
+	t, err := h.svc.SetRoleTemplate(c.UserContext(), actor, c.Params("role"), body.Modules)
+	if err != nil {
+		return respondAccessAdminError(c, err)
+	}
+	return c.JSON(t)
 }

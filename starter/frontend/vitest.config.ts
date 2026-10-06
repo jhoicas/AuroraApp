@@ -10,6 +10,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     restoreMocks: true,
     env: {
       VITE_API_URL: API_URL,

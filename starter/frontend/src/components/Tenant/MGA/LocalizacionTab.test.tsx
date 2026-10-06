@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
 import LocalizacionTab, { FACTORES_ANALIZADOS_MGA } from './LocalizacionTab';
+import { runSectionSave } from './mgaSectionSave';
 import { useLocationStore } from '../../../store/locationStore';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
@@ -215,9 +216,9 @@ describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
     expect((updatedSelects[1] as HTMLSelectElement).value).toBe('76');
     expect((updatedSelects[2] as HTMLSelectElement).value).toBe('76001');
 
-    // Segunda fila (índices 3, 4, 5) inicia vacía
-    expect((updatedSelects[3] as HTMLSelectElement).value).toBe('');
-    expect((updatedSelects[4] as HTMLSelectElement).value).toBe('');
+    // Segunda fila (índices 3, 4, 5) hereda región y departamento base; el municipio inicia vacío
+    expect((updatedSelects[3] as HTMLSelectElement).value).toBe('1');
+    expect((updatedSelects[4] as HTMLSelectElement).value).toBe('76');
     expect((updatedSelects[5] as HTMLSelectElement).value).toBe('');
   });
 
@@ -390,9 +391,10 @@ describe('LocalizacionTab (Multi-localización y Lógica Étnica)', () => {
     const factorComunicaciones = screen.getByRole('checkbox', { name: /Comunicaciones/i });
     fireEvent.click(factorComunicaciones);
 
-    // Guardar
-    const saveBtn = screen.getByRole('button', { name: /Guardar Localización/i });
-    fireEvent.click(saveBtn);
+    // Guardar (acción global "Guardar y Continuar" registrada vía mgaSectionSave)
+    await act(async () => {
+      await runSectionSave();
+    });
 
     await waitFor(() => {
       expect(saveSpy).toHaveBeenCalledTimes(1);

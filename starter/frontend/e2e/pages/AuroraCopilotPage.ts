@@ -8,17 +8,18 @@ export class AuroraCopilotPage {
   readonly sendButton: Locator;
   readonly stopButton: Locator;
   readonly typingIndicator: Locator;
-  readonly applyButton: Locator;
+  applyButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.openButton = page.getByRole('button', { name: 'Abrir Aurora Copilot' });
-    this.dialog = page.getByRole('dialog', { name: 'Aurora Copilot' });
-    this.input = page.getByPlaceholder('Pregunta sobre MGA…');
+    this.openButton = page.getByRole('button', { name: 'Abrir Aurora Asistente MGA' });
+    this.dialog = page.getByRole('dialog', { name: 'Aurora · Asistente MGA' });
+    this.input = page.getByRole('textbox', { name: 'Mensaje para Aurora Asistente' });
     this.sendButton = page.getByRole('button', { name: 'Enviar' });
     this.stopButton = page.getByRole('button', { name: 'Detener' });
     this.typingIndicator = page.getByText('Aurora está escribiendo…');
-    this.applyButton = page.getByRole('button', { name: 'Aplicar' });
+    // El botón de la Action Card toma el texto de `card.label`; se resuelve en expectActionCard.
+    this.applyButton = page.getByRole('button', { name: 'Aplicar', exact: true });
   }
 
   async open(): Promise<void> {
@@ -42,7 +43,8 @@ export class AuroraCopilotPage {
   }
 
   async expectActionCard(label: string): Promise<void> {
-    await expect(this.page.getByText(label)).toBeVisible();
+    this.applyButton = this.dialog.getByRole('button', { name: label, exact: true });
+    await expect(this.dialog.getByText(label).first()).toBeVisible();
     await expect(this.applyButton).toBeVisible();
   }
 

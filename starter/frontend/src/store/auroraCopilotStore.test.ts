@@ -517,6 +517,7 @@ describe('COPILOT_CATALOG_ROUTES', () => {
       deliverables: '/admin/catalogs/deliverables',
       activities: '/admin/catalogs/activities',
       pnd: '/admin/catalogs/pnd',
+      'measurement-units': '/admin/catalogs/measurement-units',
       full: '/admin/catalog',
     });
   });

@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import CadenaValorTab from './CadenaValorTab';
-import { useProjectEdtStore } from '../../../store/projectEdtStore';
+import { useCatalogStore } from '../../../store/catalogStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import type { Project } from '../../../store/projectStore';
 
@@ -25,197 +25,146 @@ const mockProject: Project = {
   },
 };
 
+const buildProducto = () => ({
+  id: 'prod-1',
+  etapa: 'Inversión',
+  productoId: '',
+  complemento: 'Vía en concreto rígido construida',
+  descripcion: '',
+  unidadMedidaId: '',
+  cantidad: 0,
+  localizacion: { rural: false, ruralDisperso: false, urbano: false },
+  poblacion: { usarObjetivo: false, numero: 0, tipoAcumulacion: 'Suma', descripcion: '' },
+  actividades: [
+    {
+      id: 'act-1',
+      etapa: 'Inversión',
+      nombre: 'Excavación y conformación de subrasante',
+      costos: [{ insumo: 'Materiales', periodo: 0, valor: 50000000 }],
+    },
+  ],
+  entregables: [],
+});
+
 describe('CadenaValorTab (Layout MGA Oficial)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    useCatalogStore.setState({
+      catalogProducts: [],
+      isLoadingProducts: false,
+      fetchCatalogProducts: vi.fn().mockResolvedValue(undefined),
+    } as any);
+
     useProjectMgaStore.setState({
       byProjectId: {
         'proj-cadena-1': {
-          causeRelations: [
-            {
-              id: 'cause-1',
-              causeType: 'Causa directa',
-              causeDescription: 'Deterioro de la carpeta asfáltica',
-              specificObjective: 'Construir vías en pavimento rígido',
-            },
-          ],
+          causeRelations: [],
           generalIndicators: [],
           effects: [],
           participants: [],
           populations: [],
-          alternatives: [
-            {
-              id: 'alt-1',
-              tenant_id: 'tenant-1',
-              project_id: 'proj-cadena-1',
-              description: 'Construcción de pavimento en concreto rígido',
-              evaluate_profitability: false,
-              evaluate_cost: true,
-              proceeds_to_preparation: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
+          alternatives: [],
           completedSections: {},
-        },
+          identificacion: {
+            alternativas: [
+              {
+                id: 'alt-1',
+                nombre: 'Construcción de pavimento en concreto rígido',
+                pasaPreparacion: true,
+              },
+            ],
+            objetivos: {
+              objetivosEspecificos: {
+                'oe-1': 'Construir vías en pavimento rígido',
+              },
+            },
+          },
+          preparacion: {
+            cadenaValorPrep: {
+              'alt-1': { objetivos: { 'oe-1': { productos: [buildProducto()] } } },
+            },
+          },
+        } as any,
       },
     });
+  });
 
-    useProjectEdtStore.setState({
+  it('renderiza el encabezado, el costo total y el acordeón por objetivo específico', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    expect(screen.getByRole('heading', { name: 'Cadena de Valor' })).toBeInTheDocument();
+    expect(screen.getByText(/Costo total alternativa:/i)).toBeInTheDocument();
+    expect(screen.getByText(/OE - Construir vías en pavimento rígido/i)).toBeInTheDocument();
+    expect(screen.getByText(/Costo total del objetivo/i)).toBeInTheDocument();
+  });
+
+  it('renderiza el selector de alternativa y el botón Adicionar Producto', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    expect(screen.getByText('Alternativa:')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Construcción de pavimento en concreto rígido/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar Producto/i })).toBeInTheDocument();
+  });
+
+  it('renderiza la tarjeta del producto con sus campos metodológicos', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    expect(screen.getByText('Vía en concreto rígido construida')).toBeInTheDocument();
+    expect(screen.getByText('Etapa')).toBeInTheDocument();
+    expect(screen.getByText('Unidad de Medida')).toBeInTheDocument();
+    expect(screen.getByText('Cantidad')).toBeInTheDocument();
+    expect(screen.getByText('Localización')).toBeInTheDocument();
+    expect(screen.getByText(/Cuantificación de Población/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar Actividad/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar Entregable/i })).toBeInTheDocument();
+  });
+
+  it('renderiza la tarjeta de actividad con costo, etapa y botón Programar costos', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    expect(screen.getByDisplayValue('Excavación y conformación de subrasante')).toBeInTheDocument();
+    expect(screen.getByText(/Costo:/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Programar costos/i })).toBeInTheDocument();
+  });
+
+  it('agrega un producto nuevo al presionar Adicionar Producto', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar Producto/i }));
+
+    expect(screen.getByText('Nuevo producto')).toBeInTheDocument();
+  });
+
+  it('agrega una actividad al presionar Adicionar Actividad en la tarjeta de producto', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar Actividad/i }));
+
+    expect(screen.getByText(/Actividades \(2\)/)).toBeInTheDocument();
+  });
+
+  it('abre el modal de Programar costos al hacer clic en el botón de la actividad', () => {
+    render(<CadenaValorTab project={mockProject} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Programar costos/i }));
+
+    expect(screen.getByRole('heading', { name: 'Programar costos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Guardar costos/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cancelar/i })).toBeInTheDocument();
+  });
+
+  it('muestra la advertencia si ninguna alternativa pasa a preparación', () => {
+    useProjectMgaStore.setState({
       byProjectId: {
         'proj-cadena-1': {
-          catalogLink: {
-            id: 'link-1',
-            tenant_id: 'tenant-1',
-            project_id: 'proj-cadena-1',
-            product_id: 'prod-cat-1',
-            product_code: '4001001',
-            tipologia: 'Tipología A',
-            requires_edt: true,
-            sector_code: '40',
-            program_code: '4001',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          edtNodes: [
-            {
-              id: 'node-1',
-              tenant_id: 'tenant-1',
-              project_id: 'proj-cadena-1',
-              code: '1.1',
-              level: 1,
-              name: 'Vía en concreto rígido construida',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
-          deliverables: [
-            {
-              id: 'del-1',
-              tenant_id: 'tenant-1',
-              project_id: 'proj-cadena-1',
-              project_edt_node_id: 'node-1',
-              code: '1.1.1',
-              name: 'Entregable vía',
-              amount: 50000000,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
-          activities: [
-            {
-              id: 'act-1',
-              tenant_id: 'tenant-1',
-              project_id: 'proj-cadena-1',
-              project_deliverable_id: 'del-1',
-              code: '1.1.1.1',
-              name: 'Excavación y conformación de subrasante',
-              quantity: 100,
-              unit_cost: 500000,
-              total_cost: 50000000,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
-        },
+          ...useProjectMgaStore.getState().byProjectId['proj-cadena-1'],
+          identificacion: { alternativas: [{ id: 'alt-1', nombre: 'A', pasaPreparacion: false }] },
+        } as any,
       },
-      fetchEdtChain: vi.fn().mockImplementation(async (pid: string) => {
-        return useProjectEdtStore.getState().getChain(pid);
-      }),
     });
-  });
-
-  it('renderiza la cabecera del acordeón por objetivo con el nombre y el costo', () => {
     render(<CadenaValorTab project={mockProject} />);
 
-    expect(screen.getByText('Cadena de valor')).toBeInTheDocument();
-    expect(screen.getByText(/✓ 1\. Objetivo específico 1: Construir vías en pavimento rígido/i)).toBeInTheDocument();
-    expect(screen.getByText(/Costo: \$/i)).toBeInTheDocument();
-  });
-
-  it('renderiza el bloque superior con la descripción de la alternativa y el botón + Adicionar producto', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    expect(screen.getByText(/^Alternativa:$/i)).toBeInTheDocument();
-    expect(screen.getByText(/Construcción de pavimento en concreto rígido/i)).toBeInTheDocument();
-
-    const addProductBtn = screen.getByRole('button', { name: /\+ Adicionar producto/i });
-    expect(addProductBtn).toBeInTheDocument();
-  });
-
-  it('renderiza la tarjeta del producto con todos los campos metodológicos oficiales', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    expect(screen.getByText(/1\.1 Producto 1: Vía en concreto rígido construida/i)).toBeInTheDocument();
-    expect(screen.getByText(/Indicador principal :/i)).toBeInTheDocument();
-    expect(screen.getByText(/Unidad de Medida :/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cantidad :/i)).toBeInTheDocument();
-    expect(screen.getByText(/Costo \$/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Etapa :/i).length).toBeGreaterThanOrEqual(1);
-
-    expect(screen.getByRole('button', { name: /\+ Adicionar actividad/i })).toBeInTheDocument();
-  });
-
-  it('renderiza la tarjeta de actividad con los campos de costo, etapa y botón + Programar costos', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    expect(screen.getByText(/1\.1\.1\.1 Actividad 1: Excavación y conformación de subrasante/i)).toBeInTheDocument();
-    expect(screen.getByText(/Costo : \$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /\+ Programar costos/i })).toBeInTheDocument();
-  });
-
-  it('renderiza el pie de página con el costo total de la alternativa y botón de guardar', async () => {
-    const saveSpy = vi.fn().mockResolvedValue(undefined);
-    useProjectMgaStore.setState({
-      saveCadenaDeValor: saveSpy as any,
-    });
-
-    render(<CadenaValorTab project={mockProject} />);
-
-    expect(screen.getByText(/Costo total de la alternativa:/i)).toBeInTheDocument();
-    const saveBtn = screen.getByRole('button', { name: /Guardar Cadena de Valor/i });
-    expect(saveBtn).toBeInTheDocument();
-
-    fireEvent.click(saveBtn);
-
-    await waitFor(() => {
-      expect(saveSpy).toHaveBeenCalledTimes(1);
-    });
-    expect(saveSpy).toHaveBeenCalledWith('proj-cadena-1', expect.anything());
-    expect(await screen.findByText(/Cadena de Valor guardada exitosamente/i)).toBeInTheDocument();
-  });
-
-  it('abre el modal de Adicionar producto al presionar el botón correspondiente', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    const addProductBtn = screen.getByRole('button', { name: /\+ Adicionar producto/i });
-    fireEvent.click(addProductBtn);
-
-    expect(screen.getByText('Adicionar Producto')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('ej. Vía pavimentada construida')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Guardar Producto/i })).toBeInTheDocument();
-  });
-
-  it('abre el modal de Adicionar actividad al presionar el botón en la tarjeta de producto', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    const addActBtn = screen.getByRole('button', { name: /\+ Adicionar actividad/i });
-    fireEvent.click(addActBtn);
-
-    expect(screen.getByText('Adicionar Actividad')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('ej. Excavación y movimiento de tierras')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Guardar Actividad/i })).toBeInTheDocument();
-  });
-
-  it('abre el modal de Programación de Costos al hacer clic en + Programar costos', () => {
-    render(<CadenaValorTab project={mockProject} />);
-
-    const programarBtn = screen.getByRole('button', { name: /\+ Programar costos/i });
-    fireEvent.click(programarBtn);
-
-    expect(screen.getByText('Programación de Costos de Actividad')).toBeInTheDocument();
-    expect(screen.getByText(/Distribución temporal MGA:/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Entendido/i })).toBeInTheDocument();
+    expect(screen.getByText(/No hay alternativas que pasen a preparación/i)).toBeInTheDocument();
   });
 });

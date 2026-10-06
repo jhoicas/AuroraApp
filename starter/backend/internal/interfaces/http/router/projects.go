@@ -1,6 +1,7 @@
 package router
 
 import (
+	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/modules"
 	"aurora-backend/internal/interfaces/http/handlers"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -25,6 +26,10 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 		httpmw.RequireTenant(),
 	)
 
+	// Aislamiento por formulador: un FORMULADOR solo accede a proyectos propios (404 si no).
+	owner := httpmw.ProjectOwnerGuard(db)
+	projects.Use("/:id", owner)
+
 	// Ruta de exportación de Documento Técnico Valle del Cauca (Decreto 1278 de 2023)
 	projects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
 
@@ -33,6 +38,7 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 		httpmw.RequireAuth(jwtSecret),
 		httpmw.RequireTenant(),
 	)
+	tenantProjects.Use("/:id", owner)
 	tenantProjects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
 
 	// Grupo de reportes de tenant (Visión Directiva e inversión)
@@ -56,6 +62,10 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	projects.Get("/:id", guard.Require(modules.CodeProjects, modules.ActionView), ph.GetByID)
 	// PATCH guarda cualquier etapa de la MGA (snapshot completo): se autoriza según lo que cambia.
 	projects.Patch("/:id", guard.RequireProjectPatchPermission(httpmw.ProjectSnapshotFromDB(db)), ph.Patch)
+	// Reasignación de autoría: solo administradores (la lista de candidatos y el cambio).
+	adminOnly := httpmw.RequireRole(constants.RoleTenantAdmin, constants.RoleSuperAdmin)
+	projects.Get("/:id/reassign-candidates", guard.Require(modules.CodeProjects, modules.ActionEdit), adminOnly, ph.ReassignCandidates)
+	projects.Patch("/:id/reassign", guard.Require(modules.CodeProjects, modules.ActionEdit), adminOnly, ph.Reassign)
 	projects.Patch("/:id/details", guard.Require(modules.CodeProjects, modules.ActionEdit), ph.UpdateDetails)
 	projects.Post("/:id/evaluate", guard.Require(modules.CodeMGAEvaluacion, modules.ActionCreate), eh.Evaluate)
 	projects.Get("/:id/evaluations", guard.Require(modules.CodeMGAEvaluacion, modules.ActionView), eh.ListEvaluations)

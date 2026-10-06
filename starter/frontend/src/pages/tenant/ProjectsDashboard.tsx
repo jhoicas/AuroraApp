@@ -11,6 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 import CreateProjectModal from '../../components/Tenant/CreateProjectModal';
+import ReassignProjectModal from '../../components/Tenant/ReassignProjectModal';
+import { Roles, roleIsAllowed } from '../../lib/roles';
 import { useAuth } from '../../context/AuthContext';
 import {
   BAR_NAME_TIR,
@@ -19,7 +21,7 @@ import {
   formatVPN,
   tooltipFormatter,
 } from '../../lib/financialFormat';
-import { useProjectStore } from '../../store/projectStore';
+import { useProjectStore, type Project } from '../../store/projectStore';
 
 function formatDate(iso: string): string {
   try {
@@ -45,6 +47,8 @@ export default function ProjectsDashboard() {
   const fetchEvaluationSummary = useProjectStore((s) => s.fetchEvaluationSummary);
   const clearError = useProjectStore((s) => s.clearError);
 
+  const canReassign = roleIsAllowed(user?.role, [Roles.TenantAdmin, Roles.SuperAdmin]);
+  const [reassigning, setReassigning] = useState<Project | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [preselectedSectorCode, setPreselectedSectorCode] = useState<string | undefined>();
   const [preselectedProductCode, setPreselectedProductCode] = useState<string | undefined>();
@@ -270,6 +274,16 @@ export default function ProjectsDashboard() {
                       style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                     />
                   </div>
+                  {canReassign && (
+                    <button
+                      type="button"
+                      onClick={() => setReassigning(project)}
+                      className="w-full h-10 mb-2 border border-[#006162] text-[#006162] rounded-lg font-medium inline-flex items-center justify-center gap-2 hover:bg-teal-50"
+                    >
+                      <span className="material-symbols-outlined text-base">swap_horiz</span>
+                      Reasignar Formulador
+                    </button>
+                  )}
                   <Link
                     to={`/tenant/projects/${project.id}`}
                     className="w-full h-12 bg-[#006162] hover:bg-[#004f50] text-white rounded-lg font-semibold inline-flex items-center justify-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162]"
@@ -301,6 +315,8 @@ export default function ProjectsDashboard() {
           Consultar asistente
         </button>
       </div>
+
+      <ReassignProjectModal project={reassigning} onClose={() => setReassigning(null)} />
 
       <CreateProjectModal
         open={modalOpen}

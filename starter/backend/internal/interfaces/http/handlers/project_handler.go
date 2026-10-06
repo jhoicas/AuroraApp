@@ -213,7 +213,7 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 }
 
 func (h *ProjectHandler) List(c *fiber.Ctx) error {
-	_, tenantID, err := httpmw.IdentityFromContext(c)
+	actorID, tenantID, err := httpmw.IdentityFromContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -232,6 +232,10 @@ func (h *ProjectHandler) List(c *fiber.Ctx) error {
 	q := h.db.WithContext(c.Context()).
 		Model(&models.Project{}).
 		Where("tenant_id = ?", tenantID)
+	// Aislamiento por formulador: solo ve los proyectos que creó / le fueron asignados.
+	if httpmw.IsFormulador(c) {
+		q = q.Where("creator_id = ?", actorID)
+	}
 
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to count projects"})

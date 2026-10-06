@@ -269,6 +269,7 @@ func ensureUsersSchema(db *gorm.DB) {
 		`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
 		`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
 		`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0`,
 		`CREATE INDEX IF NOT EXISTS idx_users_role_id ON users (role_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users (tenant_id)`,
 	}

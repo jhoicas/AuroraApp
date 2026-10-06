@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 2: núcleo de acceso y dry-run
+
+- **Objetivo:** Autorización PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)) sin bloquear tráfico todavía (`PBAC_ENFORCE=log`).
+- **Backend:** `internal/application/access` (`Resolve`, `Can`, `ValidateSession`, caché 30 s); `RequirePermission`, `AccessGuard`, `TenantTargetGuard` en `interfaces/http/middleware/access.go`; `GET /api/v1/auth/me/access`; `users.token_version` + claim `tv` (Refresh lo exige); `PBAC_ENFORCE` en config/main. `guard.Require(módulo, acción)` aplicado a las ~98 rutas de negocio (proyectos, presupuesto, MGA, reportes, catálogos, IA); rutas `/admin/*` siguen con `RequireRole(SUPER_ADMIN)`.
+- **Validación:** `go build`, `go vet`, `go test ./...` (service, middleware, handler y un test que falla si una ruta de negocio no declara guard); `tsc -b`. Sin probar contra Postgres real.
+- **Riesgos/pendientes:** `PATCH /projects/:id` también guarda datos de TODAS las etapas MGA (autosave y "Guardar y Continuar"), por lo que bajo `enforce` exige `projects.edit` y un EVALUADOR no podría guardar la etapa de evaluación: revisar el log de dry-run antes de activar `enforce`. Las lecturas de catálogo/MGA/ubicaciones usan `catalog` view. Cambios de permisos/módulos deben invalidar la caché (Fase 3). El frontend aún no consume `/auth/me/access`.
+
 ### 2026-10-06 - Claude - Fix PBAC: tablas ausentes al sembrar módulos
 
 - **Síntoma:** en el servidor, `ensure modules seed: leer modules: relation "modules" does not exist (SQLSTATE 42P01)`; el servidor arrancó igual.

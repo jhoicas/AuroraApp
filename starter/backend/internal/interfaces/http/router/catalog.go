@@ -2,6 +2,7 @@ package router
 
 import (
 	"aurora-backend/internal/domain/constants"
+	"aurora-backend/internal/domain/modules"
 	"aurora-backend/internal/interfaces/http/handlers"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -9,7 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
+// RegisterCatalogRoutes registra el catálogo DNP. Lecturas: módulo catalog (view).
+// Escrituras/importaciones: módulo de plataforma admin.catalogs (solo SUPER_ADMIN
+// por lógica de acceso), pues el catálogo es un recurso global.
+func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard *httpmw.AccessGuard) {
 	h := handlers.NewCatalogHandler(db)
 	muHandler := handlers.NewMeasurementUnitHandler(db)
 
@@ -17,32 +21,32 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 		httpmw.RequireAuth(jwtSecret),
 	)
 
-	catalog.Get("/sectors", h.ListSectors)
-	catalog.Post("/sectors", h.CreateSector)
-	catalog.Post("/sectors/import", h.ImportSectors)
-	catalog.Get("/programs", h.ListPrograms)
-	catalog.Post("/programs", h.CreateProgram)
-	catalog.Post("/programs/import", h.ImportPrograms)
-	catalog.Get("/sectors/:sectorId/programs", h.ListProgramsBySector)
-	catalog.Get("/products", h.ListCatalogProducts)
-	catalog.Post("/products", h.CreateProduct)
-	catalog.Put("/products/:id", h.UpdateProduct)
-	catalog.Delete("/products/:id", h.DeleteProduct)
-	catalog.Post("/products/import", h.ImportProducts)
-	catalog.Get("/products/search", h.SearchProducts)
-	catalog.Get("/edt", h.ListCatalogEdt)
-	catalog.Post("/edt/import", h.ImportEdt)
-	catalog.Get("/deliverables", h.ListCatalogDeliverables)
-	catalog.Post("/deliverables/import", h.ImportDeliverables)
-	catalog.Get("/activities", h.ListCatalogActivities)
-	catalog.Post("/activities/import", h.ImportActivities)
-	catalog.Get("/ods", h.ListCatalogOds)
-	catalog.Post("/ods/import", h.ImportOds)
-	catalog.Get("/pnd", h.ListCatalogPnd)
-	catalog.Post("/pnd/import", h.ImportPnd)
+	catalog.Get("/sectors", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListSectors)
+	catalog.Post("/sectors", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.CreateSector)
+	catalog.Post("/sectors/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportSectors)
+	catalog.Get("/programs", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListPrograms)
+	catalog.Post("/programs", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.CreateProgram)
+	catalog.Post("/programs/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportPrograms)
+	catalog.Get("/sectors/:sectorId/programs", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListProgramsBySector)
+	catalog.Get("/products", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogProducts)
+	catalog.Post("/products", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.CreateProduct)
+	catalog.Put("/products/:id", guard.Require(modules.CodeAdminCatalogs, modules.ActionEdit), h.UpdateProduct)
+	catalog.Delete("/products/:id", guard.Require(modules.CodeAdminCatalogs, modules.ActionDelete), h.DeleteProduct)
+	catalog.Post("/products/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportProducts)
+	catalog.Get("/products/search", guard.Require(modules.CodeCatalog, modules.ActionView), h.SearchProducts)
+	catalog.Get("/edt", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogEdt)
+	catalog.Post("/edt/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportEdt)
+	catalog.Get("/deliverables", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogDeliverables)
+	catalog.Post("/deliverables/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportDeliverables)
+	catalog.Get("/activities", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogActivities)
+	catalog.Post("/activities/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportActivities)
+	catalog.Get("/ods", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogOds)
+	catalog.Post("/ods/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportOds)
+	catalog.Get("/pnd", guard.Require(modules.CodeCatalog, modules.ActionView), h.ListCatalogPnd)
+	catalog.Post("/pnd/import", guard.Require(modules.CodeAdminCatalogs, modules.ActionCreate), h.ImportPnd)
 
 	// Unidades de medida (tenant / selects)
-	catalog.Get("/measurement-units", muHandler.ListPublic)
+	catalog.Get("/measurement-units", guard.Require(modules.CodeCatalog, modules.ActionView), muHandler.ListPublic)
 
 	// Unidades de medida (admin CRUD)
 	adminCatalogs := app.Group("/api/v1/admin/catalogs",

@@ -23,6 +23,8 @@ type Config struct {
 	EmbeddingProvider      string // huggingface | ollama | mock
 	EmbeddingModel         string
 	OllamaBaseURL          string
+	// PBACEnforce: off | log (por defecto, dry-run: solo registra) | enforce (403 real).
+	PBACEnforce string
 }
 
 // LoadConfig carga variables desde .env (si existe) y el entorno del proceso.
@@ -102,6 +104,16 @@ func LoadConfig() *Config {
 		corsOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
 	}
 
+	pbacEnforce := strings.ToLower(strings.TrimSpace(os.Getenv("PBAC_ENFORCE")))
+	switch pbacEnforce {
+	case "off", "log", "enforce":
+	case "":
+		pbacEnforce = "log"
+	default:
+		log.Printf("WARNING: PBAC_ENFORCE=%q inválido (usa off|log|enforce); se usa 'log'", pbacEnforce)
+		pbacEnforce = "log"
+	}
+
 	return &Config{
 		Port:                   port,
 		DatabaseURL:            databaseURL,
@@ -117,5 +129,6 @@ func LoadConfig() *Config {
 		EmbeddingProvider:      embeddingProvider,
 		EmbeddingModel:         embeddingModel,
 		OllamaBaseURL:          ollamaURL,
+		PBACEnforce:            pbacEnforce,
 	}
 }

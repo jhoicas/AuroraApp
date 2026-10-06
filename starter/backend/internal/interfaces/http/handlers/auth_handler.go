@@ -59,9 +59,10 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	claims := httpmw.Claims{
-		UserID:    user.ID.String(),
-		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
-		TokenType: "access",
+		UserID:       user.ID.String(),
+		Role:         strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+		TokenType:    "access",
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
@@ -237,10 +238,16 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "user not found"})
 	}
 
+	// Sesión revocada (token_version incrementado): el refresh deja de servir.
+	if claims.TokenVersion != user.TokenVersion {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session revoked"})
+	}
+
 	accessClaims := httpmw.Claims{
-		UserID:    user.ID.String(),
-		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
-		TokenType: "access",
+		UserID:       user.ID.String(),
+		Role:         strings.ToUpper(strings.TrimSpace(user.Role.Code)),
+		TokenType:    "access",
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),

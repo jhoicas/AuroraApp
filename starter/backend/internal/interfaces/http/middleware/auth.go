@@ -14,7 +14,9 @@ const (
 	LocalsUserID   = "user_id"
 	LocalsRole     = "role"
 	LocalsTenantID = "tenant_id"
-	tokenTypeClaim = "token_type"
+	// LocalsTokenVersion lleva el claim `tv` (int) para validar sesiones revocadas.
+	LocalsTokenVersion = "token_version"
+	tokenTypeClaim     = "token_type"
 )
 
 type Claims struct {
@@ -22,6 +24,8 @@ type Claims struct {
 	Role      string  `json:"role"`
 	TenantID  *string `json:"tenant_id,omitempty"`
 	TokenType string  `json:"token_type,omitempty"` // access | refresh
+	// TokenVersion debe coincidir con users.token_version; subirlo revoca las sesiones.
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
@@ -89,6 +93,7 @@ func RequireAuth(jwtSecret string) fiber.Handler {
 
 		c.Locals(LocalsUserID, claims.UserID)
 		c.Locals(LocalsRole, role)
+		c.Locals(LocalsTokenVersion, claims.TokenVersion)
 		if claims.TenantID != nil {
 			c.Locals(LocalsTenantID, strings.TrimSpace(*claims.TenantID))
 		}

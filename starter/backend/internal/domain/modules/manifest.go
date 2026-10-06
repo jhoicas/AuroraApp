@@ -37,6 +37,40 @@ type Actions struct {
 	Delete bool
 }
 
+// Action es una de las acciones granulares de un módulo (D1).
+type Action string
+
+const (
+	ActionView   Action = "view"
+	ActionCreate Action = "create"
+	ActionEdit   Action = "edit"
+	ActionDelete Action = "delete"
+)
+
+// Allows indica si el conjunto de acciones incluye a.
+func (a Actions) Allows(action Action) bool {
+	switch action {
+	case ActionView:
+		return a.View
+	case ActionCreate:
+		return a.Create
+	case ActionEdit:
+		return a.Edit
+	case ActionDelete:
+		return a.Delete
+	}
+	return false
+}
+
+// ParseAction valida un string como Action.
+func ParseAction(s string) (Action, bool) {
+	switch Action(s) {
+	case ActionView, ActionCreate, ActionEdit, ActionDelete:
+		return Action(s), true
+	}
+	return "", false
+}
+
 var (
 	// V solo lectura.
 	V = Actions{View: true}

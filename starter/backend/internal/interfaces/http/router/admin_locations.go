@@ -2,6 +2,7 @@ package router
 
 import (
 	"aurora-backend/internal/domain/constants"
+	"aurora-backend/internal/domain/modules"
 	"aurora-backend/internal/interfaces/http/handlers"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
 
@@ -13,7 +14,7 @@ import (
 //
 // Lectura (GET /locations, GET /procesos): cualquier usuario autenticado.
 // Escritura (POST .../import): solo SUPER_ADMIN.
-func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
+func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard *httpmw.AccessGuard) {
 	locHandler := handlers.NewAdminLocationHandler(db)
 	procHandler := handlers.NewAdminProcesoHandler(db)
 
@@ -21,24 +22,24 @@ func RegisterAdminLocationRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) 
 	authenticated := app.Group("/api/v1",
 		httpmw.RequireAuth(jwtSecret),
 	)
-	authenticated.Get("/locations", locHandler.ListLocations)
-	authenticated.Get("/locations/tipos-agrupacion", locHandler.ListTiposAgrupacion)
-	authenticated.Get("/locations/agrupaciones", locHandler.ListAgrupaciones)
-	authenticated.Get("/procesos", procHandler.ListProcesos)
+	authenticated.Get("/locations", guard.Require(modules.CodeCatalog, modules.ActionView), locHandler.ListLocations)
+	authenticated.Get("/locations/tipos-agrupacion", guard.Require(modules.CodeCatalog, modules.ActionView), locHandler.ListTiposAgrupacion)
+	authenticated.Get("/locations/agrupaciones", guard.Require(modules.CodeCatalog, modules.ActionView), locHandler.ListAgrupaciones)
+	authenticated.Get("/procesos", guard.Require(modules.CodeCatalog, modules.ActionView), procHandler.ListProcesos)
 
 	// ── Rutas de importación y administración (SUPER_ADMIN) ──
 	admin := app.Group("/api/v1/admin",
 		httpmw.RequireAuth(jwtSecret),
 		httpmw.RequireRole(constants.RoleSuperAdmin),
 	)
-	
+
 	// Importaciones masivas
 	admin.Post("/locations/import", locHandler.ImportLocations)
 	admin.Post("/procesos/import", procHandler.ImportProcesos)
-	
+
 	// Listado de localizaciones (Paginado admin)
 	admin.Get("/locations", locHandler.ListAdminLocations)
-	
+
 	// Procesos CRUD
 	admin.Get("/procesos", procHandler.ListProcesos) // Admin list (includes inactive)
 	admin.Post("/procesos", procHandler.CreateProceso)

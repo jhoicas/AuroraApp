@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 
+	"aurora-backend/internal/application/access"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
+	httpmw "aurora-backend/internal/interfaces/http/middleware"
 	"aurora-backend/internal/interfaces/http/router"
 
 	"github.com/gofiber/fiber/v2"
@@ -38,26 +40,32 @@ func main() {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	// Auth (público)
-	router.RegisterAuthRoutes(app, db, cfg.JWTSecret)
+	// PBAC (ADR-0001): servicio de acceso con caché de 30 s y guard por ruta.
+	// PBAC_ENFORCE: off | log (por defecto, dry-run) | enforce.
+	accessSvc := access.NewService(db, access.DefaultCacheTTL)
+	guard := httpmw.NewAccessGuard(accessSvc, httpmw.ParseEnforceMode(cfg.PBACEnforce))
+	log.Printf("PBAC_ENFORCE=%s", guard.Mode())
+
+	// Auth (público) + /auth/me/access
+	router.RegisterAuthRoutes(app, db, cfg.JWTSecret, accessSvc)
 
 	// Paso 3 — Tenants (SUPER_ADMIN)
 	router.RegisterAdminTenantRoutes(app, db, cfg.JWTSecret)
 
 	// Paso 3b — Localizaciones y Procesos MGA (lectura: autenticado; import: SUPER_ADMIN)
-	router.RegisterAdminLocationRoutes(app, db, cfg.JWTSecret)
+	router.RegisterAdminLocationRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Paso 4 — Projects (multi-tenant)
-	router.RegisterProjectRoutes(app, db, cfg.JWTSecret)
+	router.RegisterProjectRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Paso 5 — Asistente IA
-	router.RegisterAIRoutes(app, db, cfg)
+	router.RegisterAIRoutes(app, db, cfg, guard)
 
 	// Paso 6 — Catálogo DNP (solo lectura)
-	router.RegisterCatalogRoutes(app, db, cfg.JWTSecret)
+	router.RegisterCatalogRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Paso 7 — Catálogos relacionales MGA (actores, entidades, posiciones)
-	router.RegisterMgaCatalogRoutes(app, db, cfg.JWTSecret)
+	router.RegisterMgaCatalogRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Sincronización SODA Datos Abiertos DNP (SUPER_ADMIN)
 	router.RegisterAdminSyncRoutes(app, db, cfg.JWTSecret)

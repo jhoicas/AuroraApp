@@ -70,7 +70,8 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - [x] Fase 0: access token a 1 h (`AccessTokenTTL`), rate limit en login/register/refresh, fail-fast de `JWT_SECRET` en producción.
 - [x] Validación Fase 0: `go build ./...`, `go test ./...`, `tsc -b`, `vitest`.
 - [x] Fase 1: modelos GORM `Module`, `TenantModule`, `RoleModuleDefault`, `UserModulePermission`, `AccessAuditLog` (en `AllModels()`, migración aditiva por AutoMigrate), manifiesto declarativo con `SeedVersion` (`internal/domain/modules`) y `EnsureModulesSeed` en el arranque, con backfill.
-- [ ] Fase 1: middleware `RequirePermission(modulo, accion)` y pruebas de aislamiento entre tenants.
+- [x] Fase 2: `access.Service` (`Resolve`, `Can`, `ValidateSession`, caché 30 s), `RequirePermission`, `TenantTargetGuard`, `GET /api/v1/auth/me/access`, `PBAC_ENFORCE` (off|log|enforce; por defecto `log`) aplicado a todas las rutas de negocio.
+- [ ] Fase 2b: pasar `PBAC_ENFORCE=enforce` tras revisar el log de dry-run.
 - [ ] Fase 2: gestión de Tenant Admins con invariante del último administrador.
 - [ ] Fase 3: UI Super Admin (módulos por alcaldía) y UI Tenant Admin (permisos).
 
@@ -86,6 +87,28 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
   ya configurados). Defaults: todo rol no admin conserva `view` en todos los módulos (salvo `users`, solo TENANT_ADMIN).
   Los admins se resuelven por rol y no reciben filas por usuario. Una fila existente, aunque todo `false`, cuenta como configurada.
 - Para agregar un módulo: editar `Manifest` y subir `SeedVersion`.
+
+## Núcleo de acceso (Fase 2)
+
+- **Reglas de `Can`:** SUPER_ADMIN permitido por lógica pura (sin leer permisos ni `tenant_modules`). TENANT_ADMIN permitido
+  en todo módulo TENANT habilitado para su tenant (D2 aplica también a admins), sin leer `user_module_permissions`. Resto de
+  roles: permiso explícito y módulo habilitado. Módulos PLATFORM solo SUPER_ADMIN; módulo desconocido o inactivo, denegado;
+  una sección exige que su módulo padre esté habilitado.
+- **Caché:** snapshots en memoria por usuario, tenant y catálogo de módulos (TTL 30 s). `Invalidate*` debe llamarse al
+  cambiar permisos, módulos o usuarios (Fases 3+); sin invalidar, un cambio tarda hasta 30 s en verse.
+- **`token_version`:** columna `users.token_version` (default 0), claim `tv` en access/refresh. `ValidateSession` compara el
+  claim con el valor cacheado; `Refresh` también lo exige. Subir el valor revoca sesiones (tras invalidar caché o ≤30 s).
+- **Errores estándar:** 403 `{error:"forbidden", code:"PERMISSION_DENIED", module, action, reason}`; 401 `SESSION_REVOKED`;
+  503 `ACCESS_CHECK_UNAVAILABLE` (enforce falla cerrado).
+- **`PBAC_ENFORCE`:** `log` (defecto) evalúa y registra `[PBAC] dry-run: se denegaría (403) ...` sin bloquear; `enforce`
+  bloquea; `off` no evalúa. Sesión revocada y fallos del servicio siguen el mismo modo.
+- **Mapeo de rutas:** proyectos/presupuesto → `projects` (GET view, POST create, PUT/PATCH edit, DELETE delete); causas, efectos,
+  objetivos, indicadores, participantes, poblaciones, alternativas → `mga.identificacion`; necesidades y cadena de valor EDT →
+  `mga.preparacion`; evaluar/auditar → `mga.evaluacion`; reportes → `reports`; IA (chat, sugerencias, historial, grafo) →
+  `ai` view; catálogos (lecturas, MGA, ubicaciones, procesos) → `catalog` view; escrituras/importaciones de catálogo →
+  `admin.catalogs` (solo SUPER_ADMIN). Un test falla si una ruta de negocio nueva no declara su guard.
+- **`TenantTargetGuard`:** recibe un `TenantResolver` (p. ej. `UserTenantResolver(db, "userId")`); SUPER_ADMIN pasa; un objetivo
+  de otro tenant responde 404. Siempre activo (no depende de `PBAC_ENFORCE`). Aún sin rutas que lo usen (Fase 3).
 
 ## Referencias
 

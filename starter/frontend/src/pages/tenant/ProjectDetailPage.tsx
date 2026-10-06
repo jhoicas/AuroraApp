@@ -77,14 +77,30 @@ export default function ProjectDetailPage({
     });
   }, []);
 
+  // Id cuya carga inicial ya terminó (éxito o error). Evita mostrar "no encontrado"
+  // en el primer render, antes de que el efecto dispare la petición.
+  const [settledId, setSettledId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!id) return;
-    void fetchProjectById(id);
+    let active = true;
+    void (async () => {
+      try {
+        await fetchProjectById(id);
+      } catch {
+        // el error queda en el store
+      } finally {
+        if (active) setSettledId(id);
+      }
+    })();
     void fetchBudget(id);
-    return () => clearCurrentProject();
+    return () => {
+      active = false;
+      clearCurrentProject();
+    };
   }, [id, fetchProjectById, fetchBudget, clearCurrentProject]);
 
-  if (isLoading && !currentProject) {
+  if (!currentProject && (isLoading || (id !== undefined && settledId !== id))) {
     return (
       <div className="bg-white rounded-lg shadow p-8 animate-pulse space-y-3 print:hidden">
         <div className="h-6 bg-gray-200 rounded w-1/2" />

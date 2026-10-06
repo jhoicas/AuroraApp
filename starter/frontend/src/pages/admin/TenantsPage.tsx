@@ -32,6 +32,7 @@ export default function TenantsPage() {
   const clearError = useTenantStore((s) => s.clearError);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | TenantStatus>('ALL');
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -82,7 +83,10 @@ export default function TenantsPage() {
           </div>
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setEditingTenant(null);
+              setModalOpen(true);
+            }}
             className="h-14 px-10 bg-[#006162] hover:bg-[#2c7a7b] text-white rounded-lg font-semibold text-lg flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162]"
           >
             <span className="material-symbols-outlined">add_business</span>
@@ -228,7 +232,10 @@ export default function TenantsPage() {
                     disabled={togglingId === tenant.id}
                     onClick={() => {
                       if (!active) void handleToggle(tenant);
-                      else setModalOpen(true);
+                      else {
+                        setEditingTenant(tenant);
+                        setModalOpen(true);
+                      }
                     }}
                     className={`h-14 font-semibold text-lg rounded-lg transition-all active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162] ${
                       active
@@ -296,7 +303,14 @@ export default function TenantsPage() {
         <span className="material-symbols-outlined text-4xl">support_agent</span>
       </button>
 
-      <CreateTenantModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateTenantModal
+        open={modalOpen}
+        tenant={editingTenant}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingTenant(null);
+        }}
+      />
     </div>
   );
 }

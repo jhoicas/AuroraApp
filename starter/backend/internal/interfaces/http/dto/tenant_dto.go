@@ -8,6 +8,14 @@ type CreateTenantRequest struct {
 	ContactEmail string  `json:"contact_email" validate:"required,email,max=255"`
 }
 
+// UpdateTenantRequest payload para editar los datos de una entidad.
+type UpdateTenantRequest struct {
+	Name         string  `json:"name" validate:"required,min=2,max=255"`
+	NIT          string  `json:"nit" validate:"required,min=5,max=50"`
+	Domain       *string `json:"domain" validate:"omitempty,min=3,max=255"`
+	ContactEmail string  `json:"contact_email" validate:"required,email,max=255"`
+}
+
 // UpdateTenantStatusRequest payload para suspender/activar.
 type UpdateTenantStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=ACTIVE SUSPENDED"`

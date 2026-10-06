@@ -1,20 +1,33 @@
-import { type FormEvent, useState } from 'react';
-import { useTenantStore } from '../../store/tenantStore';
+import { type FormEvent, useEffect, useState } from 'react';
+import { useTenantStore, type Tenant } from '../../store/tenantStore';
 
 type CreateTenantModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Si se envía, el modal opera en modo edición con los datos precargados. */
+  tenant?: Tenant | null;
 };
 
-export default function CreateTenantModal({ open, onClose }: CreateTenantModalProps) {
+export default function CreateTenantModal({ open, onClose, tenant }: CreateTenantModalProps) {
   const createTenant = useTenantStore((s) => s.createTenant);
+  const updateTenant = useTenantStore((s) => s.updateTenant);
   const isLoading = useTenantStore((s) => s.isLoading);
+  const isEdit = Boolean(tenant);
 
   const [name, setName] = useState('');
   const [nit, setNit] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [domain, setDomain] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(tenant?.name ?? '');
+    setNit(tenant?.nit ?? '');
+    setContactEmail(tenant?.contact_email ?? '');
+    setDomain(tenant?.domain ?? '');
+    setFormError(null);
+  }, [open, tenant]);
 
   if (!open) return null;
 
@@ -36,15 +49,23 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
     setFormError(null);
 
     try {
-      await createTenant({
+      const payload = {
         name,
         nit,
         contact_email: contactEmail,
         domain: domain || undefined,
-      });
+      };
+      if (tenant) await updateTenant(tenant.id, payload);
+      else await createTenant(payload);
       handleClose();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Error al crear el tenant');
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : isEdit
+            ? 'Error al actualizar el tenant'
+            : 'Error al crear el tenant',
+      );
     }
   };
 
@@ -58,7 +79,7 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h3 id="create-tenant-title" className="text-lg font-semibold text-gray-800">
-            Nueva entidad
+            {isEdit ? 'Configurar Entidad' : 'Nueva entidad'}
           </h3>
           <button
             type="button"
@@ -149,8 +170,8 @@ export default function CreateTenantModal({ open, onClose }: CreateTenantModalPr
               disabled={isLoading}
               className="inline-flex items-center gap-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
             >
-              <span className="material-symbols-outlined text-base">add</span>
-              {isLoading ? 'Guardando…' : 'Crear entidad'}
+              <span className="material-symbols-outlined text-base">{isEdit ? 'save' : 'add'}</span>
+              {isLoading ? 'Guardando…' : isEdit ? 'Actualizar Entidad' : 'Crear entidad'}
             </button>
           </div>
         </form>

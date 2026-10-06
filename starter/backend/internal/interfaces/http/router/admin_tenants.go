@@ -20,5 +20,6 @@ func RegisterAdminTenantRoutes(app *fiber.App, db *gorm.DB, jwtSecret string) {
 	tenants := admin.Group("/tenants")
 	tenants.Post("/", h.Create)
 	tenants.Get("/", h.List)
+	tenants.Put("/:id", h.Update)
 	tenants.Patch("/:id/status", h.UpdateStatus)
 }

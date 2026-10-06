@@ -108,6 +108,61 @@ func (h *TenantHandler) List(c *fiber.Ctx) error {
 	})
 }
 
+func (h *TenantHandler) Update(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid tenant id"})
+	}
+
+	var req dto.UpdateTenantRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.NIT = strings.TrimSpace(req.NIT)
+	req.ContactEmail = strings.TrimSpace(strings.ToLower(req.ContactEmail))
+	if req.Domain != nil {
+		d := strings.TrimSpace(strings.ToLower(*req.Domain))
+		if d == "" {
+			req.Domain = nil
+		} else {
+			req.Domain = &d
+		}
+	}
+	if err := dto.Validate(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var tenant models.Tenant
+	if err := h.db.WithContext(c.Context()).First(&tenant, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "tenant not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load tenant"})
+	}
+
+	nit := req.NIT
+	tenant.Name = req.Name
+	tenant.NIT = &nit
+	tenant.Domain = req.Domain
+	tenant.ContactEmail = req.ContactEmail
+	tenant.UpdatedAt = time.Now().UTC()
+
+	if err := h.db.WithContext(c.Context()).
+		Model(&tenant).
+		Select("Name", "NIT", "Domain", "ContactEmail", "UpdatedAt").
+		Updates(&tenant).Error; err != nil {
+		if isUniqueViolation(err) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error": "tenant with same nit or domain already exists",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update tenant"})
+	}
+
+	return c.JSON(toTenantResponse(tenant))
+}
+
 func (h *TenantHandler) UpdateStatus(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

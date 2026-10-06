@@ -37,6 +37,7 @@ type TenantState = {
   error: string | null;
   fetchTenants: () => Promise<void>;
   createTenant: (data: CreateTenantPayload) => Promise<Tenant>;
+  updateTenant: (id: string, data: CreateTenantPayload) => Promise<Tenant>;
   toggleTenantStatus: (id: string, currentStatus: TenantStatus) => Promise<void>;
   clearError: () => void;
 };
@@ -47,6 +48,18 @@ function extractError(err: unknown, fallback: string): string {
     return msg || fallback;
   }
   return fallback;
+}
+
+function buildTenantBody(payload: CreateTenantPayload): CreateTenantPayload {
+  const body: CreateTenantPayload = {
+    name: payload.name.trim(),
+    nit: payload.nit.trim(),
+    contact_email: payload.contact_email.trim().toLowerCase(),
+  };
+  if (payload.domain?.trim()) {
+    body.domain = payload.domain.trim().toLowerCase();
+  }
+  return body;
 }
 
 export const useTenantStore = create<TenantState>((set, get) => ({
@@ -71,17 +84,26 @@ export const useTenantStore = create<TenantState>((set, get) => ({
     }
   },
 
+  updateTenant: async (id, payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.put<Tenant>(`/admin/tenants/${id}`, buildTenantBody(payload));
+      set({
+        tenants: get().tenants.map((t) => (t.id === id ? data : t)),
+        isLoading: false,
+      });
+      return data;
+    } catch (err) {
+      const message = extractError(err, 'No se pudo actualizar el tenant');
+      set({ isLoading: false, error: message });
+      throw new Error(message);
+    }
+  },
+
   createTenant: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      const body: CreateTenantPayload = {
-        name: payload.name.trim(),
-        nit: payload.nit.trim(),
-        contact_email: payload.contact_email.trim().toLowerCase(),
-      };
-      if (payload.domain?.trim()) {
-        body.domain = payload.domain.trim().toLowerCase();
-      }
+      const body = buildTenantBody(payload);
 
       const { data } = await api.post<Tenant>('/admin/tenants', body);
       set({

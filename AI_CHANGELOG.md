@@ -21,6 +21,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 5: frontend núcleo (store, registro, rutas y menú dinámicos)
+
+- **Objetivo:** El menú y las rutas salen del árbol de módulos del servidor, con diseño visual idéntico (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).
+- **Frontend:** `store/accessStore.ts`, `lib/moduleRegistry.ts`, `lib/moduleRoutes.tsx`, `lib/navModules.ts`, `components/NavFromModules.tsx`, `components/AccessBootstrap.tsx`, `pages/ComingSoonPage.tsx`; `ProtectedRoute` acepta `module`/`action`; `App.tsx`, `TenantLayout` y `SuperAdminLayout` usan el árbol. Título del header = módulo activo. Mocks e2e con `/auth/me/access`.
+- **Backend (necesario para la paridad visual):** manifiesto con `SeedVersion` 3: nombres alineados a la UI y nuevos módulos de plataforma (`admin.catalogs.*`, `admin.mga_catalogs.*`, `admin.settings`).
+- **Validación:** `tsc -b`, Vitest (tests nuevos: store, registro, navegación, ProtectedRoute, NavFromModules, rutas, AccessBootstrap, App end-to-end con MSW) y `go test ./...`. Sin ejecutar Playwright ni abrir la app en un navegador.
+- **Riesgos/pendientes:** frontend y backend deben desplegarse juntos (sin los módulos nuevos el menú de Super Admin queda casi vacío). Rutas desconocidas dentro de /tenant o /admin ahora redirigen al primer módulo en lugar de /login. No hay pantallas de administración (Fase 6).
+
 ### 2026-10-06 - Claude - PBAC Fase 4: API Tenant Admin y políticas de aislamiento
 
 - **Objetivo:** Administración local de usuarios y permisos para TENANT_ADMIN (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).

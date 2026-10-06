@@ -1,94 +1,19 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
 import FloatingAssistant from '../components/AuroraAsistente/FloatingAssistant';
 import ErrorBoundary from '../components/ErrorBoundary';
-
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
-    isActive
-      ? 'bg-[#e7eeff] text-[#006162] border-l-4 border-[#006162] font-bold translate-x-0.5'
-      : 'text-[#3f4949] hover:bg-[#f0f3ff] hover:text-[#006162]'
-  }`;
-
-const catalogSubLinks = [
-  { to: '/admin/catalogs/sectors', label: 'Sectores' },
-  { to: '/admin/catalogs/programs', label: 'Programas' },
-  { to: '/admin/catalogs/products', label: 'Productos' },
-  { to: '/admin/catalogs/edt', label: 'Catálogo EDT' },
-  { to: '/admin/catalogs/deliverables', label: 'Catálogo de Entregables' },
-  { to: '/admin/catalogs/activities', label: 'Lista de actividades' },
-  { to: '/admin/catalogs/ods', label: 'ODS' },
-  { to: '/admin/catalogs/pnd', label: 'PND' },
-  { to: '/admin/catalogs/procesos', label: 'Procesos MGA' },
-  { to: '/admin/catalogs/locations', label: 'Localizaciones MGA' },
-  { to: '/admin/catalogs/measurement-units', label: 'Unidades de Medida' },
-] as const;
-
-const mgaCatalogSubLinks = [
-  { to: '/admin/catalogs/mga-actors', label: 'Actores MGA' },
-  { to: '/admin/catalogs/mga-entities', label: 'Entidades MGA' },
-  { to: '/admin/catalogs/mga-positions', label: 'Posiciones MGA' },
-] as const;
-
-function headerTitle(pathname: string): string {
-  if (pathname.includes('/admin/catalogs/mga-actors')) return 'Actores MGA';
-  if (pathname.includes('/admin/catalogs/mga-entities')) return 'Entidades MGA';
-  if (pathname.includes('/admin/catalogs/mga-positions')) return 'Posiciones MGA';
-  if (pathname.includes('/admin/catalogs/sectors')) return 'Sectores';
-  if (pathname.includes('/admin/catalogs/programs')) return 'Programas';
-  if (pathname.includes('/admin/catalogs/products')) return 'Productos';
-  if (pathname.includes('/admin/catalogs/edt') || pathname.includes('/admin/catalogs/indicators')) {
-    return 'Catálogo EDT';
-  }
-  if (
-    pathname.includes('/admin/catalogs/deliverables') ||
-    pathname.includes('/admin/catalogs/funding')
-  ) {
-    return 'Catálogo de Entregables';
-  }
-  if (pathname.includes('/admin/catalogs/activities')) return 'Lista de actividades';
-  if (pathname.includes('/admin/catalogs/ods')) return 'ODS';
-  if (pathname.includes('/admin/catalogs/pnd')) return 'PND';
-  if (pathname.includes('/admin/catalogs/procesos')) return 'Procesos MGA';
-  if (pathname.includes('/admin/catalogs/locations')) return 'Localizaciones MGA';
-  if (pathname.includes('/admin/catalogs/measurement-units')) return 'Unidades de Medida';
-  if (pathname.includes('/admin/catalog')) return 'Catálogos Maestros';
-  if (pathname.includes('/admin/tenants')) return 'Gestión de Tenants';
-  if (pathname.includes('/admin/ai')) return 'Gestión IA Aurora';
-  if (pathname.includes('/admin/security') || pathname.includes('/admin/settings')) {
-    return 'Settings';
-  }
-  return 'Dashboard';
-}
-
-function catalogSubClass({ isActive }: { isActive: boolean }) {
-  return `block pl-11 pr-3 py-2 rounded-lg text-base font-semibold transition-colors ${
-    isActive
-      ? 'text-[#006a68] bg-[#E6FFFA]'
-      : 'text-[#2f855a] hover:bg-[#E6FFFA] hover:text-[#006a68]'
-  }`;
-}
+import NavFromModules from '../components/NavFromModules';
+import { useAccessStore } from '../store/accessStore';
+import { titleForPath } from '../lib/navModules';
 
 export default function SuperAdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const mgaCatalogsActive = pathname.startsWith('/admin/catalogs/mga-');
-  const catalogsActive =
-    (pathname.startsWith('/admin/catalogs') || pathname.startsWith('/admin/catalogo')) &&
-    !mgaCatalogsActive;
-  const [catalogsOpen, setCatalogsOpen] = useState(catalogsActive);
-  const [mgaCatalogsOpen, setMgaCatalogsOpen] = useState(mgaCatalogsActive);
-
-  useEffect(() => {
-    if (catalogsActive) setCatalogsOpen(true);
-  }, [catalogsActive]);
-
-  useEffect(() => {
-    if (mgaCatalogsActive) setMgaCatalogsOpen(true);
-  }, [mgaCatalogsActive]);
+  const platformNav = useAccessStore((s) => s.nav.PLATFORM);
+  const headerTitle = titleForPath(platformNav, pathname) ?? 'Dashboard';
 
   return (
     <div className="flex h-screen bg-[#f9f9ff] font-body">
@@ -98,83 +23,7 @@ export default function SuperAdminLayout() {
           <p className="text-sm text-[#3f4949] mt-2">Public Investment Portal</p>
         </div>
         <nav className="flex-1 flex flex-col space-y-3">
-          <NavLink to="/admin/tenants" className={linkClass}>
-            <span className="material-symbols-outlined">settings_suggest</span>
-            <span className="text-lg font-semibold">Gestión de Tenants</span>
-          </NavLink>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setCatalogsOpen((o) => !o)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
-                catalogsActive
-                  ? 'bg-[#e7eeff] text-[#006162] border-l-4 border-[#006162] font-bold'
-                  : 'text-[#3f4949] hover:bg-[#f0f3ff] hover:text-[#006162]'
-              }`}
-              aria-expanded={catalogsOpen}
-            >
-              <span className="material-symbols-outlined">edit_document</span>
-              <span className="text-lg font-semibold flex-1 text-left">Catálogos Maestros</span>
-              <span
-                className={`material-symbols-outlined text-[20px] transition-transform ${
-                  catalogsOpen ? 'rotate-180' : ''
-                }`}
-              >
-                expand_more
-              </span>
-            </button>
-            {catalogsOpen && (
-              <div className="mt-1 space-y-0.5 border-l-2 border-[#94f2f0] ml-5">
-                {catalogSubLinks.map((item) => (
-                  <NavLink key={item.to} to={item.to} className={catalogSubClass}>
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setMgaCatalogsOpen((o) => !o)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
-                mgaCatalogsActive
-                  ? 'bg-[#e7eeff] text-[#006162] border-l-4 border-[#006162] font-bold'
-                  : 'text-[#3f4949] hover:bg-[#f0f3ff] hover:text-[#006162]'
-              }`}
-              aria-expanded={mgaCatalogsOpen}
-            >
-              <span className="material-symbols-outlined">group_work</span>
-              <span className="text-lg font-semibold flex-1 text-left">Catálogos MGA</span>
-              <span
-                className={`material-symbols-outlined text-[20px] transition-transform ${
-                  mgaCatalogsOpen ? 'rotate-180' : ''
-                }`}
-              >
-                expand_more
-              </span>
-            </button>
-            {mgaCatalogsOpen && (
-              <div className="mt-1 space-y-0.5 border-l-2 border-[#94f2f0] ml-5">
-                {mgaCatalogSubLinks.map((item) => (
-                  <NavLink key={item.to} to={item.to} className={catalogSubClass}>
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <NavLink to="/admin/ai" className={linkClass}>
-            <span className="material-symbols-outlined">psychology</span>
-            <span className="text-lg font-semibold">Gestión IA Aurora</span>
-          </NavLink>
-          <NavLink to="/admin/settings" className={linkClass}>
-            <span className="material-symbols-outlined">settings</span>
-            <span className="text-lg font-semibold">Settings</span>
-          </NavLink>
+          <NavFromModules scope="ADMIN" />
         </nav>
         <div className="mt-auto pt-6 border-t border-[#bec9c8] space-y-2">
           <NavLink
@@ -201,7 +50,7 @@ export default function SuperAdminLayout() {
       <main className="flex-1 overflow-y-auto bg-[#f9f9ff]">
         <header className="w-full h-16 bg-[#f9f9ff] flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 border-b border-[#bec9c8]">
           <h2 className="font-headline text-2xl md:text-3xl font-bold text-[#006162]">
-            {headerTitle(pathname)}
+            {headerTitle}
           </h2>
           <div className="flex items-center gap-4">
             <span className="material-symbols-outlined text-[#3f4949]">notifications</span>
@@ -218,7 +67,9 @@ export default function SuperAdminLayout() {
         </header>
         <div className="p-6">
           <ErrorBoundary key={pathname} fallbackTitle="Error en el panel de administración">
-            <Outlet />
+            <Suspense fallback={<div className="p-4 text-gray-600">Cargando…</div>}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </div>
       </main>

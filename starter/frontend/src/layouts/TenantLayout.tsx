@@ -1,21 +1,19 @@
-import { useState } from 'react';
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Suspense, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
 import ErrorBoundary from '../components/ErrorBoundary';
 import FloatingAssistant from '../components/AuroraAsistente/FloatingAssistant';
-
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006162] ${
-    isActive
-      ? 'bg-teal-50 text-[#006162] border-l-4 border-[#006162] font-semibold'
-      : 'text-gray-600 hover:bg-gray-50 hover:text-[#006162]'
-  }`;
+import NavFromModules from '../components/NavFromModules';
+import { useAccessStore } from '../store/accessStore';
+import { titleForPath } from '../lib/navModules';
 
 export default function TenantLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const tenantNav = useAccessStore((s) => s.nav.TENANT);
+  const headerTitle = titleForPath(tenantNav, pathname) ?? 'Espacio de trabajo';
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
   const isImmersiveAssistant = pathname === '/tenant/projects/create-assistant';
   /** En /tenant/ai y creación asistida el chat ya está embebido; ocultamos el FAB. */
@@ -58,22 +56,7 @@ export default function TenantLayout() {
           </button>
         </div>
         <nav className="flex-1 space-y-1" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) closeSidebarOnMobile(); }}>
-          <NavLink to="/tenant/projects" className={linkClass}>
-            <span className="material-symbols-outlined">dashboard</span>
-            Proyectos
-          </NavLink>
-          <NavLink to="/tenant/catalog" className={linkClass}>
-            <span className="material-symbols-outlined">category</span>
-            Catálogo DNP
-          </NavLink>
-          <NavLink to="/tenant/ai" className={linkClass}>
-            <span className="material-symbols-outlined">hub</span>
-            Exploración MGA
-          </NavLink>
-          <NavLink to="/tenant/reports" className={linkClass}>
-            <span className="material-symbols-outlined">insert_chart</span>
-            Reportes
-          </NavLink>
+          <NavFromModules scope="TENANT" />
         </nav>
         <div className="border-t border-gray-200 pt-3 space-y-1">
           <button
@@ -104,14 +87,16 @@ export default function TenantLayout() {
               >
                 <span className="material-symbols-outlined" aria-hidden>menu</span>
               </button>
-              <h2 className="text-lg font-semibold text-gray-800">Espacio de trabajo</h2>
+              <h2 className="text-lg font-semibold text-gray-800">{headerTitle}</h2>
             </div>
             <div className="text-sm text-gray-600">{user?.full_name || user?.email}</div>
           </header>
         )}
         <div className={isImmersiveAssistant ? 'h-full' : 'p-6 print:p-0 print:m-0 print:w-full'}>
           <ErrorBoundary key={pathname} fallbackTitle="Error en el espacio de trabajo">
-            <Outlet />
+            <Suspense fallback={<div className="p-4 text-gray-600">Cargando…</div>}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </div>
       </main>

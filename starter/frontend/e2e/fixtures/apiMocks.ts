@@ -25,6 +25,63 @@ function json(route: Route, status: number, body: unknown): Promise<void> {
   });
 }
 
+const FULL = { view: true, create: true, edit: true, delete: true };
+const READ = { view: true, create: false, edit: false, delete: false };
+
+/** Árbol de módulos que devolvería GET /auth/me/access (espejo del manifiesto del backend). */
+function accessPayload(user: E2EUser) {
+  const mod = (code: string, name: string, route: string, order: number, scope = 'TENANT', extra = {}) => ({
+    code, name, kind: 'MODULE', scope, route, order, enabled: true, permissions: FULL, ...extra,
+  });
+  const section = (parent: string, key: string, name: string, route: string, order: number) => ({
+    code: `${parent}.${key}`, name, kind: 'SECTION', scope: 'PLATFORM', route, order, enabled: true, permissions: FULL,
+  });
+  const isSuper = user.role === 'SUPER_ADMIN';
+  const modules = isSuper
+    ? [
+        mod('admin.tenants', 'Gestión de Tenants', '/admin/tenants', 100, 'PLATFORM'),
+        mod('admin.catalogs', 'Catálogos Maestros', '/admin/catalogs', 110, 'PLATFORM', {
+          children: [
+            section('admin.catalogs', 'sectors', 'Sectores', '/admin/catalogs/sectors', 111),
+            section('admin.catalogs', 'programs', 'Programas', '/admin/catalogs/programs', 112),
+            section('admin.catalogs', 'products', 'Productos', '/admin/catalogs/products', 113),
+            section('admin.catalogs', 'edt', 'Catálogo EDT', '/admin/catalogs/edt', 114),
+            section('admin.catalogs', 'deliverables', 'Catálogo de Entregables', '/admin/catalogs/deliverables', 115),
+            section('admin.catalogs', 'activities', 'Lista de actividades', '/admin/catalogs/activities', 116),
+            section('admin.catalogs', 'ods', 'ODS', '/admin/catalogs/ods', 117),
+            section('admin.catalogs', 'pnd', 'PND', '/admin/catalogs/pnd', 118),
+            section('admin.catalogs', 'procesos', 'Procesos MGA', '/admin/catalogs/procesos', 119),
+            section('admin.catalogs', 'locations', 'Localizaciones MGA', '/admin/catalogs/locations', 120),
+            section('admin.catalogs', 'measurement-units', 'Unidades de Medida', '/admin/catalogs/measurement-units', 121),
+          ],
+        }),
+        mod('admin.mga_catalogs', 'Catálogos MGA', '/admin/mga-catalogs', 125, 'PLATFORM', {
+          children: [
+            section('admin.mga_catalogs', 'actors', 'Actores MGA', '/admin/catalogs/mga-actors', 126),
+            section('admin.mga_catalogs', 'entities', 'Entidades MGA', '/admin/catalogs/mga-entities', 127),
+            section('admin.mga_catalogs', 'positions', 'Posiciones MGA', '/admin/catalogs/mga-positions', 128),
+          ],
+        }),
+        mod('admin.ai', 'Gestión IA Aurora', '/admin/ai', 140, 'PLATFORM'),
+        mod('admin.settings', 'Settings', '/admin/settings', 150, 'PLATFORM'),
+      ]
+    : [
+        mod('projects', 'Proyectos', '/tenant/projects', 10),
+        mod('catalog', 'Catálogo DNP', '/tenant/catalog', 30, 'TENANT', { permissions: READ }),
+        mod('ai', 'Exploración MGA', '/tenant/ai', 40, 'TENANT', { permissions: READ }),
+        mod('reports', 'Reportes', '/tenant/reports', 50, 'TENANT', { permissions: READ }),
+      ];
+  return {
+    user_id: user.id,
+    role: user.role,
+    tenant_id: user.tenant_id ?? undefined,
+    is_super_admin: isSuper,
+    is_tenant_admin: user.role === 'TENANT_ADMIN',
+    token_version: 0,
+    modules,
+  };
+}
+
 function loginPayload(user: E2EUser) {
   return {
     token: `e2e-access-${user.storageFile}`,
@@ -96,6 +153,11 @@ export async function installApiMocks(page: Page, options: MockOptions): Promise
         return;
       }
       await json(route, 200, loginPayload(match));
+      return;
+    }
+
+    if (method === 'GET' && path === '/auth/me/access') {
+      await json(route, 200, accessPayload(user));
       return;
     }
 

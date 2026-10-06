@@ -15,7 +15,7 @@ import (
 
 // SeedVersion identifica la versión del manifiesto. Súbela cada vez que cambies
 // Manifest: el seed solo re-sincroniza módulos con seed_version menor.
-const SeedVersion = 2
+const SeedVersion = 3
 
 // Kind de un nodo del manifiesto.
 const (
@@ -118,6 +118,9 @@ const (
 	CodeAdminTenants  = "admin.tenants"
 	CodeAdminCatalogs = "admin.catalogs"
 	CodeAdminAI       = "admin.ai"
+
+	CodeAdminMgaCatalogs = "admin.mga_catalogs"
+	CodeAdminSettings    = "admin.settings"
 )
 
 // roles de tenant que no son administradores.
@@ -160,16 +163,32 @@ var Manifest = []Def{
 
 	{Code: CodeCatalog, Name: "Catálogo DNP", Description: "Consulta del catálogo oficial del DNP", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/catalog", Order: 30,
 		Defaults: defaults(V, V, V, V)},
-	{Code: CodeAI, Name: "Asistente IA", Description: "Exploración MGA y asistente Aurora", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/ai", Order: 40,
+	{Code: CodeAI, Name: "Exploración MGA", Description: "Exploración MGA y asistente Aurora", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/ai", Order: 40,
 		Defaults: defaults(VCE, VC, VC, V)},
 	{Code: CodeReports, Name: "Reportes", Description: "Reportes de inversión y seguimiento", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/reports", Order: 50,
 		Defaults: defaults(V, V, VC, V)},
 	{Code: CodeUsers, Name: "Usuarios y permisos", Description: "Administración de usuarios y permisos de la entidad", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/users", Order: 60,
 		Defaults: map[string]Actions{}}, // solo TENANT_ADMIN
 
-	{Code: CodeAdminTenants, Name: "Entidades (tenants)", Description: "Alta, estado y módulos de cada entidad", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/tenants", Order: 100},
-	{Code: CodeAdminCatalogs, Name: "Catálogos globales", Description: "Catálogos DNP, MGA y ubicaciones", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/catalogs", Order: 110},
-	{Code: CodeAdminAI, Name: "Conocimiento IA", Description: "Gestión de la base de conocimiento de IA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/ai", Order: 120},
+	{Code: CodeAdminTenants, Name: "Gestión de Tenants", Description: "Alta, estado y módulos de cada entidad", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/tenants", Order: 100},
+	{Code: CodeAdminCatalogs, Name: "Catálogos Maestros", Description: "Catálogos DNP, MGA y ubicaciones", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/catalogs", Order: 110},
+	{Code: CodeAdminCatalogs + ".sectors", Name: "Sectores", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/sectors", Order: 111},
+	{Code: CodeAdminCatalogs + ".programs", Name: "Programas", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/programs", Order: 112},
+	{Code: CodeAdminCatalogs + ".products", Name: "Productos", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/products", Order: 113},
+	{Code: CodeAdminCatalogs + ".edt", Name: "Catálogo EDT", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/edt", Order: 114},
+	{Code: CodeAdminCatalogs + ".deliverables", Name: "Catálogo de Entregables", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/deliverables", Order: 115},
+	{Code: CodeAdminCatalogs + ".activities", Name: "Lista de actividades", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/activities", Order: 116},
+	{Code: CodeAdminCatalogs + ".ods", Name: "ODS", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/ods", Order: 117},
+	{Code: CodeAdminCatalogs + ".pnd", Name: "PND", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/pnd", Order: 118},
+	{Code: CodeAdminCatalogs + ".procesos", Name: "Procesos MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/procesos", Order: 119},
+	{Code: CodeAdminCatalogs + ".locations", Name: "Localizaciones MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/locations", Order: 120},
+	{Code: CodeAdminCatalogs + ".measurement-units", Name: "Unidades de Medida", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/measurement-units", Order: 121},
+	{Code: CodeAdminMgaCatalogs, Name: "Catálogos MGA", Description: "Actores, entidades y posiciones MGA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/mga-catalogs", Order: 125},
+	{Code: CodeAdminMgaCatalogs + ".actors", Name: "Actores MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-actors", Order: 126},
+	{Code: CodeAdminMgaCatalogs + ".entities", Name: "Entidades MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-entities", Order: 127},
+	{Code: CodeAdminMgaCatalogs + ".positions", Name: "Posiciones MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-positions", Order: 128},
+	{Code: CodeAdminAI, Name: "Gestión IA Aurora", Description: "Gestión de la base de conocimiento de IA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/ai", Order: 140},
+	{Code: CodeAdminSettings, Name: "Settings", Description: "Configuración de la plataforma", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/settings", Order: 150},
 }
 
 // NonAdminRoles devuelve los roles de tenant que reciben defaults por módulo.

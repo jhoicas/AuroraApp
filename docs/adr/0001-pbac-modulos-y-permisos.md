@@ -74,7 +74,8 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - [ ] Fase 2b: pasar `PBAC_ENFORCE=enforce` tras revisar el log de dry-run.
 - [x] Fase 3 (API Super Admin): `/api/v1/admin/modules` (CRUD + `PUT /order`), `/admin/tenants/:tenantId/users` y `/modules`, `/admin/users/:id/permissions|password|status`, con auditoría e invalidación de caché; `PATCH /projects/:id` autorizado por contenido.
 - [x] Fase 4 (API Tenant Admin): `/api/v1/tenant/users` (GET/POST, GET/PATCH `:id`, `PUT :id/password`, `PATCH :id/status`, GET/PUT `:id/permissions`) y `GET /api/v1/tenant/modules/assignable`, con `ActorPolicy` y `TenantTargetGuard`.
-- [ ] Fase 5: frontend (menú por `/auth/me/access`, pantallas Super Admin y Tenant Admin) y paso a `PBAC_ENFORCE=enforce`.
+- [x] Fase 5 (frontend núcleo): `accessStore`, `moduleRegistry`, rutas y menú dinámicos (`NavFromModules`), `ProtectedRoute` con `module`/`action`.
+- [ ] Fase 6: pantallas de administración (Super Admin y Tenant Admin) y paso a `PBAC_ENFORCE=enforce`.
 - [ ] Fase 3: UI Super Admin (módulos por alcaldía) y UI Tenant Admin (permisos).
 
 ## Esquema y seeding (Fase 1)
@@ -140,6 +141,18 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
   habilitado, excluyendo los no delegables (`users`: la administración de usuarios es solo del rol TENANT_ADMIN). `PUT .../permissions`
   rechaza (400) cualquier módulo fuera de ese catálogo.
 - El módulo `users` también cuenta para el techo: si el SUPER_ADMIN lo deshabilita para un tenant, PBAC (en `enforce`) bloquea esta API.
+
+## Frontend núcleo (Fase 5)
+
+- **`accessStore`** (zustand, sin persistencia): se llena con `GET /auth/me/access` al iniciar/restaurar sesión (`AccessBootstrap`) y se refresca al
+  volver a la pestaña tras 60 s; selectores `can(code, action)` y `navTree(scope)`. `AccessBootstrap` bloquea la app con "Cargando…" hasta la primera
+  carga y ofrece reintentar/cerrar sesión si falla.
+- **`moduleRegistry`**: código de módulo → UI (componentes `React.lazy`, rutas, ícono). Un código del servidor sin registro se advierte una vez en
+  consola y se omite. Módulos sin enlace propio (etapas MGA) se registran como `nav: false`; `users` queda sin registro hasta la Fase 6.
+- **Rutas y menú:** `App.tsx` inyecta las rutas de `/tenant` y `/admin` desde el árbol; cada módulo va tras `ProtectedRoute module action="view"`
+  (se mantiene `allowedRoles`). Una ruta no concedida redirige al primer módulo navegable. `NavFromModules` replica el diseño anterior.
+- **Manifiesto del backend:** `SeedVersion` 3. Los nombres coinciden con la UI actual ("Exploración MGA", "Gestión de Tenants"…) y se agregan los módulos de
+  plataforma `admin.catalogs.*` (11 secciones), `admin.mga_catalogs` (+3) y `admin.settings`. Deben desplegarse junto con el frontend.
 
 ## Referencias
 

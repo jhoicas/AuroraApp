@@ -201,8 +201,22 @@ function isSectionMarkedCompleted(
   );
 }
 
+const GATED_STAGES: MgaMainStageId[] = ['preparacion', 'evaluacion', 'programacion'];
+
+const GATED_SECTIONS: MgaLayoutTabId[] = [
+  ...SUB_SECTIONS_PREPARACION,
+  ...SUB_SECTIONS_EVALUACION,
+  ...SUB_SECTIONS_PROGRAMACION,
+].map((s) => s.id);
+
+/** Al menos una alternativa guardada con "Pasa a preparación". */
+function hasViableAlternative(project: Project, formulation: ProjectMgaFormulation): boolean {
+  return hasMgaSectionData('alternativas', project, formulation, null);
+}
+
 function useMgaSectionStatuses(project: Project, _edtChain?: ProjectEdtChainState | null) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const hasViableAlt = hasViableAlternative(project, formulation);
 
   const statuses = {} as Record<MgaLayoutTabId, SectionStatus>;
 
@@ -218,7 +232,9 @@ function useMgaSectionStatuses(project: Project, _edtChain?: ProjectEdtChainStat
     // Los datos autoguardados nunca desbloquean tabs.
     const isUnlocked = i === 0 || prevIsCompleted;
 
-    if (isCompleted) {
+    if (!hasViableAlt && GATED_SECTIONS.includes(sectionId)) {
+      statuses[sectionId] = 'LOCKED';
+    } else if (isCompleted) {
       statuses[sectionId] = 'COMPLETED';
     } else if (isUnlocked) {
       statuses[sectionId] = 'ACTIVE';
@@ -259,6 +275,9 @@ function useMgaMainStageStatuses(
     programacion: cProgramacion ? 'COMPLETED' : (mProgramacion || mEvaluacion || cEvaluacion ? 'ACTIVE' : 'LOCKED'),
     presentar: cProgramacion || mProgramacion ? 'ACTIVE' : 'LOCKED',
   };
+  if (!hasViableAlternative(project, formulation)) {
+    for (const stageId of GATED_STAGES) statuses[stageId] = 'LOCKED';
+  }
   return statuses;
 }
 

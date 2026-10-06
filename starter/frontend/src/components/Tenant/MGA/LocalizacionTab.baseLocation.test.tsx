@@ -4,21 +4,21 @@ import { http, HttpResponse } from 'msw';
 import { apiUrl, server } from '../../../test/server';
 import LocalizacionTab from './LocalizacionTab';
 import { useLocationStore } from '../../../store/locationStore';
-import { useCatalogStore } from '../../../store/catalogStore';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import { runSectionSave } from './mgaSectionSave';
 
+const REGIONS = [{ id: 1, name: 'Región Centro' }, { id: 3, name: 'Región Pacífico' }];
 const DEPARTMENTS = [
-  { id: 76, code: '76', name: 'Valle del Cauca' },
-  { id: 11, code: '11', name: 'Bogotá D.C.' },
+  { id: 76, name: 'Valle del Cauca', region_id: 3 },
+  { id: 11, name: 'Bogotá D.C.', region_id: 1 },
 ];
-const MUNICIPALITIES = {
+const MUNICIPALITIES: Record<number, { id: number; name: string; departamento_id: number }[]> = {
   76: [
-    { id: 76001, code: '76001', name: 'Cali', department_id: 76 },
-    { id: 76109, code: '76109', name: 'Buenaventura', department_id: 76 },
+    { id: 76001, name: 'Cali', departamento_id: 76 },
+    { id: 76109, name: 'Buenaventura', departamento_id: 76 },
   ],
-  11: [{ id: 11001, code: '11001', name: 'Bogotá', department_id: 11 }],
+  11: [{ id: 11001, name: 'Bogotá', departamento_id: 11 }],
 };
 
 const baseProject = (extra: Record<string, unknown> = {}): Project =>
@@ -48,8 +48,17 @@ beforeEach(() => {
       },
     ],
   });
-  useCatalogStore.setState({ departments: DEPARTMENTS, municipalitiesByDept: MUNICIPALITIES } as never);
-  server.use(http.get(apiUrl('/catalog/departments'), () => HttpResponse.json(DEPARTMENTS)));
+  server.use(
+    http.get(apiUrl('/mga/catalogs/regions'), () => HttpResponse.json(REGIONS)),
+    http.get(apiUrl('/mga/catalogs/departments'), ({ request }) => {
+      const regionId = Number(new URL(request.url).searchParams.get('regionId'));
+      return HttpResponse.json(DEPARTMENTS.filter((d) => d.region_id === regionId));
+    }),
+    http.get(apiUrl('/mga/catalogs/municipalities'), ({ request }) => {
+      const departmentId = Number(new URL(request.url).searchParams.get('departmentId'));
+      return HttpResponse.json(MUNICIPALITIES[departmentId] ?? []);
+    }),
+  );
 });
 
 const selectByLabel = (re: RegExp) => screen.getAllByLabelText(re)[0] as HTMLSelectElement;
@@ -70,12 +79,13 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     expect(within(departamento).getByRole('option', { name: /Valle del Cauca/ })).toBeInTheDocument();
   });
 
-  it('el desplegable de Municipio solo ofrece municipios del departamento base', () => {
+  it('el desplegable de Municipio solo ofrece municipios del departamento base', async () => {
     render(<LocalizacionTab project={baseProject()} />);
 
     const municipio = selectByLabel(/^Municipio/);
+    await waitFor(() => expect(within(municipio).getAllByRole('option').length).toBeGreaterThan(1));
     const options = within(municipio).getAllByRole('option').map((o) => o.textContent);
-    expect(options).toEqual(['Seleccione Municipio...', '76001 - Cali', '76109 - Buenaventura']);
+    expect(options).toEqual(['Seleccione Municipio...', 'Cali', 'Buenaventura']);
     expect(within(municipio).queryByRole('option', { name: /Bogotá/ })).not.toBeInTheDocument();
   });
 
@@ -114,6 +124,7 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     useProjectMgaStore.setState({ saveLocalizacion: saveSpy as never });
 
     render(<LocalizacionTab project={baseProject()} />);
+    await waitFor(() => expect(within(selectByLabel(/^Municipio/)).getByRole('option', { name: 'Buenaventura' })).toBeInTheDocument());
     fireEvent.change(selectByLabel(/^Municipio/), { target: { value: '76109' } });
     // El guardado lo dispara la barra única de MGALayout ("Guardar y Continuar").
     await act(async () => { await runSectionSave(); });
@@ -138,7 +149,7 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     expect(saveSpy).not.toHaveBeenCalled();
   });
 
-  it('no copia la localización de la población objetivo si está en otro departamento', () => {
+  it('no copia la localización de la población objetivo si está en otro departamento', async () => {
     useProjectMgaStore.setState({
       byProjectId: {
         'proj-base-1': {
@@ -166,9 +177,11 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     });
 
     render(<LocalizacionTab project={baseProject()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Utilizar localización de la población objetivo/i }));
-
-    expect(screen.getByText(/departamento distinto al departamento base/i)).toBeInTheDocument();
+    // Reintenta el clic hasta que el catálogo de departamentos haya cargado.
+    await waitFor(() => {
+      fireEvent.click(screen.getByRole('button', { name: /Utilizar localización de la población objetivo/i }));
+      expect(screen.getByText(/departamento distinto al departamento base/i)).toBeInTheDocument();
+    });
     expect(selectByLabel(/^Departamento/).value).toBe('76');
   });
 });

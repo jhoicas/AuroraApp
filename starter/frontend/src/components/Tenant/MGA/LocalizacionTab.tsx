@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2, Users, CheckSquare } from 'lucide-react';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
 import { useLocationStore, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
-import { useCatalogStore } from '../../../store/catalogStore';
+import { fetchMgaRegions, fetchMgaDepartments, fetchMgaMunicipalities, type MgaRegion, type MgaDepartment, type MgaMunicipality } from '../../../lib/mgaApi';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import BaseLocationFields from './BaseLocationFields';
@@ -50,11 +50,27 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     fetchAgrupaciones,
   } = useLocationStore();
 
-  const departments = useCatalogStore((s) => s.departments);
-  const municipalitiesByDept = useCatalogStore((s) => s.municipalitiesByDept);
-  const isLoadingDivipola = useCatalogStore((s) => s.isLoadingDivipola);
-  const fetchDepartments = useCatalogStore((s) => s.fetchDepartments);
-  const fetchMunicipalities = useCatalogStore((s) => s.fetchMunicipalities);
+  // Catálogos propios (mismas tablas MGA que Identificación -> Población).
+  const [regions, setRegions] = useState<MgaRegion[]>([]);
+  const [departments, setDepartments] = useState<MgaDepartment[]>([]);
+  const [municipalitiesByDept, setMunicipalitiesByDept] = useState<Record<number, MgaMunicipality[]>>({});
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+  const requestedDeptsRef = useRef<Set<number>>(new Set());
+
+  const fetchMunicipalities = useCallback(async (departmentId: number) => {
+    if (requestedDeptsRef.current.has(departmentId)) return;
+    requestedDeptsRef.current.add(departmentId);
+    setLoadingMunicipios(true);
+    try {
+      const muns = await fetchMgaMunicipalities(departmentId);
+      setMunicipalitiesByDept((prev) => ({ ...prev, [departmentId]: muns }));
+    } catch (err) {
+      requestedDeptsRef.current.delete(departmentId);
+      console.error(err);
+    } finally {
+      setLoadingMunicipios(false);
+    }
+  }, []);
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,12 +121,26 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
   // Carga inicial de catálogos
   useEffect(() => {
-    void fetchDepartments();
+    let cancelled = false;
+    (async () => {
+      try {
+        const regs = await fetchMgaRegions();
+        if (cancelled) return;
+        setRegions(regs);
+        const lists = await Promise.all(regs.map((r) => fetchMgaDepartments(r.id)));
+        if (!cancelled) setDepartments(lists.flat());
+      } catch (err) {
+        console.error(err);
+      }
+    })();
     if (isEthnic) {
       fetchTiposAgrupacion(false);
       fetchAgrupaciones();
     }
-  }, [fetchDepartments, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
 
   // Con base fija, pide los municipios del departamento base apenas monta (sin esperar a las filas).
   const baseDepartamentoId = base?.departamentoId ?? null;
@@ -426,7 +456,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       const next = [...prev];
       const currentRow = { ...next[index] };
 
-      if (field === 'departamento_id') {
+      if (field === 'region_id') {
+        currentRow.region_id = value;
+        currentRow.departamento_id = null;
+        currentRow.municipio_id = null;
+        currentRow.agrupacion_id = null;
+      } else if (field === 'departamento_id') {
         currentRow.departamento_id = value;
         currentRow.municipio_id = null;
         currentRow.agrupacion_id = null;
@@ -508,7 +543,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   };
 
   const baseDepartment = base ? departments.find((d) => Number(d.id) === base.departamentoId) : undefined;
-  const baseDepartmentLabel = baseDepartment ? `${baseDepartment.code} - ${baseDepartment.name}` : baseInfo.departamentoName;
+  const baseDepartmentLabel = baseDepartment ? baseDepartment.name : baseInfo.departamentoName;
 
   return (
     <div className="space-y-6 bg-white p-6 border rounded-xl shadow-sm text-sm">
@@ -571,7 +606,8 @@ export default function LocalizacionTab({ project }: { project: Project }) {
       {/* Listado de Localizaciones */}
       <div className="space-y-4">
         {effectiveRows.map((row, index) => {
-          // Filtrado en cascada con DIVIPOLA
+          // Filtrado en cascada con los catálogos propios (Región -> Departamento -> Municipio)
+          const departamentosDisponibles = row.region_id ? departments.filter((d) => Number(d.region_id) === Number(row.region_id)) : [];
           const municipiosDisponibles = row.departamento_id ? (municipalitiesByDept[row.departamento_id] || []) : [];
 
           // Filtrado estricto de agrupaciones étnicas:
@@ -617,14 +653,14 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                   base={index === 0 ? base : { ...base, municipioId: null }}
                   regionName={baseInfo.regionName}
                   departamentoName={baseDepartmentLabel}
-                  municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: `${mun.code} - ${mun.name}` }))}
-                  loadingMunicipios={isLoadingDivipola}
+                  municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: mun.name }))}
+                  loadingMunicipios={loadingMunicipios}
                   municipioId={row.municipio_id ?? null}
                   onMunicipioChange={(id) => updateRow(index, 'municipio_id', id)}
                   labels={{
                     region: 'Región',
-                    departamento: 'Departamento (DIVIPOLA)',
-                    municipio: <>Municipio (DIVIPOLA) <span className="text-red-500">*</span></>,
+                    departamento: 'Departamento',
+                    municipio: <>Municipio <span className="text-red-500">*</span></>,
                   }}
                   labelClassName="block text-xs font-medium text-slate-700 mb-1.5"
                   selectClassName="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
@@ -632,21 +668,43 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                 />
               ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 1. Región */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                    Región <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={row.region_id !== null && row.region_id !== undefined ? String(row.region_id) : ''}
+                    onChange={(e) => updateRow(index, 'region_id', e.target.value ? Number(e.target.value) : null)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                    disabled={regions.length === 0}
+                  >
+                    <option value="">Seleccione Región...</option>
+                    {regions.map((reg) => (
+                      <option key={reg.id} value={String(reg.id)}>
+                        {reg.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* 2. Departamento */}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Departamento (DIVIPOLA) <span className="text-red-500">*</span>
+                    Departamento <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={row.departamento_id !== null && row.departamento_id !== undefined ? String(row.departamento_id) : ''}
                     onChange={(e) => updateRow(index, 'departamento_id', e.target.value ? Number(e.target.value) : null)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                    disabled={isLoadingDivipola && departments.length === 0}
+                    disabled={!row.region_id || departamentosDisponibles.length === 0}
                   >
-                    <option value="">Seleccione Departamento...</option>
-                    {departments.map((dep) => (
+                    <option value="">
+                      {!row.region_id ? 'Seleccione primero región...' : 'Seleccione Departamento...'}
+                    </option>
+                    {departamentosDisponibles.map((dep) => (
                       <option key={dep.id} value={String(dep.id)}>
-                        {dep.code} - {dep.name}
+                        {dep.name}
                       </option>
                     ))}
                   </select>
@@ -655,7 +713,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                 {/* 3. Municipio */}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Municipio (DIVIPOLA) <span className="text-red-500">*</span>
+                    Municipio <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={row.municipio_id !== null && row.municipio_id !== undefined ? String(row.municipio_id) : ''}
@@ -668,7 +726,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                     </option>
                     {municipiosDisponibles.map((mun) => (
                       <option key={mun.id} value={String(mun.id)}>
-                        {mun.code} - {mun.name}
+                        {mun.name}
                       </option>
                     ))}
                   </select>

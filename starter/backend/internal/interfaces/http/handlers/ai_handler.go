@@ -272,6 +272,10 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		fieldRule = "Describe el problema cuantitativamente. Propone indicadores de referencia realistas o líneas base."
 	case "causas", "efectos":
 		fieldRule = "Redacta una única frase corta que exprese una condición negativa."
+	case "analisis_tecnico_resumen":
+		fieldRule = "Redacta el resumen del análisis técnico de la alternativa. PROHIBIDO usar la expresión \"viabilidad técnica\" (concepto exclusivo del evaluador). El texto DEBE articularse explícitamente con los objetivos, las metas y las actividades planteadas en el proyecto."
+	case "ingreso_beneficio_cantidad":
+		fieldRule = "Redacta un texto cualitativo que describa qué representa la cantidad, articulado con la cadena de valor (productos y actividades). NO devuelvas números aislados como \"1\". Ejemplo: \"La cantidad se refiere al número de proyectos productivos que requieren apoyo financiero\"."
 	case "fuenteInformacion", "fuente_informacion":
 		fieldRule = "Indica la fuente de donde provienen los datos. IMPORTANTE: Tu respuesta DEBE tener un máximo absoluto de 500 caracteres. Sé conciso y directo."
 	}

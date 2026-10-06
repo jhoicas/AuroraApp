@@ -154,7 +154,7 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
       </div>
 
       <MgaAccordion 
-        title="01 - Análisis técnico de la alternativa"
+        title="Análisis técnico de la alternativa"
         number="01"
         open={true}
         onToggle={() => {}}
@@ -169,7 +169,7 @@ export default function AnalisisTecnicoTab({ project }: AnalisisTecnicoTabProps)
               projectContext={{ projectName: project.name, sector: project.sector }}
               reactiveContext={{ resumen }}
               onAutoFill={setResumen}
-              guidance="Describa la viabilidad técnica, el alcance y los componentes principales de la alternativa."
+              guidance="Describa el alcance y los componentes técnicos de la alternativa, articulados con los objetivos, metas y actividades del proyecto."
               askPrompt={`Ayúdame a redactar el resumen técnico de la alternativa del proyecto ${project.name}.`}
             >
               <CountedTextarea

@@ -156,8 +156,8 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                   fieldHelpKey="ingreso_beneficio_cantidad"
                   reactiveContext={{ descripcion: draft.descripcion }}
                   onAutoFill={(value) => updateField('descripcionCantidad', value)}
-                  guidance="Explique qué representa la cantidad y cómo se cuantifica en el proyecto."
-                  askPrompt="Ayúdame a describir la cantidad de un ingreso o beneficio MGA."
+                  guidance="Describa cualitativamente qué representa la cantidad, articulada con la cadena de valor (no solo un número)."
+                  askPrompt="Describe cualitativamente la cantidad de este ingreso o beneficio, articulada con la cadena de valor. No respondas con un número aislado."
                 >
                   <CountedTextarea id={`ingreso-cantidad-${draft.id}`} value={draft.descripcionCantidad} onChange={e => updateField('descripcionCantidad', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
                 </AIAssistedField>

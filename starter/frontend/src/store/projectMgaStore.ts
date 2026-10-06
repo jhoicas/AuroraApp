@@ -1845,10 +1845,11 @@ export function hasMgaSectionData(
     }
 
     case 'alternativas': {
-      const altCount = form?.alternatives?.length || 0;
-      const pDataAltCount = Array.isArray(pData.alternatives) ? pData.alternatives.length : 0;
-      const hasCompleted = Boolean(form?.completedSections?.['alternativas'] || pData.completedSections?.['alternativas']);
-      return altCount > 0 || pDataAltCount > 0 || hasCompleted;
+      // MGA: se requiere al menos una alternativa con "Pasa a preparación" para completar el tab.
+      const formAlts = form?.identificacion?.alternativas;
+      const pDataAlts = pData.identificacion?.alternativas;
+      const alts = Array.isArray(formAlts) ? formAlts : Array.isArray(pDataAlts) ? pDataAlts : [];
+      return alts.some((a: any) => a?.pasaPreparacion === true);
     }
 
     case 'necesidades': {

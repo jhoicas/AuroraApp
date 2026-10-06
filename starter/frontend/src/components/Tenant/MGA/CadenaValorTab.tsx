@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HelpCircle, AlertTriangle, Plus, Trash2, DollarSign, Target, ChevronDown, ChevronRight, X, Package, Activity, FileCheck } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import {
@@ -15,6 +15,8 @@ import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
 import { WEAK_VERBS } from '../../../constants/mgaVerbs';
+import SearchableCombobox, { type ComboboxOption } from '../../Catalog/SearchableCombobox';
+import { useCatalogStore, type Product as CatalogProductRow } from '../../../store/catalogStore';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -206,11 +208,39 @@ function CostModal({ title, costos: initialCostos, onSave, onClose }: CostModalP
 type ProductFormProps = {
   product: ProductoCvJson;
   poblacionObjetivoNum: number;
+  catalogProducts: CatalogProductRow[];
+  isLoadingCatalog: boolean;
   onChange: (updated: ProductoCvJson) => void;
   onRemove: () => void;
 };
 
-function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: ProductFormProps) {
+function ProductForm({ product, poblacionObjetivoNum, catalogProducts, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
+  const productOptions = useMemo<ComboboxOption[]>(() => {
+    const opts = catalogProducts.map((row) => ({
+      value: row.codigo_del_producto,
+      label: row.producto,
+      code: row.codigo_del_producto,
+      hint: row.nombre_del_programa,
+    }));
+    // Conserva valores heredados (texto libre) que no existen en el catálogo.
+    if (product.productoId && !opts.some((o) => o.value === product.productoId)) {
+      opts.unshift({ value: product.productoId, label: product.productoId, code: product.productoId, hint: '' });
+    }
+    return opts;
+  }, [catalogProducts, product.productoId]);
+
+  const selectedProductLabel =
+    productOptions.find((o) => o.value === product.productoId)?.label || product.productoId;
+
+  const handleSelectProduct = (code: string) => {
+    const row = catalogProducts.find((r) => r.codigo_del_producto === code);
+    onChange({
+      ...product,
+      productoId: code,
+      ...(row ? { descripcion: (row.descripcion || row.producto || '').slice(0, 500) } : {}),
+    });
+  };
+
   const [expanded, setExpanded] = useState(true);
   const [costModalTarget, setCostModalTarget] = useState<{ type: 'actividad' | 'entregable'; idx: number } | null>(null);
 
@@ -276,7 +306,7 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
         <div className="flex items-center gap-2">
           {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
           <Package className="w-4 h-4 text-[#2980b9]" />
-          <span className="text-sm font-medium text-slate-800">{product.complemento || product.productoId || 'Nuevo producto'}</span>
+          <span className="text-sm font-medium text-slate-800">{product.complemento || selectedProductLabel || 'Nuevo producto'}</span>
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{product.etapa}</span>
         </div>
         <div className="flex items-center flex-wrap gap-3">
@@ -298,17 +328,18 @@ function ProductForm({ product, poblacionObjetivoNum, onChange, onRemove }: Prod
               </select>
             </div>
             <div>
-              <AIAssistedField
+              <SearchableCombobox
+                id={`producto-nombre-${product.id}`}
                 label="Nombre del Producto"
-                htmlFor={`producto-nombre-${product.id}`}
-                fieldHelpKey={`producto_nombre_${product.id}`}
-                reactiveContext={{ etapa: product.etapa }}
-                onAutoFill={(value) => updateField('productoId', value)}
-                guidance="Ingrese el nombre o código del producto MGA."
-                askPrompt="Sugiere un nombre de producto MGA válido."
-              >
-                <input id={`producto-nombre-${product.id}`} type="text" value={product.productoId} onChange={e => updateField('productoId', e.target.value)} placeholder="Nombre o código del producto" className="w-full p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-[#2980b9] outline-none" />
-              </AIAssistedField>
+                placeholder="Seleccione un producto del catálogo"
+                loading={isLoadingCatalog}
+                loadingMessage="Cargando catálogo de productos..."
+                emptyMessage="No hay productos en el catálogo para el sector/programa del proyecto."
+                noResultsMessage="Sin resultados"
+                options={productOptions}
+                value={product.productoId}
+                onChange={handleSelectProduct}
+              />
             </div>
             <div>
               <AIAssistedField label="Complemento" htmlFor={`producto-complemento-${product.id}`} fieldHelpKey={`producto_complemento_${product.id}`} reactiveContext={{ producto: product.productoId, etapa: product.etapa }} onAutoFill={(value) => updateField('complemento', value)} guidance="Precise las características que complementan el producto del proyecto." askPrompt="Ayúdame a redactar el complemento de un producto MGA.">
@@ -501,6 +532,32 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const alternatives = alternativasAll.filter((alt: any) => alt.pasaPreparacion === true);
   const objetivosEspecificos: Record<string, string> = formulation.identificacion?.objetivos?.objetivosEspecificos || {};
   const poblacionObjetivoNum = formulation.identificacion?.poblacion?.objetivo?.numero || 0;
+
+  const fetchCatalogProducts = useCatalogStore((st) => st.fetchCatalogProducts);
+  const allCatalogProducts = useCatalogStore((st) => st.catalogProducts);
+  const isLoadingCatalog = useCatalogStore((st) => st.isLoadingProducts);
+  const programCode = (project.program_code ?? '').trim();
+  const sectorKey = (project.sector ?? '').trim().toLowerCase();
+
+  useEffect(() => {
+    void fetchCatalogProducts({ search: programCode || undefined });
+  }, [fetchCatalogProducts, programCode]);
+
+  // Catálogo oficial filtrado por Programa y Sector del proyecto.
+  const catalogProducts = useMemo(
+    () =>
+      allCatalogProducts.filter((row) => {
+        if (programCode && row.codigo_del_programa !== programCode) return false;
+        if (!programCode && sectorKey) {
+          return (
+            String(row.sector ?? '').trim().toLowerCase() === sectorKey ||
+            row.nombre_del_sector.trim().toLowerCase() === sectorKey
+          );
+        }
+        return true;
+      }),
+    [allCatalogProducts, programCode, sectorKey],
+  );
 
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string>(alternatives.length > 0 ? alternatives[0].id : '');
   const [cadenaData, setCadenaData] = useState<CadenaValorAlternativa>({ objetivos: {} });
@@ -741,6 +798,8 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                   key={prod.id}
                   product={prod}
                   poblacionObjetivoNum={poblacionObjetivoNum}
+                  catalogProducts={catalogProducts}
+                  isLoadingCatalog={isLoadingCatalog}
                   onChange={(updated) => updateProducto(objId, pi, updated)}
                   onRemove={() => removeProducto(objId, pi)}
                 />

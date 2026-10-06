@@ -33,6 +33,9 @@ interface LocalizacionRow {
   municipio_id: number | null;
   tipo_agrupacion_id: number | null;
   agrupacion_id: number | null;
+  latitud?: string;
+  longitud?: string;
+  georreferenciacion?: string;
 }
 
 export default function LocalizacionTab({ project }: { project: Project }) {
@@ -63,7 +66,17 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   // Filas efectivas (render, guardado y carga de municipios): con base se fuerza región y departamento
   // y, si una fila heredada apuntaba a otro departamento, se limpia su municipio.
   const { rows: effectiveRows, adjusted: adjustedRows } = useMemo(
-    () => (base ? applyBaseToRows(rows, base) : { rows, adjusted: 0 }),
+    () => {
+      if (!base) return { rows, adjusted: 0 };
+      // Región y departamento fijos en todas las filas; el municipio base solo se precarga
+      // en la localización principal para que se puedan agregar otras localizaciones libres.
+      const { municipioId: baseMunicipioId, ...baseWithoutMunicipio } = base;
+      const res = applyBaseToRows(rows, baseWithoutMunicipio);
+      if (baseMunicipioId != null && res.rows.length > 0) {
+        res.rows = res.rows.map((r, i) => (i === 0 ? { ...r, municipio_id: baseMunicipioId } : r));
+      }
+      return res;
+    },
     [rows, base],
   );
   const [factores, setFactores] = useState<string[]>(() => {
@@ -157,6 +170,9 @@ export default function LocalizacionTab({ project }: { project: Project }) {
           municipio_id: toNumOrNull(loc.municipio_id ?? loc.municipioId),
           tipo_agrupacion_id: toNumOrNull(loc.tipo_agrupacion_id ?? loc.tipoAgrupacionId),
           agrupacion_id: toNumOrNull(loc.agrupacion_id ?? loc.agrupacionId),
+          latitud: loc.latitud != null ? String(loc.latitud) : '',
+          longitud: loc.longitud != null ? String(loc.longitud) : '',
+          georreferenciacion: loc.georreferenciacion != null ? String(loc.georreferenciacion) : '',
         }))
         .filter((r) => r.region_id !== null || r.departamento_id !== null || r.municipio_id !== null);
     }
@@ -246,12 +262,13 @@ export default function LocalizacionTab({ project }: { project: Project }) {
         (project.mga_formulation_data?.identificacion as any)?.agrupacion_id
       );
 
-      if (baseRegion !== null || baseDepto !== null || baseMun !== null) {
+      // Región/Departamento/Municipio definidos al crear el proyecto (localización base).
+      if (baseRegion !== null || baseDepto !== null || baseMun !== null || base) {
         initialRows = [
           {
-            region_id: baseRegion,
-            departamento_id: baseDepto,
-            municipio_id: baseMun,
+            region_id: baseRegion ?? base?.regionId ?? null,
+            departamento_id: baseDepto ?? base?.departamentoId ?? null,
+            municipio_id: baseMun ?? base?.municipioId ?? null,
             tipo_agrupacion_id: baseTipoAgrup,
             agrupacion_id: baseAgrup,
           },
@@ -307,6 +324,9 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     activeProject?.mga_formulation_data,
     activeProject?.localizaciones,
     rows.length,
+    base?.departamentoId,
+    base?.regionId,
+    base?.municipioId,
   ]);
 
   // Sincronización reactiva de factores analizados si se cargan asíncronamente
@@ -395,7 +415,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
   };
 
   // Manejadores para modificar cada fila con filtros en cascada
-  const updateRow = (index: number, field: keyof LocalizacionRow, value: number | null) => {
+  const updateGeoField = (index: number, field: 'latitud' | 'longitud' | 'georreferenciacion', value: string) => {
+    isUserEditedRef.current = true;
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  };
+
+  const updateRow = (index: number, field: Exclude<keyof LocalizacionRow, 'latitud' | 'longitud' | 'georreferenciacion'>, value: number | null) => {
     isUserEditedRef.current = true;
     setRows((prev) => {
       const next = [...prev];
@@ -464,6 +489,9 @@ export default function LocalizacionTab({ project }: { project: Project }) {
         region_id: r.region_id,
         departamento_id: r.departamento_id,
         municipio_id: r.municipio_id,
+        latitud: r.latitud?.trim() || undefined,
+        longitud: r.longitud?.trim() || undefined,
+        georreferenciacion: r.georreferenciacion?.trim() || undefined,
         ...(isEthnic ? { tipo_agrupacion_id: r.tipo_agrupacion_id, agrupacion_id: r.agrupacion_id } : {}),
       }));
 
@@ -586,7 +614,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                 // Municipio limitado al departamento base del proyecto.
                 <BaseLocationFields
                   idPrefix={`localizacion-${index}`}
-                  base={base}
+                  base={index === 0 ? base : { ...base, municipioId: null }}
                   regionName={baseInfo.regionName}
                   departamentoName={baseDepartmentLabel}
                   municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: `${mun.code} - ${mun.name}` }))}
@@ -708,6 +736,50 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                   </div>
                 </div>
               )}
+
+              {/* 01 - Georreferenciación y Ubicación Territorial (estándar MGA) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-200">
+                <div>
+                  <label htmlFor={`localizacion-lat-${index}`} className="block text-xs font-medium text-slate-700 mb-1.5">Latitud</label>
+                  <input
+                    id={`localizacion-lat-${index}`}
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    value={row.latitud ?? ''}
+                    onChange={(e) => updateGeoField(index, 'latitud', e.target.value)}
+                    placeholder="Ej: 4.710989"
+                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`localizacion-lng-${index}`} className="block text-xs font-medium text-slate-700 mb-1.5">Longitud</label>
+                  <input
+                    id={`localizacion-lng-${index}`}
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    value={row.longitud ?? ''}
+                    onChange={(e) => updateGeoField(index, 'longitud', e.target.value)}
+                    placeholder="Ej: -74.072092"
+                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`localizacion-geo-${index}`} className="block text-xs font-medium text-slate-700 mb-1.5">Descripción de la georreferenciación</label>
+                  <input
+                    id={`localizacion-geo-${index}`}
+                    type="text"
+                    maxLength={500}
+                    value={row.georreferenciacion ?? ''}
+                    onChange={(e) => updateGeoField(index, 'georreferenciacion', e.target.value)}
+                    placeholder="Vereda, barrio, predio o referencia"
+                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 text-xs focus:ring-2 focus:ring-[#006162] focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
             </div>
           );
         })}

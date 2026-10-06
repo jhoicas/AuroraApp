@@ -4,10 +4,8 @@ import (
 	"log"
 
 	"aurora-backend/internal/config"
-	legacyhandlers "aurora-backend/internal/handlers"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	"aurora-backend/internal/interfaces/http/router"
-	legacymw "aurora-backend/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -63,20 +61,6 @@ func main() {
 
 	// Sincronización SODA Datos Abiertos DNP (SUPER_ADMIN)
 	router.RegisterAdminSyncRoutes(app, db, cfg.JWTSecret)
-
-	// Legacy starter routes (se migrarán en pasos posteriores)
-	adminGroup := app.Group("/api/admin")
-	adminGroup.Post("/catalog/upload", legacyhandlers.ImportCatalogExcel)
-	app.Post("/api/catalog/upload", legacyhandlers.ImportCatalogExcel)
-
-	tenantGroup := app.Group("/api/tenant", legacymw.TenantMiddleware)
-	tenantGroup.Get("/projects", legacyhandlers.GetProjects)
-	tenantGroup.Post("/ai/formulate", legacyhandlers.FormulateProjectAI)
-	tenantGroup.Post("/wiki/upload", legacyhandlers.UploadWikiVault)
-	tenantGroup.Get("/wiki/list", legacyhandlers.ListWikiNotes)
-	tenantGroup.Get("/wiki/read", legacyhandlers.ReadWikiNote)
-	tenantGroup.Post("/wiki/save", legacyhandlers.SaveWikiNote)
-	tenantGroup.Post("/catalog/import", legacyhandlers.ImportCatalogExcel)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(app.Listen(":" + cfg.Port))

@@ -37,7 +37,11 @@ func LoadConfig() *Config {
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
+	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	if jwtSecret == "" || jwtSecret == "dev-only-change-me" {
+		if appEnv == "production" || appEnv == "prod" {
+			log.Fatal("JWT_SECRET must be set to a strong secret when APP_ENV=production")
+		}
 		jwtSecret = "dev-only-change-me"
 		log.Println("WARNING: JWT_SECRET not set; using insecure default")
 	}

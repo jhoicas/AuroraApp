@@ -21,6 +21,14 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 0: endurecimiento previo y ADR
+
+- **Objetivo:** Limpiar rutas legacy y asegurar endpoints antes de construir PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).
+- **Backend:** Se eliminaron las rutas legacy de `cmd/server/main.go` (`/api/admin/catalog/upload`, `/api/catalog/upload`, `/api/tenant/*`) y los paquetes `internal/handlers` e `internal/middleware` (stub que aceptaba cualquier Bearer con `tenant_id` mock). Access token de 24 h a 1 h (`AccessTokenTTL`); `RefreshTokenTTL` 7 d sin cambio. Rate limit por IP en login (30/min), register (10/min) y refresh (60/min). Con `APP_ENV=production` el servidor no arranca sin `JWT_SECRET` propio.
+- **Frontend:** `CatalogImporter` ahora exige `variant` y siempre usa `/api/v1/catalog/*` autenticado; `pnd` apuntaba antes al endpoint legacy sin auth. Se eliminaron la ruta `/import-catalog`, `WikiManager` y `KnowledgeManager` (huérfanos).
+- **Validación:** `go build ./...`, `go test ./...`, `tsc -b` y `vitest` (sin fallos nuevos frente al estado previo).
+- **Pendientes/riesgos:** tokens de 24 h ya emitidos siguen válidos hasta expirar; rate limit en memoria por proceso; las tablas `wiki`/`knowledge` del esquema legacy no se tocaron. Fase 1 (PBAC, `tenant_modules`) aguarda visto bueno.
+
 ### 2026-10-05 - GitHub Copilot - Configuracion de contexto para agentes
 
 - **Objetivo:** Reducir alucinaciones y consumo de contexto mediante reglas, conocimiento de esquema y logica MGA verificable.

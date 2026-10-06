@@ -7,7 +7,6 @@ import SuperAdminLayout from './layouts/SuperAdminLayout';
 import TenantLayout from './layouts/TenantLayout';
 import TenantsPage from './pages/admin/TenantsPage';
 import AIKnowledgePage from './pages/admin/AIKnowledgePage';
-import CatalogImporter from './components/CatalogImporter';
 import SectorsCatalogPage from './pages/admin/SectorsCatalogPage';
 import ProgramsCatalogPage from './pages/admin/ProgramsCatalogPage';
 import ProductsCatalogPage from './pages/admin/ProductsCatalogPage';
@@ -71,7 +70,6 @@ function App() {
                 element={<Navigate to="/admin/catalogs/deliverables" replace />}
               />
               <Route path="ai" element={<AIKnowledgePage />} />
-              <Route path="import-catalog" element={<CatalogImporter />} />
               <Route path="settings" element={<div className="p-4 text-gray-600">Configuración (próximamente)</div>} />
               <Route path="reports" element={<div className="p-4 text-gray-600">Reportes (próximamente)</div>} />
               <Route path="security" element={<div className="p-4 text-gray-600">Seguridad (próximamente)</div>} />

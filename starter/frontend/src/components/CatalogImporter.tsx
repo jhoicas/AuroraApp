@@ -24,8 +24,8 @@ type CatalogSummary = {
 };
 
 type CatalogImporterProps = {
-  /** `full` = DNP multi-hoja; matriciales: products | edt | deliverables | activities | ods | pnd. */
-  variant?: 'full' | 'products' | 'edt' | 'deliverables' | 'activities' | 'ods' | 'pnd';
+  /** Importación matricial autenticada contra /api/v1/catalog/*: products | edt | deliverables | activities | ods | pnd. */
+  variant: 'products' | 'edt' | 'deliverables' | 'activities' | 'ods' | 'pnd';
   onImported?: (result: CatalogImportResult | CatalogSummary) => void;
   className?: string;
 };
@@ -245,16 +245,10 @@ function formatImportRowError(item: CatalogImportRowError, index: number): strin
 }
 
 export default function CatalogImporter({
-  variant = 'full',
+  variant,
   onImported,
   className = '',
 }: CatalogImporterProps) {
-  const isMatrixImport =
-    variant === 'products' ||
-    variant === 'edt' ||
-    variant === 'deliverables' ||
-    variant === 'activities' ||
-    variant === 'ods';
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState(
     variant === 'products'
@@ -267,7 +261,7 @@ export default function CatalogImporter({
             ? 'Esperando archivo CSV/XLSX de actividades'
             : variant === 'ods'
               ? 'Esperando archivo CSV/XLSX de ODS'
-              : 'Esperando archivo Excel',
+              : 'Esperando archivo CSV/XLSX del PND',
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<CatalogSummary | null>(null);
@@ -292,7 +286,7 @@ export default function CatalogImporter({
               ? 'Procesando lista de actividades. Por favor, espere…'
               : variant === 'ods'
                 ? 'Procesando catálogo ODS. Por favor, espere…'
-                : '⏳ Procesando miles de filas del catálogo. Por favor, no cierre esta ventana...',
+                : 'Procesando catálogo PND. Por favor, espere…',
     );
     setIsProcessing(true);
     setSummary(null);
@@ -300,7 +294,7 @@ export default function CatalogImporter({
     setError(null);
 
     try {
-      if (isMatrixImport) {
+      {
         const endpoint =
           variant === 'edt'
             ? '/catalog/edt/import'
@@ -310,7 +304,9 @@ export default function CatalogImporter({
                 ? '/catalog/activities/import'
                 : variant === 'ods'
                   ? '/catalog/ods/import'
-                  : '/catalog/products/import';
+                  : variant === 'pnd'
+                    ? '/catalog/pnd/import'
+                    : '/catalog/products/import';
         const { data } = await api.post<CatalogImportResult>(endpoint, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000,
@@ -333,20 +329,6 @@ export default function CatalogImporter({
           `${data.message}: ${data.inserted} nuevos, ${data.updated} actualizados, ${data.skipped} omitidos.`,
         );
         onImported?.(data);
-      } else {
-        const response = await fetch('/api/catalog/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = (await response.json()) as CatalogSummary;
-        if (!response.ok) {
-          throw new Error(data.message || 'No se pudo importar el catálogo');
-        }
-        const rowErrors = extractImportRowErrors(data);
-        setSummary(data);
-        setImportErrors(rowErrors);
-        setStatus(data.message || 'Catálogo actualizado correctamente');
-        onImported?.(data);
       }
     } catch (err) {
       const msg = extractUploadError(err);
@@ -363,14 +345,10 @@ export default function CatalogImporter({
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: isMatrixImport
-      ? {
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
-          'text/csv': ['.csv'],
-        }
-      : {
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-        },
+    accept: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
+      'text/csv': ['.csv'],
+    },
     multiple: false,
     disabled: isProcessing,
     onDrop: (acceptedFiles) => void uploadCatalog(acceptedFiles[0]),
@@ -393,7 +371,7 @@ export default function CatalogImporter({
                     ? 'Importar Lista de actividades'
                     : variant === 'ods'
                       ? 'Importar Catálogo ODS'
-                      : 'Actualizar Catálogo Oficial DNP'}
+                      : 'Importar Catálogo PND'}
           </h3>
           <p className="text-sm text-[#3f4949]">
             {variant === 'products'
@@ -406,7 +384,7 @@ export default function CatalogImporter({
                     ? 'Suba el Excel/CSV con listado de actividades, unidad de medida y código actividad (preserva ceros a la izquierda).'
                     : variant === 'ods'
                       ? 'Suba el Excel/CSV de objetivos y metas ODS (códigos como 1.10 y 1.a se guardan como texto).'
-                      : 'Suba el archivo oficial del DNP para actualizar sectores, programas, productos, EDT y ODS en la base relacional del sistema.'}
+                      : 'Suba el Excel/CSV del Plan Nacional de Desarrollo (PND).'}
           </p>
         </div>
         {variant === 'products' && (
@@ -507,9 +485,7 @@ export default function CatalogImporter({
           >
             {isProcessing
               ? 'Procesando archivo...'
-              : isMatrixImport
-                ? 'Seleccionar CSV/XLSX'
-                : 'Seleccionar archivo Excel'}
+              : 'Seleccionar CSV/XLSX'}
           </button>
         </div>
       </div>
@@ -525,7 +501,7 @@ export default function CatalogImporter({
         <p className="mt-1">{status}</p>
       </div>
 
-      {summary && isMatrixImport && (
+      {summary && (
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
@@ -582,50 +558,6 @@ export default function CatalogImporter({
         </div>
       )}
 
-      {summary && variant === 'full' && (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> Sectores
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-800">
-              {summary.sectores_inserted ?? 0}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> Programas
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-800">
-              {summary.programas_inserted ?? 0}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> Productos
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-800">
-              {summary.productos_inserted ?? 0}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> EDT
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-800">
-              {summary.edt_inserted ?? 0}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> ODS
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-800">
-              {summary.ods_inserted ?? 0}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

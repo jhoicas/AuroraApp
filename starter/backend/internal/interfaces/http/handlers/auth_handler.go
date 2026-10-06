@@ -27,6 +27,12 @@ func NewAuthHandler(db *gorm.DB, jwtSecret string) *AuthHandler {
 	return &AuthHandler{db: db, jwtSecret: jwtSecret}
 }
 
+// Vida útil de los tokens (ver docs/adr/0001-pbac-modulos-y-permisos.md, D5).
+const (
+	AccessTokenTTL  = time.Hour
+	RefreshTokenTTL = 7 * 24 * time.Hour
+)
+
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -57,7 +63,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			Subject:   user.ID.String(),
 		},
@@ -76,7 +82,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	refreshClaims := claims
 	refreshClaims.TokenType = "refresh"
 	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(RefreshTokenTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		Subject:   user.ID.String(),
 	}
@@ -236,7 +242,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		Role:      strings.ToUpper(strings.TrimSpace(user.Role.Code)),
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			Subject:   user.ID.String(),
 		},
@@ -255,7 +261,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	refreshClaims := accessClaims
 	refreshClaims.TokenType = "refresh"
 	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(RefreshTokenTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		Subject:   user.ID.String(),
 	}

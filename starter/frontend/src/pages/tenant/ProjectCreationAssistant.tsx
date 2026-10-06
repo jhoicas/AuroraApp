@@ -26,6 +26,7 @@ import {
   useLocationStore,
   generateProjectName,
   type LocationSelection,
+  type Municipio,
 } from '../../store/locationStore';
 
 const inputClass =
@@ -96,11 +97,16 @@ export default function ProjectCreationAssistant({
   const procesos = useLocationStore((s) => s.procesos);
   const fetchProcesos = useLocationStore((s) => s.fetchProcesos);
   
-  // Divipola
-  const departments = useCatalogStore((s) => s.departments);
-  const municipalitiesByDept = useCatalogStore((s) => s.municipalitiesByDept);
-  const fetchDepartments = useCatalogStore((s) => s.fetchDepartments);
-  const fetchMunicipalities = useCatalogStore((s) => s.fetchMunicipalities);
+  // Catálogo real de locaciones (Región -> Departamento -> Municipio)
+  const fetchLocations = useLocationStore((s) => s.fetchLocations);
+  const departments = useMemo(() => regions.flatMap((r) => r.departamentos ?? []), [regions]);
+  const municipalitiesByDept = useMemo(() => {
+    const map: Record<number, Municipio[]> = {};
+    departments.forEach((d) => {
+      map[d.id] = d.municipios ?? [];
+    });
+    return map;
+  }, [departments]);
 
   const [ideaSummary, setIdeaSummary] = useState('');
   const [sectorId, setSectorId] = useState('');
@@ -126,19 +132,11 @@ export default function ProjectCreationAssistant({
 
   useEffect(() => {
     void fetchSectors({ page: 1, limit: CATALOG_FULL_LIST_LIMIT });
-    void fetchDepartments();
+    void fetchLocations();
     void fetchProcesos();
     return () => endInterview();
-  }, [fetchSectors, fetchDepartments, fetchProcesos, endInterview]);
+  }, [fetchSectors, fetchLocations, fetchProcesos, endInterview]);
   
-  useEffect(() => {
-    localizaciones.forEach((loc) => {
-      if (loc.departamentoId) {
-        void fetchMunicipalities(loc.departamentoId);
-      }
-    });
-  }, [localizaciones, fetchMunicipalities]);
-
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
@@ -554,7 +552,7 @@ export default function ProjectCreationAssistant({
                             label=""
                             placeholder="Depto."
                             disabled={inputsLocked}
-                            options={departments.map(d => ({ value: String(d.id), label: `${d.code} - ${d.name}`, code: String(d.id) }))}
+                            options={departments.map(d => ({ value: String(d.id), label: d.name, code: String(d.id) }))}
                             value={loc.departamentoId ? String(loc.departamentoId) : ''}
                             onChange={(val) => updateLocation(idx, 'departamentoId', val ? Number(val) : null)}
                           />
@@ -566,7 +564,7 @@ export default function ProjectCreationAssistant({
                             label=""
                             placeholder="Mpio."
                             disabled={inputsLocked || !loc.departamentoId}
-                            options={getMunicipios(loc.departamentoId).map(m => ({ value: String(m.id), label: `${m.code} - ${m.name}`, code: String(m.id) }))}
+                            options={getMunicipios(loc.departamentoId).map(m => ({ value: String(m.id), label: m.name, code: String(m.id) }))}
                             value={loc.municipioId ? String(loc.municipioId) : ''}
                             onChange={(val) => updateLocation(idx, 'municipioId', val ? Number(val) : null)}
                           />

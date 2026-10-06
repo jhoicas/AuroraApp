@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { HelpCircle, Plus, Trash2, MapPin, AlertCircle, CheckCircle2, Users, CheckSquare } from 'lucide-react';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore, parsePopulationLocations, type ProjectMgaLocalizationItem } from '../../../store/projectMgaStore';
-import { useLocationStore, type TipoAgrupacion, type Agrupacion } from '../../../store/locationStore';
-import { fetchMgaRegions, fetchMgaDepartments, fetchMgaMunicipalities, type MgaRegion, type MgaDepartment, type MgaMunicipality } from '../../../lib/mgaApi';
+import { useLocationStore, type TipoAgrupacion, type Agrupacion, type Municipio } from '../../../store/locationStore';
 import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import BaseLocationFields from './BaseLocationFields';
@@ -50,27 +49,18 @@ export default function LocalizacionTab({ project }: { project: Project }) {
     fetchAgrupaciones,
   } = useLocationStore();
 
-  // Catálogos propios (mismas tablas MGA que Identificación -> Población).
-  const [regions, setRegions] = useState<MgaRegion[]>([]);
-  const [departments, setDepartments] = useState<MgaDepartment[]>([]);
-  const [municipalitiesByDept, setMunicipalitiesByDept] = useState<Record<number, MgaMunicipality[]>>({});
-  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
-  const requestedDeptsRef = useRef<Set<number>>(new Set());
-
-  const fetchMunicipalities = useCallback(async (departmentId: number) => {
-    if (requestedDeptsRef.current.has(departmentId)) return;
-    requestedDeptsRef.current.add(departmentId);
-    setLoadingMunicipios(true);
-    try {
-      const muns = await fetchMgaMunicipalities(departmentId);
-      setMunicipalitiesByDept((prev) => ({ ...prev, [departmentId]: muns }));
-    } catch (err) {
-      requestedDeptsRef.current.delete(departmentId);
-      console.error(err);
-    } finally {
-      setLoadingMunicipios(false);
-    }
-  }, []);
+  // Catálogo real de locaciones (/locations): Región -> Departamento -> Municipio.
+  const regions = useLocationStore((s) => s.regions);
+  const isLoadingLocations = useLocationStore((s) => s.isLoadingLocations);
+  const fetchLocations = useLocationStore((s) => s.fetchLocations);
+  const departments = useMemo(() => regions.flatMap((r) => r.departamentos ?? []), [regions]);
+  const municipalitiesByDept = useMemo(() => {
+    const map: Record<number, Municipio[]> = {};
+    departments.forEach((d) => {
+      map[d.id] = d.municipios ?? [];
+    });
+    return map;
+  }, [departments]);
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,41 +111,12 @@ export default function LocalizacionTab({ project }: { project: Project }) {
 
   // Carga inicial de catálogos
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const regs = await fetchMgaRegions();
-        if (cancelled) return;
-        setRegions(regs);
-        const lists = await Promise.all(regs.map((r) => fetchMgaDepartments(r.id)));
-        if (!cancelled) setDepartments(lists.flat());
-      } catch (err) {
-        console.error(err);
-      }
-    })();
+    void fetchLocations();
     if (isEthnic) {
       fetchTiposAgrupacion(false);
       fetchAgrupaciones();
     }
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
-
-  // Con base fija, pide los municipios del departamento base apenas monta (sin esperar a las filas).
-  const baseDepartamentoId = base?.departamentoId ?? null;
-  useEffect(() => {
-    if (baseDepartamentoId !== null) void fetchMunicipalities(baseDepartamentoId);
-  }, [baseDepartamentoId, fetchMunicipalities]);
-
-  // Carga de municipios cuando cambia un departamento
-  useEffect(() => {
-    effectiveRows.forEach((r) => {
-      if (r.departamento_id) {
-        void fetchMunicipalities(r.departamento_id);
-      }
-    });
-  }, [effectiveRows, fetchMunicipalities]);
+  }, [fetchLocations, fetchTiposAgrupacion, fetchAgrupaciones, isEthnic]);
 
   // Helper de casteo ultra-seguro (string o number -> number | null)
   const toNumOrNull = (val: unknown): number | null => {
@@ -654,7 +615,7 @@ export default function LocalizacionTab({ project }: { project: Project }) {
                   regionName={baseInfo.regionName}
                   departamentoName={baseDepartmentLabel}
                   municipioOptions={municipiosDisponibles.map((mun) => ({ id: Number(mun.id), label: mun.name }))}
-                  loadingMunicipios={loadingMunicipios}
+                  loadingMunicipios={isLoadingLocations}
                   municipioId={row.municipio_id ?? null}
                   onMunicipioChange={(id) => updateRow(index, 'municipio_id', id)}
                   labels={{

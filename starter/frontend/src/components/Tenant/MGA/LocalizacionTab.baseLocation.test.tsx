@@ -1,25 +1,35 @@
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { http, HttpResponse } from 'msw';
-import { apiUrl, server } from '../../../test/server';
 import LocalizacionTab from './LocalizacionTab';
 import { useLocationStore } from '../../../store/locationStore';
 import { useProjectStore, type Project } from '../../../store/projectStore';
 import { useProjectMgaStore } from '../../../store/projectMgaStore';
 import { runSectionSave } from './mgaSectionSave';
 
-const REGIONS = [{ id: 1, name: 'Región Centro' }, { id: 3, name: 'Región Pacífico' }];
-const DEPARTMENTS = [
-  { id: 76, name: 'Valle del Cauca', region_id: 3 },
-  { id: 11, name: 'Bogotá D.C.', region_id: 1 },
+const REGIONS = [
+  {
+    id: 1,
+    name: 'Región Centro',
+    departamentos: [
+      { id: 11, name: 'Bogotá D.C.', region_id: 1, municipios: [{ id: 11001, name: 'Bogotá', departamento_id: 11 }] },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Región Pacífico',
+    departamentos: [
+      {
+        id: 76,
+        name: 'Valle del Cauca',
+        region_id: 3,
+        municipios: [
+          { id: 76001, name: 'Cali', departamento_id: 76 },
+          { id: 76109, name: 'Buenaventura', departamento_id: 76 },
+        ],
+      },
+    ],
+  },
 ];
-const MUNICIPALITIES: Record<number, { id: number; name: string; departamento_id: number }[]> = {
-  76: [
-    { id: 76001, name: 'Cali', departamento_id: 76 },
-    { id: 76109, name: 'Buenaventura', departamento_id: 76 },
-  ],
-  11: [{ id: 11001, name: 'Bogotá', departamento_id: 11 }],
-};
 
 const baseProject = (extra: Record<string, unknown> = {}): Project =>
   ({
@@ -39,26 +49,7 @@ const baseProject = (extra: Record<string, unknown> = {}): Project =>
 beforeEach(() => {
   useProjectStore.setState({ currentProject: null });
   useProjectMgaStore.setState({ byProjectId: {} });
-  useLocationStore.setState({
-    regions: [
-      {
-        id: 3,
-        name: 'Región Pacífico',
-        departamentos: [{ id: 76, name: 'Valle del Cauca', region_id: 3, municipios: [] }],
-      },
-    ],
-  });
-  server.use(
-    http.get(apiUrl('/mga/catalogs/regions'), () => HttpResponse.json(REGIONS)),
-    http.get(apiUrl('/mga/catalogs/departments'), ({ request }) => {
-      const regionId = Number(new URL(request.url).searchParams.get('regionId'));
-      return HttpResponse.json(DEPARTMENTS.filter((d) => d.region_id === regionId));
-    }),
-    http.get(apiUrl('/mga/catalogs/municipalities'), ({ request }) => {
-      const departmentId = Number(new URL(request.url).searchParams.get('departmentId'));
-      return HttpResponse.json(MUNICIPALITIES[departmentId] ?? []);
-    }),
-  );
+  useLocationStore.setState({ regions: REGIONS });
 });
 
 const selectByLabel = (re: RegExp) => screen.getAllByLabelText(re)[0] as HTMLSelectElement;
@@ -83,7 +74,6 @@ describe('LocalizacionTab - departamento base bloqueado', () => {
     render(<LocalizacionTab project={baseProject()} />);
 
     const municipio = selectByLabel(/^Municipio/);
-    await waitFor(() => expect(within(municipio).getAllByRole('option').length).toBeGreaterThan(1));
     const options = within(municipio).getAllByRole('option').map((o) => o.textContent);
     expect(options).toEqual(['Seleccione Municipio...', 'Cali', 'Buenaventura']);
     expect(within(municipio).queryByRole('option', { name: /Bogotá/ })).not.toBeInTheDocument();

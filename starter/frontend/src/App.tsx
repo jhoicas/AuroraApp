@@ -18,7 +18,6 @@ import OdsCatalogPage from './pages/admin/OdsCatalogPage';
 import ProcesosCatalogPage from './pages/admin/ProcesosCatalogPage';
 import LocationsCatalogPage from './pages/admin/LocationsCatalogPage';
 import PndCatalogPage from './pages/admin/PndCatalogPage';
-import DivipolaCatalogPage from './pages/admin/DivipolaCatalogPage';
 import MgaActorsCatalogPage from './pages/admin/MgaActorsCatalogPage';
 import MgaEntitiesCatalogPage from './pages/admin/MgaEntitiesCatalogPage';
 import MgaPositionsCatalogPage from './pages/admin/MgaPositionsCatalogPage';
@@ -61,7 +60,6 @@ function App() {
               <Route path="catalogs/activities" element={<ActivitiesCatalogPage />} />
               <Route path="catalogs/ods" element={<OdsCatalogPage />} />
               <Route path="catalogs/pnd" element={<PndCatalogPage />} />
-              <Route path="catalogs/divipola" element={<DivipolaCatalogPage />} />
               <Route path="catalogs/procesos" element={<ProcesosCatalogPage />} />
               <Route path="catalogs/locations" element={<LocationsCatalogPage />} />
               <Route path="catalogs/measurement-units" element={<MeasurementUnitsCatalogPage />} />

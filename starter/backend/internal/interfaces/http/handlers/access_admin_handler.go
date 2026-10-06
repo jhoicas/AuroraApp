@@ -38,6 +38,8 @@ func respondAccessAdminError(c *fiber.Ctx, err error) error {
 		return c.Status(status).JSON(fiber.Map{"error": msg})
 	}
 	switch {
+	case errors.Is(err, accessadmin.ErrSessionRevoked):
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session revoked", "code": httpmw.CodeSessionRevoked})
 	case errors.Is(err, accessadmin.ErrValidation):
 		return pick(fiber.StatusBadRequest, accessadmin.ErrValidation)
 	case errors.Is(err, accessadmin.ErrNotFound):

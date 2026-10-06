@@ -51,6 +51,9 @@ func main() {
 	accessAdminSvc := accessadmin.NewService(db, accessSvc)
 	router.RegisterAdminAccessRoutes(app, cfg.JWTSecret, accessAdminSvc)
 
+	// Administración local (TENANT_ADMIN): usuarios y permisos de su entidad.
+	router.RegisterTenantAdminRoutes(app, db, cfg.JWTSecret, accessAdminSvc, guard)
+
 	// Auth (público) + /auth/me/access
 	router.RegisterAuthRoutes(app, db, cfg.JWTSecret, accessSvc)
 

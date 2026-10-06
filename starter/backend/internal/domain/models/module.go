@@ -155,4 +155,5 @@ const (
 	AuditUserPermissionsSet   = "USER_PERMISSIONS_UPDATED"
 	AuditUserPasswordChanged  = "USER_PASSWORD_CHANGED"
 	AuditUserStatusChanged    = "USER_STATUS_CHANGED"
+	AuditUserUpdated          = "USER_UPDATED"
 )

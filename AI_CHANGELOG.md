@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 4: API Tenant Admin y políticas de aislamiento
+
+- **Objetivo:** Administración local de usuarios y permisos para TENANT_ADMIN (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).
+- **Backend:** `accessadmin/tenant_admin.go` (`ActorPolicy`, `ResolveTenantActor`, métodos `Tenant*`, `AssignableModules`), `handlers/tenant_admin_handler.go`, `router/tenant_admin.go` (`/api/v1/tenant/users*`, `/api/v1/tenant/modules/assignable`). `TenantTargetGuard` aplicado a todas las rutas con `:id` (otro tenant ⇒ 404 idéntico al de un usuario inexistente). Servicios compartidos con la API Super Admin ahora aceptan un `scope` de tenant. Último TENANT_ADMIN: protegido al desactivar y al degradar.
+- **Validación:** `go vet`, `go test ./...` (incluye tests HTTP con dos tenants: 404 en toda operación cruzada, tenant tomado del JWT, SUPER_ADMIN no asignable, último admin, actor verificado contra BD, catálogo asignable y techo), `tsc -b`. Sin probar contra Postgres real.
+- **Decisiones/riesgos:** el módulo `users` no es delegable; se puede crear Tenant Admins pero no cambiarse el propio rol. No se expone borrado de usuarios. El frontend aún no usa estas rutas.
+
 ### 2026-10-06 - Claude - PBAC Fase 3: API Super Admin, auditoría y PATCH por contenido
 
 - **Objetivo:** Endpoints de administración de acceso (solo SUPER_ADMIN) y solución del riesgo de `PATCH /projects/:id` (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).

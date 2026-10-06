@@ -37,6 +37,9 @@ var pbacExempt = []string{
 	"/api/v1/ai/telemetry/",
 	"/api/v1/ai/knowledge/ingest",
 	"/api/v1/ai/audit/",
+	// API de Tenant Admin: RequireRole(TENANT_ADMIN) + guard del módulo users (probada en accessadmin).
+	"/api/v1/tenant/users",
+	"/api/v1/tenant/modules/",
 }
 
 // TestEveryBusinessRouteRequiresPermission falla si se registra una ruta de negocio

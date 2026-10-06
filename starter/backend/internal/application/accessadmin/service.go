@@ -41,6 +41,9 @@ func validationf(format string, a ...any) error {
 func conflictf(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrConflict, fmt.Sprintf(format, a...))
 }
+func forbiddenf(format string, a ...any) error {
+	return fmt.Errorf("%w: %s", ErrForbidden, fmt.Sprintf(format, a...))
+}
 func notFoundf(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrNotFound, fmt.Sprintf(format, a...))
 }
@@ -597,6 +600,19 @@ func (s *Service) loadUser(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*use
 	return &row, nil
 }
 
+// loadUserIn carga un usuario; con scope (API de Tenant Admin) un usuario de otro tenant
+// o sin tenant se trata como inexistente (no se filtra su existencia).
+func (s *Service) loadUserIn(ctx context.Context, tx *gorm.DB, id uuid.UUID, scope *uuid.UUID) (*userRow, error) {
+	u, err := s.loadUser(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+	if scope != nil && (u.TenantID == nil || *u.TenantID != *scope) {
+		return nil, notFoundf("usuario")
+	}
+	return u, nil
+}
+
 // ListTenantUsers lista los usuarios de un tenant con paginación.
 func (s *Service) ListTenantUsers(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]UserView, int64, error) {
 	if _, err := s.requireTenant(ctx, s.db, tenantID); err != nil {
@@ -773,7 +789,11 @@ func isAdminRole(code string) bool {
 
 // GetUserPermissions devuelve los permisos configurados de un usuario.
 func (s *Service) GetUserPermissions(ctx context.Context, userID uuid.UUID) (*UserPermissions, error) {
-	u, err := s.loadUser(ctx, s.db, userID)
+	return s.getUserPermissions(ctx, userID, nil)
+}
+
+func (s *Service) getUserPermissions(ctx context.Context, userID uuid.UUID, scope *uuid.UUID) (*UserPermissions, error) {
+	u, err := s.loadUserIn(ctx, s.db, userID, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -845,6 +865,12 @@ type PermissionInput struct {
 // SetUserPermissions hace upsert de los permisos indicados. Escribir (create/edit/delete)
 // exige view. Los administradores se resuelven por rol y no admiten permisos por usuario.
 func (s *Service) SetUserPermissions(ctx context.Context, actor Actor, userID uuid.UUID, inputs []PermissionInput) error {
+	return s.setUserPermissions(ctx, actor, userID, inputs, nil)
+}
+
+// setUserPermissions: con scope (Tenant Admin) el usuario debe ser del tenant y solo se
+// pueden delegar los módulos asignables (activos, TENANT, no reservados y habilitados en el tenant).
+func (s *Service) setUserPermissions(ctx context.Context, actor Actor, userID uuid.UUID, inputs []PermissionInput, scope *uuid.UUID) error {
 	if len(inputs) == 0 {
 		return validationf("permissions no puede estar vacío")
 	}
@@ -864,9 +890,16 @@ func (s *Service) SetUserPermissions(ctx context.Context, actor Actor, userID uu
 
 	var tenantID *uuid.UUID
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		u, err := s.loadUser(ctx, tx, userID)
+		u, err := s.loadUserIn(ctx, tx, userID, scope)
 		if err != nil {
 			return err
+		}
+		var assignable map[string]struct{}
+		if scope != nil {
+			assignable, err = s.assignableCodes(ctx, tx, *scope)
+			if err != nil {
+				return err
+			}
 		}
 		if isAdminRole(u.RoleCode) {
 			return validationf("%s se resuelve por rol: no admite permisos por usuario", u.RoleCode)
@@ -885,6 +918,11 @@ func (s *Service) SetUserPermissions(ctx context.Context, actor Actor, userID uu
 			}
 			if m.Scope != modules.ScopeTenant {
 				return validationf("el módulo %q es de plataforma", in.ModuleCode)
+			}
+			if assignable != nil {
+				if _, ok := assignable[m.Code]; !ok {
+					return validationf("el módulo %q no es asignable en esta entidad", in.ModuleCode)
+				}
 			}
 
 			actorID := actor.UserID
@@ -934,6 +972,10 @@ func (s *Service) SetUserPermissions(ctx context.Context, actor Actor, userID uu
 
 // SetUserPassword cambia la contraseña y revoca las sesiones (token_version++).
 func (s *Service) SetUserPassword(ctx context.Context, actor Actor, userID uuid.UUID, newPassword string) error {
+	return s.setUserPassword(ctx, actor, userID, newPassword, nil)
+}
+
+func (s *Service) setUserPassword(ctx context.Context, actor Actor, userID uuid.UUID, newPassword string, scope *uuid.UUID) error {
 	if err := validatePassword(newPassword); err != nil {
 		return err
 	}
@@ -942,7 +984,7 @@ func (s *Service) SetUserPassword(ctx context.Context, actor Actor, userID uuid.
 		return err
 	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		u, err := s.loadUser(ctx, tx, userID)
+		u, err := s.loadUserIn(ctx, tx, userID, scope)
 		if err != nil {
 			return err
 		}
@@ -966,26 +1008,24 @@ func (s *Service) SetUserPassword(ctx context.Context, actor Actor, userID uuid.
 // SetUserStatus activa/desactiva un usuario y revoca sus sesiones (token_version++).
 // No permite desactivar al último TENANT_ADMIN activo de un tenant (D3) ni a uno mismo.
 func (s *Service) SetUserStatus(ctx context.Context, actor Actor, userID uuid.UUID, active bool) error {
+	return s.setUserStatus(ctx, actor, userID, active, nil)
+}
+
+func (s *Service) setUserStatus(ctx context.Context, actor Actor, userID uuid.UUID, active bool, scope *uuid.UUID) error {
 	if !active && userID == actor.UserID {
 		return validationf("no puedes desactivar tu propio usuario")
 	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		u, err := s.loadUser(ctx, tx, userID)
+		u, err := s.loadUserIn(ctx, tx, userID, scope)
 		if err != nil {
 			return err
 		}
 		if u.IsActive == active {
 			return nil
 		}
-		if !active && u.RoleCode == constants.RoleTenantAdmin && u.TenantID != nil {
-			var others int64
-			if err := tx.Table("users AS u").Joins("JOIN roles r ON r.id = u.role_id").
-				Where("u.tenant_id = ? AND r.code = ? AND u.is_active = ? AND u.deleted_at IS NULL AND u.id <> ?",
-					*u.TenantID, constants.RoleTenantAdmin, true, u.ID).Count(&others).Error; err != nil {
+		if !active {
+			if err := s.ensureNotLastTenantAdmin(tx, u); err != nil {
 				return err
-			}
-			if others == 0 {
-				return conflictf("no se puede desactivar al último Tenant Admin activo de la entidad")
 			}
 		}
 		if err := tx.Model(&models.User{}).Where("id = ?", userID).Updates(map[string]any{
@@ -1003,5 +1043,23 @@ func (s *Service) SetUserStatus(ctx context.Context, actor Actor, userID uuid.UU
 		return err
 	}
 	s.cache.Invalidate(userID)
+	return nil
+}
+
+// ensureNotLastTenantAdmin impide dejar a una entidad sin Tenant Admin activo (D3):
+// vale para desactivar y para degradar al último administrador.
+func (s *Service) ensureNotLastTenantAdmin(tx *gorm.DB, u *userRow) error {
+	if u.RoleCode != constants.RoleTenantAdmin || u.TenantID == nil || !u.IsActive {
+		return nil
+	}
+	var others int64
+	if err := tx.Table("users AS u").Joins("JOIN roles r ON r.id = u.role_id").
+		Where("u.tenant_id = ? AND r.code = ? AND u.is_active = ? AND u.deleted_at IS NULL AND u.id <> ?",
+			*u.TenantID, constants.RoleTenantAdmin, true, u.ID).Count(&others).Error; err != nil {
+		return err
+	}
+	if others == 0 {
+		return conflictf("no se puede desactivar ni degradar al último Tenant Admin activo de la entidad")
+	}
 	return nil
 }

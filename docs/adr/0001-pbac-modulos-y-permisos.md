@@ -73,7 +73,8 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - [x] Fase 2: `access.Service` (`Resolve`, `Can`, `ValidateSession`, caché 30 s), `RequirePermission`, `TenantTargetGuard`, `GET /api/v1/auth/me/access`, `PBAC_ENFORCE` (off|log|enforce; por defecto `log`) aplicado a todas las rutas de negocio.
 - [ ] Fase 2b: pasar `PBAC_ENFORCE=enforce` tras revisar el log de dry-run.
 - [x] Fase 3 (API Super Admin): `/api/v1/admin/modules` (CRUD + `PUT /order`), `/admin/tenants/:tenantId/users` y `/modules`, `/admin/users/:id/permissions|password|status`, con auditoría e invalidación de caché; `PATCH /projects/:id` autorizado por contenido.
-- [ ] Fase 4: gestión de Tenant Admins por su propio tenant (el invariante del último administrador ya aplica en `PUT /admin/users/:id/status`).
+- [x] Fase 4 (API Tenant Admin): `/api/v1/tenant/users` (GET/POST, GET/PATCH `:id`, `PUT :id/password`, `PATCH :id/status`, GET/PUT `:id/permissions`) y `GET /api/v1/tenant/modules/assignable`, con `ActorPolicy` y `TenantTargetGuard`.
+- [ ] Fase 5: frontend (menú por `/auth/me/access`, pantallas Super Admin y Tenant Admin) y paso a `PBAC_ENFORCE=enforce`.
 - [ ] Fase 3: UI Super Admin (módulos por alcaldía) y UI Tenant Admin (permisos).
 
 ## Esquema y seeding (Fase 1)
@@ -124,6 +125,21 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - **`PATCH /projects/:id`:** el guard compara el payload con lo almacenado y exige `edit` solo sobre las etapas cuyo contenido cambia
   (`mga.identificacion|preparacion|evaluacion|programacion|presentar`; columnas `name/description` → `projects`; claves desconocidas →
   `mga`). El frontend no cambia. Limitación: un guardado con snapshot desactualizado cuenta como cambio en etapas ajenas.
+
+## API Tenant Admin (Fase 4)
+
+- **Cadena por ruta:** `RequireAuth → RequireTenant → RequireRole(TENANT_ADMIN) → verificación del actor en BD → TenantTargetGuard (rutas con :id)
+  → permiso PBAC del módulo users`. La verificación en BD (usuario activo, rol TENANT_ADMIN, tenant del JWT, `token_version`) corre siempre,
+  con independencia de `PBAC_ENFORCE`: es una API privilegiada y un JWT de hasta 1 h no basta tras una degradación.
+- **Aislamiento:** un `:id` de otro tenant (o inexistente) responde el mismo 404; el servicio vuelve a comprobar el tenant (defensa en
+  profundidad). El `tenant_id` sale siempre del actor; el cuerpo no tiene ese campo y se ignora si llega.
+- **`ActorPolicy`:** no se asigna ni promueve a SUPER_ADMIN (403); no se cambia el propio rol ni se desactiva uno mismo (400); no se
+  desactiva ni degrada al último TENANT_ADMIN activo (409). Un Tenant Admin sí puede crear otros Tenant Admin (D3). No hay endpoint de borrado.
+- **Cambios de rol/contraseña/estado** suben `token_version` y limpian la caché; un cambio de rol a no admin completa los defaults faltantes.
+- **Catálogo asignable:** módulos activos, scope TENANT, habilitados en `tenant_modules` del tenant (sin fila = habilitado) y con su padre
+  habilitado, excluyendo los no delegables (`users`: la administración de usuarios es solo del rol TENANT_ADMIN). `PUT .../permissions`
+  rechaza (400) cualquier módulo fuera de ese catálogo.
+- El módulo `users` también cuenta para el techo: si el SUPER_ADMIN lo deshabilita para un tenant, PBAC (en `enforce`) bloquea esta API.
 
 ## Referencias
 

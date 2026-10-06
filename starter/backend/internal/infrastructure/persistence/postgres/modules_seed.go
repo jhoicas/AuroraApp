@@ -67,7 +67,7 @@ func ensureModulesSeed(db *gorm.DB, defs []modules.Def, version int) error {
 				m := models.Module{
 					ID: uuid.New(), Code: d.Code, Name: d.Name, Description: d.Description,
 					Kind: d.Kind, Scope: d.Scope, ParentID: parentID, Route: d.Route,
-					SortOrder: d.Order, IsActive: true, SeedVersion: version,
+					SortOrder: d.Order, IsActive: true, IsSystem: true, SeedVersion: version,
 					CreatedAt: now, UpdatedAt: now,
 				}
 				if err := tx.Create(&m).Error; err != nil {
@@ -75,11 +75,21 @@ func ensureModulesSeed(db *gorm.DB, defs []modules.Def, version int) error {
 				}
 				idByCode[d.Code] = m.ID
 				changed[d.Code] = true
-			case ex.SeedVersion < version || !ex.IsActive:
+			case ex.Customized:
+				// Un SUPER_ADMIN lo editó: el seed no pisa sus campos; solo se mantiene como
+				// módulo de sistema y al día con la versión.
+				idByCode[d.Code] = ex.ID
+				if !ex.IsSystem || ex.SeedVersion < version {
+					if err := tx.Model(&models.Module{}).Where("id = ?", ex.ID).
+						Updates(map[string]any{"is_system": true, "seed_version": version, "updated_at": now}).Error; err != nil {
+						return fmt.Errorf("marcar módulo %s: %w", d.Code, err)
+					}
+				}
+			case ex.SeedVersion < version || !ex.IsActive || !ex.IsSystem:
 				updates := map[string]any{
 					"name": d.Name, "description": d.Description, "kind": d.Kind, "scope": d.Scope,
 					"parent_id": parentID, "route": d.Route, "sort_order": d.Order,
-					"is_active": true, "seed_version": version, "updated_at": now,
+					"is_active": true, "is_system": true, "seed_version": version, "updated_at": now,
 				}
 				if err := tx.Model(&models.Module{}).Where("id = ?", ex.ID).Updates(updates).Error; err != nil {
 					return fmt.Errorf("actualizar módulo %s: %w", d.Code, err)
@@ -94,7 +104,8 @@ func ensureModulesSeed(db *gorm.DB, defs []modules.Def, version int) error {
 		// Módulos retirados del manifiesto: se desactivan, no se borran.
 		deactivated := 0
 		for _, ex := range existing {
-			if !inManifest[ex.Code] && ex.IsActive {
+			// Solo se retiran módulos de sistema; los creados por un SUPER_ADMIN no son del manifiesto.
+			if ex.IsSystem && !inManifest[ex.Code] && ex.IsActive {
 				if err := tx.Model(&models.Module{}).Where("id = ?", ex.ID).
 					Updates(map[string]any{"is_active": false, "updated_at": now}).Error; err != nil {
 					return fmt.Errorf("desactivar módulo %s: %w", ex.Code, err)
@@ -300,4 +311,10 @@ func backfillUserPermissions(
 		return 0, fmt.Errorf("insertar user_module_permissions: %w", err)
 	}
 	return len(rows), nil
+}
+
+// SyncModulesManifestForTest ejecuta el sincronizado con un manifiesto/versión arbitrarios
+// (simula una nueva versión del manifiesto). Solo para pruebas.
+func SyncModulesManifestForTest(db *gorm.DB, defs []modules.Def, version int) error {
+	return ensureModulesSeed(db, defs, version)
 }

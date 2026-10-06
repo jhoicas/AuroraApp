@@ -20,9 +20,13 @@ type Module struct {
 	Route       string     `gorm:"type:varchar(255);not null" json:"route"`
 	SortOrder   int        `gorm:"not null;default:0" json:"sort_order"`
 	IsActive    bool       `gorm:"not null;default:true" json:"is_active"`
-	SeedVersion int        `gorm:"not null;default:0" json:"seed_version"`
-	CreatedAt   time.Time  `gorm:"not null" json:"created_at"`
-	UpdatedAt   time.Time  `gorm:"not null" json:"updated_at"`
+	// IsSystem: declarado por el manifiesto; no se puede borrar, solo editar.
+	IsSystem bool `gorm:"not null;default:false" json:"is_system"`
+	// Customized: un SUPER_ADMIN editó el módulo; el seed ya no sobrescribe sus campos.
+	Customized  bool      `gorm:"not null;default:false" json:"customized"`
+	SeedVersion int       `gorm:"not null;default:0" json:"seed_version"`
+	CreatedAt   time.Time `gorm:"not null" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"not null" json:"updated_at"`
 
 	Parent *Module `gorm:"foreignKey:ParentID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
 }
@@ -141,4 +145,14 @@ func (a *AccessAuditLog) BeforeCreate(*gorm.DB) error {
 const (
 	AuditModulesSeeded         = "MODULES_SEEDED"
 	AuditPermissionsBackfilled = "PERMISSIONS_BACKFILLED"
+
+	AuditModuleCreated        = "MODULE_CREATED"
+	AuditModuleUpdated        = "MODULE_UPDATED"
+	AuditModuleDeleted        = "MODULE_DELETED"
+	AuditModulesReordered     = "MODULES_REORDERED"
+	AuditTenantModulesUpdated = "TENANT_MODULES_UPDATED"
+	AuditUserCreated          = "USER_CREATED"
+	AuditUserPermissionsSet   = "USER_PERMISSIONS_UPDATED"
+	AuditUserPasswordChanged  = "USER_PASSWORD_CHANGED"
+	AuditUserStatusChanged    = "USER_STATUS_CHANGED"
 )

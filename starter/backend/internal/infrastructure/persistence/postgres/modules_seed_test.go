@@ -289,3 +289,33 @@ func TestEnsureModulesSeed_FailsWithoutTables(t *testing.T) {
 	require.NoError(t, err)
 	require.Error(t, EnsureModulesSeed(db))
 }
+
+func TestEnsureModulesSeed_SystemFlagsAndCustomModules(t *testing.T) {
+	db := newModulesTestDB(t)
+	require.NoError(t, EnsureModulesSeed(db))
+
+	var system int64
+	db.Model(&models.Module{}).Where("is_system = ?", true).Count(&system)
+	require.EqualValues(t, len(modules.Manifest), system, "todo el manifiesto es de sistema")
+
+	// Un módulo creado por un SUPER_ADMIN (no de sistema) sobrevive a nuevas versiones del seed.
+	custom := models.Module{ID: uuid.New(), Code: "obras", Name: "Obras", Kind: modules.KindModule, Scope: modules.ScopeTenant,
+		Route: "/tenant/obras", IsActive: true, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	require.NoError(t, db.Create(&custom).Error)
+	require.NoError(t, ensureModulesSeed(db, modules.Manifest, modules.SeedVersion+1))
+	var got models.Module
+	require.NoError(t, db.First(&got, "id = ?", custom.ID).Error)
+	require.True(t, got.IsActive, "no se desactivan módulos que no son del manifiesto")
+	require.False(t, got.IsSystem)
+
+	// Customized: el seed no pisa nombre ni orden, pero sigue siendo de sistema.
+	require.NoError(t, db.Model(&models.Module{}).Where("code = ?", modules.CodeReports).
+		Updates(map[string]any{"name": "Informes", "sort_order": 77, "customized": true}).Error)
+	require.NoError(t, ensureModulesSeed(db, modules.Manifest, modules.SeedVersion+2))
+	var reports models.Module
+	require.NoError(t, db.Where("code = ?", modules.CodeReports).First(&reports).Error)
+	require.Equal(t, "Informes", reports.Name)
+	require.Equal(t, 77, reports.SortOrder)
+	require.True(t, reports.IsSystem)
+	require.Equal(t, modules.SeedVersion+2, reports.SeedVersion)
+}

@@ -74,6 +74,11 @@ func TestEveryBusinessRouteRequiresPermission(t *testing.T) {
 				exempt = true
 			}
 		}
+		// PATCH /projects/:id se autoriza por contenido (RequireProjectPatchPermission, probado en
+		// el paquete middleware); necesita BD para comparar con lo almacenado.
+		if r.Method == "PATCH" && r.Path == "/api/v1/projects/:id" {
+			continue
+		}
 		if exempt {
 			continue
 		}

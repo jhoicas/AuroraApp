@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"aurora-backend/internal/application/access"
+	"aurora-backend/internal/application/accessadmin"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
 	httpmw "aurora-backend/internal/interfaces/http/middleware"
@@ -45,6 +46,10 @@ func main() {
 	accessSvc := access.NewService(db, access.DefaultCacheTTL)
 	guard := httpmw.NewAccessGuard(accessSvc, httpmw.ParseEnforceMode(cfg.PBACEnforce))
 	log.Printf("PBAC_ENFORCE=%s", guard.Mode())
+
+	// Administración de acceso (SUPER_ADMIN): módulos, usuarios, permisos y auditoría.
+	accessAdminSvc := accessadmin.NewService(db, accessSvc)
+	router.RegisterAdminAccessRoutes(app, cfg.JWTSecret, accessAdminSvc)
 
 	// Auth (público) + /auth/me/access
 	router.RegisterAuthRoutes(app, db, cfg.JWTSecret, accessSvc)

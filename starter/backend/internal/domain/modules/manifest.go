@@ -15,7 +15,7 @@ import (
 
 // SeedVersion identifica la versión del manifiesto. Súbela cada vez que cambies
 // Manifest: el seed solo re-sincroniza módulos con seed_version menor.
-const SeedVersion = 1
+const SeedVersion = 2
 
 // Kind de un nodo del manifiesto.
 const (

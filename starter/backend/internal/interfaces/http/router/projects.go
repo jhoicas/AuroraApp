@@ -54,7 +54,8 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	projects.Get("/", guard.Require(modules.CodeProjects, modules.ActionView), ph.List)
 	projects.Get("/evaluations/summary", guard.Require(modules.CodeMGAEvaluacion, modules.ActionView), eh.ListTenantEvaluations)
 	projects.Get("/:id", guard.Require(modules.CodeProjects, modules.ActionView), ph.GetByID)
-	projects.Patch("/:id", guard.Require(modules.CodeProjects, modules.ActionEdit), ph.Patch)
+	// PATCH guarda cualquier etapa de la MGA (snapshot completo): se autoriza según lo que cambia.
+	projects.Patch("/:id", guard.RequireProjectPatchPermission(httpmw.ProjectSnapshotFromDB(db)), ph.Patch)
 	projects.Patch("/:id/details", guard.Require(modules.CodeProjects, modules.ActionEdit), ph.UpdateDetails)
 	projects.Post("/:id/evaluate", guard.Require(modules.CodeMGAEvaluacion, modules.ActionCreate), eh.Evaluate)
 	projects.Get("/:id/evaluations", guard.Require(modules.CodeMGAEvaluacion, modules.ActionView), eh.ListEvaluations)

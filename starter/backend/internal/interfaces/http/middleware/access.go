@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -237,5 +238,138 @@ func UserTenantResolver(db *gorm.DB, param string) TenantResolver {
 			return nil, ErrTargetNotFound
 		}
 		return row.TenantID, nil
+	}
+}
+
+// ── PATCH /projects/:id: autorización según lo que realmente cambia ─────────
+
+// ProjectSnapshot es el estado almacenado de un proyecto que se compara con el PATCH.
+type ProjectSnapshot struct {
+	Scalars            map[string]string // columnas escalares por nombre JSON
+	MgaFormulationData map[string]any
+}
+
+// ProjectSnapshotLoader carga el proyecto (con aislamiento por tenant). Devuelve
+// ErrTargetNotFound si no existe o no es del tenant del actor.
+type ProjectSnapshotLoader func(c *fiber.Ctx, projectID uuid.UUID) (*ProjectSnapshot, error)
+
+// RequireProjectPatchPermission protege PATCH /projects/:id. El frontend guarda cada
+// etapa de la MGA con este mismo endpoint y envía el snapshot completo, así que exigir
+// una sola acción fija sería demasiado laxo (cualquier etapa) o bloquearía guardados
+// legítimos. En su lugar compara el payload con lo almacenado y exige `edit` solo sobre
+// los módulos/etapas cuyo contenido realmente cambia (claves desconocidas: `mga`).
+// Respeta PBAC_ENFORCE como RequirePermission. Si no cambia nada, deja pasar.
+func (g *AccessGuard) RequireProjectPatchPermission(load ProjectSnapshotLoader) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if g.mode == EnforceOff {
+			return c.Next()
+		}
+
+		userIDRaw, _ := c.Locals(LocalsUserID).(string)
+		userID, err := uuid.Parse(userIDRaw)
+		if err != nil {
+			return deny(c, g.mode, http401(c, "unauthorized", "UNAUTHORIZED"), "sin identidad", modules.CodeProjects, modules.ActionEdit, "")
+		}
+		role, _ := c.Locals(LocalsRole).(string)
+		tv, _ := c.Locals(LocalsTokenVersion).(int)
+
+		if err := g.checker.ValidateSession(c.UserContext(), userID, tv); err != nil {
+			if errors.Is(err, access.ErrSessionRevoked) {
+				return deny(c, g.mode, http401(c, "session revoked", CodeSessionRevoked), "sesión revocada", modules.CodeProjects, modules.ActionEdit, role)
+			}
+			return unavailable(c, g.mode, err, modules.CodeProjects, modules.ActionEdit, role)
+		}
+
+		projectID, err := uuid.Parse(c.Params("id"))
+		var body map[string]json.RawMessage
+		if err != nil || json.Unmarshal(c.Body(), &body) != nil {
+			return c.Next() // el handler responde 400
+		}
+
+		snap, err := load(c, projectID)
+		if err != nil {
+			if errors.Is(err, ErrTargetNotFound) {
+				return c.Next() // el handler responde 404
+			}
+			return unavailable(c, g.mode, err, modules.CodeProjects, modules.ActionEdit, role)
+		}
+
+		var scalarReqs []modules.Requirement
+		for field, raw := range body {
+			mod, ok := modules.ScalarModule(field)
+			if !ok {
+				continue
+			}
+			var v *string
+			if json.Unmarshal(raw, &v) != nil || v == nil {
+				continue
+			}
+			if *v != snap.Scalars[field] {
+				scalarReqs = append(scalarReqs, modules.Requirement{Module: mod, Action: modules.ActionEdit})
+			}
+		}
+
+		var formReqs []modules.Requirement
+		if raw, ok := body["mga_formulation_data"]; ok {
+			var incoming map[string]any
+			if json.Unmarshal(raw, &incoming) == nil {
+				formReqs = modules.RequirementsForFormulationPatch(snap.MgaFormulationData, incoming)
+			}
+		}
+
+		for _, req := range modules.MergeRequirements(scalarReqs, formReqs) {
+			decision, err := g.checker.Can(c.UserContext(), userID, req.Module, req.Action)
+			if err != nil {
+				return unavailable(c, g.mode, err, req.Module, req.Action, role)
+			}
+			if !decision.Allowed {
+				return deny(c, g.mode, permissionDenied(c, req.Module, req.Action, decision.Reason), decision.Reason, req.Module, req.Action, role)
+			}
+		}
+		return c.Next()
+	}
+}
+
+// ProjectSnapshotFromDB carga el snapshot desde la BD con aislamiento por tenant
+// (SUPER_ADMIN, sin tenant, puede ver cualquier proyecto).
+func ProjectSnapshotFromDB(db *gorm.DB) ProjectSnapshotLoader {
+	return func(c *fiber.Ctx, projectID uuid.UUID) (*ProjectSnapshot, error) {
+		var row struct {
+			Name               string
+			Description        string
+			ProblemDescription string
+			GeneralObjective   string
+			SituacionExistente string
+			MagnitudProblema   string
+			FaseMaduracion     string
+			MgaFormulationData []byte
+		}
+		q := db.WithContext(c.UserContext()).Table("projects").
+			Select("name, description, problem_description, general_objective, situacion_existente, magnitud_problema, fase_maduracion, mga_formulation_data").
+			Where("id = ? AND deleted_at IS NULL", projectID)
+		if tid, err := uuid.Parse(fmt.Sprint(c.Locals(LocalsTenantID))); err == nil {
+			q = q.Where("tenant_id = ?", tid)
+		} else if role, _ := c.Locals(LocalsRole).(string); !strings.EqualFold(role, constants.RoleSuperAdmin) {
+			return nil, ErrTargetNotFound
+		}
+		res := q.Limit(1).Scan(&row)
+		if res.Error != nil {
+			return nil, res.Error
+		}
+		if res.RowsAffected == 0 {
+			return nil, ErrTargetNotFound
+		}
+		snap := &ProjectSnapshot{
+			Scalars: map[string]string{
+				"name": row.Name, "description": row.Description, "problem_description": row.ProblemDescription,
+				"general_objective": row.GeneralObjective, "situacion_existente": row.SituacionExistente,
+				"magnitud_problema": row.MagnitudProblema, "fase_maduracion": row.FaseMaduracion,
+			},
+			MgaFormulationData: map[string]any{},
+		}
+		if len(row.MgaFormulationData) > 0 {
+			_ = json.Unmarshal(row.MgaFormulationData, &snap.MgaFormulationData)
+		}
+		return snap, nil
 	}
 }

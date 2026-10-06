@@ -6,6 +6,7 @@
 //   - SUPER_ADMIN: acceso supremo por lógica pura (sin consultar permisos ni tenant_modules).
 //   - TENANT_ADMIN: acceso completo a los módulos TENANT habilitados para su tenant
 //     (D2: un módulo deshabilitado se niega a todos), sin leer user_module_permissions.
+//     Sin fila en tenant_modules, el módulo está habilitado (solo un false explícito lo apaga).
 //   - Resto de roles: permiso explícito en user_module_permissions Y módulo habilitado.
 //   - Módulos PLATFORM: solo SUPER_ADMIN. Módulo desconocido o inactivo: denegado.
 //   - Una sección exige también que su módulo padre esté habilitado.
@@ -76,6 +77,13 @@ type moduleCatalog struct {
 type tenantSnapshot struct {
 	enabled map[uuid.UUID]bool // module_id → habilitado (solo filas existentes)
 	expires time.Time
+}
+
+// isEnabled: sin fila en tenant_modules el módulo está habilitado por defecto
+// (tenants y módulos nuevos funcionan sin sembrar filas); solo un false explícito lo apaga.
+func (t *tenantSnapshot) isEnabled(moduleID uuid.UUID) bool {
+	v, ok := t.enabled[moduleID]
+	return !ok || v
 }
 
 // Service resuelve accesos con caché. Es seguro para uso concurrente.
@@ -349,12 +357,12 @@ func (s *Service) moduleEnabled(ctx context.Context, tenantID uuid.UUID, m model
 	if err != nil {
 		return false, err
 	}
-	if !t.enabled[m.ID] {
+	if !t.isEnabled(m.ID) {
 		return false, nil
 	}
 	if m.ParentID != nil {
 		parent, ok := cat.byID[*m.ParentID]
-		if !ok || !parent.IsActive || !t.enabled[parent.ID] {
+		if !ok || !parent.IsActive || !t.isEnabled(parent.ID) {
 			return false, nil
 		}
 	}

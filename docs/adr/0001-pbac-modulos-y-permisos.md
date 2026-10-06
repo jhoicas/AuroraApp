@@ -72,7 +72,8 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
 - [x] Fase 1: modelos GORM `Module`, `TenantModule`, `RoleModuleDefault`, `UserModulePermission`, `AccessAuditLog` (en `AllModels()`, migración aditiva por AutoMigrate), manifiesto declarativo con `SeedVersion` (`internal/domain/modules`) y `EnsureModulesSeed` en el arranque, con backfill.
 - [x] Fase 2: `access.Service` (`Resolve`, `Can`, `ValidateSession`, caché 30 s), `RequirePermission`, `TenantTargetGuard`, `GET /api/v1/auth/me/access`, `PBAC_ENFORCE` (off|log|enforce; por defecto `log`) aplicado a todas las rutas de negocio.
 - [ ] Fase 2b: pasar `PBAC_ENFORCE=enforce` tras revisar el log de dry-run.
-- [ ] Fase 2: gestión de Tenant Admins con invariante del último administrador.
+- [x] Fase 3 (API Super Admin): `/api/v1/admin/modules` (CRUD + `PUT /order`), `/admin/tenants/:tenantId/users` y `/modules`, `/admin/users/:id/permissions|password|status`, con auditoría e invalidación de caché; `PATCH /projects/:id` autorizado por contenido.
+- [ ] Fase 4: gestión de Tenant Admins por su propio tenant (el invariante del último administrador ya aplica en `PUT /admin/users/:id/status`).
 - [ ] Fase 3: UI Super Admin (módulos por alcaldía) y UI Tenant Admin (permisos).
 
 ## Esquema y seeding (Fase 1)
@@ -109,6 +110,20 @@ usuario (vía rol/perfil)`; SUPER_ADMIN omite el chequeo de tenant. Todo endpoin
   `admin.catalogs` (solo SUPER_ADMIN). Un test falla si una ruta de negocio nueva no declara su guard.
 - **`TenantTargetGuard`:** recibe un `TenantResolver` (p. ej. `UserTenantResolver(db, "userId")`); SUPER_ADMIN pasa; un objetivo
   de otro tenant responde 404. Siempre activo (no depende de `PBAC_ENFORCE`). Aún sin rutas que lo usen (Fase 3).
+
+## API Super Admin (Fase 3)
+
+- **Módulos:** `IsSystem` (los del manifiesto: no se borran) y `Customized` (se marca al editar o reordenar un módulo de sistema; el
+  seed ya no pisa sus campos). Los módulos creados por un SUPER_ADMIN no son de sistema y el seed no los desactiva.
+  Sin fila en `tenant_modules` un módulo está habilitado: solo un `false` explícito lo apaga (tenants y módulos nuevos funcionan).
+- **Invalidación:** permisos → `Invalidate(userID)`; techo de módulos → `InvalidateTenant`; cambios de módulos → `InvalidateAll`;
+  contraseña y estado además incrementan `users.token_version` (revocan sesiones). Todo cambio escribe `access_audit_logs`
+  en la misma transacción (sin contraseñas ni hashes en `details`).
+- **Reglas:** `create/edit/delete` exigen `view`; los administradores (TENANT_ADMIN/SUPER_ADMIN) no admiten permisos por usuario
+  (se resuelven por rol); no se puede desactivar al último TENANT_ADMIN activo de un tenant ni a uno mismo; contraseña mín. 8.
+- **`PATCH /projects/:id`:** el guard compara el payload con lo almacenado y exige `edit` solo sobre las etapas cuyo contenido cambia
+  (`mga.identificacion|preparacion|evaluacion|programacion|presentar`; columnas `name/description` → `projects`; claves desconocidas →
+  `mga`). El frontend no cambia. Limitación: un guardado con snapshot desactualizado cuenta como cambio en etapas ajenas.
 
 ## Referencias
 

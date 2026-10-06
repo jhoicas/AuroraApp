@@ -35,6 +35,8 @@ var accessControlSchemaSQL = []string{
 		route VARCHAR(255) NOT NULL,
 		sort_order INTEGER NOT NULL DEFAULT 0,
 		is_active BOOLEAN NOT NULL DEFAULT TRUE,
+		is_system BOOLEAN NOT NULL DEFAULT FALSE,
+		customized BOOLEAN NOT NULL DEFAULT FALSE,
 		seed_version INTEGER NOT NULL DEFAULT 0,
 		created_at TIMESTAMPTZ NOT NULL,
 		updated_at TIMESTAMPTZ NOT NULL
@@ -99,6 +101,13 @@ var accessControlSchemaSQL = []string{
 	`CREATE INDEX IF NOT EXISTS idx_access_audit_logs_created_at ON access_audit_logs (created_at)`,
 }
 
+// accessControlColumnsSQL añade columnas posteriores a la Fase 1 a tablas que ya
+// existen en producción (Postgres; se ejecuta siempre, es idempotente).
+var accessControlColumnsSQL = []string{
+	`ALTER TABLE IF EXISTS modules ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT FALSE`,
+	`ALTER TABLE IF EXISTS modules ADD COLUMN IF NOT EXISTS customized BOOLEAN NOT NULL DEFAULT FALSE`,
+}
+
 // EnsureAccessControlSchema migra las tablas PBAC una por una y garantiza que
 // existan (con DDL de respaldo si AutoMigrate no las creó). Devuelve error si
 // alguna tabla sigue faltando: el seed NO debe correr sin ellas.
@@ -112,6 +121,10 @@ func EnsureAccessControlSchema(db *gorm.DB) error {
 	if missing := missingAccessControlTables(db); len(missing) > 0 {
 		log.Printf("PBAC: AutoMigrate no creó %v; aplicando DDL de respaldo", missing)
 		execSchemaStatements(db, "ensure access control schema", accessControlSchemaSQL)
+	}
+
+	if db.Dialector.Name() == "postgres" {
+		execSchemaStatements(db, "ensure access control columns", accessControlColumnsSQL)
 	}
 
 	if missing := missingAccessControlTables(db); len(missing) > 0 {

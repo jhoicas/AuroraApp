@@ -234,3 +234,112 @@ func TestTenantParamResolver(t *testing.T) {
 	require.Equal(t, 404, get(other.String()))
 	require.Equal(t, 404, get("no-es-uuid"))
 }
+
+// ── RequireProjectPatchPermission ───────────────────────────────────────────
+
+type moduleChecker struct {
+	allowed map[string]bool // módulo → permitido
+	asked   []string
+}
+
+func (m *moduleChecker) ValidateSession(context.Context, uuid.UUID, int) error { return nil }
+func (m *moduleChecker) Can(_ context.Context, _ uuid.UUID, code string, _ modules.Action) (access.Decision, error) {
+	m.asked = append(m.asked, code)
+	return access.Decision{Allowed: m.allowed[code], Reason: access.ReasonNoPermission}, nil
+}
+
+func patchApp(checker AccessChecker, mode EnforceMode, snap *ProjectSnapshot, loadErr error) *fiber.App {
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals(LocalsUserID, uuid.NewString())
+		c.Locals(LocalsRole, constants.RoleEvaluador)
+		return c.Next()
+	})
+	load := func(*fiber.Ctx, uuid.UUID) (*ProjectSnapshot, error) { return snap, loadErr }
+	g := NewAccessGuard(checker, mode)
+	app.Patch("/projects/:id", g.RequireProjectPatchPermission(load), func(c *fiber.Ctx) error { return c.SendString("ok") })
+	return app
+}
+
+func doPatch(t *testing.T, app *fiber.App, id, body string) int {
+	t.Helper()
+	req := httptest.NewRequest("PATCH", "/projects/"+id, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	return resp.StatusCode
+}
+
+func TestRequireProjectPatchPermission(t *testing.T) {
+	captureLog(t)
+	snap := &ProjectSnapshot{
+		Scalars:            map[string]string{"name": "Proyecto", "problem_description": "P"},
+		MgaFormulationData: map[string]any{"riesgos": map[string]any{"a": 1.0}, "evaluacion": map[string]any{"v": 1.0}},
+	}
+	id := uuid.NewString()
+	// Evaluador: solo puede editar la etapa de evaluación.
+	evaluador := func() *moduleChecker {
+		return &moduleChecker{allowed: map[string]bool{modules.CodeMGAEvaluacion: true}}
+	}
+
+	// Snapshot completo donde solo cambia "evaluacion": permitido y solo se consulta esa etapa.
+	c := evaluador()
+	body := `{"name":"Proyecto","mga_formulation_data":{"riesgos":{"a":1},"evaluacion":{"v":2},"effects":[]}}`
+	require.Equal(t, 200, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, body))
+	require.Equal(t, []string{modules.CodeMGAEvaluacion}, c.asked)
+
+	// Cambia una clave de preparación: 403 en enforce.
+	c = evaluador()
+	body = `{"mga_formulation_data":{"riesgos":{"a":2}}}`
+	require.Equal(t, 403, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, body))
+	require.Equal(t, []string{modules.CodeMGAPreparacion}, c.asked)
+
+	// Cambia una columna escalar de identificación: 403.
+	require.Equal(t, 403, doPatch(t, patchApp(evaluador(), EnforceOn, snap, nil), id, `{"problem_description":"otro"}`))
+	// Cambia el nombre: exige projects.
+	c = evaluador()
+	require.Equal(t, 403, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, `{"name":"Nuevo"}`))
+	require.Equal(t, []string{modules.CodeProjects}, c.asked)
+
+	// Sin cambios reales: no se consulta nada y pasa.
+	c = evaluador()
+	require.Equal(t, 200, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, `{"name":"Proyecto","mga_formulation_data":{"riesgos":{"a":1}}}`))
+	require.Empty(t, c.asked)
+
+	// Clave desconocida: exige el módulo padre mga.
+	c = evaluador()
+	require.Equal(t, 403, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, `{"mga_formulation_data":{"nuevo":{"x":1}}}`))
+	require.Equal(t, []string{modules.CodeMGA}, c.asked)
+
+	// completedSections por pestaña.
+	c = evaluador()
+	require.Equal(t, 200, doPatch(t, patchApp(c, EnforceOn, snap, nil), id, `{"mga_formulation_data":{"completedSections":{"evaluacion":true}}}`))
+	require.Equal(t, 403, doPatch(t, patchApp(evaluador(), EnforceOn, snap, nil), id, `{"mga_formulation_data":{"completedSections":{"riesgos":true}}}`))
+}
+
+func TestRequireProjectPatchPermission_ModesAndEdgeCases(t *testing.T) {
+	buf := captureLog(t)
+	snap := &ProjectSnapshot{Scalars: map[string]string{}, MgaFormulationData: map[string]any{}}
+	id := uuid.NewString()
+	deny := func() *moduleChecker { return &moduleChecker{allowed: map[string]bool{}} }
+	body := `{"mga_formulation_data":{"riesgos":{"a":1}}}`
+
+	// dry-run: no bloquea pero registra.
+	require.Equal(t, 200, doPatch(t, patchApp(deny(), EnforceLog, snap, nil), id, body))
+	require.Contains(t, buf.String(), "[PBAC] dry-run")
+	require.Contains(t, buf.String(), "module="+modules.CodeMGAPreparacion)
+
+	// off: no consulta.
+	c := deny()
+	require.Equal(t, 200, doPatch(t, patchApp(c, EnforceOff, snap, nil), id, body))
+	require.Empty(t, c.asked)
+
+	// id inválido o cuerpo inválido: lo resuelve el handler (400).
+	require.Equal(t, 200, doPatch(t, patchApp(deny(), EnforceOn, snap, nil), "no-uuid", body))
+	require.Equal(t, 200, doPatch(t, patchApp(deny(), EnforceOn, snap, nil), id, `{no es json`))
+	// proyecto inexistente: lo resuelve el handler (404).
+	require.Equal(t, 200, doPatch(t, patchApp(deny(), EnforceOn, nil, ErrTargetNotFound), id, body))
+	// error del loader: enforce falla cerrado.
+	require.Equal(t, 503, doPatch(t, patchApp(deny(), EnforceOn, nil, errors.New("db")), id, body))
+	require.Equal(t, 200, doPatch(t, patchApp(deny(), EnforceLog, nil, errors.New("db")), id, body))
+}

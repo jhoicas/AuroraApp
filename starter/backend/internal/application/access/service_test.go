@@ -261,3 +261,13 @@ func TestResolve_UnknownUser(t *testing.T) {
 	_, err := f.svc.Resolve(context.Background(), uuid.New())
 	require.ErrorIs(t, err, ErrUserNotFound)
 }
+
+func TestCan_MissingTenantModuleRowMeansEnabled(t *testing.T) {
+	f := newFixture(t, constants.RoleTenantAdmin, constants.RoleFormulador)
+	// Un tenant (o módulo) sin filas en tenant_modules funciona: solo un false explícito apaga.
+	require.NoError(t, f.db.Where("tenant_id = ?", f.tenant.ID).Delete(&models.TenantModule{}).Error)
+	f.svc.InvalidateAll()
+
+	require.True(t, f.can(t, constants.RoleTenantAdmin, modules.CodeReports, modules.ActionView).Allowed)
+	require.True(t, f.can(t, constants.RoleFormulador, modules.CodeMGAIdentificacion, modules.ActionEdit).Allowed)
+}

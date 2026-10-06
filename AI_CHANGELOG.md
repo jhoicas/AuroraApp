@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - PBAC Fase 3: API Super Admin, auditoría y PATCH por contenido
+
+- **Objetivo:** Endpoints de administración de acceso (solo SUPER_ADMIN) y solución del riesgo de `PATCH /projects/:id` (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)).
+- **Backend:** `internal/application/accessadmin` + `handlers/access_admin_handler.go` + `router/admin_access.go`: CRUD/reorden de módulos, usuarios por tenant, permisos granulares, techo de módulos por tenant, contraseña y estado. `modules.IsSystem/Customized` (seed respeta lo editado; `SeedVersion` = 2; columnas añadidas con `ALTER ... IF NOT EXISTS`). `access.Service`: sin fila en `tenant_modules` = habilitado. `RequireProjectPatchPermission` + `modules.RequirementsForFormulationPatch` (autorización por claves cambiadas).
+- **Validación:** `go vet`, `go test ./...` (servicio, HTTP end-to-end sobre SQLite, middleware del PATCH, seed), `tsc -b`. Sin probar contra Postgres real.
+- **Pendientes/riesgos:** la creación de tenants (`POST /admin/tenants`, `/auth/register`) no escribe `tenant_modules` (no hace falta: sin fila = habilitado). No hay endpoint para listar el `access_audit_logs`. El frontend aún no consume `/auth/me/access` ni estos endpoints. Antes de `PBAC_ENFORCE=enforce`, revisar el log de dry-run.
+
 ### 2026-10-06 - Claude - PBAC Fase 2: núcleo de acceso y dry-run
 
 - **Objetivo:** Autorización PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)) sin bloquear tráfico todavía (`PBAC_ENFORCE=log`).

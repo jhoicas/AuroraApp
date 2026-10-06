@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-06 - Claude - Fix PBAC: tablas ausentes al sembrar módulos
+
+- **Síntoma:** en el servidor, `ensure modules seed: leer modules: relation "modules" does not exist (SQLSTATE 42P01)`; el servidor arrancó igual.
+- **Causa:** los 5 modelos ya estaban en `AllModels()`, pero `autoMigrateSafe` tolera errores recuperables (42704) y retorna `nil` tras el reintento, dejando sin crear los modelos posteriores al fallo; además el error del seed solo se registraba en log. (Causa exacta en el servidor no verificada; deducida del código.)
+- **Fix:** nuevo `EnsureAccessControlSchema` ([access_control_schema.go](starter/backend/internal/infrastructure/persistence/postgres/access_control_schema.go)): migra cada tabla PBAC por separado, verifica `HasTable` y aplica DDL idempotente de respaldo; si siguen faltando devuelve error. En `Connect` corre DESPUÉS del AutoMigrate global y ANTES de `EnsureModulesSeed`; ambos fallos ahora abortan el arranque. No existe `EnsureRoleModuleDefaults`: los defaults de rol se siembran dentro de `EnsureModulesSeed`.
+- **Validación:** `go build`, `go test ./...`, `tsc -b`; tests nuevos (modelos en `AllModels()`, migración, DDL de respaldo sobre SQLite, seed falla sin tablas). El DDL de Postgres no se ejecutó contra una instancia real.
+
 ### 2026-10-06 - Claude - PBAC Fase 1: capa de datos y seeding de módulos
 
 - **Objetivo:** Base de datos y seed para PBAC (ver [ADR-0001](docs/adr/0001-pbac-modulos-y-permisos.md)); sin enforcement todavía.

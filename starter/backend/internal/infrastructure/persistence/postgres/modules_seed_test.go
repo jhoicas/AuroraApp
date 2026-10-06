@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -21,7 +22,19 @@ func newModulesTestDB(t *testing.T) *gorm.DB {
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	require.NoError(t, err)
-	// Roles/tenants/users usan gen_random_uuid() (solo Postgres): DDL mínimo para SQLite.
+	createBaseTables(t, db)
+	require.NoError(t, db.AutoMigrate(
+		&models.Module{}, &models.TenantModule{}, &models.RoleModuleDefault{},
+		&models.UserModulePermission{}, &models.AccessAuditLog{},
+	))
+	require.NoError(t, EnsureSystemRoles(db))
+	return db
+}
+
+// createBaseTables crea roles/tenants/users con DDL mínimo: sus modelos usan
+// gen_random_uuid() (solo Postgres) y no se pueden migrar en SQLite.
+func createBaseTables(t *testing.T, db *gorm.DB) {
+	t.Helper()
 	for _, ddl := range []string{
 		`CREATE TABLE roles (id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, description TEXT, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)`,
 		`CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT NOT NULL, domain TEXT, nit TEXT, contact_email TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', is_active BOOLEAN NOT NULL DEFAULT 1, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, deleted_at DATETIME)`,
@@ -29,12 +42,6 @@ func newModulesTestDB(t *testing.T) *gorm.DB {
 	} {
 		require.NoError(t, db.Exec(ddl).Error)
 	}
-	require.NoError(t, db.AutoMigrate(
-		&models.Module{}, &models.TenantModule{}, &models.RoleModuleDefault{},
-		&models.UserModulePermission{}, &models.AccessAuditLog{},
-	))
-	require.NoError(t, EnsureSystemRoles(db))
-	return db
 }
 
 func seedTenantWithUsers(t *testing.T, db *gorm.DB, roleCodes ...string) (models.Tenant, []models.User) {
@@ -227,4 +234,58 @@ func TestEnsureModulesSeed_RejectsInvalidManifest(t *testing.T) {
 	}
 	require.Error(t, ensureModulesSeed(db, bad, 1))
 	require.EqualValues(t, 0, count(t, db, &models.Module{}))
+}
+
+func TestAllModels_IncludesAccessControlModels(t *testing.T) {
+	registered := map[string]bool{}
+	for _, m := range models.AllModels() {
+		registered[reflect.TypeOf(m).String()] = true
+	}
+	for _, m := range accessControlModels() {
+		require.True(t, registered[reflect.TypeOf(m).String()], "%T falta en AllModels()", m)
+	}
+}
+
+func TestEnsureAccessControlSchema_CreatesTables(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:acs_test_"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+	createBaseTables(t, db)
+
+	require.NotEmpty(t, missingAccessControlTables(db))
+	require.NoError(t, EnsureAccessControlSchema(db))
+	require.Empty(t, missingAccessControlTables(db))
+
+	// Tras migrar, el seed corre sin errores (el orden Schema → Seed funciona).
+	require.NoError(t, EnsureSystemRoles(db))
+	require.NoError(t, EnsureModulesSeed(db))
+	require.EqualValues(t, len(modules.Manifest), count(t, db, &models.Module{}))
+}
+
+func TestAccessControlFallbackDDL_MatchesModels(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:acs_ddl_"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+	createBaseTables(t, db)
+
+	for _, stmt := range accessControlSchemaSQL {
+		require.NoError(t, db.Exec(stmt).Error, stmt)
+	}
+	require.Empty(t, missingAccessControlTables(db))
+
+	// El seed funciona sobre el esquema creado por el DDL de respaldo.
+	require.NoError(t, EnsureSystemRoles(db))
+	seedTenantWithUsers(t, db, constants.RoleFormulador)
+	require.NoError(t, EnsureModulesSeed(db))
+	require.Positive(t, count(t, db, &models.UserModulePermission{}))
+}
+
+func TestEnsureModulesSeed_FailsWithoutTables(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:acs_none_"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+	require.Error(t, EnsureModulesSeed(db))
 }

@@ -206,9 +206,15 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		log.Printf("ensure measurement units seed: %v", err)
 	}
 
-	// PBAC (ADR-0001): sincroniza el manifiesto de módulos, defaults de rol y backfill.
+	// PBAC (ADR-0001). Orden estricto: (1) AutoMigrate global ya terminó arriba;
+	// (2) se garantizan las tablas PBAC; (3) solo entonces se siembra el manifiesto
+	// (módulos, defaults de rol y backfill). Un fallo aquí aborta el arranque: un
+	// PBAC a medias es peor que no arrancar.
+	if err := EnsureAccessControlSchema(db); err != nil {
+		return nil, fmt.Errorf("ensure access control schema: %w", err)
+	}
 	if err := EnsureModulesSeed(db); err != nil {
-		log.Printf("ensure modules seed: %v", err)
+		return nil, fmt.Errorf("ensure modules seed: %w", err)
 	}
 
 	log.Println("PostgreSQL connected and migrated via DATABASE_URL")

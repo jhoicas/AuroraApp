@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { LogoAurora } from '../LogoAurora';
 
 const CURRENT_YEAR = new Date().getFullYear();
+/** Enlace corporativo opcional; se define con VITE_COMPANY_URL (sin valor por defecto). */
+const COMPANY_URL: string = import.meta.env.VITE_COMPANY_URL || '';
 
 export default function LandingFooter() {
   return (
@@ -14,12 +16,10 @@ export default function LandingFooter() {
             asistencia inteligente.
           </p>
           <a
-            href="https://proyectoaurora.ludoia.com/"
+            href="/"
             className="inline-block text-sm font-medium text-[#006162] hover:underline"
-            target="_blank"
-            rel="noreferrer"
           >
-            proyectoaurora.ludoia.com
+            {window.location.host}
           </a>
         </div>
 
@@ -31,14 +31,16 @@ export default function LandingFooter() {
           <Link to="/register" className="text-sm text-gray-600 transition hover:text-[#006162]">
             Registrarse
           </Link>
-          <a
-            href="https://ludoia.com/"
-            className="text-sm text-gray-600 transition hover:text-[#006162]"
-            target="_blank"
-            rel="noreferrer"
-          >
-            ludoia.com
-          </a>
+          {COMPANY_URL && (
+            <a
+              href={COMPANY_URL}
+              className="text-sm text-gray-600 transition hover:text-[#006162]"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {COMPANY_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+            </a>
+          )}
         </nav>
       </div>
 

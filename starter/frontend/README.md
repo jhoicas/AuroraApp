@@ -21,7 +21,7 @@ SPA de formulación MGA multi-tenant. **React 19 + TypeScript + Vite + Tailwind 
 
 ```bash
 # .env (mínimo)
-# VITE_API_URL=http://localhost:8080/api/v1
+# VITE_API_URL=/api/v1  (por defecto; en dev Vite hace proxy a VITE_DEV_PROXY_TARGET o http://localhost:8080)
 
 npm install
 npm run dev
@@ -86,7 +86,7 @@ Tipado estricto: sin `any` en los stores de Copilot y Knowledge.
 
 `src/lib/api.ts`:
 
-- Base URL desde `VITE_API_URL`.
+- Base URL desde `VITE_API_URL` (por defecto `/api/v1`, mismo origen).
 - Adjunta Bearer en cada request.
 - Ante **401**, intenta refresh; si falla, dispara logout.
 - Ante **403**, registra warning.

@@ -19,8 +19,11 @@ export const clearStoredToken = (): void => {
   localStorage.removeItem(REFRESH_KEY);
 };
 
+/** Base de la API: variable de entorno o ruta relativa (nginx/proxy del mismo origen). */
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL || '/api/v1';
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -49,7 +52,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const { data } = await axios.post<{ token: string; refresh_token: string }>(
-      `${import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'}/auth/refresh`,
+      `${API_BASE_URL}/auth/refresh`,
       { refresh_token: refreshToken },
       { headers: { 'Content-Type': 'application/json' }, timeout: 15000 },
     );

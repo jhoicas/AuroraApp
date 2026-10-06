@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProjectDetailPage from './ProjectDetailPage';
 import AdminProjectDetailPage from '../admin/AdminProjectDetailPage';
 import { useProjectStore, type Project } from '../../store/projectStore';
+import { seedFullAccess, seedViewerAccess } from '../../test/seedAccess';
 import { useReadOnly } from '../../context/ReadOnlyContext';
 import ReadOnlyScope from '../../components/ui/ReadOnlyScope';
 
@@ -62,6 +63,7 @@ function renderAt(path: string) {
 describe('ProjectDetailPage en modo lectura', () => {
   beforeEach(() => {
     auth.role = 'FORMULADOR';
+    seedFullAccess();
     useProjectStore.setState({
       currentProject: project,
       isLoading: false,
@@ -102,6 +104,17 @@ describe('ProjectDetailPage en modo lectura', () => {
     expect(screen.getByTestId('readonly-banner')).not.toHaveTextContent('Super Admin');
     expect(screen.getByRole('link', { name: 'Volver a proyectos' })).toHaveAttribute('href', '/tenant/projects');
     expect(screen.getByLabelText('campo')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Validar y Enviar/ })).toBeNull();
+  });
+
+  it('VIEWER sin permiso edit: formulación en modo lectura con banner y sin acciones', () => {
+    auth.role = 'VIEWER';
+    seedViewerAccess();
+    renderAt('/tenant/projects/p1');
+    expect(screen.getByTestId('readonly-banner')).toHaveTextContent('Vista en Modo Solo Lectura');
+    expect(screen.getByTestId('formulation')).toHaveAttribute('data-readonly', 'true');
+    expect(screen.getByLabelText('campo')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Guardar Cambios' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /Validar y Enviar/ })).toBeNull();
   });
 

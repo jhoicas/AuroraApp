@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAccessStore } from '../../store/accessStore';
 import SearchableCombobox, {
   type ComboboxOption,
 } from '../../components/Catalog/SearchableCombobox';
@@ -18,6 +19,7 @@ import {
  */
 export default function CatalogPage() {
   const navigate = useNavigate();
+  const canCreateProject = useAccessStore((s) => s.can('projects', 'create'));
   const sectors = useCatalogStore((s) => s.sectors);
   const programs = useCatalogStore((s) => s.programs);
   const programsSectorId = useCatalogStore((s) => s.programsSectorId);
@@ -289,6 +291,7 @@ export default function CatalogPage() {
                   </div>
                 </dl>
 
+                {canCreateProject && (
                 <button
                   type="button"
                   onClick={handleFormularProyecto}
@@ -297,6 +300,7 @@ export default function CatalogPage() {
                   <span className="material-symbols-outlined">rocket_launch</span>
                   Formular Proyecto con este Producto
                 </button>
+                )}
               </div>
             )}
           </div>

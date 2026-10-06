@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { apiUrl, errorResponse, server } from '../../test/server';
 import { renderWithProviders, seedAuthUser } from '../../test/renderWithProviders';
 import { formatTIR, formatVPN, tooltipFormatter } from '../../lib/financialFormat';
+import { seedFullAccess, seedViewerAccess } from '../../test/seedAccess';
 import { useProjectStore } from '../../store/projectStore';
 import type { EvaluationSummaryItem, Project } from '../../store/projectStore';
 import ProjectsDashboard from './ProjectsDashboard';
@@ -105,6 +106,16 @@ describe('ProjectsDashboard', () => {
       error: null,
     });
     seedAuthUser();
+    seedFullAccess();
+  });
+
+  it('VIEWER sin permiso create: no ve botones de creación', async () => {
+    seedViewerAccess();
+    serveDashboard([], []);
+    renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+    expect(await screen.findByText('Bienvenido, Ana')).toBeInTheDocument();
+    await screen.findByText(/Aún no hay proyectos/);
+    expect(screen.queryByRole('button', { name: /Crear nuevo proyecto|Crear proyecto/ })).toBeNull();
   });
 
   it('saluda al usuario autenticado y resume los estados de los proyectos', async () => {

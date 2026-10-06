@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ReadOnlyProvider } from '../../context/ReadOnlyContext';
 import ReadOnlyScope from '../../components/ui/ReadOnlyScope';
 import { isSuperAdmin } from '../../lib/roles';
+import { useAccessStore } from '../../store/accessStore';
 import { useProjectStore } from '../../store/projectStore';
 import { useFormulationAuditStore } from '../../store/formulationAuditStore';
 
@@ -53,7 +54,11 @@ export default function ProjectDetailPage({
   // El modo lectura solo puede restringir: lo piden la ruta, el query param o el rol Super Admin
   // (el servidor además le niega toda escritura sobre proyectos).
   const isSuper = isSuperAdmin(user?.role);
-  const readOnly = Boolean(readOnlyProp) || isSuper || searchParams.get('mode') === 'readonly';
+  // Sin permiso de edición sobre proyectos/MGA (p. ej. VIEWER) la formulación es de solo lectura.
+  const canEdit = useAccessStore((s) => s.can('projects', 'edit') || s.can('mga', 'edit'));
+  const noEditPermission = !isSuper && !canEdit;
+  const readOnly =
+    Boolean(readOnlyProp) || isSuper || noEditPermission || searchParams.get('mode') === 'readonly';
   const backPath = backPathProp ?? (isSuper ? '/admin/projects' : '/tenant/projects');
   const backLabel = backLabelProp ?? (isSuper ? 'Volver a Proyectos Admin' : 'Volver a proyectos');
 
@@ -136,7 +141,9 @@ export default function ProjectDetailPage({
         >
           <span className="inline-flex items-center gap-2 font-semibold">
             <span className="material-symbols-outlined text-xl" aria-hidden>visibility</span>
-            Vista Previa / Modo Lectura{isSuper ? ' (Super Admin)' : ''}
+            {noEditPermission && !readOnlyProp && searchParams.get('mode') !== 'readonly'
+              ? 'Vista en Modo Solo Lectura'
+              : `Vista Previa / Modo Lectura${isSuper ? ' (Super Admin)' : ''}`}
           </span>
           <Link
             to={backPath}

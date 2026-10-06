@@ -21,6 +21,7 @@ import {
   formatVPN,
   tooltipFormatter,
 } from '../../lib/financialFormat';
+import { useAccessStore } from '../../store/accessStore';
 import { useProjectStore, type Project } from '../../store/projectStore';
 
 function formatDate(iso: string): string {
@@ -38,6 +39,7 @@ function formatDate(iso: string): string {
 export default function ProjectsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const canCreate = useAccessStore((s) => s.can('projects', 'create'));
   const location = useLocation();
   const projects = useProjectStore((s) => s.projects);
   const isLoading = useProjectStore((s) => s.isLoading);
@@ -60,13 +62,13 @@ export default function ProjectsDashboard() {
       preselectedProductCode?: string;
     } | null;
 
-    if (state?.openIdeation) {
+    if (state?.openIdeation && canCreate) {
       setPreselectedSectorCode(state.preselectedSectorCode);
       setPreselectedProductCode(state.preselectedProductCode);
       setModalOpen(true);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, canCreate]);
 
   useEffect(() => {
     void fetchProjects();
@@ -111,6 +113,7 @@ export default function ProjectsDashboard() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
 
+          {canCreate && (
           <button
             type="button"
             onClick={() => setModalOpen(true)}
@@ -119,6 +122,7 @@ export default function ProjectsDashboard() {
             <span className="material-symbols-outlined">add_circle</span>
             Crear nuevo proyecto
           </button>
+          )}
         </div>
       </div>
 
@@ -227,7 +231,10 @@ export default function ProjectsDashboard() {
       {!isLoading && projects.length === 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
           <span className="material-symbols-outlined text-4xl text-[#006162] mb-2">folder_open</span>
-          <p className="text-gray-600 mb-4">Aún no hay proyectos. Crea el primero para iniciar.</p>
+          <p className="text-gray-600 mb-4">
+            {canCreate ? 'Aún no hay proyectos. Crea el primero para iniciar.' : 'Aún no hay proyectos.'}
+          </p>
+          {canCreate && (
           <button
             type="button"
             onClick={() => setModalOpen(true)}
@@ -236,6 +243,7 @@ export default function ProjectsDashboard() {
             <span className="material-symbols-outlined text-base">add</span>
             Crear proyecto
           </button>
+          )}
         </div>
       )}
 
@@ -319,7 +327,7 @@ export default function ProjectsDashboard() {
       <ReassignProjectModal project={reassigning} onClose={() => setReassigning(null)} />
 
       <CreateProjectModal
-        open={modalOpen}
+        open={modalOpen && canCreate}
         onClose={() => {
           setModalOpen(false);
           setPreselectedSectorCode(undefined);

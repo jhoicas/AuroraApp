@@ -526,7 +526,7 @@ export async function downloadTechnicalDocumentValle(
   projectId: string,
   projectName?: string,
 ): Promise<void> {
-  const response = await api.get(`/projects/${projectId}/export/technical-document-valle`, {
+  const response = await api.get(`/projects/${projectId}/technical-document`, {
     responseType: 'blob',
   });
   const blob = new Blob([response.data], { type: 'application/pdf' });

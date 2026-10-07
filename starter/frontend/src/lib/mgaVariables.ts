@@ -9,6 +9,8 @@ export const MGA_VARIABLE_GROUPS: MgaVariableGroup[] = [
       { id: 'project.name', label: 'Nombre del Proyecto', mock: 'Mejoramiento de la vía rural La Esperanza' },
       { id: 'project.code', label: 'Código BPIN', mock: '2024760010123' },
       { id: 'project.bpin', label: 'Código BPIN (o "En radicación")', mock: '2024760010123' },
+      { id: 'project.program_code', label: 'Código Programa', mock: '4001' },
+      { id: 'project.product_code', label: 'Código Producto', mock: '4001001' },
       { id: 'project.sector', label: 'Sector', mock: 'Transporte' },
       { id: 'project.phase', label: 'Fase de maduración', mock: 'PREFACTIBILIDAD' },
       { id: 'project.object', label: 'Objeto', mock: 'Rehabilitar 12 km de vía terciaria' },

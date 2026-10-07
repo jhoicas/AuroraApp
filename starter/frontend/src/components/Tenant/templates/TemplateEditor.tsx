@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import { MgaVar } from './MgaVarNode';
 import { MGA_VARIABLE_GROUPS } from '../../../lib/mgaVariables';
 
@@ -42,6 +43,16 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Btn label="Alinear a la izquierda" active={editor.isActive({ textAlign: 'left' })} onClick={() => c().setTextAlign('left').run()}>⇤</Btn>
       <Btn label="Centrar" active={editor.isActive({ textAlign: 'center' })} onClick={() => c().setTextAlign('center').run()}>↔</Btn>
       <Btn label="Alinear a la derecha" active={editor.isActive({ textAlign: 'right' })} onClick={() => c().setTextAlign('right').run()}>⇥</Btn>
+      <Btn label="Insertar tabla" onClick={() => c().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()}>▦ Tabla</Btn>
+      {editor.isActive('table') && (
+        <>
+          <Btn label="Añadir fila" onClick={() => c().addRowAfter().run()}>+Fila</Btn>
+          <Btn label="Añadir columna" onClick={() => c().addColumnAfter().run()}>+Col</Btn>
+          <Btn label="Eliminar fila" onClick={() => c().deleteRow().run()}>−Fila</Btn>
+          <Btn label="Eliminar columna" onClick={() => c().deleteColumn().run()}>−Col</Btn>
+          <Btn label="Eliminar tabla" onClick={() => c().deleteTable().run()}>✕ Tabla</Btn>
+        </>
+      )}
       <Btn label="Deshacer" onClick={() => c().undo().run()}>↶</Btn>
       <Btn label="Rehacer" onClick={() => c().redo().run()}>↷</Btn>
     </div>
@@ -51,7 +62,15 @@ function Toolbar({ editor }: { editor: Editor }) {
 /** Editor TipTap ultraligero con panel de chips de variables MGA. */
 export default function TemplateEditor({ initialHtml, readOnly = false, onChange }: Props) {
   const editor = useEditor({
-    extensions: [StarterKit, TextAlign.configure({ types: ['heading', 'paragraph'] }), MgaVar],
+    extensions: [
+      StarterKit,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      MgaVar,
+    ],
     content: initialHtml,
     editable: !readOnly,
     immediatelyRender: false,
@@ -66,10 +85,18 @@ export default function TemplateEditor({ initialHtml, readOnly = false, onChange
 
   return (
     <div className="flex flex-col gap-3 lg:flex-row">
-      <div className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white">
-        {!readOnly && <Toolbar editor={editor} />}
-        <div className="tpl-prose p-4" data-testid="template-editor">
-          <EditorContent editor={editor} />
+      <div className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-gray-100">
+        {!readOnly && (
+          <div className="sticky top-0 z-10 rounded-t-lg bg-white">
+            <Toolbar editor={editor} />
+          </div>
+        )}
+        <div className="overflow-x-auto p-4 sm:p-8">
+          <div className="tpl-page" data-testid="template-editor">
+            <div className="tpl-prose">
+              <EditorContent editor={editor} />
+            </div>
+          </div>
         </div>
       </div>
       {!readOnly && (

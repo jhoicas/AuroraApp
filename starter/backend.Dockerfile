@@ -18,7 +18,7 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/aurora-backend ./cmd/server
 # ---- Runtime ----
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata wget \
+RUN apk add --no-cache ca-certificates tzdata wget chromium ttf-freefont \
   && adduser -D -H -u 10001 appuser
 
 WORKDIR /app
@@ -30,6 +30,7 @@ USER appuser
 EXPOSE 8080
 
 ENV PORT=8080
+ENV CHROME_BIN=/usr/bin/chromium
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/api/v1/catalog/sectors >/dev/null 2>&1 || exit 0

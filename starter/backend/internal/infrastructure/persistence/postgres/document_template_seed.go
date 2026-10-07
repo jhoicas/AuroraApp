@@ -13,8 +13,9 @@ func mv(id, label string) string {
 }
 
 // OfficialTechnicalDocumentHTML replica el Documento Técnico del Proyecto de Inversión
-// (Decreto 1278 de 2023, Art. 13 lit. e). Solo usa etiquetas soportadas por HTMLToPDF (gofpdf);
-// las listas (causas, efectos, objetivos, entregables) llegan ya como <ul> desde BuildTemplateData.
+// (Decreto 1278 de 2023, Art. 13 lit. e) como HTML semántico limpio; se renderiza a PDF con
+// Chromium (chromedp), por lo que admite tablas y CSS. Las listas (causas, efectos, objetivos,
+// entregables) llegan ya como <ul> desde BuildTemplateData.
 func OfficialTechnicalDocumentHTML() string {
 	h2 := func(t string) string { return `<h2>` + t + `</h2>` }
 	h3 := func(t string) string { return `<h3>` + t + `</h3>` }
@@ -22,14 +23,20 @@ func OfficialTechnicalDocumentHTML() string {
 	kv := func(label, id, ph string) string {
 		return `<p><strong>` + label + `:</strong> ` + mv(id, ph) + `</p>`
 	}
+	cell := func(label, id, ph string) string {
+		return `<td><strong>` + label + `</strong></td><td>` + mv(id, ph) + `</td>`
+	}
 	return `<h2 style="text-align: center">DEPARTAMENTO ADMINISTRATIVO DE PLANEACIÓN - BANCO DE PROGRAMAS Y PROYECTOS</h2>` +
-		`<h1 style="text-align: center">DOCUMENTO TÉCNICO DEL PROYECTO DE INVERSIÓN (DECRETO BPPD 1278 DE 2023, ART. 13 LIT. E)</h1>` +
+		`<h1 style="text-align: center">DOCUMENTO TÉCNICO DEL PROYECTO DE INVERSIÓN</h1>` +
+		`<h3 style="text-align: center">DECRETO BPPD 1278 DE 2023, ART. 13 LIT. E</h3>` +
+		`<table><tbody>` +
+		`<tr>` + cell("Código BPIN", "project.bpin", "Código BPIN") + cell("Sector DNP", "project.sector", "Sector") + `</tr>` +
+		`<tr>` + cell("Código Programa", "project.program_code", "Código Programa") + cell("Código Producto", "project.product_code", "Código Producto") + `</tr>` +
+		`</tbody></table>` +
 		kv("Entidad formuladora", "tenant.name", "Entidad") +
 		kv("Fecha de emisión", "system.date", "Fecha") +
 		h2("1. Nombre del proyecto") +
 		p(mv("project.name", "Nombre del Proyecto")) +
-		kv("Código BPIN", "project.bpin", "Código BPIN") +
-		kv("Sector DNP", "project.sector", "Sector") +
 		h2("2. Contribución al plan nacional y departamental de desarrollo") +
 		h3("2.1 Plan Nacional de Desarrollo (PND)") +
 		p(mv("plan-desarrollo.nacional", "Articulación PND")) +

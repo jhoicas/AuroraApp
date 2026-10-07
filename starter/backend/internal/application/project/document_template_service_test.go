@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -10,6 +12,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func skipWithoutChrome(t *testing.T) {
+	t.Helper()
+	if os.Getenv("CHROME_BIN") != "" {
+		return
+	}
+	for _, b := range []string{"chromium", "chromium-browser", "google-chrome", "chrome"} {
+		if _, err := exec.LookPath(b); err == nil {
+			return
+		}
+	}
+	t.Skip("chromium no disponible")
+}
 
 func TestRenderTemplateHTML_InjectsAndEscapes(t *testing.T) {
 	tpl := `<p>Hola <span class="mga-var" data-id="project.name">Nombre</span> {{ .Secret }}</p>`
@@ -28,6 +43,7 @@ func TestRenderTemplateHTML_UnknownVarIsEmpty(t *testing.T) {
 }
 
 func TestRenderPDF_ProducesPDF(t *testing.T) {
+	skipWithoutChrome(t)
 	tpl := &models.DocumentTemplate{HTMLContent: `<h1 style="text-align:center">Título</h1><p>Texto <strong>fuerte</strong> áéí ñ</p>` +
 		`<ul><li>uno</li><li>dos</li></ul><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>` +
 		`<p><span class="mga-var" data-id="project.name">N</span></p>`}
@@ -55,6 +71,7 @@ func TestSeedTemplate_RendersOfficialDocument(t *testing.T) {
 	require.Contains(t, html, "<li>Falta de mantenimiento<ul><li>Presupuesto &lt;insuficiente&gt;</li></ul></li>")
 	require.Contains(t, html, "Superar: Falta de mantenimiento")
 
+	skipWithoutChrome(t)
 	pdf, err := HTMLToPDF(html)
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(string(pdf), "%PDF-"))

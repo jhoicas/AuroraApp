@@ -54,12 +54,30 @@ body {
   white-space: nowrap;
 }
 .mga-var.ProseMirror-selectednode { outline: 2px solid #0f766e; }
-.tpl-prose h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
-.tpl-prose h2 { font-size: 1.25rem; font-weight: 700; margin: 0.5rem 0; }
-.tpl-prose h3 { font-size: 1.1rem; font-weight: 600; margin: 0.4rem 0; }
-.tpl-prose p { margin: 0.35rem 0; }
-.tpl-prose ul { list-style: disc; padding-left: 1.4rem; }
-.tpl-prose ol { list-style: decimal; padding-left: 1.4rem; }
-.tpl-prose table { border-collapse: collapse; width: 100%; }
-.tpl-prose th, .tpl-prose td { border: 1px solid #94a3b8; padding: 0.25rem 0.5rem; text-align: left; }
+/* Hoja A4 (210mm) — mismas reglas que DocumentCSS del backend (pdf_renderer.go). */
+.tpl-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 20mm 18mm;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+.tpl-prose { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
+.tpl-prose h1 { font-size: 15pt; font-weight: 700; margin: 6pt 0; }
+.tpl-prose h2 { font-size: 12.5pt; font-weight: 700; margin: 12pt 0 4pt; }
+.tpl-prose h3 { font-size: 11.5pt; font-weight: 700; margin: 8pt 0 3pt; }
+.tpl-prose p { margin: 4pt 0; }
+.tpl-prose ul { list-style: disc; padding-left: 18pt; margin: 4pt 0; }
+.tpl-prose ol { list-style: decimal; padding-left: 18pt; margin: 4pt 0; }
+.tpl-prose li { margin: 2pt 0; }
+.tpl-prose hr { border: 0; border-top: 1px solid #94a3b8; margin: 10pt 0; }
+.tpl-prose table { border-collapse: collapse; width: 100%; margin: 6pt 0; table-layout: fixed; overflow: hidden; }
+.tpl-prose th, .tpl-prose td { border: 1px solid #000; padding: 4pt 6pt; text-align: left; vertical-align: top; position: relative; word-wrap: break-word; }
+.tpl-prose th { background: #e5e7eb; font-weight: 700; }
+.tpl-prose .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #0f766e; pointer-events: none; }
+.tpl-prose .tableWrapper { overflow-x: auto; }
+.tpl-prose .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgba(15, 118, 110, 0.15); pointer-events: none; }
+.tpl-prose.resize-cursor { cursor: col-resize; }
 .tpl-prose .ProseMirror { outline: none; min-height: 24rem; }

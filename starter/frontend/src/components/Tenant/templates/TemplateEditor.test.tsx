@@ -37,4 +37,16 @@ describe('TemplateEditor (TipTap)', () => {
     expect(screen.queryByRole('toolbar')).toBeNull();
     expect(screen.queryByLabelText('Variables MGA')).toBeNull();
   });
+
+  it('conserva tablas HTML (modo hoja A4)', async () => {
+    render(
+      <TemplateEditor initialHtml="<table><tbody><tr><td><p>BPIN</p></td><td><p>X</p></td></tr></tbody></table>" onChange={() => {}} />,
+    );
+    const table = await waitFor(() => {
+      const el = screen.getByTestId('template-editor').querySelector('table');
+      expect(el).not.toBeNull();
+      return el as HTMLElement;
+    });
+    expect(table.querySelectorAll('td')).toHaveLength(2);
+  });
 });

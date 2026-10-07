@@ -53,10 +53,14 @@ func HTMLToPDF(src string) ([]byte, error) {
 	opts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	opts = append(opts,
 		chromedp.NoSandbox,
+		chromedp.DisableGPU,
 		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("disable-crash-reporter", true),
 		chromedp.Flag("disable-software-rasterizer", true),
+		chromedp.Flag("disable-crash-reporter", true),
+		chromedp.Flag("no-zygote", true),
+		chromedp.Flag("single-process", true),
+		chromedp.Flag("headless", true),
+		chromedp.Env("CHROME_CRASHPAD_DISABLE=1"),
 	)
 	if bin := os.Getenv("CHROME_BIN"); bin != "" {
 		opts = append(opts, chromedp.ExecPath(bin))

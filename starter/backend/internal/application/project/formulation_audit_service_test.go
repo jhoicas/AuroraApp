@@ -97,12 +97,14 @@ func (m *mockEdtActivityReader) ListActivities(_ context.Context, _, _ uuid.UUID
 }
 
 func completeProject() *models.Project {
-	locJSON := []byte(`{"localizaciones": [{"regionId": 1, "departamentoId": 76, "municipioId": 1}]}`)
+	locJSON := []byte(`{"localizaciones": [{"regionId": 1, "departamentoId": 76, "municipioId": 1}], "planDesarrollo": {"municipal": "PDM 2024-2027"}}`)
+	productCode := "4003012"
 	return &models.Project{
-		ProblemDescription: "Falta de acceso a agua potable.",
+		ProductCode:        &productCode,
+		ProblemDescription: "Falta de acceso a agua potable en la zona rural del municipio.",
 		GeneralObjective:   "Mejorar el acceso al servicio de acueducto.",
 		SituacionExistente: strings.Repeat("Contexto territorial y social del problema. ", 4),
-		MagnitudProblema:   strings.Repeat("Indicadores de magnitud y línea base verificable. ", 4),
+		MagnitudProblema:   strings.Repeat("Indicadores de magnitud y línea base verificable: 35% sin acceso (DANE 2023). ", 2),
 		MgaFormulationData: datatypes.JSON(locJSON),
 	}
 }
@@ -124,7 +126,7 @@ func defaultMockEdt() *mockEdtActivityReader {
 func TestFormulationAuditService_Passed(t *testing.T) {
 	counter := &mockMgaCounter{
 		causes:            2,
-		objectives:        1,
+		objectives:        2,
 		targetPopulations: 1,
 		alternatives:      1,
 	}
@@ -137,6 +139,9 @@ func TestFormulationAuditService_Passed(t *testing.T) {
 	result, err := svc.AuditProject(context.Background(), uuid.New(), uuid.New())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if result.OverallScore < 90 || result.Status != appproject.AuditStatusApproved {
+		t.Fatalf("expected approved with high score, got %d %s", result.OverallScore, result.Status)
 	}
 	if !result.Passed {
 		t.Fatalf("expected passed, blockers: %v", result.Blockers)
@@ -328,5 +333,111 @@ func TestFormulationAuditService_ProjectNotFound(t *testing.T) {
 	_, err := svc.AuditProject(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("expected ErrRecordNotFound, got %v", err)
+	}
+}
+
+func TestFormulationAuditService_HolisticResponseComplete(t *testing.T) {
+	projectID := uuid.New()
+	svc := appproject.NewFormulationAuditService(
+		&mockProjectReader{project: completeProject()},
+		&mockMgaCounter{causes: 2, objectives: 2, targetPopulations: 1, alternatives: 1},
+		defaultMockEdt(),
+	)
+	result, err := svc.AuditProject(context.Background(), uuid.New(), projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.OverallScore != 100 || result.Status != appproject.AuditStatusApproved {
+		t.Fatalf("expected 100/APROBADO, got %d/%s", result.OverallScore, result.Status)
+	}
+}
+
+func TestFormulationAuditService_HolisticResponseIncomplete(t *testing.T) {
+	projectID := uuid.New()
+	project := &models.Project{
+		ProblemDescription: "N/A",
+		GeneralObjective:   "N/A",
+		MagnitudProblema:   "Muchos casos sin dato",
+		MgaFormulationData: datatypes.JSON(`{}`),
+	}
+	svc := appproject.NewFormulationAuditService(
+		&mockProjectReader{project: project},
+		&mockMgaCounter{causes: 2, objectives: 1, targetPopulations: 0, alternatives: 0},
+		&mockEdtActivityReader{},
+	)
+	result, err := svc.AuditProject(context.Background(), uuid.New(), projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Passed {
+		t.Fatal("incomplete project must not pass")
+	}
+	if result.Status != appproject.AuditStatusRemediation {
+		t.Fatalf("expected REQUIERE_SUBSANACION, got %s", result.Status)
+	}
+	if result.OverallScore < 0 || result.OverallScore >= 60 {
+		t.Fatalf("expected low score, got %d", result.OverallScore)
+	}
+
+	byID := map[string]appproject.AuditFinding{}
+	for _, f := range result.Findings {
+		byID[f.ID] = f
+		if f.Severity == "SUCCESS" {
+			continue
+		}
+		if f.Title == "" || f.Description == "" || f.Section == "" || f.TabID == "" || f.Level == "" || f.TargetURL == "" {
+			t.Fatalf("finding missing holistic fields: %+v", f)
+		}
+		if !strings.Contains(f.TargetURL, projectID.String()) || !strings.Contains(f.TargetURL, "tab="+f.TabID) {
+			t.Fatalf("bad targetUrl: %s", f.TargetURL)
+		}
+	}
+
+	cases := map[string]struct{ level, tab string }{
+		"crit-target-population":    {"error", "poblacion"},
+		"crit-alternatives":         {"error", "alternativas"},
+		"warn-placeholder-text":     {"warning", "identificacion"},
+		"warn-plan-desarrollo":      {"warning", "plan-desarrollo"},
+		"sugg-magnitud-quant":       {"suggestion", "identificacion"},
+		"crit-edt-activities-empty": {"error", "cadena-valor"},
+	}
+	for id, want := range cases {
+		f, ok := byID[id]
+		if !ok {
+			t.Fatalf("expected finding %s, got ids %v", id, byID)
+		}
+		if f.Level != want.level || f.TabID != want.tab {
+			t.Fatalf("%s: got level=%s tab=%s, want %+v", id, f.Level, f.TabID, want)
+		}
+	}
+	if f := byID["crit-direct-effect"]; f.FieldKey == "" || !strings.Contains(f.TargetURL, "&focus="+f.FieldKey) {
+		// effects count mock returns 1, so only check when present
+		if _, present := byID["crit-direct-effect"]; present {
+			t.Fatalf("expected focus in targetUrl: %+v", f)
+		}
+	}
+}
+
+func TestFormulationAuditService_ObjectivesDoNotCoverCauses(t *testing.T) {
+	svc := appproject.NewFormulationAuditService(
+		&mockProjectReader{project: completeProject()},
+		&mockMgaCounter{causes: 3, objectives: 1, targetPopulations: 1, alternatives: 1},
+		defaultMockEdt(),
+	)
+	result, err := svc.AuditProject(context.Background(), uuid.New(), uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != appproject.AuditStatusObservations {
+		t.Fatalf("expected CON_OBSERVACIONES, got %s", result.Status)
+	}
+	found := false
+	for _, f := range result.Findings {
+		if f.ID == "warn-objectives-causes" && f.FieldKey == "objetivos-especificos" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected warn-objectives-causes finding")
 	}
 }

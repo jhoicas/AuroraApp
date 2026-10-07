@@ -5,6 +5,7 @@ import { useProjectStore, type Project } from '../../store/projectStore';
 type ProjectFormulationProps = {
   project: Project;
   pendingMgaTab?: MgaAuditTabId | null;
+  pendingMgaFocus?: string | null;
   onPendingMgaTabConsumed?: () => void;
   formulationAnchorRef?: React.RefObject<HTMLDivElement | null>;
 };
@@ -12,6 +13,7 @@ type ProjectFormulationProps = {
 export default function ProjectFormulation({
   project,
   pendingMgaTab,
+  pendingMgaFocus,
   onPendingMgaTabConsumed,
   formulationAnchorRef,
 }: ProjectFormulationProps) {
@@ -22,6 +24,7 @@ export default function ProjectFormulation({
       <MgaFormulationShell
         project={currentProject}
         pendingTab={pendingMgaTab}
+        pendingFocus={pendingMgaFocus}
         onPendingTabConsumed={onPendingMgaTabConsumed}
       />
     </div>

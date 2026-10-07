@@ -55,13 +55,24 @@ func (h *FormulationAuditHandler) GetAuditReport(c *fiber.Ctx) error {
 			Severity:   f.Severity,
 			SectionKey: f.SectionKey,
 			IsResolved: f.IsResolved,
+
+			Title:          f.Title,
+			Description:    f.Description,
+			Recommendation: f.Recommendation,
+			Section:        f.Section,
+			TabID:          f.TabID,
+			FieldKey:       f.FieldKey,
+			Level:          f.Level,
+			TargetURL:      f.TargetURL,
 		})
 	}
 
 	return c.JSON(dto.FormulationAuditResponse{
-		Passed:   result.Passed,
-		Findings: dtoFindings,
-		Blockers: result.Blockers,
-		Warnings: result.Warnings,
+		OverallScore: result.OverallScore,
+		Status:       result.Status,
+		Passed:       result.Passed,
+		Findings:     dtoFindings,
+		Blockers:     result.Blockers,
+		Warnings:     result.Warnings,
 	})
 }

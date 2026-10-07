@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { highlightAuditField } from '../../../lib/auditHighlight';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useReadOnly } from '../../../context/ReadOnlyContext';
@@ -19,6 +20,8 @@ type MgaFormulationShellProps = {
   project: Project;
   /** Pestaña solicitada desde fuera (p. ej. modal de auditoría del header). */
   pendingTab?: MgaTabId | null;
+  /** Campo a resaltar tras cambiar a `pendingTab` (fieldKey del hallazgo). */
+  pendingFocus?: string | null;
   onPendingTabConsumed?: () => void;
 };
 
@@ -45,6 +48,7 @@ function formatRoleLabel(role: string | undefined): string {
 export default function MgaFormulationShell({
   project,
   pendingTab,
+  pendingFocus,
   onPendingTabConsumed,
 }: MgaFormulationShellProps) {
   const navigate = useNavigate();
@@ -62,6 +66,11 @@ export default function MgaFormulationShell({
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  // Solicitud de resaltado; `nonce` fuerza el efecto aunque se repita el mismo campo.
+  const [focusRequest, setFocusRequest] = useState<{ field: string | null; nonce: number } | null>(() => {
+    const focus = searchParams.get('focus');
+    return focus ? { field: focus, nonce: 0 } : null;
+  });
 
   const fetchFormulation = useProjectMgaStore((s) => s.fetchFormulation);
   const seedDefaultFormulation = useProjectMgaStore((s) => s.seedDefaultFormulation);
@@ -92,8 +101,15 @@ export default function MgaFormulationShell({
       return prev;
     }, { replace: true });
     localStorage.setItem('mga_active_tab', pendingTab);
+    setFocusRequest({ field: pendingFocus ?? null, nonce: Date.now() });
     onPendingTabConsumed?.();
-  }, [onPendingTabConsumed, pendingTab, setSearchParams]);
+  }, [onPendingTabConsumed, pendingFocus, pendingTab, setSearchParams]);
+
+  useEffect(() => {
+    if (!focusRequest || !ready) return;
+    const cancel = highlightAuditField(focusRequest.field);
+    return cancel;
+  }, [focusRequest, ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,13 +172,16 @@ export default function MgaFormulationShell({
     localStorage.setItem('mga_active_tab', tab);
   };
 
-  const handleNavigateToAuditTab = (tabId: MgaTabId) => {
+  const handleNavigateToAuditTab = (tabId: MgaTabId, fieldKey?: string) => {
     setActiveTab(tabId);
     setSearchParams((prev) => {
       prev.set('tab', tabId);
+      if (fieldKey) prev.set('focus', fieldKey);
+      else prev.delete('focus');
       return prev;
     }, { replace: true });
     localStorage.setItem('mga_active_tab', tabId);
+    setFocusRequest({ field: fieldKey ?? null, nonce: Date.now() });
   };
 
   const handlePresentar = async () => {

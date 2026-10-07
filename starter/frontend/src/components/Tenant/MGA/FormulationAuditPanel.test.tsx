@@ -93,8 +93,8 @@ describe('FormulationAuditPanel & MGA Strict Audit', () => {
       expect(screen.getByText(/Hallazgos Críticos Bloqueantes/i)).toBeInTheDocument();
       expect(screen.getByText(/Advertencias de Coherencia Narrativa/i)).toBeInTheDocument();
 
-      // Verify "Ir a gestionar" button calls navigation with correct tabId
-      const navigateButtons = screen.getAllByRole('button', { name: /Ir a gestionar/i });
+      // Verify "Corregir en" button calls navigation with correct tabId
+      const navigateButtons = screen.getAllByRole('button', { name: /Corregir en/i });
       expect(navigateButtons.length).toBeGreaterThan(0);
       fireEvent.click(navigateButtons[0]);
       expect(onNavigateToTab).toHaveBeenCalledWith('identificacion');
@@ -200,6 +200,87 @@ describe('FormulationAuditPanel & MGA Strict Audit', () => {
       fireEvent.click(checkbox);
       expect(checkbox).toBeChecked();
       expect(screen.getByText(/Marcado como resuelto/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('holistic audit panel and deep-linking', () => {
+    const holistic: AuditResult = {
+      overallScore: 62,
+      status: 'REQUIERE_SUBSANACION',
+      passed: false,
+      findings: [
+        {
+          id: 'crit-alternatives',
+          message: 'Los objetivos específicos deben contar con al menos una alternativa.',
+          severity: 'CRITICAL',
+          sectionKey: 'alternativas',
+          isResolved: false,
+          title: 'Sin alternativas de solución',
+          description: 'Los objetivos específicos deben contar con al menos una alternativa.',
+          recommendation: 'Plantee y evalúe al menos una alternativa.',
+          section: 'Alternativas',
+          tabId: 'alternativas',
+          fieldKey: 'alternativas',
+          level: 'error',
+          targetUrl: '/tenant/projects/p1?tab=alternativas&focus=alternativas',
+        },
+        {
+          id: 'warn-plan',
+          message: 'No se registró la articulación con planes de desarrollo.',
+          severity: 'WARNING',
+          sectionKey: 'plan-desarrollo',
+          isResolved: false,
+          section: 'Plan de Desarrollo',
+          tabId: 'plan-desarrollo',
+          level: 'warning',
+        },
+        {
+          id: 'sugg-magnitud',
+          message: 'La magnitud no incluye cifras.',
+          severity: 'SUGGESTION',
+          sectionKey: 'identificacion',
+          isResolved: false,
+          section: 'Problemática',
+          tabId: 'identificacion',
+          fieldKey: 'magnitud-problema',
+          level: 'suggestion',
+        },
+      ],
+      blockers: [],
+      warnings: [],
+    };
+
+    beforeEach(() => {
+      useFormulationAuditStore.setState({ auditResult: holistic, lastProjectId: 'p1', isAuditing: false });
+    });
+
+    it('shows score, status and recommendation', () => {
+      render(<FormulationAuditPanel projectId="p1" />);
+      expect(screen.getByText(/Dictamen global: 62\/100/)).toBeInTheDocument();
+      expect(screen.getByText('REQUIERE SUBSANACION')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '62');
+      expect(screen.getByText(/Plantee y evalúe al menos una alternativa/)).toBeInTheDocument();
+    });
+
+    it('filters findings by severity', () => {
+      render(<FormulationAuditPanel projectId="p1" />);
+      fireEvent.click(screen.getByRole('button', { name: /Sugerencias de Redacción \(1\)/ }));
+      expect(screen.getByText(/La magnitud no incluye cifras/)).toBeInTheDocument();
+      expect(screen.queryByText(/Sin alternativas de solución/)).not.toBeInTheDocument();
+    });
+
+    it('clicking "Corregir en" navigates to the finding tab and field', () => {
+      const onNavigateToTab = vi.fn();
+      render(<FormulationAuditPanel projectId="p1" onNavigateToTab={onNavigateToTab} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Corregir en Alternativas/ }));
+      expect(onNavigateToTab).toHaveBeenCalledWith('alternativas', 'alternativas');
+
+      fireEvent.click(screen.getByRole('button', { name: /Corregir en Plan de Desarrollo/ }));
+      expect(onNavigateToTab).toHaveBeenLastCalledWith('plan-desarrollo');
+
+      fireEvent.click(screen.getByRole('button', { name: /Corregir en Problemática/ }));
+      expect(onNavigateToTab).toHaveBeenLastCalledWith('identificacion', 'magnitud-problema');
     });
   });
 });

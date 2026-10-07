@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"aurora-backend/internal/domain/models"
@@ -17,14 +18,26 @@ type AuditFinding struct {
 	Severity   string `json:"severity"`    // "CRITICAL" | "WARNING" | "SUCCESS"
 	SectionKey string `json:"section_key"` // Identificador de pestaña/sección MGA
 	IsResolved bool   `json:"is_resolved"`
+
+	// Campos holísticos del simulacro de auditoría.
+	Title          string `json:"title"`
+	Description    string `json:"description"`
+	Recommendation string `json:"recommendation"`
+	Section        string `json:"section"`   // Nombre amigable de la sección
+	TabID          string `json:"tab_id"`    // Pestaña MGA a la que navegar
+	FieldKey       string `json:"field_key"` // Campo exacto a resaltar (opcional)
+	Level          string `json:"level"`     // "error" | "warning" | "suggestion" | "ok"
+	TargetURL      string `json:"target_url"`
 }
 
 // AuditResult resultado de la auditoría previa de formulación MGA.
 type AuditResult struct {
-	Passed   bool           `json:"passed"`
-	Findings []AuditFinding `json:"findings"`
-	Blockers []string       `json:"blockers"`
-	Warnings []string       `json:"warnings"`
+	OverallScore int            `json:"overall_score"`
+	Status       string         `json:"status"`
+	Passed       bool           `json:"passed"`
+	Findings     []AuditFinding `json:"findings"`
+	Blockers     []string       `json:"blockers"`
+	Warnings     []string       `json:"warnings"`
 }
 
 // ProjectReader resuelve proyectos con ownership multi-tenant.
@@ -193,6 +206,7 @@ func (s *FormulationAuditService) AuditProject(
 			warnings = append(warnings, message)
 		}
 	}
+	var activities []models.ProjectActivity
 
 	// 1. REQUISITO ESTRUCTURAL: Problema central sin al menos 1 causa y 1 efecto
 	problemDesc := strings.TrimSpace(project.ProblemDescription)
@@ -358,7 +372,8 @@ func (s *FormulationAuditService) AuditProject(
 
 	// 4. REQUISITO ESTRUCTURAL: Cadena de valor sin actividades, o actividades sin costo presupuestado
 	if s.edt != nil {
-		activities, err := s.edt.ListActivities(ctx, projectID, tenantID)
+		var err error
+		activities, err = s.edt.ListActivities(ctx, projectID, tenantID)
 		if err != nil {
 			return AuditResult{}, err
 		}
@@ -572,10 +587,88 @@ func (s *FormulationAuditService) AuditProject(
 		}
 	}
 
+	// 7. COHERENCIA HOLÍSTICA: problema ↔ causas ↔ objetivos ↔ cadena de valor ↔ plan
+	if objectiveCount > 0 && directCauseCount > 0 && objectiveCount < directCauseCount {
+		addFinding(
+			"warn-objectives-causes",
+			fmt.Sprintf("Hay %d causas directas y solo %d objetivos específicos: cada causa directa debe tener un objetivo que la invierta.", directCauseCount, objectiveCount),
+			"WARNING", "objetivos", false,
+		)
+	}
+	if hasProblem && normalizeAuditText(problemDesc) == normalizeAuditText(project.GeneralObjective) {
+		addFinding(
+			"warn-problem-objective-same",
+			"El objetivo general repite el texto del problema central; debe expresar la situación deseada.",
+			"WARNING", "objetivos", false,
+		)
+	}
+	if containsPlaceholder(problemDesc) || containsPlaceholder(project.GeneralObjective) ||
+		containsPlaceholder(situacion) || containsPlaceholder(magnitud) {
+		addFinding(
+			"warn-placeholder-text",
+			"Se detectaron textos por defecto o incompletos (p. ej. 'N/A', 'pendiente', 'por definir') en la formulación.",
+			"WARNING", "identificacion", false,
+		)
+	}
+	if hasProblem && len(problemDesc) < 40 {
+		addFinding(
+			"sugg-problem-short",
+			"La descripción del problema central es muy breve y no identifica población, alcance ni territorio.",
+			severitySuggestion, "identificacion", false,
+		)
+	}
+	if magnitud != "" && !hasDigit(magnitud) {
+		addFinding(
+			"sugg-magnitud-quant",
+			"La magnitud del problema no incluye ninguna cifra o indicador cuantitativo.",
+			severitySuggestion, "identificacion", false,
+		)
+	}
+	if strings.TrimSpace(project.GeneralObjective) != "" && !startsWithInfinitive(project.GeneralObjective) {
+		addFinding(
+			"sugg-objective-verb",
+			"El objetivo general debe iniciar con un verbo en infinitivo según la metodología MGA.",
+			severitySuggestion, "objetivos", false,
+		)
+	}
+	if !hasPlanDesarrollo(project.MgaFormulationData) {
+		addFinding(
+			"warn-plan-desarrollo",
+			"No se registró la articulación con los planes de desarrollo municipal, departamental y el PND.",
+			"WARNING", "plan-desarrollo", false,
+		)
+	}
+	if s.edt != nil && len(activities) > 0 {
+		if project.ProductCode == nil || strings.TrimSpace(*project.ProductCode) == "" {
+			addFinding(
+				"warn-product-code",
+				"El proyecto tiene actividades presupuestadas pero no está vinculado a un producto MGA ni a su indicador de producto.",
+				"WARNING", "cadena-valor", false,
+			)
+		}
+		noName, noQty, mismatch := activityIssues(activities)
+		if noName {
+			addFinding("warn-activity-name", "Existen actividades sin nombre en la cadena de valor.", "WARNING", "cadena-valor", false)
+		}
+		if noQty {
+			addFinding("warn-activity-quantity", "Existen actividades con costo pero sin cantidad definida.", "WARNING", "cadena-valor", false)
+		}
+		if mismatch {
+			addFinding("warn-activity-total-mismatch", "El costo total de algunas actividades no coincide con cantidad × costo unitario.", "WARNING", "cadena-valor", false)
+		}
+	}
+
+	for i := range findings {
+		findings[i] = enrichFinding(findings[i], projectID)
+	}
+	score, status := scoreAudit(findings)
+
 	return AuditResult{
-		Passed:   len(blockers) == 0,
-		Findings: findings,
-		Blockers: blockers,
-		Warnings: warnings,
+		OverallScore: score,
+		Status:       status,
+		Passed:       len(blockers) == 0,
+		Findings:     findings,
+		Blockers:     blockers,
+		Warnings:     warnings,
 	}, nil
 }

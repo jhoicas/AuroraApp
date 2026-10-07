@@ -657,7 +657,7 @@ export default function MGALayout({
                 </div>
               )}
               <ReadOnlyScope className={formulation.estadoProyecto === 'PRESENTADO' ? 'mga-readonly' : ''}>
-                {renderWorkArea(project, activeTab)}
+                <div data-audit-workarea>{renderWorkArea(project, activeTab)}</div>
               </ReadOnlyScope>
             </div>
           </div>

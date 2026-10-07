@@ -65,6 +65,7 @@ export default function ProjectDetailPage({
   const [tab, setTab] = useState<Tab>('formulation');
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [pendingMgaTab, setPendingMgaTab] = useState<MgaAuditTabId | null>(null);
+  const [pendingMgaFocus, setPendingMgaFocus] = useState<string | null>(null);
   const formulationAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,9 +74,10 @@ export default function ProjectDetailPage({
     }
   }, [location.pathname]);
 
-  const handleAuditNavigateToTab = useCallback((tabId: MgaAuditTabId) => {
+  const handleAuditNavigateToTab = useCallback((tabId: MgaAuditTabId, fieldKey?: string) => {
     setTab('formulation');
     setPendingMgaTab(tabId);
+    setPendingMgaFocus(fieldKey ?? null);
     setAuditModalOpen(false);
     window.requestAnimationFrame(() => {
       formulationAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -283,6 +285,7 @@ export default function ProjectDetailPage({
           <ProjectFormulation
             project={currentProject}
             pendingMgaTab={pendingMgaTab}
+            pendingMgaFocus={pendingMgaFocus}
             onPendingMgaTabConsumed={() => setPendingMgaTab(null)}
             formulationAnchorRef={formulationAnchorRef}
           />

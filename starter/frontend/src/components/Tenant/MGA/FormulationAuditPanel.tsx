@@ -65,7 +65,12 @@ function normalizeText(text: string): string {
 export function getTabForAuditFinding(finding: {
   sectionKey?: string;
   message?: string;
+  tabId?: string;
 }): { tabId: MgaAuditTabId; label: string } {
+  if (finding.tabId && finding.tabId in TAB_LABELS) {
+    const tabId = finding.tabId as MgaAuditTabId;
+    return { tabId, label: TAB_LABELS[tabId] };
+  }
   const sk = normalizeText(finding.sectionKey || '');
   const m = normalizeText(finding.message || '');
 
@@ -162,25 +167,32 @@ export function getTabForAuditIssue(message: string): { tabId: MgaAuditTabId; la
   return getTabForAuditFinding({ message });
 }
 
+/** `fieldKey` se envía solo cuando el hallazgo apunta a un campo específico. */
+export type AuditNavigateHandler = (tabId: MgaAuditTabId, fieldKey?: string) => void;
+
+type SeverityFilter = 'ALL' | 'CRITICAL' | 'WARNING' | 'SUGGESTION';
+
 type FormulationAuditPanelProps = {
   projectId: string;
   /** Variante compacta para modal del encabezado del proyecto */
   compact?: boolean;
-  onNavigateToTab?: (tabId: MgaAuditTabId) => void;
+  onNavigateToTab?: AuditNavigateHandler;
   onSentToViability?: () => void;
 };
 
 type FindingItemCardProps = {
   finding: AuditFinding;
-  onNavigateToTab?: (tabId: MgaAuditTabId) => void;
+  onNavigateToTab?: AuditNavigateHandler;
   onToggleResolved: (findingId: string) => void;
 };
 
 function FindingItemCard({ finding, onNavigateToTab, onToggleResolved }: FindingItemCardProps) {
   const target = getTabForAuditFinding(finding);
   const isCritical = finding.severity === 'CRITICAL';
-  const isWarning = finding.severity === 'WARNING';
+  const isSuggestion = finding.severity === 'SUGGESTION';
+  const isWarning = finding.severity === 'WARNING' || isSuggestion;
   const isSuccess = finding.severity === 'SUCCESS';
+  const sectionLabel = finding.section || target.label;
 
   return (
     <li
@@ -215,11 +227,17 @@ function FindingItemCard({ finding, onNavigateToTab, onToggleResolved }: Finding
                     : 'bg-emerald-600 text-white'
                 }`}
               >
-                {isCritical ? 'Bloqueante' : isWarning ? 'Advertencia MGA' : 'Verificado'}
+                {isCritical
+                  ? 'Bloqueante'
+                  : isSuggestion
+                  ? 'Sugerencia de redacción'
+                  : isWarning
+                  ? 'Advertencia MGA'
+                  : 'Verificado'}
               </span>
 
               <span className="inline-flex items-center gap-1 rounded bg-white/80 border border-black/5 px-2 py-0.5 text-xs font-medium text-gray-600">
-                Sección: {target.label}
+                Sección: {sectionLabel}
               </span>
 
               {finding.isResolved && (
@@ -238,8 +256,18 @@ function FindingItemCard({ finding, onNavigateToTab, onToggleResolved }: Finding
                   : 'text-emerald-950'
               } ${finding.isResolved ? 'line-through opacity-70' : ''}`}
             >
-              {finding.message}
+              {finding.title && finding.title !== finding.message ? finding.title : finding.message}
             </p>
+            {finding.title && finding.title !== finding.message && (
+              <p className="mt-1 text-xs text-gray-700 leading-relaxed">
+                {finding.description || finding.message}
+              </p>
+            )}
+            {finding.recommendation && !isSuccess && (
+              <p className="mt-1.5 text-xs text-gray-800 leading-relaxed">
+                <strong>Recomendación:</strong> {finding.recommendation}
+              </p>
+            )}
           </div>
         </div>
 
@@ -259,7 +287,11 @@ function FindingItemCard({ finding, onNavigateToTab, onToggleResolved }: Finding
           {onNavigateToTab && !isSuccess && (
             <button
               type="button"
-              onClick={() => onNavigateToTab(target.tabId)}
+              onClick={() =>
+                finding.fieldKey
+                  ? onNavigateToTab(target.tabId, finding.fieldKey)
+                  : onNavigateToTab(target.tabId)
+              }
               className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold shadow-xs transition-all ${
                 isCritical
                   ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
@@ -267,7 +299,7 @@ function FindingItemCard({ finding, onNavigateToTab, onToggleResolved }: Finding
               }`}
               title={`Ir a la pestaña ${target.label} para corregir este hallazgo`}
             >
-              <span>Ir a gestionar</span>
+              <span>Corregir en {sectionLabel}</span>
               <ExternalLink className="h-3 w-3" aria-hidden />
             </button>
           )}
@@ -297,6 +329,7 @@ export default function FormulationAuditPanel({
   const [isSendingToViability, setIsSendingToViability] = useState(false);
   const [viabilitySuccessMessage, setViabilitySuccessMessage] = useState<string | null>(null);
   const [viabilityErrorMessage, setViabilityErrorMessage] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
 
   useEffect(() => {
     if (lastProjectId && lastProjectId !== projectId) {
@@ -340,7 +373,14 @@ export default function FormulationAuditPanel({
 
   const criticalFindings = normalizedFindings.filter((f) => f.severity === 'CRITICAL');
   const warningFindings = normalizedFindings.filter((f) => f.severity === 'WARNING');
+  const suggestionFindings = normalizedFindings.filter((f) => f.severity === 'SUGGESTION');
   const successFindings = normalizedFindings.filter((f) => f.severity === 'SUCCESS');
+  const showCritical = severityFilter === 'ALL' || severityFilter === 'CRITICAL';
+  const showWarning = severityFilter === 'ALL' || severityFilter === 'WARNING';
+  const showSuggestion = severityFilter === 'ALL' || severityFilter === 'SUGGESTION';
+  const showSuccess = severityFilter === 'ALL';
+  const overallScore = auditResult?.overallScore;
+  const overallStatus = auditResult?.status;
 
   // Bloqueo estricto de viabilidad
   const hasCriticalFindings = criticalFindings.length > 0;
@@ -450,6 +490,70 @@ export default function FormulationAuditPanel({
       {/* Resultados de Auditoría */}
       {showResult && !isAuditing && (
         <div className="mt-5 space-y-5">
+          {/* Dictamen global */}
+          {typeof overallScore === 'number' && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4" data-testid="audit-score">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-bold text-gray-900">
+                  Dictamen global: {overallScore}/100
+                </span>
+                {overallStatus && (
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs font-bold ${
+                      overallStatus === 'APROBADO'
+                        ? 'bg-emerald-600 text-white'
+                        : overallStatus === 'CON_OBSERVACIONES'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-red-600 text-white'
+                    }`}
+                  >
+                    {overallStatus.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </div>
+              <div
+                className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-200"
+                role="progressbar"
+                aria-valuenow={overallScore}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Puntaje de la auditoría"
+              >
+                <div
+                  className={`h-full rounded-full ${
+                    overallScore >= 90 ? 'bg-emerald-500' : overallScore >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${overallScore}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar hallazgos por severidad">
+            {(
+              [
+                ['ALL', 'Todos', normalizedFindings.length],
+                ['CRITICAL', 'Errores Críticos', criticalFindings.length],
+                ['WARNING', 'Advertencias', warningFindings.length],
+                ['SUGGESTION', 'Sugerencias de Redacción', suggestionFindings.length],
+              ] as const
+            ).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={severityFilter === value}
+                onClick={() => setSeverityFilter(value)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                  severityFilter === value
+                    ? 'border-[#006162] bg-[#006162] text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+
           {/* Banner de Estado General */}
           {hasCriticalFindings ? (
             <div
@@ -506,7 +610,7 @@ export default function FormulationAuditPanel({
           )}
 
           {/* 1. Hallazgos Críticos (Bloqueantes en Rojo) */}
-          {criticalFindings.length > 0 && (
+          {showCritical && criticalFindings.length > 0 && (
             <div className="rounded-xl border border-red-200 bg-red-50/40 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h4 className="text-sm font-bold text-red-900 flex items-center gap-2">
@@ -533,7 +637,7 @@ export default function FormulationAuditPanel({
           )}
 
           {/* 2. Advertencias de Calidad y Coherencia (Ámbar) */}
-          {warningFindings.length > 0 && (
+          {showWarning && warningFindings.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
@@ -554,8 +658,28 @@ export default function FormulationAuditPanel({
             </div>
           )}
 
+          {/* Sugerencias de redacción */}
+          {showSuggestion && suggestionFindings.length > 0 && (
+            <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-4 sm:p-5">
+              <h4 className="mb-3 text-sm font-bold text-sky-900 flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-sky-600" />
+                Sugerencias de Redacción ({suggestionFindings.length})
+              </h4>
+              <ul className="space-y-2.5">
+                {suggestionFindings.map((finding) => (
+                  <FindingItemCard
+                    key={finding.id}
+                    finding={finding}
+                    onNavigateToTab={onNavigateToTab}
+                    onToggleResolved={toggleFindingResolved}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* 3. Requisitos Verificados Exitosamente (Verde) */}
-          {successFindings.length > 0 && (
+          {showSuccess && successFindings.length > 0 && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h4 className="text-sm font-bold text-emerald-900 flex items-center gap-2">

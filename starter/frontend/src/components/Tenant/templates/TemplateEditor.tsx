@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle, Color } from '@tiptap/extension-text-style';
+import Highlight from '@tiptap/extension-highlight';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import { MgaVar } from './MgaVarNode';
 import { MGA_VARIABLE_GROUPS } from '../../../lib/mgaVariables';
@@ -35,6 +37,28 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Btn label="Negrita" active={editor.isActive('bold')} onClick={() => c().toggleBold().run()}><b>B</b></Btn>
       <Btn label="Cursiva" active={editor.isActive('italic')} onClick={() => c().toggleItalic().run()}><i>I</i></Btn>
       <Btn label="Subrayado" active={editor.isActive('underline')} onClick={() => c().toggleUnderline().run()}><u>U</u></Btn>
+      <label className="flex items-center gap-1 px-1 text-sm text-gray-700" title="Color de texto">
+        A
+        <input
+          type="color"
+          aria-label="Color de texto"
+          value={(editor.getAttributes('textStyle').color as string | undefined) ?? '#000000'}
+          onChange={(e) => c().setColor(e.target.value).run()}
+          className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+        />
+      </label>
+      <Btn label="Quitar color de texto" onClick={() => c().unsetColor().run()}>A✕</Btn>
+      <label className="flex items-center gap-1 px-1 text-sm text-gray-700" title="Resaltado">
+        ▮
+        <input
+          type="color"
+          aria-label="Color de resaltado"
+          value={(editor.getAttributes('highlight').color as string | undefined) ?? '#ffff00'}
+          onChange={(e) => c().setHighlight({ color: e.target.value }).run()}
+          className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+        />
+      </label>
+      <Btn label="Quitar resaltado" onClick={() => c().unsetHighlight().run()}>▮✕</Btn>
       <Btn label="Título 1" active={editor.isActive('heading', { level: 1 })} onClick={() => c().toggleHeading({ level: 1 }).run()}>H1</Btn>
       <Btn label="Título 2" active={editor.isActive('heading', { level: 2 })} onClick={() => c().toggleHeading({ level: 2 }).run()}>H2</Btn>
       <Btn label="Título 3" active={editor.isActive('heading', { level: 3 })} onClick={() => c().toggleHeading({ level: 3 }).run()}>H3</Btn>
@@ -65,6 +89,9 @@ export default function TemplateEditor({ initialHtml, readOnly = false, onChange
     extensions: [
       StarterKit,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,

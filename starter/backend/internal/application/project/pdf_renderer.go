@@ -20,7 +20,7 @@ const DocumentCSS = `
 @page :first { margin-top: 18mm; @top-left { content: none; border: 0; } @top-right { content: none; border: 0; } }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .doc > :first-child { padding-top: 18mm; }
 h1 { font-size: 15pt; font-weight: 700; margin: 6pt 0; }
 h2 { font-size: 12.5pt; font-weight: 700; margin: 12pt 0 4pt; }
@@ -53,8 +53,10 @@ func HTMLToPDF(src string) ([]byte, error) {
 	opts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	opts = append(opts,
 		chromedp.NoSandbox,
-		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("disable-crash-reporter", true),
+		chromedp.Flag("disable-software-rasterizer", true),
 	)
 	if bin := os.Getenv("CHROME_BIN"); bin != "" {
 		opts = append(opts, chromedp.ExecPath(bin))

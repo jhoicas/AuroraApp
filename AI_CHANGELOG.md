@@ -1261,6 +1261,23 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 - **Decisiones ADR:** No aplica; se creo solo una plantilla reutilizable.
 - **Riesgos y pendientes:** Las politicas RLS concretas deben seguir verificandose contra cada migracion y entorno de Supabase.
 
+### 2026-10-07 - Claude - Plantillas de proyectos MGA: preview, eliminacion y semilla completa
+
+- **Objetivo:** Vista previa de solo lectura, eliminacion protegida y clonacion profunda de plantillas de proyectos, con una plantilla semilla MGA completa.
+- **Archivos modificados:**
+  - `starter/frontend/src/data/mgaSeedTemplate.ts` - plantilla semilla (agro) con todas las secciones MGA.
+  - `starter/frontend/src/lib/projectTemplates.ts` - copia profunda con IDs nuevos y sin campos de auditoria.
+  - `starter/frontend/src/store/projectTemplateStore.ts` - plantillas personalizadas (localStorage), `deleteProjectTemplate`.
+  - `starter/frontend/src/components/Tenant/ProjectTemplates/*` - seccion, modal de preview y AlertDialog de borrado.
+  - `starter/frontend/src/components/Tenant/CreateProjectModal.tsx` - prop `template`: aplica la copia tras crear el proyecto.
+  - `starter/frontend/src/pages/tenant/ProjectsDashboard.tsx` - seccion de plantillas y "Guardar como plantilla".
+- **Logica implementada:** La plantilla del sistema no se puede eliminar (sin boton y el store lo rechaza). Clonar usa el modal de creacion (proceso/localizacion los elige el usuario por la regla de departamento base) y luego PATCH con la formulacion copiada.
+- **Dependencias:** Ninguna.
+- **Validacion ejecutada:**
+  - `pnpm run build` - exit 0; `pnpm vitest run` - 469 pruebas OK.
+- **Decisiones ADR:** No aplica.
+- **Riesgos y pendientes:** Las plantillas personalizadas viven en localStorage del navegador (no hay entidad en backend); migrarlas a una tabla `project_templates` si se requiere compartirlas entre usuarios.
+
 ### YYYY-MM-DD - [Copilot|Cursor|Antigravity] - [Resumen breve]
 
 - **Objetivo:** [Que se intento resolver]

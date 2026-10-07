@@ -3,6 +3,7 @@ import { render, type RenderOptions, type RenderResult } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../components/ui/Toast';
 
 type RenderWithProvidersOptions = Omit<RenderOptions, 'wrapper'> & {
   /** Ruta inicial del MemoryRouter (alimenta useLocation → routeContext del copiloto). */
@@ -59,10 +60,12 @@ export function renderWithProviders(
 
   function Wrapper({ children }: { children: ReactNode }) {
     const tree = (
-      <MemoryRouter initialEntries={[route]}>
-        {children}
-        <LocationSpy />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[route]}>
+          {children}
+          <LocationSpy />
+        </MemoryRouter>
+      </ToastProvider>
     );
     return withAuth ? <AuthProvider>{tree}</AuthProvider> : tree;
   }

@@ -18,6 +18,8 @@ import {
   type Product,
 } from '../../store/catalogStore';
 import type { ProjectContext } from '../../data/mgaFieldsKnowledge';
+import type { ProjectTemplate } from '../../data/mgaSeedTemplate';
+import { buildProjectFromTemplate } from '../../lib/projectTemplates';
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -25,6 +27,8 @@ type CreateProjectModalProps = {
   editProject?: import('../../store/projectStore').Project;
   preselectedSectorCode?: string;
   preselectedProductCode?: string;
+  /** Plantilla a clonar: precarga el objeto y, al crear, copia en profundidad su formulación. */
+  template?: ProjectTemplate | null;
 };
 
 // ─── Constantes MGA ────────────────────────────────────────────────
@@ -55,6 +59,7 @@ export default function CreateProjectModal({
   editProject,
   preselectedSectorCode,
   preselectedProductCode,
+  template,
 }: CreateProjectModalProps) {
   const navigate = useNavigate();
   const createProject = useProjectStore((s) => s.createProject);
@@ -533,6 +538,14 @@ export default function CreateProjectModal({
     onClose();
   };
 
+  // Clonación desde plantilla: salta el asistente de ideación y precarga el objeto sugerido.
+  useEffect(() => {
+    if (open && template && !editProject) {
+      setStep('form');
+      setObjeto(template.objeto);
+    }
+  }, [open, template, editProject]);
+
   const handleTipologiaChange = (value: string) => {
     setTipologiaProyecto(value);
     // Si cambió la tipología, verificar que el sector sigue siendo válido
@@ -646,8 +659,37 @@ export default function CreateProjectModal({
             planDesarrollo: {},
           }
         } as any);
+        if (template) {
+          // Copia profunda de la plantilla con IDs nuevos y sin campos de auditoría. La identificación
+          // (proceso, localizaciones, tipología) se conserva la elegida por el usuario.
+          const cloned = buildProjectFromTemplate(template);
+          try {
+            await patchProject(project.id, {
+              problem_description: cloned.problem_description,
+              general_objective: cloned.general_objective,
+              situacion_existente: cloned.situacion_existente,
+              magnitud_problema: cloned.magnitud_problema,
+              mga_formulation_data: {
+                ...cloned.mga_formulation_data,
+                identificacion: {
+                  ...cloned.mga_formulation_data.identificacion,
+                  contexto_inicial: preCreationContext,
+                  ...idenPayload,
+                },
+              },
+            });
+          } catch (patchErr) {
+            handleClose();
+            navigate(`/tenant/projects/${project.id}`);
+            throw patchErr instanceof Error
+              ? new Error(`El proyecto se creó, pero no se pudo copiar la plantilla: ${patchErr.message}`)
+              : patchErr;
+          }
+        }
         handleClose();
-        navigate(`/tenant/projects/${project.id}/plan-desarrollo`);
+        navigate(
+          template ? `/tenant/projects/${project.id}` : `/tenant/projects/${project.id}/plan-desarrollo`,
+        );
       }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error al crear el proyecto');

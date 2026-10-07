@@ -12,6 +12,10 @@ import {
 } from 'recharts';
 import CreateProjectModal from '../../components/Tenant/CreateProjectModal';
 import ReassignProjectModal from '../../components/Tenant/ReassignProjectModal';
+import ProjectTemplatesSection from '../../components/Tenant/ProjectTemplates/ProjectTemplatesSection';
+import { useToast } from '../../components/ui/Toast';
+import type { ProjectTemplate } from '../../data/mgaSeedTemplate';
+import { useProjectTemplateStore } from '../../store/projectTemplateStore';
 import { Roles, roleIsAllowed } from '../../lib/roles';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -52,6 +56,23 @@ export default function ProjectsDashboard() {
   const canReassign = roleIsAllowed(user?.role, [Roles.TenantAdmin, Roles.SuperAdmin]);
   const [reassigning, setReassigning] = useState<Project | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<ProjectTemplate | null>(null);
+  const toast = useToast();
+  const saveProjectAsTemplate = useProjectTemplateStore((s) => s.saveProjectAsTemplate);
+
+  const handleUseTemplate = (template: ProjectTemplate) => {
+    setActiveTemplate(template);
+    setModalOpen(true);
+  };
+
+  const handleSaveAsTemplate = async (project: Project) => {
+    try {
+      await saveProjectAsTemplate(project.id, user?.tenant_id ?? null);
+      toast.success(`Plantilla creada a partir de "${project.name}".`);
+    } catch {
+      toast.error('No se pudo guardar el proyecto como plantilla.');
+    }
+  };
   const [preselectedSectorCode, setPreselectedSectorCode] = useState<string | undefined>();
   const [preselectedProductCode, setPreselectedProductCode] = useState<string | undefined>();
 
@@ -218,6 +239,8 @@ export default function ProjectsDashboard() {
         </section>
       )}
 
+      <ProjectTemplatesSection canCreate={canCreate} onUseTemplate={handleUseTemplate} />
+
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Proyectos en formulación</h3>
 
       {isLoading && projects.length === 0 && (
@@ -292,6 +315,16 @@ export default function ProjectsDashboard() {
                       Reasignar Formulador
                     </button>
                   )}
+                  {canCreate && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveAsTemplate(project)}
+                      className="w-full h-10 mb-2 border border-gray-300 text-gray-700 rounded-lg font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-50"
+                    >
+                      <span className="material-symbols-outlined text-base">bookmark_add</span>
+                      Guardar como plantilla
+                    </button>
+                  )}
                   <Link
                     to={`/tenant/projects/${project.id}`}
                     className="w-full h-12 bg-[#006162] hover:bg-[#004f50] text-white rounded-lg font-semibold inline-flex items-center justify-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#006162]"
@@ -328,8 +361,10 @@ export default function ProjectsDashboard() {
 
       <CreateProjectModal
         open={modalOpen && canCreate}
+        template={activeTemplate}
         onClose={() => {
           setModalOpen(false);
+          setActiveTemplate(null);
           setPreselectedSectorCode(undefined);
           setPreselectedProductCode(undefined);
         }}

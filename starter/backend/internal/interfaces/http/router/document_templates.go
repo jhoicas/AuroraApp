@@ -24,5 +24,6 @@ func RegisterDocumentTemplateRoutes(app *fiber.App, db *gorm.DB, jwtSecret strin
 	g.Get("/:id", guard.Require(modules.CodeProjects, modules.ActionView), h.Get)
 	g.Put("/:id", guard.Require(modules.CodeProjects, modules.ActionEdit), h.Update)
 	g.Patch("/:id", guard.Require(modules.CodeProjects, modules.ActionEdit), h.Update)
+	g.Delete("/:id", guard.Require(modules.CodeProjects, modules.ActionEdit), h.Delete)
 	g.Patch("/:id/activate", guard.Require(modules.CodeProjects, modules.ActionEdit), h.Activate)
 }

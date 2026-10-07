@@ -139,6 +139,20 @@ func (r *DocumentTemplateRepository) Activate(ctx context.Context, tenantID, id 
 	return result, err
 }
 
+// Delete elimina (soft delete) una plantilla propia del tenant. Las globales del sistema
+// (tenant_id nulo o is_system_default) devuelven ErrTemplateReadOnly.
+func (r *DocumentTemplateRepository) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
+	t, err := r.Get(ctx, tenantID, id)
+	if err != nil {
+		return err
+	}
+	if t.TenantID == nil || t.IsSystemDefault {
+		return ErrTemplateReadOnly
+	}
+	return r.db.WithContext(ctx).Where("id = ? AND tenant_id = ?", id, tenantID).
+		Delete(&models.DocumentTemplate{}).Error
+}
+
 // Resolve elige la plantilla para generar el PDF: activa del tenant, o la global por defecto.
 // Devuelve ErrTemplateNotFound si no existe ninguna.
 func (r *DocumentTemplateRepository) Resolve(ctx context.Context, tenantID uuid.UUID) (*models.DocumentTemplate, error) {

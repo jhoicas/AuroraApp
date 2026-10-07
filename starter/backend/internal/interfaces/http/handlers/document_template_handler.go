@@ -156,3 +156,15 @@ func (h *DocumentTemplateHandler) Activate(c *fiber.Ctx) error {
 	t.HTMLContent = ""
 	return c.JSON(fiber.Map{"data": t})
 }
+
+// Delete elimina (soft delete) una plantilla propia; las del sistema responden 403.
+func (h *DocumentTemplateHandler) Delete(c *fiber.Ctx) error {
+	tenantID, id, err := h.ids(c)
+	if err != nil {
+		return err
+	}
+	if err := h.repo.Delete(c.Context(), tenantID, id); err != nil {
+		return templateError(c, err)
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}

@@ -45,3 +45,7 @@ export async function activateDocumentTemplate(id: string): Promise<DocumentTemp
   const { data } = await api.patch<{ data: DocumentTemplate }>(`${BASE}/${id}/activate`);
   return data.data;
 }
+
+export async function deleteDocumentTemplate(id: string): Promise<void> {
+  await api.delete(`${BASE}/${id}`);
+}

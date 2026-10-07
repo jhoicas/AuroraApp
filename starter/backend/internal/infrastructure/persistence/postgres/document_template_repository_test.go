@@ -166,3 +166,26 @@ func TestDocumentTemplatesFallbackDDL_MatchesModel(t *testing.T) {
 	}
 	require.NoError(t, EnsureDocumentTemplatesSeed(db), "el seed funciona sobre el esquema de respaldo")
 }
+
+func TestDeleteOwnTemplateSoftDeletesAndBlocksSystem(t *testing.T) {
+	db := newTemplateTestDB(t)
+	require.NoError(t, EnsureDocumentTemplatesSeed(db))
+	repo := NewDocumentTemplateRepository(db)
+	ctx := context.Background()
+	tenant := uuid.New()
+
+	list, err := repo.List(ctx, tenant)
+	require.NoError(t, err)
+	require.ErrorIs(t, repo.Delete(ctx, tenant, list[0].ID), ErrTemplateReadOnly)
+
+	own, err := repo.Create(ctx, tenant, "Mía", "<p>x</p>", nil)
+	require.NoError(t, err)
+	require.ErrorIs(t, repo.Delete(ctx, uuid.New(), own.ID), ErrTemplateNotFound)
+	require.NoError(t, repo.Delete(ctx, tenant, own.ID))
+	_, err = repo.Get(ctx, tenant, own.ID)
+	require.ErrorIs(t, err, ErrTemplateNotFound)
+
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&models.DocumentTemplate{}).Where("id = ?", own.ID).Count(&n).Error)
+	require.EqualValues(t, 1, n, "borrado lógico")
+}

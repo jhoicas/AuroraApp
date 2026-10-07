@@ -133,6 +133,10 @@ func (h *ProjectExportHandler) ExportTechnicalDocument(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load mga formulation"})
 	}
+	edtChain, err := h.edtRepo.GetEdtChain(c.Context(), projectID, tenantID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load edt chain"})
+	}
 	var budget []models.BudgetItem
 	if err := h.db.WithContext(c.Context()).
 		Where("project_id = ? AND tenant_id = ?", projectID, tenantID).
@@ -140,7 +144,7 @@ func (h *ProjectExportHandler) ExportTechnicalDocument(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load budget"})
 	}
 
-	pdfBytes, err := h.templateRender.RenderPDF(tpl, appproject.BuildTemplateData(&project, bundle, budget))
+	pdfBytes, err := h.templateRender.RenderPDF(tpl, appproject.BuildTemplateData(&project, bundle, budget, edtChain))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fmt.Sprintf("failed to generate technical document: %v", err),

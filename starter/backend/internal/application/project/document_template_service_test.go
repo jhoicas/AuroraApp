@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"aurora-backend/internal/domain/models"
+	"aurora-backend/internal/infrastructure/persistence/postgres"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,8 +31,31 @@ func TestRenderPDF_ProducesPDF(t *testing.T) {
 	tpl := &models.DocumentTemplate{HTMLContent: `<h1 style="text-align:center">Título</h1><p>Texto <strong>fuerte</strong> áéí ñ</p>` +
 		`<ul><li>uno</li><li>dos</li></ul><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>` +
 		`<p><span class="mga-var" data-id="project.name">N</span></p>`}
-	data := BuildTemplateData(&models.Project{Name: "Proyecto Ñandú"}, nil, nil)
+	data := BuildTemplateData(&models.Project{Name: "Proyecto Ñandú"}, nil, nil, nil)
 	pdf, err := NewDocumentTemplateService().RenderPDF(tpl, data)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(string(pdf), "%PDF-"))
+}
+
+func TestSeedTemplate_RendersOfficialDocument(t *testing.T) {
+	code := "2024760010123"
+	pid := uuid.New()
+	bundle := &postgres.MgaFullFormulation{
+		Causes: []models.MgaCause{
+			{ID: pid, CauseType: "directa", Description: "Falta de mantenimiento"},
+			{ID: uuid.New(), ParentID: &pid, CauseType: "indirecta", Description: "Presupuesto <insuficiente>"},
+		},
+		Effects: []models.MgaEffect{{ID: uuid.New(), EffectType: "directo", Description: "Mayores costos"}},
+	}
+	data := BuildTemplateData(&models.Project{Name: "Vía", CodeBPIN: &code, Sector: "Transporte"}, bundle, nil, nil)
+	html, err := RenderTemplateHTML(postgres.OfficialTechnicalDocumentHTML(), data)
+	require.NoError(t, err)
+	require.NotContains(t, html, "mga-var")
+	require.Contains(t, html, "2024760010123")
+	require.Contains(t, html, "<li>Falta de mantenimiento<ul><li>Presupuesto &lt;insuficiente&gt;</li></ul></li>")
+	require.Contains(t, html, "Superar: Falta de mantenimiento")
+
+	pdf, err := HTMLToPDF(html)
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(string(pdf), "%PDF-"))
 }

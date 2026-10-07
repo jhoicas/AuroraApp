@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-07 - Claude - Fix: tabla document_templates ausente (SQLSTATE 42P01)
+
+- **Síntoma:** los endpoints de plantillas respondían 500: `relation "document_templates" does not exist`.
+- **Causa:** `DocumentTemplate` ya estaba en `AllModels()` y el seed ya corría tras el AutoMigrate, pero `autoMigrateSafe` tolera errores recuperables (42704) y puede dejar sin crear los modelos posteriores; además el error del seed solo se registraba en log. (Deducido del código, igual que en PBAC; no verificado en el servidor.)
+- **Fix:** `EnsureDocumentTemplatesSchema` ([document_template_schema.go](starter/backend/internal/infrastructure/persistence/postgres/document_template_schema.go)): migra el modelo por separado, verifica `HasTable` y aplica DDL idempotente de respaldo; si sigue ausente, error. En `Connect` corre antes de `EnsureDocumentTemplatesSeed` y ambos fallos abortan el arranque. Frontend: `documentTemplatesApi` ya no usa `/` final.
+- **Validación:** `go test ./...`, `tsc -b`, Vitest completo (465 OK); tests nuevos del esquema/seed y del DDL de respaldo sobre SQLite. DDL de Postgres no ejecutado contra una instancia real.
+
 ### 2026-10-07 - Claude - Plantillas PDF multi-tenant y constructor TipTap del Documento Técnico
 
 - **Backend:** modelo `DocumentTemplate` (`document_templates`: `tenant_id` nulo = global, `is_active`, `is_system_default`) en AutoMigrate; seed idempotente de 2 plantillas globales. CRUD `/api/v1/tenant/document-templates` (solo TENANT_ADMIN + PBAC `projects`): `PUT/PATCH /:id` para autoguardado, `PATCH /:id/activate` desactiva en transacción las demás del tenant; activar una global la clona al tenant; las globales son de solo lectura.

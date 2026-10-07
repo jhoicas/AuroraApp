@@ -209,8 +209,13 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		log.Printf("ensure measurement units seed: %v", err)
 	}
 
+	// Plantillas del Documento Técnico: tabla garantizada ANTES del seed; sin ella el servidor
+	// respondería 500 (SQLSTATE 42P01) en cada endpoint, así que un fallo aborta el arranque.
+	if err := EnsureDocumentTemplatesSchema(db); err != nil {
+		return nil, fmt.Errorf("ensure document templates schema: %w", err)
+	}
 	if err := EnsureDocumentTemplatesSeed(db); err != nil {
-		log.Printf("ensure document templates seed: %v", err)
+		return nil, fmt.Errorf("ensure document templates seed: %w", err)
 	}
 
 	// PBAC (ADR-0001). Orden estricto: (1) AutoMigrate global ya terminó arriba;

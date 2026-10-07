@@ -132,3 +132,37 @@ func TestSystemTemplateReadOnlyAndTenantIsolation(t *testing.T) {
 	_, err = repo.Update(ctx, tenantB, own.ID, nil, &html)
 	require.ErrorIs(t, err, ErrTemplateNotFound)
 }
+
+func TestEnsureDocumentTemplatesSchema_CreatesTableThenSeedRuns(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:dtschema_"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+
+	// Sin tabla, el seed falla igual que en producción (42P01).
+	require.Error(t, EnsureDocumentTemplatesSeed(db))
+
+	require.NoError(t, EnsureDocumentTemplatesSchema(db))
+	require.True(t, db.Migrator().HasTable(&models.DocumentTemplate{}))
+	require.NoError(t, EnsureDocumentTemplatesSeed(db))
+
+	var n int64
+	require.NoError(t, db.Model(&models.DocumentTemplate{}).Where("is_system_default = ? AND tenant_id IS NULL", true).Count(&n).Error)
+	require.Positive(t, n)
+	// Idempotente.
+	require.NoError(t, EnsureDocumentTemplatesSeed(db))
+	var again int64
+	require.NoError(t, db.Model(&models.DocumentTemplate{}).Where("is_system_default = ?", true).Count(&again).Error)
+	require.Equal(t, n, again)
+}
+
+func TestDocumentTemplatesFallbackDDL_MatchesModel(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:dtddl_"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+	for _, stmt := range documentTemplatesSchemaSQL {
+		require.NoError(t, db.Exec(stmt).Error, stmt)
+	}
+	require.NoError(t, EnsureDocumentTemplatesSeed(db), "el seed funciona sobre el esquema de respaldo")
+}

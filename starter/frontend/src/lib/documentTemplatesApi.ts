@@ -14,7 +14,7 @@ export type DocumentTemplate = {
 const BASE = '/tenant/document-templates';
 
 export async function listDocumentTemplates(): Promise<DocumentTemplate[]> {
-  const { data } = await api.get<{ data: DocumentTemplate[] }>(`${BASE}/`);
+  const { data } = await api.get<{ data: DocumentTemplate[] }>(BASE);
   return data.data ?? [];
 }
 
@@ -28,7 +28,7 @@ export async function createDocumentTemplate(input: {
   html_content?: string;
   clone_from_id?: string;
 }): Promise<DocumentTemplate> {
-  const { data } = await api.post<{ data: DocumentTemplate }>(`${BASE}/`, input);
+  const { data } = await api.post<{ data: DocumentTemplate }>(BASE, input);
   return data.data;
 }
 

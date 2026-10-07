@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-07 - Claude - Plantillas PDF multi-tenant y constructor TipTap del Documento Técnico
+
+- **Backend:** modelo `DocumentTemplate` (`document_templates`: `tenant_id` nulo = global, `is_active`, `is_system_default`) en AutoMigrate; seed idempotente de 2 plantillas globales. CRUD `/api/v1/tenant/document-templates` (solo TENANT_ADMIN + PBAC `projects`): `PUT/PATCH /:id` para autoguardado, `PATCH /:id/activate` desactiva en transacción las demás del tenant; activar una global la clona al tenant; las globales son de solo lectura.
+- **PDF:** `GET /api/v1/projects/:id/technical-document` (y alias `/tenant/projects/:id/...`) elige plantilla activa del tenant o la global; si no hay ninguna sembrada cae al generador Valle previo. Se renderiza con `html/template` (los `{{` del usuario se neutralizan; los nodos `mga-var` se convierten a `{{v "id"}}`) y se convierte a PDF con gofpdf (subconjunto: h1-h3, p, listas, tablas, b/i/u, alineación).
+- **Frontend:** `/tenant/settings/templates` (lista, crear, editar/clonar, radio de activación) y `/tenant/settings/templates/:id` (TipTap + chips de variables MGA + vista previa mock + autoguardado con debounce 3 s y "Guardar y Regresar"). Dependencias nuevas: `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`, `@tiptap/core`. `go mod tidy` movió `gofpdf`/`x/net`/`datatypes` a directas y quitó `go-sqlmock`/`pgx` directas (sin uso).
+- **Validación:** `go test ./...` y `tsc -b` limpios; Vitest 465/465. Pruebas nuevas: activación por tenant, fallback a plantilla global, aislamiento, render/escape, autosave, editor TipTap. No probado en navegador ni contra Postgres real. El enlace del menú "Plantillas PDF" depende del rol TENANT_ADMIN; el frontend no cambió el botón de descarga existente.
+
 ### 2026-10-06 - Claude - Super Admin: vista de formulación de proyectos en modo lectura
 
 - **Objetivo:** Desde `/admin/projects`, ver la formulación completa de cualquier proyecto en solo lectura; solo el formulador asignado edita.

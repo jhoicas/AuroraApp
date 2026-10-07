@@ -35,6 +35,9 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	// Ruta de exportación de Documento Técnico Valle del Cauca (Decreto 1278 de 2023)
 	projects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
 
+	// Documento Técnico con plantilla del tenant (activa) o, en su defecto, la global del sistema.
+	projects.Get("/:id/technical-document", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocument)
+
 	// Grupo complementario para compatibilidad estricta con /api/v1/tenant/projects
 	tenantProjects := app.Group("/api/v1/tenant/projects",
 		httpmw.RequireAuth(jwtSecret),
@@ -42,6 +45,8 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	)
 	tenantProjects.Use("/:id", adminScope, owner)
 	tenantProjects.Get("/:id/export/technical-document-valle", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocumentValle)
+
+	tenantProjects.Get("/:id/technical-document", guard.Require(modules.CodeProjects, modules.ActionView), pex.ExportTechnicalDocument)
 
 	// Grupo de reportes de tenant (Visión Directiva e inversión)
 	tenantReports := app.Group("/api/v1/tenant/reports",

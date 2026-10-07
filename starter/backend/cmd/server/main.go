@@ -74,6 +74,7 @@ func main() {
 
 	// Paso 4 — Projects (multi-tenant)
 	router.RegisterProjectRoutes(app, db, cfg.JWTSecret, guard)
+	router.RegisterDocumentTemplateRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Paso 5 — Asistente IA
 	router.RegisterAIRoutes(app, db, cfg, guard)

@@ -1,5 +1,5 @@
 import { Suspense, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogoAurora } from '../components/LogoAurora';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -9,6 +9,7 @@ import { useAccessStore } from '../store/accessStore';
 import GlobalBanner from '../components/system/GlobalBanner';
 import SystemStatusGate from '../components/system/SystemStatusGate';
 import { titleForPath } from '../lib/navModules';
+import { Roles, normalizeRole } from '../lib/roles';
 
 export default function TenantLayout() {
   const { user, logout } = useAuth();
@@ -62,6 +63,17 @@ export default function TenantLayout() {
         </div>
         <nav className="flex-1 space-y-1" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) closeSidebarOnMobile(); }}>
           <NavFromModules scope="TENANT" />
+          {normalizeRole(user?.role) === Roles.TenantAdmin && (
+            <NavLink
+              to="/tenant/settings/templates"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${isActive ? 'bg-teal-50 text-[#006162]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#006162]'}`
+              }
+            >
+              <span className="material-symbols-outlined" aria-hidden>description</span>
+              Plantillas PDF
+            </NavLink>
+          )}
         </nav>
         <div className="border-t border-gray-200 pt-3 space-y-1">
           <button

@@ -31,6 +31,8 @@ const lz = {
   catalog: lazy(() => import('../pages/tenant/CatalogPage')),
   aiAssistant: lazy(() => import('../pages/tenant/AiAssistantPage')),
   reports: lazy(() => import('../pages/tenant/ReportsPage')),
+  documentTemplates: lazy(() => import('../pages/tenant/DocumentTemplatesPage')),
+  documentTemplateEditor: lazy(() => import('../pages/tenant/DocumentTemplateEditorPage')),
   tenants: lazy(() => import('../pages/admin/TenantsPage')),
   adminModules: lazy(() => import('../pages/admin/ModulesPage')),
   usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
@@ -74,6 +76,8 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
       { path: 'projects/:id/formulation', Component: lz.projectDetail },
       { path: 'projects/:id', Component: lz.projectDetail },
       { path: 'formulation', redirectTo: '/tenant/projects' },
+      { path: 'settings/templates', Component: lz.documentTemplates },
+      { path: 'settings/templates/:id', Component: lz.documentTemplateEditor },
     ],
     // Las rutas de proyecto también activan este ítem (el detalle vive bajo /tenant/projects/:id).
     activePrefixes: ['/tenant/projects'],

@@ -209,6 +209,10 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		log.Printf("ensure measurement units seed: %v", err)
 	}
 
+	if err := EnsureDocumentTemplatesSeed(db); err != nil {
+		log.Printf("ensure document templates seed: %v", err)
+	}
+
 	// PBAC (ADR-0001). Orden estricto: (1) AutoMigrate global ya terminó arriba;
 	// (2) se garantizan las tablas PBAC; (3) solo entonces se siembra el manifiesto
 	// (módulos, defaults de rol y backfill). Un fallo aquí aborta el arranque: un

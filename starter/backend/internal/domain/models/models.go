@@ -53,5 +53,6 @@ func AllModels() []any {
 		&PNDCatalog{},
 		&CatalogSyncLog{},
 		&MeasurementUnit{},
+		&DocumentTemplate{},
 	}
 }

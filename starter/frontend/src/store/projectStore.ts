@@ -143,6 +143,8 @@ type ProjectState = {
   patchProject: (id: string, patch: Partial<Project>) => Promise<Project>;
   /** Actualiza el borrador local sin persistir en API (Modo MGA). */
   patchCurrentProject: (partial: Partial<Project>) => void;
+  /** Elimina (borrado lógico) un proyecto y lo quita de la lista local. */
+  deleteProject: (id: string) => Promise<void>;
   fetchBudget: (projectId: string) => Promise<void>;
   addBudgetItem: (projectId: string, data: CreateBudgetItemPayload) => Promise<BudgetItem>;
   deleteBudgetItem: (projectId: string, itemId: string) => Promise<void>;
@@ -304,6 +306,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         projects: state.projects.map((p) => (p.id === updated.id ? updated : p)),
       };
     });
+  },
+
+  deleteProject: async (id) => {
+    try {
+      await api.delete(`/projects/${id}`);
+      set((state) => ({
+        projects: state.projects.filter((p) => p.id !== id),
+        currentProject: state.currentProject?.id === id ? null : state.currentProject,
+      }));
+    } catch (err) {
+      throw new Error(extractError(err, 'No se pudo eliminar el proyecto'));
+    }
   },
 
   fetchBudget: async (projectId) => {

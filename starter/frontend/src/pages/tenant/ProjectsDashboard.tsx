@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import CreateProjectModal from '../../components/Tenant/CreateProjectModal';
+import DeleteProjectModal from '../../components/Tenant/DeleteProjectModal';
 import ReassignProjectModal from '../../components/Tenant/ReassignProjectModal';
 import ProjectTemplatesSection from '../../components/Tenant/ProjectTemplates/ProjectTemplatesSection';
 import { useToast } from '../../components/ui/Toast';
@@ -54,7 +55,11 @@ export default function ProjectsDashboard() {
   const clearError = useProjectStore((s) => s.clearError);
 
   const canReassign = roleIsAllowed(user?.role, [Roles.TenantAdmin, Roles.SuperAdmin]);
+  const hasDeletePermission = useAccessStore((s) => s.can('projects', 'delete'));
+  const canDelete =
+    hasDeletePermission && roleIsAllowed(user?.role, [Roles.TenantAdmin, Roles.Formulador]);
   const [reassigning, setReassigning] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState<Project | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState<ProjectTemplate | null>(null);
   const toast = useToast();
@@ -279,10 +284,21 @@ export default function ProjectsDashboard() {
                 key={project.id}
                 className="bg-white p-5 rounded-xl border border-gray-200 flex flex-col h-full relative overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all"
               >
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3 flex items-center gap-1">
                   <span className="px-2 py-1 bg-teal-100 text-[#006162] text-xs font-bold rounded-full uppercase">
                     {project.status}
                   </span>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleting(project)}
+                      aria-label={`Eliminar Proyecto ${project.name}`}
+                      title="Eliminar Proyecto"
+                      className="p-1 rounded-full text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  )}
                 </div>
                 <div className="mb-4 pr-16">
                   <span className="material-symbols-outlined text-[#006162] mb-2">category</span>
@@ -358,6 +374,7 @@ export default function ProjectsDashboard() {
       </div>
 
       <ReassignProjectModal project={reassigning} onClose={() => setReassigning(null)} />
+      <DeleteProjectModal project={deleting} onClose={() => setDeleting(null)} />
 
       <CreateProjectModal
         open={modalOpen && canCreate}

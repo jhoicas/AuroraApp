@@ -158,4 +158,5 @@ const (
 	AuditUserUpdated          = "USER_UPDATED"
 	AuditRoleTemplateUpdated  = "ROLE_TEMPLATE_UPDATED"
 	AuditProjectReassigned    = "PROJECT_REASSIGNED"
+	AuditProjectDeleted       = "PROJECT_DELETED"
 )

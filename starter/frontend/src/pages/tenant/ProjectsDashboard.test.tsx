@@ -324,6 +324,120 @@ describe('ProjectsDashboard', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   });
 
+  describe('eliminación de proyectos', () => {
+    it.each(['FORMULADOR', 'TENANT_ADMIN'])('%s ve el botón Eliminar Proyecto', async (role) => {
+      seedAuthUser({ role });
+      serveDashboard([project()], []);
+      renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      expect(await screen.findByRole('button', { name: /Eliminar Proyecto/ })).toBeInTheDocument();
+    });
+
+    it('VIEWER no ve el botón Eliminar Proyecto', async () => {
+      seedAuthUser({ role: 'VIEWER' });
+      seedViewerAccess();
+      serveDashboard([project()], []);
+      renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await screen.findByText('Acueducto rural La Esperanza');
+      expect(screen.queryByRole('button', { name: /Eliminar Proyecto/ })).toBeNull();
+    });
+
+    it('un rol sin eliminación no ve el botón aunque tenga permiso delete', async () => {
+      seedAuthUser({ role: 'VIEWER' });
+      serveDashboard([project()], []);
+      renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await screen.findByText('Acueducto rural La Esperanza');
+      expect(screen.queryByRole('button', { name: /Eliminar Proyecto/ })).toBeNull();
+    });
+
+    it('confirma en el modal, llama DELETE y recarga la lista', async () => {
+      let deleted = false;
+      let deleteCalls = 0;
+      server.use(
+        http.get(apiUrl('/projects'), () =>
+          HttpResponse.json({
+            data: deleted ? [] : [project()],
+            page: 1,
+            page_size: 100,
+            total: deleted ? 0 : 1,
+            total_pages: 1,
+          }),
+        ),
+        http.get(apiUrl('/projects/evaluations/summary'), () => HttpResponse.json({ data: [] })),
+        http.delete(apiUrl('/projects/proj-1'), () => {
+          deleted = true;
+          deleteCalls += 1;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const { user } = renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await user.click(await screen.findByRole('button', { name: /Eliminar Proyecto/ }));
+
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toHaveTextContent(
+        '¿Estás seguro de que deseas eliminar el proyecto Acueducto rural La Esperanza? Esta acción eliminará toda su formulación, cadena de valor y presupuesto asociados.',
+      );
+
+      await user.click(within(dialog).getByRole('button', { name: 'Eliminar Definitivamente' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(deleteCalls).toBe(1);
+      expect(await screen.findByText(/Aún no hay proyectos/)).toBeInTheDocument();
+      expect(screen.queryByText('Acueducto rural La Esperanza')).toBeNull();
+    });
+
+    it('cancelar no elimina el proyecto', async () => {
+      let deleteCalls = 0;
+      serveDashboard([project()], []);
+      server.use(
+        http.delete(apiUrl('/projects/proj-1'), () => {
+          deleteCalls += 1;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const { user } = renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await user.click(await screen.findByRole('button', { name: /Eliminar Proyecto/ }));
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancelar' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(deleteCalls).toBe(0);
+      expect(screen.getByText('Acueducto rural La Esperanza')).toBeInTheDocument();
+    });
+
+    it('proyecto avanzado exige escribir el nombre antes de eliminar', async () => {
+      serveDashboard([project({ status: 'APPROVED' })], []);
+
+      const { user } = renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await user.click(await screen.findByRole('button', { name: /Eliminar Proyecto/ }));
+
+      const dialog = await screen.findByRole('dialog');
+      const confirmBtn = within(dialog).getByRole('button', { name: 'Eliminar Definitivamente' });
+      expect(confirmBtn).toBeDisabled();
+
+      await user.type(within(dialog).getByRole('textbox'), 'Acueducto rural La Esperanza');
+      expect(confirmBtn).toBeEnabled();
+    });
+
+    it('muestra el error del backend si la eliminación falla (403)', async () => {
+      serveDashboard([project()], []);
+      server.use(
+        http.delete(apiUrl('/projects/proj-1'), () =>
+          errorResponse(403, 'solo el creador del proyecto puede eliminarlo'),
+        ),
+      );
+
+      const { user } = renderWithProviders(<ProjectsDashboard />, { withAuth: true });
+      await user.click(await screen.findByRole('button', { name: /Eliminar Proyecto/ }));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Eliminar Definitivamente' }));
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'solo el creador del proyecto puede eliminarlo',
+      );
+    });
+  });
+
   it('navega al asistente desde el bloque de ayuda', async () => {
     serveDashboard([], []);
 

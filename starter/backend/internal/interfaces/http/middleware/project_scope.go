@@ -30,6 +30,10 @@ func ProjectOwnerGuard(db *gorm.DB) fiber.Handler {
 		if err != nil {
 			return c.Next() // rutas no basadas en id (p. ej. /evaluations/summary)
 		}
+		// DELETE /projects/:id lo resuelve su handler: un formulador ajeno recibe 403, no 404.
+		if c.Method() == http.MethodDelete && strings.HasSuffix(strings.TrimRight(c.Path(), "/"), "/"+c.Params("id")) {
+			return c.Next()
+		}
 		userID, tenantID, err := IdentityFromContext(c)
 		if err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})

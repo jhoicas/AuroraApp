@@ -130,7 +130,8 @@ func TestProjectOwnerGuard_OnlyAssignedFormuladorCanWrite(t *testing.T) {
 	other := e.app(e.otherFormulador, constants.RoleFormulador, &e.tenant)
 	outsider := e.app(e.creator, constants.RoleFormulador, &e.otherTenant) // mismo user id, otro tenant
 
-	for _, method := range []string{"PATCH", "POST", "PUT", "DELETE"} {
+	// DELETE /projects/:id queda fuera: lo decide su handler (403 para un formulador ajeno).
+	for _, method := range []string{"PATCH", "POST", "PUT"} {
 		status, _ := e.do(t, owner, method, base)
 		require.Equal(t, 200, status, "el formulador asignado sí puede (%s)", method)
 		status, _ = e.do(t, other, method, base)
@@ -140,6 +141,8 @@ func TestProjectOwnerGuard_OnlyAssignedFormuladorCanWrite(t *testing.T) {
 	}
 	status, _ := e.do(t, other, "GET", base+"/mga/formulation")
 	require.Equal(t, 404, status, "tampoco lee subrecursos ajenos")
+	status, _ = e.do(t, other, "DELETE", base+"/mga/causes/x")
+	require.Equal(t, 404, status, "ni borra subrecursos ajenos")
 
 	// El SUPER_ADMIN lee pero no escribe aunque el guard de formulador no lo detenga.
 	super := e.app(e.superAdmin, constants.RoleSuperAdmin, nil)

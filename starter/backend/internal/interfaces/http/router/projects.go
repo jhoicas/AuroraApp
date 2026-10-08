@@ -69,6 +69,8 @@ func RegisterProjectRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	projects.Get("/:id", guard.Require(modules.CodeProjects, modules.ActionView), ph.GetByID)
 	// PATCH guarda cualquier etapa de la MGA (snapshot completo): se autoriza según lo que cambia.
 	projects.Patch("/:id", guard.RequireProjectPatchPermission(httpmw.ProjectSnapshotFromDB(db)), ph.Patch)
+	// Borrado lógico: TENANT_ADMIN o FORMULADOR creador (el handler valida el rol y la autoría).
+	projects.Delete("/:id", guard.Require(modules.CodeProjects, modules.ActionDelete), ph.Delete)
 	// Reasignación de autoría: solo administradores (la lista de candidatos y el cambio).
 	adminOnly := httpmw.RequireRole(constants.RoleTenantAdmin, constants.RoleSuperAdmin)
 	projects.Get("/:id/reassign-candidates", guard.Require(modules.CodeProjects, modules.ActionEdit), adminOnly, ph.ReassignCandidates)

@@ -16,14 +16,20 @@ ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 RUN go build -trimpath -ldflags="-s -w" -o /out/aurora-backend ./cmd/server
 
 # ---- Runtime ----
-FROM alpine:3.20
+FROM debian:bookworm-slim AS runner
 
-RUN apk add --no-cache ca-certificates tzdata wget chromium ttf-freefont \
-  && adduser -D -H -u 10001 appuser
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    ca-certificates \
+    tzdata \
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 10001 appuser
 
 WORKDIR /app
 
-COPY --from=builder /out/aurora-backend /app/aurora-backend
+COPY --from=builder --chown=appuser:appuser /out/aurora-backend /app/aurora-backend
 
 USER appuser
 
@@ -31,6 +37,7 @@ EXPOSE 8080
 
 ENV PORT=8080
 ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROME_CRASHPAD_DISABLE=1
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/api/v1/catalog/sectors >/dev/null 2>&1 || exit 0

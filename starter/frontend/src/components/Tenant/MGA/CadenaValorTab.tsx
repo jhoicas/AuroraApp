@@ -209,17 +209,19 @@ type ProductFormProps = {
   product: ProductoCvJson;
   poblacionObjetivoNum: number;
   catalogProducts: CatalogProductRow[];
+  mainProductCode: string;
   isLoadingCatalog: boolean;
   onChange: (updated: ProductoCvJson) => void;
   onRemove: () => void;
 };
 
-function ProductForm({ product, poblacionObjetivoNum, catalogProducts, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
+function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProductCode, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
   const { strong_verbs: strongVerbs, weak_verbs: weakVerbs } = useDnpDictionary();
   const productOptions = useMemo<ComboboxOption[]>(() => {
     const opts = catalogProducts.map((row) => ({
       value: row.codigo_del_producto,
-      label: row.producto,
+      // El producto principal del proyecto se distingue entre paréntesis.
+      label: mainProductCode && row.codigo_del_producto === mainProductCode ? `(${row.producto})` : row.producto,
       code: row.codigo_del_producto,
       hint: row.nombre_del_programa,
     }));
@@ -228,10 +230,10 @@ function ProductForm({ product, poblacionObjetivoNum, catalogProducts, isLoading
       opts.unshift({ value: product.productoId, label: product.productoId, code: product.productoId, hint: '' });
     }
     return opts;
-  }, [catalogProducts, product.productoId]);
+  }, [catalogProducts, mainProductCode, product.productoId]);
 
   const selectedProductLabel =
-    productOptions.find((o) => o.value === product.productoId)?.label || product.productoId;
+    catalogProducts.find((r) => r.codigo_del_producto === product.productoId)?.producto || product.productoId;
 
   const handleSelectProduct = (code: string) => {
     const row = catalogProducts.find((r) => r.codigo_del_producto === code);
@@ -809,6 +811,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                   product={prod}
                   poblacionObjetivoNum={poblacionObjetivoNum}
                   catalogProducts={catalogProducts}
+                  mainProductCode={mainProductCode}
                   isLoadingCatalog={isLoadingCatalog}
                   onChange={(updated) => updateProducto(objId, pi, updated)}
                   onRemove={() => removeProducto(objId, pi)}

@@ -48,6 +48,7 @@ var tabModule = map[string]string{
 	"riesgos": CodeMGAPreparacion, "ingresos-beneficios": CodeMGAPreparacion, "ingresosBeneficios": CodeMGAPreparacion,
 	"prestamos": CodeMGAPreparacion, "depreciacion": CodeMGAPreparacion, "preparacion": CodeMGAPreparacion,
 	"flujo-evaluacion": CodeMGAEvaluacion, "indicadores-decision": CodeMGAEvaluacion, "evaluacion": CodeMGAEvaluacion,
+	"ver-presupuesto": CodeMGAEvaluacion, "alcance": CodeMGAEvaluacion,
 	"indicadores-producto": CodeMGAProgramacion, "regionalizacion": CodeMGAProgramacion,
 	"focalizacion": CodeMGAProgramacion, "programacion": CodeMGAProgramacion,
 }

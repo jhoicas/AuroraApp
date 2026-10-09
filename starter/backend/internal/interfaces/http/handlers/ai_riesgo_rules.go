@@ -10,6 +10,26 @@ func isRiesgoField(fieldKey string) bool {
 	return strings.HasPrefix(strings.ToLower(fieldKey), "riesgo_")
 }
 
+const (
+	// conciseRule es el límite genérico de los campos cortos del formulario.
+	conciseRule = "Genera una respuesta extremadamente concisa y directa, máximo 10 a 15 palabras. No incluyas explicaciones."
+	// riesgoLengthRule reemplaza al límite genérico en los campos de Riesgos, que necesitan más detalle.
+	riesgoLengthRule = "Genera una respuesta clara y específica de máximo 30 a 40 palabras."
+)
+
+// applyLengthRule agrega al texto de regla del campo la directiva de longitud: los campos
+// de Riesgos (riesgo_*) usan una más amplia; los participantes, solo la concisa; el resto, ambas.
+func applyLengthRule(fieldKey, fieldRule string) string {
+	switch {
+	case isRiesgoField(fieldKey):
+		return strings.TrimSpace(fieldRule + " " + riesgoLengthRule)
+	case fieldKey == "intereses_participante" || fieldKey == "contribucion_participante":
+		return conciseRule
+	default:
+		return strings.TrimSpace(fieldRule + " " + conciseRule)
+	}
+}
+
 // buildRiesgoRule arma la directiva del prompt para campos de Riesgos según el
 // nivel de clasificación (1-Propósito, 2-Componente, 3-Actividad) y el ítem asociado.
 func buildRiesgoRule(fieldKey string, ctx map[string]any) string {

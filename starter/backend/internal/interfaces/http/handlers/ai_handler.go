@@ -295,12 +295,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		methodologicalRule = "REGLA METODOLÓGICA: El bien o servicio (producto) entregado debe estar estrictamente relacionado con la solución a las Causas del problema."
 	}
 
-	const conciseRule = "Genera una respuesta extremadamente concisa y directa, máximo 10 a 15 palabras. No incluyas explicaciones."
-	if fieldKey == "intereses_participante" || fieldKey == "contribucion_participante" {
-		fieldRule = conciseRule
-	} else {
-		fieldRule += " " + conciseRule
-	}
+	fieldRule = applyLengthRule(fieldKey, fieldRule)
 
 	// Reglas DNP dinámicas: verbos y unidades provienen del diccionario en BD.
 	verbRule := buildDnpRules(fieldKey, h.loadDnpDictionary(c.Context()))

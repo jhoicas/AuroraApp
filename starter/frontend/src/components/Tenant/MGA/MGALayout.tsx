@@ -440,7 +440,8 @@ export default function MGALayout({
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
   const [navBlockIssues, setNavBlockIssues] = useState<string[] | null>(null);
   const onChangeSubTab = (tab: MgaLayoutTabId) => {
-    if (activeTab === 'cadena-valor' && tab !== 'cadena-valor') {
+    const goingForward = ALL_MGA_SECTIONS.indexOf(tab) > ALL_MGA_SECTIONS.indexOf('cadena-valor');
+    if (activeTab === 'cadena-valor' && tab !== 'cadena-valor' && goingForward) {
       const issues = getCadenaValorIssues(formulation);
       if (issues.length > 0) {
         setNavBlockIssues(issues);

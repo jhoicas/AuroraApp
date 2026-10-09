@@ -537,12 +537,21 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const fetchCatalogProducts = useCatalogStore((st) => st.fetchCatalogProducts);
   const allCatalogProducts = useCatalogStore((st) => st.catalogProducts);
   const isLoadingCatalog = useCatalogStore((st) => st.isLoadingProducts);
-  const programCode = (project.program_code ?? '').trim();
+  const mainProductCode = (project.product_code ?? '').trim();
+  const projectProgramCode = (project.program_code ?? '').trim();
   const sectorKey = (project.sector ?? '').trim().toLowerCase();
 
   useEffect(() => {
-    void fetchCatalogProducts({ search: programCode || undefined });
-  }, [fetchCatalogProducts, programCode]);
+    void fetchCatalogProducts({ search: projectProgramCode || mainProductCode || undefined });
+  }, [fetchCatalogProducts, projectProgramCode, mainProductCode]);
+
+  // Programa del producto principal (según catálogo DNP); fallback al programa del proyecto.
+  const programCode = useMemo(() => {
+    const main = mainProductCode
+      ? allCatalogProducts.find((row) => row.codigo_del_producto === mainProductCode)
+      : undefined;
+    return (main?.codigo_del_programa ?? '').trim() || projectProgramCode;
+  }, [allCatalogProducts, mainProductCode, projectProgramCode]);
 
   // Catálogo oficial filtrado por Programa y Sector del proyecto.
   const catalogProducts = useMemo(

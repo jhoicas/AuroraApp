@@ -110,11 +110,23 @@ type RiskFormProps = {
   objetivoGeneral: string;
   productos: ProductoCvJson[];
   actividadesEntregables: Array<{ id: string; nombre: string; tipo: 'actividad' | 'entregable'; productoNombre: string }>;
+  catalogProducts: ReadonlyArray<{ codigo_del_producto: string; producto: string }>;
   onSave: (risk: RiesgoJson) => void;
   onClose: () => void;
 };
 
-function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesEntregables, onSave, onClose }: RiskFormProps) {
+/** Etiqueta "Código - Nombre" de un producto de la cadena de valor. */
+function formatProductoLabel(
+  p: { id: string; productoId?: string; complemento?: string },
+  catalogProducts: ReadonlyArray<{ codigo_del_producto: string; producto: string }>,
+): string {
+  const code = p.productoId?.trim();
+  if (!code) return p.complemento || `Producto ${p.id.slice(0, 6)}`;
+  const nombre = catalogProducts.find(c => c.codigo_del_producto === code)?.producto || p.complemento;
+  return nombre ? `${code} - ${nombre}` : code;
+}
+
+function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesEntregables, catalogProducts, onSave, onClose }: RiskFormProps) {
   const [draft, setDraft] = useState<RiesgoJson>({ ...initial });
 
   const updateField = <K extends keyof RiesgoJson>(field: K, value: RiesgoJson[K]) => {
@@ -189,7 +201,7 @@ function RiskFormModal({ risk: initial, objetivoGeneral, productos, actividadesE
               >
                 <option value="">Seleccione un producto...</option>
                 {productos.map(p => (
-                  <option key={p.id} value={p.id}>{p.complemento || p.productoId || `Producto ${p.id.slice(0, 6)}`}</option>
+                  <option key={p.id} value={p.id}>{formatProductoLabel(p, catalogProducts)}</option>
                 ))}
               </select>
               {productos.length === 0 && (
@@ -467,10 +479,7 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
     if (!refId) return '';
     const p = productos.find(pr => pr.id === refId);
     if (!p) return '';
-    const code = p.productoId?.trim();
-    if (!code) return p.complemento || `Producto ${refId.slice(0, 6)}`;
-    const nombre = catalogProducts.find(c => c.codigo_del_producto === code)?.producto || p.complemento;
-    return nombre ? `${code} - ${nombre}` : code;
+    return formatProductoLabel(p, catalogProducts);
   };
 
   /** Resolve reference name for nivel 3 */
@@ -651,6 +660,7 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
           objetivoGeneral={objetivoGeneral}
           productos={productos}
           actividadesEntregables={actividadesEntregables}
+          catalogProducts={catalogProducts}
           onSave={handleSaveRisk}
           onClose={() => { setShowForm(false); setEditingRisk(null); }}
         />

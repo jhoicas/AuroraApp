@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { HelpCircle, AlertTriangle, Plus, Trash2, Edit2, X, Shield, ChevronDown } from 'lucide-react';
 import type { Project } from '../../../store/projectStore';
 import {
@@ -7,6 +7,7 @@ import {
   type RiesgoJson,
   type ProductoCvJson,
 } from '../../../store/projectMgaStore';
+import { useCatalogStore } from '../../../store/catalogStore';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
@@ -323,6 +324,14 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
   const alternatives = alternativasAll.filter((alt: any) => alt.pasaPreparacion === true);
   const objetivoGeneral = formulation.identificacion?.objetivos?.objetivoGeneral || '';
 
+  const catalogProducts = useCatalogStore((st) => st.catalogProducts);
+  const fetchCatalogProducts = useCatalogStore((st) => st.fetchCatalogProducts);
+  const programCode = (project.program_code ?? '').trim();
+
+  useEffect(() => {
+    if (catalogProducts.length === 0) void fetchCatalogProducts({ search: programCode || undefined });
+  }, [fetchCatalogProducts, programCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string>(alternatives.length > 0 ? alternatives[0].id : '');
   const [riesgos, setRiesgos] = useState<RiesgoJson[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -457,7 +466,11 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
   const getRefNameN2 = (refId?: string) => {
     if (!refId) return '';
     const p = productos.find(pr => pr.id === refId);
-    return p ? (p.complemento || p.productoId || `Producto ${refId.slice(0, 6)}`) : '';
+    if (!p) return '';
+    const code = p.productoId?.trim();
+    if (!code) return p.complemento || `Producto ${refId.slice(0, 6)}`;
+    const nombre = catalogProducts.find(c => c.codigo_del_producto === code)?.producto || p.complemento;
+    return nombre ? `${code} - ${nombre}` : code;
   };
 
   /** Resolve reference name for nivel 3 */
@@ -489,6 +502,16 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
   // ── Render grouped table rows ──
   const renderGroupedRows = (label: string, items: RiesgoJson[], getRefName: (refId?: string) => string) => {
     if (items.length === 0) return null;
+    const groups: Array<{ key: string; refName: string; risks: RiesgoJson[] }> = [];
+    for (const r of items) {
+      const key = r.referenciaId ?? '';
+      let g = groups.find(x => x.key === key);
+      if (!g) {
+        g = { key, refName: getRefName(r.referenciaId), risks: [] };
+        groups.push(g);
+      }
+      g.risks.push(r);
+    }
     return (
       <>
         {/* Section header row */}
@@ -498,13 +521,19 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
             {label}
           </td>
         </tr>
-        {items.map(r => {
-          const refName = getRefName(r.referenciaId);
-          return (
+        {groups.map(({ key, refName, risks }) => (
+          <Fragment key={key}>
+            {refName && (
+              <tr className="bg-slate-50">
+                <td colSpan={6} className="px-3 py-2 border text-xs italic text-[#1f4e79]">
+                  {refName}
+                </td>
+              </tr>
+            )}
+            {risks.map(r => (
             <tr key={r.id} className="border-b hover:bg-slate-50 align-top">
               <td className="p-2 border text-xs">
                 <div className="font-medium text-slate-800">{r.tipo || '—'}</div>
-                {refName && <div className="text-[10px] text-blue-600 mt-0.5">{refName}</div>}
               </td>
               <td className="p-2 border text-xs text-slate-700 max-w-[200px]">{r.descripcion}</td>
               <td className="p-2 border text-xs text-center">
@@ -537,8 +566,9 @@ export default function RiesgosTab({ project }: RiesgosTabProps) {
                 </div>
               </td>
             </tr>
-          );
-        })}
+            ))}
+          </Fragment>
+        ))}
       </>
     );
   };

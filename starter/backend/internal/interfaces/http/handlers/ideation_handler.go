@@ -209,7 +209,7 @@ func (h *IdeationHandler) SuggestProjectSetup(c *fiber.Ctx) error {
 	}
 
 	// ── Prompt para generación de sugerencias ─────────────────────
-	prompt := appai.BuildSuggestProjectSetupPrompt(ctxStr, ragContext, cfdStr)
+	prompt := appai.BuildSuggestProjectSetupPrompt(ctxStr, ragContext, cfdStr, h.buildSectorsCatalog(c))
 	messages := []llm.Message{{Role: "user", Content: prompt}}
 	selectedModel := appai.ResolveModel(appai.IntentMGAGenerate, h.cfg)
 
@@ -381,34 +381,83 @@ func (h *IdeationHandler) resolveIdsFromSuggestions(
 		ProductoPrincipal: raw.ProductoPrincipal,
 	}
 
-	// ── Resolver Sector: nombre → UUID ───────────────────────────
+	// ── Resolver Sector: código o nombre → UUID ──────────────────
+	var resolvedSectors []models.Sector
 	for _, sectorName := range raw.SectorSugerido {
-		if sn := strings.TrimSpace(sectorName); sn != "" {
-			var sector models.Sector
+		sn := strings.TrimSpace(sectorName)
+		if sn == "" {
+			continue
+		}
+		// El LLM puede devolver "código - nombre"; se prueba código, nombre exacto y luego parcial.
+		candidates := []string{sn}
+		if i := strings.Index(sn, " - "); i > 0 {
+			candidates = append(candidates, strings.TrimSpace(sn[:i]), strings.TrimSpace(sn[i+3:]))
+		}
+		var sector models.Sector
+		found := false
+		for _, cand := range candidates {
+			lc := strings.ToLower(cand)
 			err := h.db.WithContext(c.Context()).
-				Where("LOWER(nombre) LIKE ?", "%"+strings.ToLower(sn)+"%").
+				Where("LOWER(codigo) = ? OR LOWER(nombre) = ?", lc, lc).
 				First(&sector).Error
 			if err == nil && sector.ID != uuid.Nil {
-				suggestions.SectorId = append(suggestions.SectorId, sector.ID.String())
+				found = true
+				break
 			}
+		}
+		if !found {
+			err := h.db.WithContext(c.Context()).
+				Where("LOWER(nombre) LIKE ?", "%"+strings.ToLower(candidates[len(candidates)-1])+"%").
+				First(&sector).Error
+			found = err == nil && sector.ID != uuid.Nil
+		}
+		if found {
+			suggestions.SectorId = append(suggestions.SectorId, sector.ID.String())
+			resolvedSectors = append(resolvedSectors, sector)
 		}
 	}
 
-	// ── Resolver Producto Principal: texto sugerido → código real ────────
-	var validProducts []string
+	// ── Resolver Producto Principal: texto sugerido → producto real del catálogo ────
+	// Si hay sector resuelto, el producto debe pertenecer a él (el formulario filtra por sector).
+	seen := map[string]bool{}
+	validProducts := []string{}
 	for _, prodSug := range raw.ProductoPrincipal {
-		if ps := strings.TrimSpace(prodSug); ps != "" {
-			var product models.CatalogProduct
-			err := h.db.WithContext(c.Context()).
-				Where("LOWER(producto) LIKE ? OR LOWER(descripcion) LIKE ?", "%"+strings.ToLower(ps)+"%", "%"+strings.ToLower(ps)+"%").
-				First(&product).Error
-
-			if err == nil && product.CodigoProducto != "" {
-				validProducts = append(validProducts, product.Producto)
+		ps := strings.ToLower(strings.TrimSpace(prodSug))
+		if ps == "" {
+			continue
+		}
+		like := "%" + ps + "%"
+		q := h.db.WithContext(c.Context()).Model(&models.CatalogProduct{}).
+			Where("(LOWER(producto) LIKE ? OR LOWER(descripcion) LIKE ?)", like, like)
+		if len(resolvedSectors) > 0 {
+			codes := make([]string, 0, len(resolvedSectors))
+			for _, s := range resolvedSectors {
+				codes = append(codes, strings.TrimSpace(s.Code))
 			}
+			q = q.Where("sector IN ?", codes)
+		}
+		var product models.CatalogProduct
+		if err := q.First(&product).Error; err == nil && product.CodigoProducto != "" && !seen[product.Producto] {
+			seen[product.Producto] = true
+			validProducts = append(validProducts, product.Producto)
 		}
 	}
 	suggestions.ProductoPrincipal = validProducts
 
 	return suggestions
+}
+
+// buildSectorsCatalog devuelve la lista resumida "código - nombre" de sectores para
+// inyectar en el prompt y así forzar al LLM a sugerir un sector válido.
+func (h *IdeationHandler) buildSectorsCatalog(c *fiber.Ctx) string {
+	var sectors []models.Sector
+	if err := h.db.WithContext(c.Context()).Select("codigo", "nombre").Order("codigo").Find(&sectors).Error; err != nil {
+		log.Printf("[IdeationHandler] warn: could not load sectors for prompt: %v", err)
+		return ""
+	}
+	lines := make([]string, 0, len(sectors))
+	for _, s := range sectors {
+		lines = append(lines, fmt.Sprintf("%s - %s", strings.TrimSpace(s.Code), strings.TrimSpace(s.Name)))
+	}
+	return strings.Join(lines, "\n")
 }

@@ -97,7 +97,9 @@ Usa los siguientes proyectos históricos como referencia para formular mejores p
 
 // BuildSuggestProjectSetupPrompt construye el prompt del LLM para generar
 // sugerencias de formulario a partir del historial de ideación y contexto RAG.
-func BuildSuggestProjectSetupPrompt(conversationContext, ragContext, currentFormData string) string {
+// sectorsCatalog es la lista resumida de sectores válidos ("codigo - nombre", uno por línea);
+// cuando se entrega, el LLM debe elegir sector_sugerido exclusivamente de ella.
+func BuildSuggestProjectSetupPrompt(conversationContext, ragContext, currentFormData, sectorsCatalog string) string {
 	var b strings.Builder
 
 	b.WriteString(`Eres Aurora, asistente experta en la Metodología General Ajustada (MGA) de Colombia.
@@ -124,6 +126,12 @@ CONVERSACIÓN DEL USUARIO:
 		b.WriteString("\n\n")
 	}
 
+	if sc := strings.TrimSpace(sectorsCatalog); sc != "" {
+		b.WriteString("SECTORES VÁLIDOS DEL CATÁLOGO DNP (formato 'código - nombre'):\n")
+		b.WriteString(sc)
+		b.WriteString("\n\n")
+	}
+
 	b.WriteString(`INSTRUCCIONES:
 Responde ÚNICAMENTE con un bloque JSON válido (sin texto adicional, sin markdown, sin backticks) con esta estructura exacta, generando 2 o 3 opciones para cada campo basándote en la información dada:
 {
@@ -141,10 +149,12 @@ Responde ÚNICAMENTE con un bloque JSON válido (sin texto adicional, sin markdo
 REGLAS:
 - Para el campo 'proceso', devuelve ÚNICAMENTE el nombre descriptivo en texto (ej. 'Construcción', 'Dotación', 'Adquisición'). NUNCA devuelvas el código numérico.
 - Para el campo 'localizaciones', devuelve una lista de listas. Cada lista interna representa una opción de ubicaciones (puede tener una o más ubicaciones).
+- Para 'sector_sugerido' SIEMPRE devuelve al menos una opción deducida del objeto del proyecto, copiando el NOMBRE EXACTO de un sector de la lista de SECTORES VÁLIDOS (sin el código). No inventes sectores fuera de esa lista.
+- Para 'producto_principal' SIEMPRE devuelve al menos una opción: el bien o servicio público que entregaría el proyecto, redactado como producto del catálogo MGA/DNP (ej. 'Servicio de acueducto', 'Vía terciaria mejorada'), coherente con el sector sugerido.
 - No inventes ubicaciones ni datos que el usuario no haya mencionado.
 - El objeto debe ser claro, conciso y seguir el estándar MGA de redacción (mínimo 10, máximo 200 caracteres).
 - Basa tus sugerencias exclusivamente en la información real proporcionada por el usuario o en los [DATOS_ACTUALES_FORMULARIO].
-- Si algún campo no puede determinarse con certeza, déjalo como lista vacía [].`)
+- Si 'proceso', 'objeto', 'nombre' o 'localizaciones' no pueden determinarse con certeza, déjalos como lista vacía [].`)
 
 	return b.String()
 }

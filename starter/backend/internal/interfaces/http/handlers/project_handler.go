@@ -114,11 +114,6 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	}
 
 	now := time.Now().UTC()
-	fase := strings.TrimSpace(req.FaseMaduracion)
-	if fase == "" {
-		fase = "PERFIL"
-	}
-
 	project := models.Project{
 		ID:             uuid.New(),
 		TenantID:       tenantID,
@@ -130,7 +125,7 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		SectorID:       sectorID,
 		ProgramCode:    req.ProgramCode,
 		ProductCode:    req.ProductCode,
-		FaseMaduracion: fase,
+		FaseMaduracion: "PERFIL", // valor por defecto silencioso: el usuario no lo ve ni lo envía
 		Status:         constants.ProjectStatusInFormulation,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -396,8 +391,20 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	if req.MagnitudProblema != nil {
 		project.MagnitudProblema = *req.MagnitudProblema
 	}
-	if req.FaseMaduracion != nil {
-		project.FaseMaduracion = *req.FaseMaduracion
+	if req.Sector != nil {
+		project.Sector = *req.Sector
+	}
+	if req.SectorID != nil {
+		if sid := strings.TrimSpace(*req.SectorID); sid != "" {
+			parsed, parseErr := uuid.Parse(sid)
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid sector_id"})
+			}
+			project.SectorID = &parsed
+		}
+	}
+	if req.ProductCode != nil {
+		project.ProductCode = req.ProductCode
 	}
 	if req.MgaFormulationData != nil {
 		var existingMap map[string]interface{}

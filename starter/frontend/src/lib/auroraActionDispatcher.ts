@@ -114,7 +114,6 @@ async function dispatchMgaGenerateProject(
     localizaciones: ctx?.localizaciones?.length ? ctx.localizaciones : [{ regionId: null, departamentoId: null, municipioId: null }],
     tipo_inversion: ctx?.tipoInversion || "Territorial",
     tipologia: ctx?.tipologia || "General - Esquemas SUIFP's",
-    fase_maduracion: ctx?.faseMaduracion || 'Perfil',
   });
 
   await projectStore.updateProjectDetails(project.id, {

@@ -188,6 +188,7 @@ var Manifest = []Def{
 	{Code: CodeAdminCatalogs + ".locations", Name: "Localizaciones MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/locations", Order: 120},
 	{Code: CodeAdminCatalogs + ".measurement-units", Name: "Unidades de Medida", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/measurement-units", Order: 121},
 	{Code: CodeAdminCatalogs + ".dnp-dictionary", Name: "Diccionarios DNP", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/dnp-dictionary", Order: 122},
+	{Code: CodeAdminCatalogs + ".produced-goods", Name: "Bienes Producidos (RPC)", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminCatalogs, Route: "/admin/catalogs/produced-goods", Order: 123},
 	{Code: CodeAdminMgaCatalogs, Name: "Catálogos MGA", Description: "Actores, entidades y posiciones MGA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/mga-catalogs", Order: 125},
 	{Code: CodeAdminMgaCatalogs + ".actors", Name: "Actores MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-actors", Order: 126},
 	{Code: CodeAdminMgaCatalogs + ".entities", Name: "Entidades MGA", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminMgaCatalogs, Route: "/admin/catalogs/mga-entities", Order: 127},

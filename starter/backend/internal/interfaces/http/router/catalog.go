@@ -16,6 +16,7 @@ import (
 func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard *httpmw.AccessGuard) {
 	h := handlers.NewCatalogHandler(db)
 	muHandler := handlers.NewMeasurementUnitHandler(db)
+	pgHandler := handlers.NewProducedGoodHandler(db)
 	dnpHandler := handlers.NewDnpDictionaryHandler(db)
 
 	catalog := app.Group("/api/v1/catalog",
@@ -49,6 +50,9 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	// Unidades de medida (tenant / selects)
 	catalog.Get("/measurement-units", guard.Require(modules.CodeCatalog, modules.ActionView), muHandler.ListPublic)
 
+	// Bienes producidos / RPC (tenant / selects, solo lectura)
+	catalog.Get("/produced-goods", guard.Require(modules.CodeCatalog, modules.ActionView), pgHandler.ListPublic)
+
 	// Diccionarios DNP (verbos y unidades estándar) para formularios de tenant
 	catalog.Get("/dnp-dictionary", guard.Require(modules.CodeCatalog, modules.ActionView), dnpHandler.Dictionary)
 
@@ -61,6 +65,12 @@ func RegisterCatalogRoutes(app *fiber.App, db *gorm.DB, jwtSecret string, guard 
 	adminCatalogs.Post("/measurement-units", muHandler.Create)
 	adminCatalogs.Put("/measurement-units/:id", muHandler.Update)
 	adminCatalogs.Delete("/measurement-units/:id", muHandler.Delete)
+
+	// Bienes producidos / RPC (admin CRUD, solo SUPER_ADMIN)
+	adminCatalogs.Get("/produced-goods", pgHandler.ListAdmin)
+	adminCatalogs.Post("/produced-goods", pgHandler.Create)
+	adminCatalogs.Put("/produced-goods/:id", pgHandler.Update)
+	adminCatalogs.Delete("/produced-goods/:id", pgHandler.Delete)
 
 	// Diccionarios DNP (admin CRUD, solo SUPER_ADMIN)
 	adminCatalogs.Get("/dnp-verbs", dnpHandler.ListVerbs)

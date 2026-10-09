@@ -160,6 +160,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.MeasurementUnit{}); err != nil {
 		log.Printf("automigrate MeasurementUnit: %v", err)
 	}
+	if err := db.AutoMigrate(&models.ProducedGood{}); err != nil {
+		log.Printf("automigrate ProducedGood: %v", err)
+	}
 	if err := db.AutoMigrate(&models.DnpVerb{}, &models.DnpStandardUnit{}); err != nil {
 		log.Printf("automigrate DnpVerb/DnpStandardUnit: %v", err)
 	}
@@ -211,6 +214,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 
 	if err := EnsureMeasurementUnitsSeed(db); err != nil {
 		log.Printf("ensure measurement units seed: %v", err)
+	}
+	if err := EnsureProducedGoodsSeed(db); err != nil {
+		log.Printf("ensure produced goods seed: %v", err)
 	}
 	if err := EnsureDnpDictionarySeed(db); err != nil {
 		log.Printf("ensure dnp dictionary seed: %v", err)

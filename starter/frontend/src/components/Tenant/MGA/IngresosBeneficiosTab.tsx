@@ -10,6 +10,8 @@ import MgaAlert from './MgaAlert';
 import MgaAccordion from './MgaAccordion';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
+import { useCatalogStore, type MeasurementUnit } from '../../../store/catalogStore';
+import { fetchProducedGoods, type ProducedGood } from '../../../lib/producedGoodsApi';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -48,18 +50,25 @@ function formatCurrency(value: number): string {
 
 type IngresoBeneficioFormProps = {
   item: IngresoBeneficioJson;
-  productos: { id: string; nombre: string }[];
+  units: MeasurementUnit[];
+  producedGoods: ProducedGood[];
   onSave: (item: IngresoBeneficioJson) => void;
   onClose: () => void;
 };
 
-function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: IngresoBeneficioFormProps) {
+function IngresoBeneficioForm({ item: initial, units, producedGoods, onSave, onClose }: IngresoBeneficioFormProps) {
   const [draft, setDraft] = useState<IngresoBeneficioJson>({ ...initial });
   const [step, setStep] = useState<1 | 2>(1);
 
   const updateField = <K extends keyof IngresoBeneficioJson>(field: K, value: IngresoBeneficioJson[K]) => {
     setDraft(prev => ({ ...prev, [field]: value }));
   };
+
+  // El RPC es de solo lectura: se deriva del bien producido seleccionado en el catálogo.
+  useEffect(() => {
+    const good = producedGoods.find(g => String(g.id) === draft.bienProducidoId);
+    if (good) setDraft(prev => (prev.rpc === good.rpc ? prev : { ...prev, rpc: good.rpc }));
+  }, [draft.bienProducidoId, producedGoods]);
 
   const updateProyeccion = (periodo: number, field: 'cantidad' | 'valorUnitario', rawValue: string) => {
     const val = parseFloat(rawValue) || 0;
@@ -73,8 +82,11 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
     });
   };
 
+  const unidadLegacy = !!draft.unidadMedidaId && !units.some(u => String(u.id) === draft.unidadMedidaId);
+  const bienLegacy = !!draft.bienProducidoId && !producedGoods.some(g => String(g.id) === draft.bienProducidoId);
+
   const handleNext = () => {
-    if (!draft.descripcion.trim() || !draft.unidadMedidaId.trim() || !draft.bienProducidoId) {
+    if (!draft.descripcion.trim() || !draft.unidadMedidaId.trim() || !draft.bienProducidoId || bienLegacy) {
       alert('Por favor complete la descripción, medido a través de y el bien producido.');
       return;
     }
@@ -108,32 +120,12 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
         <div className="flex-1 overflow-y-auto p-6">
           {step === 1 ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo <span className="text-red-500">*</span></label>
-                  <select value={draft.tipo} onChange={e => updateField('tipo', e.target.value as 'Ingresos' | 'Beneficios')} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
-                    <option value="Ingresos">Ingresos</option>
-                    <option value="Beneficios">Beneficios</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Medido a través de (Unidad) <span className="text-red-500">*</span></label>
-                  <select value={draft.unidadMedidaId} onChange={e => updateField('unidadMedidaId', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
-                    <option value="">Seleccione...</option>
-                    <option value="Pesos">Pesos</option>
-                    <option value="Porcentaje">Porcentaje</option>
-                    <option value="Unidades">Unidades</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Bien producido <span className="text-red-500">*</span></label>
-                <select value={draft.bienProducidoId} onChange={e => updateField('bienProducidoId', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
-                  <option value="">Seleccione un producto de la cadena de valor...</option>
-                  {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                <label htmlFor={`ingreso-tipo-${draft.id}`} className="block text-xs font-semibold text-slate-700 mb-1">Tipo <span className="text-red-500">*</span></label>
+                <select id={`ingreso-tipo-${draft.id}`} value={draft.tipo} onChange={e => updateField('tipo', e.target.value as 'Ingresos' | 'Beneficios')} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
+                  <option value="Ingresos">Ingresos</option>
+                  <option value="Beneficios">Beneficios</option>
                 </select>
-                {productos.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay productos en la cadena de valor.</p>}
               </div>
 
               <AIAssistedField
@@ -149,34 +141,52 @@ function IngresoBeneficioForm({ item: initial, productos, onSave, onClose }: Ing
                 <CountedTextarea id={`ingreso-descripcion-${draft.id}`} value={draft.descripcion} onChange={e => updateField('descripcion', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
               </AIAssistedField>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <AIAssistedField
-                  label="Descripción de la cantidad"
-                  htmlFor={`ingreso-cantidad-${draft.id}`}
-                  fieldHelpKey="ingreso_beneficio_cantidad"
-                  reactiveContext={{ descripcion: draft.descripcion }}
-                  onAutoFill={(value) => updateField('descripcionCantidad', value)}
-                  guidance="Describa cualitativamente qué representa la cantidad, articulada con la cadena de valor (no solo un número)."
-                  askPrompt="Describe cualitativamente la cantidad de este ingreso o beneficio, articulada con la cadena de valor. No respondas con un número aislado."
-                >
-                  <CountedTextarea id={`ingreso-cantidad-${draft.id}`} value={draft.descripcionCantidad} onChange={e => updateField('descripcionCantidad', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
-                </AIAssistedField>
-                <AIAssistedField
-                  label="Descripción del valor unitario"
-                  htmlFor={`ingreso-valor-unitario-${draft.id}`}
-                  fieldHelpKey="ingreso_beneficio_valor_unitario"
-                  reactiveContext={{ descripcion: draft.descripcion }}
-                  onAutoFill={(value) => updateField('descripcionValorUnitario', value)}
-                  guidance="Explique cómo se determina el valor unitario utilizado en la proyección."
-                  askPrompt="Ayúdame a describir el valor unitario de un ingreso o beneficio MGA."
-                >
-                  <CountedTextarea id={`ingreso-valor-unitario-${draft.id}`} value={draft.descripcionValorUnitario} onChange={e => updateField('descripcionValorUnitario', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
-                </AIAssistedField>
+              <AIAssistedField
+                label="Descripción de la cantidad"
+                htmlFor={`ingreso-cantidad-${draft.id}`}
+                fieldHelpKey="ingreso_beneficio_cantidad"
+                reactiveContext={{ descripcion: draft.descripcion }}
+                onAutoFill={(value) => updateField('descripcionCantidad', value)}
+                guidance="Describa cualitativamente qué representa la cantidad, articulada con la cadena de valor (no solo un número)."
+                askPrompt="Describe cualitativamente la cantidad de este ingreso o beneficio, articulada con la cadena de valor. No respondas con un número aislado."
+              >
+                <CountedTextarea id={`ingreso-cantidad-${draft.id}`} value={draft.descripcionCantidad} onChange={e => updateField('descripcionCantidad', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
+              </AIAssistedField>
+
+              <div>
+                <label htmlFor={`ingreso-unidad-${draft.id}`} className="block text-xs font-semibold text-slate-700 mb-1">Medido a través de (Unidad) <span className="text-red-500">*</span></label>
+                <select id={`ingreso-unidad-${draft.id}`} value={draft.unidadMedidaId} onChange={e => updateField('unidadMedidaId', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
+                  <option value="">Seleccione...</option>
+                  {unidadLegacy && <option value={draft.unidadMedidaId}>{draft.unidadMedidaId}</option>}
+                  {units.map(u => <option key={u.id} value={String(u.id)}>{u.name.trim()}</option>)}
+                </select>
+              </div>
+
+              <AIAssistedField
+                label="Descripción del valor unitario"
+                htmlFor={`ingreso-valor-unitario-${draft.id}`}
+                fieldHelpKey="ingreso_beneficio_valor_unitario"
+                reactiveContext={{ descripcion: draft.descripcion }}
+                onAutoFill={(value) => updateField('descripcionValorUnitario', value)}
+                guidance="Explique cómo se determina el valor unitario utilizado en la proyección."
+                askPrompt="Ayúdame a describir el valor unitario de un ingreso o beneficio MGA."
+              >
+                <CountedTextarea id={`ingreso-valor-unitario-${draft.id}`} value={draft.descripcionValorUnitario} onChange={e => updateField('descripcionValorUnitario', e.target.value)} rows={2} maxLength={500} className="w-full resize-y rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-[#2980b9]" />
+              </AIAssistedField>
+
+              <div>
+                <label htmlFor={`ingreso-bien-${draft.id}`} className="block text-xs font-semibold text-slate-700 mb-1">Bien producido <span className="text-red-500">*</span></label>
+                <select id={`ingreso-bien-${draft.id}`} value={draft.bienProducidoId} onChange={e => updateField('bienProducidoId', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]">
+                  <option value="">Seleccione un bien producido...</option>
+                  {bienLegacy && <option value={draft.bienProducidoId} disabled>Valor anterior (reseleccione)</option>}
+                  {producedGoods.map(g => <option key={g.id} value={String(g.id)}>{g.description}</option>)}
+                </select>
+                {producedGoods.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay bienes producidos en el catálogo.</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Razón Precio Cuenta (RPC)</label>
-                <input type="number" step="0.01" min="0" value={draft.rpc} onChange={e => updateField('rpc', parseFloat(e.target.value) || 0)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9]" />
+                <label htmlFor={`ingreso-rpc-${draft.id}`} className="block text-xs font-semibold text-slate-700 mb-1">Razón Precio Cuenta (RPC)</label>
+                <input id={`ingreso-rpc-${draft.id}`} type="number" readOnly value={draft.rpc} className="w-full p-2 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-500 outline-none" />
               </div>
             </div>
           ) : (
@@ -269,21 +279,17 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
   const isFirstMount = useRef(true);
   const lastSavedRef = useRef<string>('[]');
 
-  // Get products from cadena valor for the dropdown
-  const productos = (() => {
-    if (!selectedAlternativeId) return [];
-    const cv = formulation.preparacion?.cadenaValorPrep?.[selectedAlternativeId];
-    if (!cv) return [];
-    const prods: { id: string; nombre: string }[] = [];
-    Object.values(cv.objetivos).forEach(obj => {
-      obj.productos.forEach(p => {
-        prods.push({ id: p.id, nombre: p.complemento || p.productoId || `Producto ${p.id.slice(0, 6)}` });
-      });
-    });
-    return prods;
-  })();
+  const measurementUnits = useCatalogStore((s) => s.measurementUnits);
+  const fetchAllMeasurementUnits = useCatalogStore((s) => s.fetchAllMeasurementUnits);
+  const [producedGoods, setProducedGoods] = useState<ProducedGood[]>([]);
 
-  const getProductName = (id: string) => productos.find(p => p.id === id)?.nombre || '—';
+  useEffect(() => {
+    void fetchAllMeasurementUnits();
+    fetchProducedGoods().then(setProducedGoods).catch(() => setProducedGoods([]));
+  }, [fetchAllMeasurementUnits]);
+
+  const getUnitName = (id: string) => measurementUnits.find(u => String(u.id) === id)?.name.trim() || id || '—';
+  const getProductName = (id: string) => producedGoods.find(g => String(g.id) === id)?.description || '—';
 
   const loadAlternativeData = useCallback((altId: string) => {
     const f = useProjectMgaStore.getState().getFormulation(project.id);
@@ -458,7 +464,7 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
                 <tr key={it.id} className="border-b hover:bg-slate-50 align-top">
                   <td className="p-2 border font-medium text-slate-700">{it.tipo}</td>
                   <td className="p-2 border text-slate-600 max-w-[200px] truncate" title={it.descripcion}>{it.descripcion}</td>
-                  <td className="p-2 border">{it.unidadMedidaId}</td>
+                  <td className="p-2 border">{getUnitName(it.unidadMedidaId)}</td>
                   <td className="p-2 border text-blue-700 text-[10px]">{getProductName(it.bienProducidoId)}</td>
                   <td className="p-2 border text-right">{it.rpc.toFixed(2)}</td>
                   <td className="p-2 border text-center">
@@ -520,7 +526,8 @@ export default function IngresosBeneficiosTab({ project }: IngresosBeneficiosTab
       {showForm && editingItem && (
         <IngresoBeneficioForm
           item={editingItem}
-          productos={productos}
+          units={measurementUnits}
+          producedGoods={producedGoods}
           onSave={handleSaveItem}
           onClose={() => { setShowForm(false); setEditingItem(null); }}
         />

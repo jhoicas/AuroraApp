@@ -217,6 +217,10 @@ export type CostoCvJson = {
   valor: number;
 };
 
+/** Matriz de costeo: insumo -> periodo -> valor (COP). */
+export type CostoMatrizCvJson = Record<string, Record<number, number>>;
+
+/** Actividad de un producto (Tipología A): nombre digitado manualmente; hereda la etapa del producto. */
 export type ActividadCvJson = {
   id: string;
   etapa: string;
@@ -224,10 +228,13 @@ export type ActividadCvJson = {
   costos: CostoCvJson[];
 };
 
+/** Entregable de un producto (Tipología A): nombre elegido del catálogo EDT; hereda la etapa del producto. */
 export type EntregableCvJson = {
   id: string;
   etapa: string;
   nombre: string;
+  /** Código del entregable en el catálogo EDT. */
+  codigoEdt?: string;
   costos: CostoCvJson[];
 };
 
@@ -239,12 +246,20 @@ export type ProductoCvJson = {
   codigoIndicadorProducto?: string;
   /** indicador_de_producto del catálogo DNP. */
   indicadorProducto?: string;
+  /** medido_a_traves_de del catálogo (solo lectura, autocompletado). */
+  medidoATraves?: string;
   complemento: string;
   descripcion: string;
   unidadMedidaId: string;
   cantidad: number;
   localizacion: { rural: boolean; ruralDisperso: boolean; urbano: boolean };
-  poblacion: { usarObjetivo: boolean; numero: number; tipoAcumulacion: string; descripcion: string };
+  poblacion: {
+    usarObjetivo: boolean;
+    numero: number;
+    /** 'Acumulativo' | 'No acumulativo' (valores heredados se tratan como 'Acumulativo'). */
+    tipoAcumulacion: string;
+    descripcion: string;
+  };
   actividades: ActividadCvJson[];
   entregables: EntregableCvJson[];
 };

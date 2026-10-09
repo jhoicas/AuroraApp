@@ -20,6 +20,12 @@ import {
 import type { ProjectContext } from '../../data/mgaFieldsKnowledge';
 import type { ProjectTemplate } from '../../data/mgaSeedTemplate';
 import { buildProjectFromTemplate } from '../../lib/projectTemplates';
+import {
+  extractProjectEditValues,
+  resolveOptionValue,
+  resolveProcesoId,
+  resolveSectorId,
+} from '../../lib/projectEditHydration';
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -105,68 +111,67 @@ export default function CreateProjectModal({
   const fetchSectors = useCatalogStore((s) => s.fetchSectors);
   const catalogProducts = useCatalogStore((s) => s.catalogProducts);
   const isLoadingProducts = useCatalogStore((s) => s.isLoadingProducts);
+  const catalogProductsProgramCode = useCatalogStore((s) => s.catalogProductsProgramCode);
   const fetchCatalogProducts = useCatalogStore((s) => s.fetchCatalogProducts);
 
+  const isEdit = Boolean(editProject);
+  const editValues = useMemo(() => extractProjectEditValues(editProject), [editProject]);
+  // Producto y sector hidratados en edición: no se descartan mientras el usuario no cambie de sector,
+  // aunque el catálogo del sector aún no haya cargado.
+  const hydratedProductRef = useRef<{ sectorId: string; productCode: string } | null>(null);
+  const hydratedKeyRef = useRef<string | null>(null);
+
   // ─── Estado del formulario ──────────────────
-  const [proceso, setProceso] = useState(editProject?.mga_formulation_data?.proceso_id ? String(editProject.mga_formulation_data.proceso_id) : '');
+  const [proceso, setProceso] = useState(editValues.proceso);
   const [objeto, setObjeto] = useState(editProject?.mga_formulation_data?.objeto ?? '');
   const [localizaciones, setLocalizaciones] = useState<LocationSelection[]>(
     editProject?.mga_formulation_data?.localizaciones?.length 
       ? editProject.mga_formulation_data.localizaciones 
       : [{ ...EMPTY_LOCATION }]
   );
-  const [tipoInversion, setTipoInversion] = useState(editProject?.mga_formulation_data?.tipo_inversion ?? 'Territorial');
-  const [tipologiaProyecto, setTipologiaProyecto] = useState(editProject?.mga_formulation_data?.tipologia ?? '');
-  const [sectorId, setSectorId] = useState(editProject?.sector_id ?? '');
-  const [productoPrincipal, setProductoPrincipal] = useState(editProject?.product_code ?? '');
+  const [tipoInversion, setTipoInversion] = useState(editValues.tipoInversion);
+  const [tipologiaProyecto, setTipologiaProyecto] = useState(
+    resolveOptionValue(editValues.tipologia, TIPOLOGIAS_PROYECTO),
+  );
+  const [sectorId, setSectorId] = useState(editValues.sectorId);
+  const [productoPrincipal, setProductoPrincipal] = useState(editValues.productCode);
   const [formError, setFormError] = useState<string | null>(null);
   
   useEffect(() => {
+    if (!open) {
+      hydratedKeyRef.current = null;
+      hydratedProductRef.current = null;
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (open) {
       if (editProject) {
-        console.log("[CreateProjectModal] open:", open, "editProject:", editProject);
+        // Hidratación completa solo al abrir (o al cambiar de proyecto): las recargas de catálogos
+        // no deben pisar lo que el usuario ya editó. La resolución contra catálogos va en efectos aparte.
+        const key = editProject.id;
+        if (hydratedKeyRef.current !== key) {
+          hydratedKeyRef.current = key;
+          const rawMga = (editProject.mga_formulation_data || (editProject as any).mgaFormulationData || {}) as any;
+          const mga = typeof rawMga === 'string' ? (() => { try { return JSON.parse(rawMga); } catch { return {}; } })() : rawMga;
+          const identificacion = mga?.identificacion || mga?.PlanDesarrollo || {};
 
-        // Soporte dual para snake_case y camelCase
-        let rawMga: any = editProject.mga_formulation_data || (editProject as any).mgaFormulationData || {};
-        if (typeof rawMga === 'string') {
-          try {
-            rawMga = JSON.parse(rawMga);
-          } catch (e) {
-            rawMga = {};
-          }
+          setProceso(resolveProcesoId(editValues.proceso, procesos));
+          setObjeto(editProject.description || identificacion.objeto || mga?.objeto || '');
+
+          const rawLocations = mga?.localizaciones || identificacion.localizaciones || (editProject as any).locations || (editProject as any).localizaciones || [];
+          setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
+
+          setTipoInversion(resolveOptionValue(editValues.tipoInversion, TIPOS_INVERSION.map((t) => t.value)));
+          setTipologiaProyecto(resolveOptionValue(editValues.tipologia, TIPOLOGIAS_PROYECTO));
+
+          const foundSector = resolveSectorId(editValues.sectorId, editValues.sectorName, sectors);
+          setSectorId(foundSector);
+          prevSectorIdRef.current = foundSector;
+
+          setProductoPrincipal(editValues.productCode);
+          hydratedProductRef.current = { sectorId: foundSector, productCode: editValues.productCode };
         }
-
-        const identificacion = rawMga?.identificacion || rawMga?.PlanDesarrollo || {};
-
-        const foundProceso =
-          identificacion.proceso_id ?? identificacion.proceso ?? rawMga?.proceso_id ?? rawMga?.proceso ??
-          (editProject as any).proceso_id ?? (editProject as any).proceso ?? '';
-        // El valor puede venir como id numérico o como nombre del proceso: se normaliza al id del select.
-        const procesoStr = String(foundProceso ?? '').trim();
-        const procesoMatch =
-          procesos.find((p) => String(p.id) === procesoStr) ||
-          procesos.find((p) => p.name.trim().toLowerCase() === procesoStr.toLowerCase());
-        setProceso(procesoMatch ? String(procesoMatch.id) : procesoStr);
-        
-        setObjeto(editProject.description || '');
-        
-        const rawLocations = rawMga?.localizaciones || identificacion.localizaciones || (editProject as any).locations || (editProject as any).localizaciones || [];
-        setLocalizaciones(Array.isArray(rawLocations) && rawLocations.length > 0 ? rawLocations : [{ ...EMPTY_LOCATION }]);
-        
-        setTipoInversion(rawMga?.tipo_inversion ?? 'Territorial');
-        setTipologiaProyecto(identificacion.tipologia || rawMga?.tipologia || '');
-        
-        let foundSector = String(editProject.sector_id || (editProject as any).sectorId || identificacion.sector_id || '');
-        if (!foundSector && editProject.sector) {
-          // Respaldo: proyectos guardados solo con el nombre del sector.
-          const bySector = editProject.sector.trim().toLowerCase();
-          foundSector = sectors.find((s) => s.name?.trim().toLowerCase() === bySector || s.code?.trim().toLowerCase() === bySector)?.id ?? '';
-        }
-        setSectorId(foundSector);
-        prevSectorIdRef.current = foundSector;
-
-        const foundProduct = editProject.product_code || (editProject as any).productCode || identificacion.product_code || '';
-        setProductoPrincipal(foundProduct ? String(foundProduct) : '');
       } else {
         setProceso('');
         setObjeto('');
@@ -205,6 +210,28 @@ export default function CreateProjectModal({
       }
     }
   }, [editProject, open, preselectedSectorCode, preselectedProductCode, sectors, procesos]);
+
+  // Edición: si el catálogo de procesos carga después de abrir, el proceso guardado por nombre se traduce a su id.
+  useEffect(() => {
+    if (!open || !editProject || procesos.length === 0) return;
+    setProceso((curr) =>
+      curr && !procesos.some((p) => String(p.id) === curr) ? resolveProcesoId(curr, procesos) : curr,
+    );
+  }, [open, editProject, procesos]);
+
+  // Edición: si los sectores cargan después de abrir, se resuelve el sector guardado (id, código o nombre)
+  // mientras el usuario no lo haya cambiado.
+  useEffect(() => {
+    if (!open || !editProject || sectors.length === 0) return;
+    const hydrated = hydratedProductRef.current;
+    if (!hydrated || hydrated.sectorId !== sectorId) return;
+    if (sectorId && sectors.some((s) => s.id === sectorId)) return;
+    const resolved = resolveSectorId(sectorId || editValues.sectorId, editValues.sectorName, sectors);
+    if (!resolved || resolved === sectorId) return;
+    hydrated.sectorId = resolved;
+    prevSectorIdRef.current = resolved;
+    setSectorId(resolved);
+  }, [open, editProject, sectors, sectorId, editValues]);
 
   // Si los sectores terminan de cargar después de abrir el modal con un sector preseleccionado
   useEffect(() => {
@@ -325,10 +352,14 @@ export default function CreateProjectModal({
     [procesos]
   );
 
-  const sectorOptions: ComboboxOption[] = useMemo(
-    () => filteredSectors.map((s) => ({ value: s.id, label: s.name, code: s.code })),
-    [filteredSectors]
-  );
+  const sectorOptions: ComboboxOption[] = useMemo(() => {
+    const opts = filteredSectors.map((s) => ({ value: s.id, label: s.name, code: s.code }));
+    // En edición el sector guardado se muestra aunque el filtro por tipología lo excluya.
+    if (selectedSector && !opts.some((o) => o.value === selectedSector.id)) {
+      opts.unshift({ value: selectedSector.id, label: selectedSector.name, code: selectedSector.code });
+    }
+    return opts;
+  }, [filteredSectors, selectedSector]);
 
   // ─── Cargar datos al abrir ──────────────────
   useEffect(() => {
@@ -392,6 +423,11 @@ export default function CreateProjectModal({
       if (productoPrincipal && !preselectedProductCode) setProductoPrincipal('');
       return;
     }
+    // El producto hidratado en edición se conserva mientras el sector siga siendo el original.
+    const hydrated = hydratedProductRef.current;
+    if (hydrated && hydrated.sectorId === sectorId && hydrated.productCode === productoPrincipal) return;
+    // Solo se valida contra el catálogo ya cargado para el sector actual (evita listas de otro sector).
+    if (catalogProductsProgramCode !== (selectedSectorCode || null)) return;
     if (productoPrincipal && !isLoadingProducts && filteredProducts.length > 0) {
       const exists = filteredProducts.some(
         (p) => p.codigo_del_producto?.trim() === productoPrincipal.trim()
@@ -400,7 +436,7 @@ export default function CreateProjectModal({
         setProductoPrincipal('');
       }
     }
-  }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts, preselectedProductCode]);
+  }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts, preselectedProductCode, catalogProductsProgramCode, selectedSectorCode]);
 
   // ─── Paso C: Opciones para SearchableCombobox de Producto (Exclusivamente filteredProducts) ───
   const productOptions: ComboboxOption[] = useMemo(
@@ -418,6 +454,22 @@ export default function CreateProjectModal({
       })),
     [filteredProducts],
   );
+
+  // Si el producto guardado no aparece en el catálogo del sector, se muestra igualmente su código.
+  const productComboboxOptions: ComboboxOption[] = useMemo(() => {
+    const hydrated = hydratedProductRef.current;
+    if (
+      !productoPrincipal ||
+      isLoadingProducts ||
+      productOptions.some((o) => o.value === productoPrincipal) ||
+      !hydrated ||
+      hydrated.sectorId !== sectorId ||
+      hydrated.productCode !== productoPrincipal
+    ) {
+      return productOptions;
+    }
+    return [{ value: productoPrincipal, label: productoPrincipal, code: productoPrincipal }, ...productOptions];
+  }, [productOptions, productoPrincipal, isLoadingProducts, sectorId]);
 
   // Sincronizar selectedProductData con el producto principal seleccionado (exclusivo de filteredProducts)
   useEffect(() => {
@@ -1030,7 +1082,8 @@ export default function CreateProjectModal({
               id="project-tipo-inversion"
               value={tipoInversion}
               onChange={(e) => setTipoInversion(e.target.value)}
-              disabled={!!projectSuggestions && !editProject}
+              // En edición no se modifica: el valor original se conserva y se reenvía en el PATCH.
+              disabled={isEdit || !!projectSuggestions}
               className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-60"
             >
               {TIPOS_INVERSION.map((t) => (
@@ -1055,10 +1108,15 @@ export default function CreateProjectModal({
               required
               value={tipologiaProyecto}
               onChange={(e) => handleTipologiaChange(e.target.value)}
-              disabled={!!projectSuggestions && !editProject}
+              // En edición no se modifica; solo se habilita si el proyecto no tiene tipología guardada,
+              // porque es obligatoria y de otro modo no se podría guardar.
+              disabled={(isEdit && !!editValues.tipologia) || (!isEdit && !!projectSuggestions)}
               className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-60"
             >
               <option value="">Selecciona una tipología</option>
+              {tipologiaProyecto && !(TIPOLOGIAS_PROYECTO as readonly string[]).includes(tipologiaProyecto) && (
+                <option value={tipologiaProyecto}>{tipologiaProyecto}</option>
+              )}
               {TIPOLOGIAS_PROYECTO.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -1127,7 +1185,7 @@ export default function CreateProjectModal({
                   }
                   disabled={!sectorId || isLoadingProducts}
                   loading={isLoadingProducts}
-                  options={productOptions}
+                  options={productComboboxOptions}
                   value={productoPrincipal}
                   onChange={setProductoPrincipal}
                 />

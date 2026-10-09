@@ -29,7 +29,7 @@ export type MgaAuditTabId =
   | 'ingresos-beneficios'
   | 'prestamos'
   | 'depreciacion'
-  | 'evaluacion'
+  | 'indicadores-decision'
   | 'programacion';
 
 const TAB_LABELS: Record<MgaAuditTabId, string> = {
@@ -47,7 +47,7 @@ const TAB_LABELS: Record<MgaAuditTabId, string> = {
   'ingresos-beneficios': 'Ingresos y Beneficios',
   prestamos: 'Préstamos',
   depreciacion: 'Depreciación',
-  evaluacion: 'Evaluación Económica',
+  'indicadores-decision': 'Indicadores y Decisión',
   programacion: 'Programación',
 };
 
@@ -124,7 +124,7 @@ export function getTabForAuditFinding(finding: {
     return { tabId: 'depreciacion', label: TAB_LABELS.depreciacion };
   }
   if (sk.includes('evaluacion')) {
-    return { tabId: 'evaluacion', label: TAB_LABELS.evaluacion };
+    return { tabId: 'indicadores-decision', label: TAB_LABELS['indicadores-decision'] };
   }
   if (sk.includes('programacion')) {
     return { tabId: 'programacion', label: TAB_LABELS.programacion };

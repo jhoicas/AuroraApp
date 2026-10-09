@@ -23,7 +23,7 @@ import PrestamosTab from './PrestamosTab';
 import DepreciacionTab from './DepreciacionTab';
 import FlujoEvaluacionTab from './FlujoEvaluacionTab';
 import IndicadoresDecisionTab from './IndicadoresDecisionTab';
-import EvaluacionTab from './EvaluacionTab';
+import VerPresupuestoTab from './VerPresupuestoTab';
 import IndicadoresProductoTab from './IndicadoresProductoTab';
 import RegionalizacionTab from './RegionalizacionTab';
 import FocalizacionTab from './FocalizacionTab';
@@ -53,7 +53,7 @@ export type MgaLayoutTabId =
   | 'depreciacion'
   | 'flujo-evaluacion'
   | 'indicadores-decision'
-  | 'evaluacion'
+  | 'ver-presupuesto'
   | 'indicadores-producto'
   | 'regionalizacion'
   | 'focalizacion'
@@ -101,7 +101,7 @@ const SUB_SECTIONS_PREPARACION: MgaSubSection[] = [
 const SUB_SECTIONS_EVALUACION: MgaSubSection[] = [
   { id: 'flujo-evaluacion', label: 'Ver Flujo' },
   { id: 'indicadores-decision', label: 'Indicadores y Decisión' },
-  { id: 'evaluacion', label: 'Evaluación Económica' },
+  { id: 'ver-presupuesto', label: 'Ver presupuesto' },
 ];
 
 const SUB_SECTIONS_PROGRAMACION: MgaSubSection[] = [
@@ -180,7 +180,7 @@ export const ALL_MGA_SECTIONS: MgaLayoutTabId[] = [
   'depreciacion',
   'flujo-evaluacion',
   'indicadores-decision',
-  'evaluacion',
+  'ver-presupuesto',
   'indicadores-producto',
   'regionalizacion',
   'focalizacion',
@@ -318,8 +318,8 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
       return <FlujoEvaluacionTab project={project} />;
     case 'indicadores-decision':
       return <IndicadoresDecisionTab project={project} />;
-    case 'evaluacion':
-      return <EvaluacionTab project={project} />;
+    case 'ver-presupuesto':
+      return <VerPresupuestoTab project={project} />;
     case 'indicadores-producto':
       return <IndicadoresProductoTab project={project} />;
     case 'regionalizacion':

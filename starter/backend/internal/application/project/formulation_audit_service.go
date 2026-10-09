@@ -377,10 +377,10 @@ func (s *FormulationAuditService) AuditProject(
 		if err != nil {
 			return AuditResult{}, err
 		}
-		if len(activities) == 0 {
+		if len(activities) < 2 {
 			addFinding(
 				"crit-edt-activities-empty",
-				"La cadena de valor (EDT) debe contener al menos una actividad presupuestada (pestaña Cadena de Valor).",
+				"La cadena de valor (EDT) debe contener al menos dos actividades presupuestadas (pestaña Cadena de Valor).",
 				"CRITICAL",
 				"cadena-valor",
 				false,

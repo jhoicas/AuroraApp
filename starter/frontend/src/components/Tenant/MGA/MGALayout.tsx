@@ -29,6 +29,7 @@ import RegionalizacionTab from './RegionalizacionTab';
 import FocalizacionTab from './FocalizacionTab';
 import ProgramacionTab from './ProgramacionTab';
 import { useProjectMgaStore, hasMgaSectionData, type ProjectMgaFormulation } from '../../../store/projectMgaStore';
+import { useOptionalToast } from '../../ui/Toast';
 import { useProjectEdtStore, type ProjectEdtChainState } from '../../../store/projectEdtStore';
 
 export type MgaMainStageId =
@@ -333,6 +334,38 @@ function renderWorkArea(project: Project, activeTab: MgaLayoutTabId) {
 }
 
 /** Barra de guardado por tab: persiste, marca completitud y avanza a la siguiente sección. */
+/** Pendientes de la Cadena de Valor (producto principal, 2+ actividades, todas con costo > 0). */
+export function getCadenaValorIssues(formulation: ProjectMgaFormulation): string[] {
+  const alts = (formulation.identificacion?.alternativas || []).filter(
+    (a: { pasaPreparacion?: boolean }) => a.pasaPreparacion === true,
+  );
+  if (alts.length === 0) return [];
+  const prep = formulation.preparacion?.cadenaValorPrep || {};
+  const issues: string[] = [];
+  for (const alt of alts as { id: string; nombre?: string }[]) {
+    const productos = Object.values(prep[alt.id]?.objetivos || {}).flatMap((o) => o.productos || []);
+    const actividades = productos.flatMap((p) => p.actividades || []);
+    const prefix = alts.length > 1 ? `[${alt.nombre || alt.id}] ` : '';
+    if (!productos.some((p) => p.productoId?.trim())) {
+      issues.push(`${prefix}Seleccione un Producto Principal.`);
+    }
+    if (actividades.length < 2) {
+      issues.push(`${prefix}Registre al menos 2 actividades (actualmente ${actividades.length}).`);
+    }
+    const noCost = actividades.filter(
+      (a) => (a.costos || []).reduce((acc, c) => acc + (c.valor || 0), 0) <= 0,
+    );
+    if (noCost.length > 0) {
+      issues.push(
+        `${prefix}Todas las actividades deben tener costo programado mayor a 0 (sin costo: ${noCost
+          .map((a) => a.nombre?.trim() || 'Sin nombre')
+          .join(', ')}).`,
+      );
+    }
+  }
+  return issues;
+}
+
 function MgaTabSaveBar({
   projectId,
   activeTab,
@@ -343,6 +376,7 @@ function MgaTabSaveBar({
   onChangeSubTab: (tab: MgaLayoutTabId) => void;
 }) {
   const saveAndCompleteSection = useProjectMgaStore((s) => s.saveAndCompleteSection);
+  const toast = useOptionalToast();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idx = ALL_MGA_SECTIONS.indexOf(activeTab);
@@ -351,6 +385,15 @@ function MgaTabSaveBar({
   useEffect(() => setError(null), [activeTab]);
 
   const handleSave = async () => {
+    if (activeTab === 'cadena-valor') {
+      const issues = getCadenaValorIssues(useProjectMgaStore.getState().getFormulation(projectId));
+      if (issues.length > 0) {
+        const msg = `No se puede guardar la Cadena de Valor: ${issues.join(' ')}`;
+        setError(msg);
+        toast?.error(msg);
+        return;
+      }
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -385,7 +428,7 @@ function MgaTabSaveBar({
 export default function MGALayout({
   project,
   activeTab,
-  onChangeSubTab,
+  onChangeSubTab: onChangeSubTabProp,
   projectTitle,
   userName = 'Usuario',
   userRole = 'Formulador',
@@ -395,6 +438,17 @@ export default function MGALayout({
   bannerActions,
 }: MGALayoutProps) {
   const formulation = useProjectMgaStore((s) => s.getFormulation(project.id));
+  const [navBlockIssues, setNavBlockIssues] = useState<string[] | null>(null);
+  const onChangeSubTab = (tab: MgaLayoutTabId) => {
+    if (activeTab === 'cadena-valor' && tab !== 'cadena-valor') {
+      const issues = getCadenaValorIssues(formulation);
+      if (issues.length > 0) {
+        setNavBlockIssues(issues);
+        return;
+      }
+    }
+    onChangeSubTabProp(tab);
+  };
   const edtChain = useProjectEdtStore((s) => s.getChain(project.id));
   const sectionStatuses = useMgaSectionStatuses(project, edtChain);
   const mainStageStatuses = useMgaMainStageStatuses(sectionStatuses, project, formulation, edtChain);
@@ -667,6 +721,28 @@ export default function MGALayout({
               activeTab={activeTab}
               onChangeSubTab={onChangeSubTab}
             />
+          )}
+          {navBlockIssues && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNavBlockIssues(null)}>
+              <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-label="Cadena de Valor incompleta"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+              >
+                <h3 className="mb-2 text-base font-semibold text-amber-700">Cadena de Valor incompleta</h3>
+                <p className="mb-2 text-sm text-gray-700">Complete lo siguiente antes de abandonar esta pestaña:</p>
+                <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-gray-700 break-words">
+                  {navBlockIssues.map((i) => <li key={i}>{i}</li>)}
+                </ul>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setNavBlockIssues(null)} className="h-9 rounded-lg bg-[#006162] px-4 text-sm font-semibold text-white hover:bg-[#004f50]">
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
           {footerSlot && (
             <div className="shrink-0 border-t border-outline-variant/40 bg-white px-4 py-4 sm:px-6">

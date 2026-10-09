@@ -177,7 +177,7 @@ export default function AIAssistedField({
 
   return (
     <div className={`relative w-full max-w-full min-w-0 ${className}`}>
-      <div className={`flex flex-wrap items-center gap-1.5 ${compact ? 'mb-0.5' : 'mb-1'}`}>
+      <div className={`relative flex flex-wrap items-center gap-1.5 w-full max-w-full min-w-0 ${compact ? 'mb-0.5' : 'mb-1'}`}>
         <label
           htmlFor={htmlFor}
           className={`block font-medium text-gray-700 ${compact ? 'text-xs' : 'text-sm'}`}
@@ -272,7 +272,7 @@ export default function AIAssistedField({
             {activeSuggestions.map((sug, i) => {
               if (sug === "CARGANDO") {
                 return (
-                  <span key={i} className="w-full max-w-full overflow-hidden flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded p-2 text-xs text-emerald-800 font-medium italic animate-pulse">
+                  <span key={i} className="w-full max-w-full overflow-hidden whitespace-normal break-words flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded p-2 text-xs text-emerald-800 font-medium italic animate-pulse">
                     <span className="material-symbols-outlined text-[14px] mr-1 animate-spin">sync</span>
                     Generando sugerencia...
                   </span>
@@ -304,8 +304,8 @@ export default function AIAssistedField({
               }
 
               return (
-                <div key={i} className="w-full max-w-full overflow-hidden flex items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded p-2">
-                  <span className="flex-1 min-w-0 truncate text-xs text-emerald-800" title={displayValue}>✨ {displayValue}</span>
+                <div key={i} className="w-full max-w-full overflow-hidden flex items-start justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded p-2 whitespace-normal break-words">
+                  <span className="flex-1 min-w-0 max-w-full whitespace-normal break-words text-xs text-emerald-800" title={displayValue}>✨ {displayValue}</span>
                   <div className="flex-shrink-0 flex items-center gap-1">
                   <button
                     type="button"

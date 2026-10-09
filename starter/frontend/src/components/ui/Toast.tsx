@@ -75,3 +75,9 @@ export function useToast(): ToastApi {
   if (!ctx) throw new Error('useToast debe usarse dentro de ToastProvider');
   return ctx;
 }
+
+/** Variante que no lanza fuera de ToastProvider (devuelve null). */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useOptionalToast(): ToastApi | null {
+  return useContext(ToastContext);
+}

@@ -119,6 +119,13 @@ func defaultMockEdt() *mockEdtActivityReader {
 				UnitCost:  50000000,
 				TotalCost: 50000000,
 			},
+			{
+				Code:      "ACT-02",
+				Name:      "Interventoría de obra",
+				Quantity:  1,
+				UnitCost:  10000000,
+				TotalCost: 10000000,
+			},
 		},
 	}
 }
@@ -280,6 +287,7 @@ func TestFormulationAuditService_Blockers(t *testing.T) {
 			edt: &mockEdtActivityReader{
 				activities: []models.ProjectActivity{
 					{Code: "ACT-01", Name: "Estudio", Quantity: 1, UnitCost: 0, TotalCost: 0},
+					{Code: "ACT-02", Name: "Obra", Quantity: 1, UnitCost: 10, TotalCost: 10},
 				},
 			},
 			sectionKey: "cadena-valor",

@@ -217,29 +217,60 @@ type ProductFormProps = {
 
 function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProductCode, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
   const { strong_verbs: strongVerbs, weak_verbs: weakVerbs } = useDnpDictionary();
+
+  // Resolve the unique row.id for the currently stored product (handles homonyms).
+  const selectedRowId = useMemo(() => {
+    if (!product.productoId) return '';
+    if (product.codigoIndicadorProducto !== undefined) {
+      const exact = catalogProducts.find(
+        (r) =>
+          r.codigo_del_producto === product.productoId &&
+          r.codigo_del_indicador_de_producto === product.codigoIndicadorProducto,
+      );
+      if (exact) return exact.id;
+    }
+    return catalogProducts.find((r) => r.codigo_del_producto === product.productoId)?.id ?? '';
+  }, [catalogProducts, product.productoId, product.codigoIndicadorProducto]);
+
   const productOptions = useMemo<ComboboxOption[]>(() => {
-    const opts = catalogProducts.map((row) => ({
-      value: row.codigo_del_producto,
-      // El producto principal del proyecto se distingue entre paréntesis.
-      label: mainProductCode && row.codigo_del_producto === mainProductCode ? `(${row.producto})` : row.producto,
-      code: row.codigo_del_producto,
-      hint: row.nombre_del_programa,
-    }));
-    // Conserva valores heredados (texto libre) que no existen en el catálogo.
-    if (product.productoId && !opts.some((o) => o.value === product.productoId)) {
-      opts.unshift({ value: product.productoId, label: product.productoId, code: product.productoId, hint: '' });
+    const opts = catalogProducts.map((row) => {
+      const baseLabel = `${row.producto} - [Cód. Ind: ${row.codigo_del_indicador_de_producto}]`;
+      const label =
+        mainProductCode && row.codigo_del_producto === mainProductCode
+          ? `(${baseLabel})`
+          : baseLabel;
+      return {
+        value: row.id,
+        label,
+        code: row.codigo_del_producto,
+        hint: row.indicador_de_producto,
+        indicatorCode: row.codigo_del_indicador_de_producto,
+        indicatorLabel: row.indicador_de_producto,
+      };
+    });
+    // Conserva valores heredados que no existen en el catálogo.
+    if (product.productoId && !selectedRowId) {
+      opts.unshift({ value: product.productoId, label: product.productoId, code: product.productoId, hint: '', indicatorCode: '', indicatorLabel: '' });
     }
     return opts;
-  }, [catalogProducts, mainProductCode, product.productoId]);
+  }, [catalogProducts, mainProductCode, product.productoId, selectedRowId]);
 
   const selectedProductLabel =
-    catalogProducts.find((r) => r.codigo_del_producto === product.productoId)?.producto || product.productoId;
+    catalogProducts.find(
+      (r) =>
+        r.codigo_del_producto === product.productoId &&
+        (!product.codigoIndicadorProducto ||
+          r.codigo_del_indicador_de_producto === product.codigoIndicadorProducto),
+    )?.producto || product.productoId;
 
-  const handleSelectProduct = (code: string) => {
-    const row = catalogProducts.find((r) => r.codigo_del_producto === code);
+  const handleSelectProduct = (rowId: string) => {
+    const row = catalogProducts.find((r) => r.id === rowId);
     onChange({
       ...product,
-      productoId: code,
+      productoId: row?.codigo_del_producto ?? rowId,
+      codigoIndicadorProducto: row?.codigo_del_indicador_de_producto ?? '',
+      indicadorProducto: row?.indicador_de_producto ?? '',
+      unidadMedidaId: row?.unidad_de_medida || product.unidadMedidaId,
       ...(row ? { descripcion: (row.descripcion || row.producto || '').slice(0, 500) } : {}),
     });
   };
@@ -340,7 +371,7 @@ function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProdu
                 emptyMessage="No hay productos en el catálogo para el sector/programa del proyecto."
                 noResultsMessage="Sin resultados"
                 options={productOptions}
-                value={product.productoId}
+                value={selectedRowId || product.productoId}
                 onChange={handleSelectProduct}
               />
             </div>

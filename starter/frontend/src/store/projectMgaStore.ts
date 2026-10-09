@@ -235,6 +235,10 @@ export type ProductoCvJson = {
   id: string;
   etapa: string;
   productoId: string;
+  /** codigo_del_indicador_de_producto del catálogo DNP — distingue homónimos. */
+  codigoIndicadorProducto?: string;
+  /** indicador_de_producto del catálogo DNP. */
+  indicadorProducto?: string;
   complemento: string;
   descripcion: string;
   unidadMedidaId: string;

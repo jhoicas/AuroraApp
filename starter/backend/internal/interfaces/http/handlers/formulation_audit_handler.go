@@ -19,7 +19,8 @@ func NewFormulationAuditHandler(db *gorm.DB) *FormulationAuditHandler {
 	mgaRepo := postgres.NewMgaRepository(db)
 	edtRepo := postgres.NewProjectEdtRepository(db)
 	return NewFormulationAuditHandlerWithDeps(
-		appproject.NewFormulationAuditService(postgres.NewProjectRepository(db), mgaRepo, edtRepo),
+		appproject.NewFormulationAuditService(postgres.NewProjectRepository(db), mgaRepo, edtRepo).
+			WithDnpVerbs(postgres.NewDnpDictionaryRepository(db)),
 	)
 }
 

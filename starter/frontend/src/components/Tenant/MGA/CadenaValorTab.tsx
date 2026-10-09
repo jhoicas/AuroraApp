@@ -14,7 +14,7 @@ import MgaAccordion from './MgaAccordion';
 import MgaAlert from './MgaAlert';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
-import { WEAK_VERBS } from '../../../constants/mgaVerbs';
+import { useDnpDictionary } from '../../../lib/useDnpDictionary';
 import SearchableCombobox, { type ComboboxOption } from '../../Catalog/SearchableCombobox';
 import { useCatalogStore, type Product as CatalogProductRow } from '../../../store/catalogStore';
 
@@ -215,6 +215,7 @@ type ProductFormProps = {
 };
 
 function ProductForm({ product, poblacionObjetivoNum, catalogProducts, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
+  const { strong_verbs: strongVerbs, weak_verbs: weakVerbs } = useDnpDictionary();
   const productOptions = useMemo<ComboboxOption[]>(() => {
     const opts = catalogProducts.map((row) => ({
       value: row.codigo_del_producto,
@@ -439,7 +440,7 @@ function ProductForm({ product, poblacionObjetivoNum, catalogProducts, isLoading
                       reactiveContext={{ producto: product.productoId, etapa: act.etapa }}
                       onAutoFill={(value) => updateActividad(ai, { nombre: value })}
                       guidance="Las actividades describen acciones operativas concretas para producir los entregables del proyecto."
-                      aiContext={`Actúa como experto en MGA. Redacta la descripción de esta actividad. REGLA ESTRICTA e INQUEBRANTABLE: La primera frase DEBE iniciar con uno de estos verbos débiles: ${WEAK_VERBS.join(', ')}. Genera solo el texto de la actividad, sin introducciones.`}
+                      aiContext={`Actúa como experto en MGA y en la guía DNP de definición de actividades. Redacta el nombre de esta actividad con la fórmula obligatoria: Verbo rector fuerte en infinitivo + Sustantivo directo + Complemento del sustantivo (ej.: "Realizar diagnóstico de condiciones de infraestructura educativa en zonas rurales"). REGLA ESTRICTA e INQUEBRANTABLE: la primera palabra DEBE ser uno de estos verbos fuertes: ${strongVerbs.join(', ')}. PROHIBIDO usar los verbos débiles: ${weakVerbs.join(', ')}. No redactes actividades de adquisición de insumos. Genera solo el texto de la actividad, sin introducciones.`}
                     >
                       <CountedTextarea
                         id={`actividad-${act.id}`}

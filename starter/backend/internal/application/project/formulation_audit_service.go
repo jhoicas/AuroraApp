@@ -60,11 +60,24 @@ type EdtActivityReader interface {
 	ListActivities(ctx context.Context, projectID, tenantID uuid.UUID) ([]models.ProjectActivity, error)
 }
 
+// DnpVerbReader consulta el diccionario dinámico de verbos DNP (fuertes/débiles).
+type DnpVerbReader interface {
+	ListDnpVerbs(ctx context.Context) ([]models.DnpVerb, error)
+}
+
 // FormulationAuditService evalúa requisitos mínimos de formulación antes de viabilidad.
 type FormulationAuditService struct {
 	projects ProjectReader
 	mga      MgaFormulationCounter
 	edt      EdtActivityReader
+	verbs    DnpVerbReader
+}
+
+// WithDnpVerbs habilita la validación de verbos rectores de las actividades
+// contra el diccionario DNP administrado en base de datos.
+func (s *FormulationAuditService) WithDnpVerbs(verbs DnpVerbReader) *FormulationAuditService {
+	s.verbs = verbs
+	return s
 }
 
 func NewFormulationAuditService(
@@ -655,6 +668,19 @@ func (s *FormulationAuditService) AuditProject(
 		}
 		if mismatch {
 			addFinding("warn-activity-total-mismatch", "El costo total de algunas actividades no coincide con cantidad × costo unitario.", "WARNING", "cadena-valor", false)
+		}
+		if s.verbs != nil {
+			if dict, err := s.verbs.ListDnpVerbs(ctx); err == nil && len(dict) > 0 {
+				weak, nonInfinitive := activityVerbIssues(activities, dict)
+				if len(weak) > 0 {
+					addFinding("warn-activity-weak-verb", weakVerbFindingMessage(weak), "WARNING", "cadena-valor", false)
+				}
+				if len(nonInfinitive) > 0 {
+					addFinding("warn-activity-infinitive", fmt.Sprintf(
+						"Las siguientes actividades no inician con un verbo rector en infinitivo: %s. Estructura DNP: Verbo fuerte + Sustantivo + Complemento.",
+						quoteList(nonInfinitive)), "WARNING", "cadena-valor", false)
+				}
+			}
 		}
 	}
 

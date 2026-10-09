@@ -7,7 +7,7 @@ import MgaAlert from './MgaAlert';
 import MgaActionButtons from './MgaActionButtons';
 import { CountedTextarea } from '../../ui/CountedTextarea';
 import AIAssistedField from '../../AuroraAsistente/AIAssistedField';
-import { STRONG_VERBS } from '../../../constants/mgaVerbs';
+import { useDnpDictionary } from '../../../lib/useDnpDictionary';
 
 const MEASUREMENT_UNITS = [
   'Área',
@@ -58,6 +58,7 @@ type ObjetivosTabProps = {
 };
 
 export default function ObjetivosTab({ project }: ObjetivosTabProps) {
+  const { strong_verbs: strongVerbs } = useDnpDictionary();
   const [error, setError] = useState<string | null>(null);
 
   const [openSections, setOpenSections] = useState({
@@ -262,7 +263,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 reactiveContext={{ causa: causa.descripcion }}
                 onAutoFill={setEditingObjValue}
                 askPrompt={`Ayúdame a redactar un objetivo específico para la causa: ${causa.descripcion}`}
-                aiContext={`Actúa como experto en MGA. Redacta un Objetivo Específico para solucionar esta causa directa: '${causa.descripcion}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo.`}
+                aiContext={`Actúa como experto en MGA. Redacta un Objetivo Específico para solucionar esta causa directa: '${causa.descripcion}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${strongVerbs.join(', ')}. Genera solo el texto del objetivo.`}
               >
                 <CountedTextarea
                   id={`objetivo-especifico-${causa.id}`}
@@ -343,7 +344,7 @@ export default function ObjetivosTab({ project }: ObjetivosTabProps) {
                 reactiveContext={{ problemaCentral }}
                 onAutoFill={(value) => updateObjetivos({ objetivoGeneral: value })}
                 askPrompt={`Ayúdame a redactar el objetivo general del proyecto ${project.name}`}
-                aiContext={`Actúa como experto en Metodología General Ajustada (MGA). Redacta el Objetivo General basado en este problema central: '${problemaCentral}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${STRONG_VERBS.join(', ')}. Genera solo el texto del objetivo, sin introducciones.`}
+                aiContext={`Actúa como experto en Metodología General Ajustada (MGA). Redacta el Objetivo General basado en este problema central: '${problemaCentral}'. REGLA ESTRICTA e INQUEBRANTABLE: La primera palabra del objetivo DEBE ser obligatoriamente un verbo en infinitivo de esta lista exacta: ${strongVerbs.join(', ')}. Genera solo el texto del objetivo, sin introducciones.`}
               >
                 <CountedTextarea
                   id="objetivo-general"

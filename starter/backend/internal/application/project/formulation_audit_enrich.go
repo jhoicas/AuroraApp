@@ -80,6 +80,8 @@ var auditFindingMetas = map[string]auditFindingMeta{
 	"warn-product-code":             {"Producto del catálogo sin seleccionar", "producto", "Vincule el proyecto a un producto MGA para formular el indicador de producto."},
 	"warn-activity-name":            {"Actividades sin nombre", "actividades", "Nombre cada actividad de forma clara."},
 	"warn-activity-quantity":        {"Actividades sin cantidad", "cantidades", "Indique la cantidad de cada actividad con costo asignado."},
+	"warn-activity-weak-verb":       {"Actividades con verbo rector débil", "actividades", "Reformule cada actividad con un verbo rector fuerte en infinitivo del diccionario DNP: Verbo fuerte + Sustantivo + Complemento (p. ej. \"Realizar diagnóstico de condiciones de infraestructura educativa en zonas rurales\")."},
+	"warn-activity-infinitive":      {"Actividades sin verbo en infinitivo", "actividades", "Inicie cada actividad con un verbo rector fuerte en infinitivo (terminado en -ar, -er, -ir), no con un sustantivo (p. ej. \"Diseñar el material…\" en lugar de \"Diseño del material…\")."},
 	"warn-activity-total-mismatch":  {"Costo total no coincide con cantidad × costo unitario", "costos", "Corrija el costo total o el costo unitario/cantidad."},
 	"sugg-problem-short":            {"Problema central muy breve", "problema-central", "Precise quién, qué y dónde: problema central sin sustento suficiente."},
 	"sugg-magnitud-quant":           {"Magnitud sin cifras", "magnitud-problema", "Incluya valores numéricos (porcentajes, tasas, número de personas) y su fuente."},
@@ -243,4 +245,67 @@ func activityIssues(acts []models.ProjectActivity) (noName, noQty, mismatch bool
 		}
 	}
 	return
+}
+
+// maxActivityExamples limita los ejemplos listados en un hallazgo de verbos.
+const maxActivityExamples = 3
+
+// activityVerbIssues clasifica las actividades según su verbo rector, usando el
+// diccionario DNP dinámico. weak: "Actividad (verbo)" que inician con verbo
+// débil; nonInfinitive: nombres que no inician con un verbo en infinitivo.
+func activityVerbIssues(acts []models.ProjectActivity, dict []models.DnpVerb) (weak, nonInfinitive []string) {
+	weakSet := make(map[string]string, len(dict))
+	strongSet := make(map[string]struct{}, len(dict))
+	for _, v := range dict {
+		key := models.DnpVerbKey(v.Verb)
+		if v.Kind == models.DnpVerbKindWeak {
+			weakSet[key] = v.Verb
+		} else {
+			strongSet[key] = struct{}{}
+		}
+	}
+	for _, a := range acts {
+		name := strings.TrimSpace(a.Name)
+		if name == "" {
+			continue
+		}
+		key := models.DnpVerbKey(firstWord(name))
+		if verb, ok := weakSet[key]; ok {
+			weak = append(weak, fmt.Sprintf("%s (verbo débil: %s)", name, verb))
+			continue
+		}
+		if _, ok := strongSet[key]; ok {
+			continue
+		}
+		if !startsWithInfinitive(name) {
+			nonInfinitive = append(nonInfinitive, name)
+		}
+	}
+	return weak, nonInfinitive
+}
+
+func firstWord(s string) string {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return ""
+	}
+	return strings.TrimFunc(fields[0], func(r rune) bool { return !unicode.IsLetter(r) })
+}
+
+func quoteList(items []string) string {
+	shown := items
+	if len(shown) > maxActivityExamples {
+		shown = shown[:maxActivityExamples]
+	}
+	out := "«" + strings.Join(shown, "», «") + "»"
+	if extra := len(items) - len(shown); extra > 0 {
+		out += fmt.Sprintf(" y %d más", extra)
+	}
+	return out
+}
+
+func weakVerbFindingMessage(weak []string) string {
+	return fmt.Sprintf(
+		"Las siguientes actividades inician con un verbo débil: %s. La guía DNP exige un verbo rector fuerte en infinitivo (Verbo fuerte + Sustantivo + Complemento).",
+		quoteList(weak))
 }

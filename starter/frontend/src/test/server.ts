@@ -27,6 +27,10 @@ export const defaultHandlers = [
   http.get(apiUrl('/projects/evaluations/summary'), () => HttpResponse.json({ data: [] })),
   // Catálogo jerárquico región → departamento → municipio (lo pide useProjectBaseLocation).
   http.get(apiUrl('/locations'), () => HttpResponse.json({ data: [] })),
+  // Diccionario DNP dinámico (lo pide useDnpDictionary en las pestañas MGA).
+  http.get(apiUrl('/catalog/dnp-dictionary'), () =>
+    HttpResponse.json({ strong_verbs: [], weak_verbs: [], units: [] }),
+  ),
   http.get(apiUrl('/catalog/sectors'), () =>
     HttpResponse.json({ data: [], meta: { page: 1, limit: 20, total: 0, last_page: 1 } }),
   ),

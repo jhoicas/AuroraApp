@@ -160,6 +160,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(&models.MeasurementUnit{}); err != nil {
 		log.Printf("automigrate MeasurementUnit: %v", err)
 	}
+	if err := db.AutoMigrate(&models.DnpVerb{}, &models.DnpStandardUnit{}); err != nil {
+		log.Printf("automigrate DnpVerb/DnpStandardUnit: %v", err)
+	}
 
 	// Garantiza columnas críticas si AutoMigrate no pudo alterar el esquema en Supabase.
 	ensureUsersSchema(db)
@@ -184,6 +187,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	ensurePndCatalogSchema(db)
 	ensureCatalogSyncLogsSchema(db)
 	ensureMeasurementUnitsSchema(db)
+	ensureDnpDictionarySchema(db)
 
 	if !db.Migrator().HasTable(&models.CatalogEdt{}) {
 		return nil, fmt.Errorf(`relation "catalogo_edt" was not created; check DATABASE_URL / DDL permissions`)
@@ -207,6 +211,9 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 
 	if err := EnsureMeasurementUnitsSeed(db); err != nil {
 		log.Printf("ensure measurement units seed: %v", err)
+	}
+	if err := EnsureDnpDictionarySeed(db); err != nil {
+		log.Printf("ensure dnp dictionary seed: %v", err)
 	}
 
 	// Plantillas del Documento Técnico: tabla garantizada ANTES del seed; sin ella el servidor
@@ -1515,6 +1522,33 @@ func ensureMeasurementUnitsSchema(db *gorm.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_catalogo_unidades_medida_name ON catalogo_unidades_medida (name)`,
 	}
 	execSchemaStatements(db, "ensure catalogo_unidades_medida schema", statements)
+}
+
+func ensureDnpDictionarySchema(db *gorm.DB) {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS dnp_verbs (
+			id BIGSERIAL PRIMARY KEY,
+			verb VARCHAR(80) NOT NULL,
+			kind VARCHAR(10) NOT NULL,
+			notes TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_dnp_verbs_verb ON dnp_verbs (verb)`,
+		`CREATE INDEX IF NOT EXISTS idx_dnp_verbs_kind ON dnp_verbs (kind)`,
+		`CREATE TABLE IF NOT EXISTS dnp_standard_units (
+			id BIGSERIAL PRIMARY KEY,
+			name VARCHAR(120) NOT NULL,
+			symbol VARCHAR(20),
+			typology VARCHAR(20) NOT NULL,
+			active BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_dnp_standard_units_name ON dnp_standard_units (name)`,
+		`CREATE INDEX IF NOT EXISTS idx_dnp_standard_units_typology ON dnp_standard_units (typology)`,
+	}
+	execSchemaStatements(db, "ensure dnp dictionary schema", statements)
 }
 
 func execSchemaStatements(db *gorm.DB, label string, statements []string) {

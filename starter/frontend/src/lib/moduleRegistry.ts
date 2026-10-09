@@ -52,6 +52,7 @@ const lz = {
   procesos: lazy(() => import('../pages/admin/ProcesosCatalogPage')),
   locations: lazy(() => import('../pages/admin/LocationsCatalogPage')),
   measurementUnits: lazy(() => import('../pages/admin/MeasurementUnitsCatalogPage')),
+  dnpDictionary: lazy(() => import('../pages/admin/DnpDictionaryPage')),
   mgaActors: lazy(() => import('../pages/admin/MgaActorsCatalogPage')),
   mgaEntities: lazy(() => import('../pages/admin/MgaEntitiesCatalogPage')),
   mgaPositions: lazy(() => import('../pages/admin/MgaPositionsCatalogPage')),
@@ -134,6 +135,9 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.catalogs.locations': { routes: [{ path: 'catalogs/locations', Component: lz.locations }] },
   'admin.catalogs.measurement-units': {
     routes: [{ path: 'catalogs/measurement-units', Component: lz.measurementUnits }],
+  },
+  'admin.catalogs.dnp-dictionary': {
+    routes: [{ path: 'catalogs/dnp-dictionary', Component: lz.dnpDictionary }],
   },
   'admin.mga_catalogs': { icon: 'group_work', activePrefixes: ['/admin/catalogs/mga-'] },
   'admin.mga_catalogs.actors': { routes: [{ path: 'catalogs/mga-actors', Component: lz.mgaActors }] },

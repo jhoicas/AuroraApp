@@ -13,6 +13,7 @@ export type ProjectEditValues = {
   /** Nombre o código del sector, respaldo cuando no hay sector_id. */
   sectorName: string;
   productCode: string;
+  productIndicatorCode: string;
 };
 
 /** Normaliza texto para comparar: minúsculas, sin tildes, apóstrofes unificados y espacios colapsados. */
@@ -79,6 +80,11 @@ export function extractProjectEditValues(project: AnyRecord | null | undefined):
       p.product_code, p.productCode,
       iden.product_code, iden.productCode, iden.producto_principal,
       mga.product_code, mga.productCode, mga.producto_principal,
+    ),
+    productIndicatorCode: firstFilled(
+      p.product_indicator_code, p.productIndicatorCode,
+      iden.product_indicator_code, iden.productIndicatorCode,
+      mga.product_indicator_code, mga.productIndicatorCode,
     ),
   };
 }

@@ -4,7 +4,7 @@ type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
   product: Product | null;
-  onSelect: (productId: string) => void;
+  onSelect: (productId: string, indicatorCode: string) => void;
 };
 
 export default function ProductDetailModal({ open, onClose, product, onSelect }: ProductDetailModalProps) {
@@ -120,7 +120,7 @@ export default function ProductDetailModal({ open, onClose, product, onSelect }:
           <button
             type="button"
             onClick={() => {
-              onSelect(product.codigo_del_producto);
+              onSelect(product.codigo_del_producto, product.codigo_del_indicador_de_producto ?? '');
               onClose();
             }}
             className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2 text-sm font-medium shadow-sm transition-colors"

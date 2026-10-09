@@ -20,7 +20,8 @@ type Project struct {
 	Sector             string         `gorm:"column:sector;type:varchar(255);index" json:"sector,omitempty"`
 	SectorID           *uuid.UUID     `gorm:"column:sector_id;type:uuid;index" json:"sector_id,omitempty"`
 	ProgramCode        *string        `gorm:"column:program_code;type:varchar(50);index" json:"program_code,omitempty"`
-	ProductCode        *string        `gorm:"column:product_code;type:varchar(50);index" json:"product_code,omitempty"`
+	ProductCode            *string        `gorm:"column:product_code;type:varchar(50);index" json:"product_code,omitempty"`
+	ProductIndicatorCode   *string        `gorm:"column:product_indicator_code;type:varchar(50)" json:"product_indicator_code,omitempty"`
 	ProblemDescription string         `gorm:"column:problem_description;type:text" json:"problem_description,omitempty"`
 	GeneralObjective   string         `gorm:"column:general_objective;type:text" json:"general_objective,omitempty"`
 	SituacionExistente string         `gorm:"column:situacion_existente;type:text" json:"situacion_existente,omitempty"`

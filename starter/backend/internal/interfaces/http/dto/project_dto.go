@@ -11,7 +11,8 @@ type CreateProjectRequest struct {
 	Sector      string                 `json:"sector" binding:"required" validate:"required,min=2,max=255"`
 	SectorID    *string                `json:"sector_id" binding:"required" validate:"required,uuid"`
 	ProgramCode *string                `json:"program_code" validate:"omitempty,max=50"`
-	ProductCode *string                `json:"product_code" binding:"required" validate:"required,max=50"`
+	ProductCode          *string                `json:"product_code" binding:"required" validate:"required,max=50"`
+	ProductIndicatorCode *string                `json:"product_indicator_code" validate:"omitempty,max=50"`
 	ProcesoID   int                    `json:"proceso_id" binding:"required" validate:"required"`
 	Objeto      string                 `json:"objeto" binding:"required" validate:"required,min=10,max=1000"`
 	Localizaciones []LocationSelectionDTO `json:"localizaciones" binding:"required,min=1" validate:"required,min=1,dive"`
@@ -62,8 +63,9 @@ type ProjectResponse struct {
 	Sector             string  `json:"sector,omitempty"`
 	SectorID           *string `json:"sector_id,omitempty"`
 	ProgramCode        *string `json:"program_code,omitempty"`
-	ProductCode        *string `json:"product_code,omitempty"`
-	ProcesoID          *int    `json:"proceso_id,omitempty"`
+	ProductCode          *string `json:"product_code,omitempty"`
+	ProductIndicatorCode *string `json:"product_indicator_code,omitempty"`
+	ProcesoID            *int    `json:"proceso_id,omitempty"`
 	Tipologia          string  `json:"tipologia,omitempty"`
 	TipoInversion      string  `json:"tipo_inversion,omitempty"`
 	ProblemDescription string  `json:"problem_description,omitempty"`
@@ -102,8 +104,9 @@ type PatchProjectRequest struct {
 	MagnitudProblema   *string                 `json:"magnitud_problema,omitempty" validate:"omitempty,max=10000"`
 	Sector             *string                 `json:"sector,omitempty" validate:"omitempty,max=255"`
 	SectorID           *string                 `json:"sector_id,omitempty" validate:"omitempty,max=50"`
-	ProductCode        *string                 `json:"product_code,omitempty" validate:"omitempty,max=50"`
-	ProcesoID          *int                    `json:"proceso_id,omitempty"`
+	ProductCode          *string                 `json:"product_code,omitempty" validate:"omitempty,max=50"`
+	ProductIndicatorCode *string                 `json:"product_indicator_code,omitempty" validate:"omitempty,max=50"`
+	ProcesoID            *int                    `json:"proceso_id,omitempty"`
 	// Tipologia y TipoInversion solo se aceptan mientras el proyecto no los tenga fijados:
 	// una vez guardados son inmutables y el PATCH los ignora.
 	Tipologia     *string `json:"tipologia,omitempty" validate:"omitempty,max=255"`

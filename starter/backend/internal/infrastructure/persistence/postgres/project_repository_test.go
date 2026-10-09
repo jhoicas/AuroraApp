@@ -34,6 +34,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 			sector_id TEXT,
 			program_code TEXT,
 			product_code TEXT,
+			product_indicator_code TEXT,
 			problem_description TEXT,
 			general_objective TEXT,
 			situacion_existente TEXT,

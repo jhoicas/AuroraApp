@@ -13,6 +13,7 @@ export type Project = {
   sector_id?: string | null;
   program_code?: string | null;
   product_code?: string | null;
+  product_indicator_code?: string | null;
   proceso_id?: number | null;
   tipologia?: string;
   tipo_inversion?: string;
@@ -75,6 +76,7 @@ export type CreateProjectPayload = {
   sector_id?: string;
   program_code?: string;
   product_code?: string;
+  product_indicator_code?: string;
   proceso_id: number;
   objeto: string;
   localizaciones: {

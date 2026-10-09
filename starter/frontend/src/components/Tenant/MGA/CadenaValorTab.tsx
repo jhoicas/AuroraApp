@@ -210,12 +210,13 @@ type ProductFormProps = {
   poblacionObjetivoNum: number;
   catalogProducts: CatalogProductRow[];
   mainProductCode: string;
+  mainProductIndicatorCode: string;
   isLoadingCatalog: boolean;
   onChange: (updated: ProductoCvJson) => void;
   onRemove: () => void;
 };
 
-function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProductCode, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
+function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProductCode, mainProductIndicatorCode, isLoadingCatalog, onChange, onRemove }: ProductFormProps) {
   const { strong_verbs: strongVerbs, weak_verbs: weakVerbs } = useDnpDictionary();
 
   // Resolve the unique row.id for the currently stored product (handles homonyms).
@@ -235,10 +236,13 @@ function ProductForm({ product, poblacionObjetivoNum, catalogProducts, mainProdu
   const productOptions = useMemo<ComboboxOption[]>(() => {
     const opts = catalogProducts.map((row) => {
       const baseLabel = `${row.producto} - [Cód. Ind: ${row.codigo_del_indicador_de_producto}]`;
-      const label =
-        mainProductCode && row.codigo_del_producto === mainProductCode
-          ? `(${baseLabel})`
-          : baseLabel;
+      const isMainProduct =
+        mainProductCode &&
+        row.codigo_del_producto === mainProductCode &&
+        (mainProductIndicatorCode
+          ? row.codigo_del_indicador_de_producto === mainProductIndicatorCode
+          : true);
+      const label = isMainProduct ? `(${baseLabel})` : baseLabel;
       return {
         value: row.id,
         label,
@@ -571,6 +575,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
   const allCatalogProducts = useCatalogStore((st) => st.catalogProducts);
   const isLoadingCatalog = useCatalogStore((st) => st.isLoadingProducts);
   const mainProductCode = (project.product_code ?? '').trim();
+  const mainProductIndicatorCode = (project.product_indicator_code ?? '').trim();
   const projectProgramCode = (project.program_code ?? '').trim();
   const sectorKey = (project.sector ?? '').trim().toLowerCase();
 
@@ -843,6 +848,7 @@ export default function CadenaValorTab({ project }: CadenaValorTabProps) {
                   poblacionObjetivoNum={poblacionObjetivoNum}
                   catalogProducts={catalogProducts}
                   mainProductCode={mainProductCode}
+                  mainProductIndicatorCode={mainProductIndicatorCode}
                   isLoadingCatalog={isLoadingCatalog}
                   onChange={(updated) => updateProducto(objId, pi, updated)}
                   onRemove={() => removeProducto(objId, pi)}

@@ -136,6 +136,7 @@ export default function CreateProjectModal({
   );
   const [sectorId, setSectorId] = useState(editValues.sectorId);
   const [productoPrincipal, setProductoPrincipal] = useState(editValues.productCode);
+  const [productoPrincipalIndicatorCode, setProductoPrincipalIndicatorCode] = useState(editValues.productIndicatorCode);
   const [formError, setFormError] = useState<string | null>(null);
   
   useEffect(() => {
@@ -171,6 +172,7 @@ export default function CreateProjectModal({
           prevSectorIdRef.current = foundSector;
 
           setProductoPrincipal(editValues.productCode);
+          setProductoPrincipalIndicatorCode(editValues.productIndicatorCode);
           hydratedProductRef.current = { sectorId: foundSector, productCode: editValues.productCode };
         }
       } else {
@@ -193,8 +195,9 @@ export default function CreateProjectModal({
         setSectorId(initialSectorId);
         prevSectorIdRef.current = initialSectorId;
         setProductoPrincipal(preselectedProductCode ?? '');
+        setProductoPrincipalIndicatorCode('');
       }
-      
+
       if (!editProject) {
         setStep('wizard');
         resetIdeation();
@@ -246,6 +249,7 @@ export default function CreateProjectModal({
       prevSectorIdRef.current = foundSector.id;
       if (preselectedProductCode) {
         setProductoPrincipal(preselectedProductCode);
+        setProductoPrincipalIndicatorCode('');
       }
     }
   }, [open, editProject, preselectedSectorCode, preselectedProductCode, sectors]);
@@ -344,6 +348,7 @@ export default function CreateProjectModal({
         return;
       }
       setProductoPrincipal('');
+      setProductoPrincipalIndicatorCode('');
     }
   }, [sectorId, preselectedProductCode, productoPrincipal]);
 
@@ -373,7 +378,7 @@ export default function CreateProjectModal({
   // ─── Cargar Productos por Sector ──────────────────
   useEffect(() => {
     if (!sectorId || !selectedSectorCode) {
-      if (!editProject && !preselectedProductCode) setProductoPrincipal('');
+      if (!editProject && !preselectedProductCode) { setProductoPrincipal(''); setProductoPrincipalIndicatorCode(''); }
       return;
     }
     void fetchCatalogProducts({
@@ -421,7 +426,7 @@ export default function CreateProjectModal({
   // Validación reactiva: si el producto seleccionado no existe en el sector actual, limpiarlo
   useEffect(() => {
     if (!sectorId) {
-      if (productoPrincipal && !preselectedProductCode) setProductoPrincipal('');
+      if (productoPrincipal && !preselectedProductCode) { setProductoPrincipal(''); setProductoPrincipalIndicatorCode(''); }
       return;
     }
     // El producto hidratado en edición se conserva mientras el sector siga siendo el original.
@@ -435,6 +440,7 @@ export default function CreateProjectModal({
       );
       if (!exists && productoPrincipal !== preselectedProductCode) {
         setProductoPrincipal('');
+        setProductoPrincipalIndicatorCode('');
       }
     }
   }, [sectorId, productoPrincipal, isLoadingProducts, filteredProducts, preselectedProductCode, catalogProductsProgramCode, selectedSectorCode]);
@@ -443,8 +449,10 @@ export default function CreateProjectModal({
   const productOptions: ComboboxOption[] = useMemo(
     () =>
       filteredProducts.map((p) => ({
-        value: p.codigo_del_producto,
-        label: p.codigo_del_producto ? `${p.codigo_del_producto.trim()} - ${p.producto.trim()}` : p.producto.trim(),
+        value: p.id,
+        label: p.codigo_del_producto
+          ? `${p.codigo_del_producto.trim()} - ${p.producto.trim()} - [Cód. Ind: ${p.codigo_del_indicador_de_producto?.trim() ?? ''}]`
+          : p.producto.trim(),
         code: p.codigo_del_producto.trim(),
         indicatorCode: p.codigo_del_indicador_de_producto?.trim(),
         indicatorLabel: p.indicador_de_producto?.trim(),
@@ -456,12 +464,25 @@ export default function CreateProjectModal({
     [filteredProducts],
   );
 
+  const selectedProductRowId = useMemo(() => {
+    if (!productoPrincipal) return '';
+    if (productoPrincipalIndicatorCode) {
+      const exact = filteredProducts.find(
+        (p) =>
+          p.codigo_del_producto === productoPrincipal &&
+          p.codigo_del_indicador_de_producto === productoPrincipalIndicatorCode,
+      );
+      if (exact) return exact.id;
+    }
+    return filteredProducts.find((p) => p.codigo_del_producto === productoPrincipal)?.id ?? productoPrincipal;
+  }, [filteredProducts, productoPrincipal, productoPrincipalIndicatorCode]);
+
   // Edición: si el producto guardado no está en la lista filtrada del sector, se consulta el catálogo
   // por su código para mostrar el nombre en lugar del código numérico.
   const [orphanProductLabel, setOrphanProductLabel] = useState<{ code: string; label: string } | null>(null);
   useEffect(() => {
     if (!open || !isEdit || !productoPrincipal || isLoadingProducts) return;
-    if (productOptions.some((o) => o.value === productoPrincipal)) return;
+    if (productOptions.some((o) => o.code === productoPrincipal)) return;
     if (orphanProductLabel?.code === productoPrincipal) return;
     const code = productoPrincipal;
     let cancelled = false;
@@ -486,7 +507,7 @@ export default function CreateProjectModal({
     if (
       !productoPrincipal ||
       isLoadingProducts ||
-      productOptions.some((o) => o.value === productoPrincipal) ||
+      productOptions.some((o) => o.code === productoPrincipal) ||
       !hydrated ||
       hydrated.sectorId !== sectorId ||
       hydrated.productCode !== productoPrincipal
@@ -541,7 +562,10 @@ export default function CreateProjectModal({
       const nName = p.producto.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       return nName.includes(nQuery) || nQuery.includes(nName) || p.codigo_del_producto.trim().toLowerCase() === nQuery;
     });
-    if (prod) setProductoPrincipal(prod.codigo_del_producto);
+    if (prod) {
+      setProductoPrincipal(prod.codigo_del_producto);
+      setProductoPrincipalIndicatorCode(prod.codigo_del_indicador_de_producto ?? '');
+    }
   }, [editProject, sectorId, productoPrincipal, isLoadingProducts, productSuggestionsList, filteredProducts]);
 
   // ─── Nombre auto-generado ──────────────────
@@ -633,6 +657,7 @@ export default function CreateProjectModal({
       setSectorId('');
       prevSectorIdRef.current = '';
       setProductoPrincipal('');
+      setProductoPrincipalIndicatorCode('');
     }
     setFormError(null);
   };
@@ -652,9 +677,20 @@ export default function CreateProjectModal({
 
   const handleTipologiaChange = (value: string) => {
     setTipologiaProyecto(value);
-    // Si cambió la tipología, verificar que el sector sigue siendo válido
     setSectorId('');
     setProductoPrincipal('');
+    setProductoPrincipalIndicatorCode('');
+  };
+
+  const handleProductSelect = (rowId: string) => {
+    const row = filteredProducts.find((p) => p.id === rowId);
+    if (row) {
+      setProductoPrincipal(row.codigo_del_producto);
+      setProductoPrincipalIndicatorCode(row.codigo_del_indicador_de_producto ?? '');
+    } else {
+      setProductoPrincipal(rowId);
+      setProductoPrincipalIndicatorCode('');
+    }
   };
 
   // ─── Submit ──────────────────
@@ -704,12 +740,13 @@ export default function CreateProjectModal({
         const currentIden = currentMgaData.identificacion || {};
 
         // Parcheamos el estado local de forma síncrona
-        patchCurrentProject({ 
-          name: generatedName, 
+        patchCurrentProject({
+          name: generatedName,
           description: objeto.trim(),
-          sector: selectedSector?.name ?? '', 
-          sector_id: sectorId, 
+          sector: selectedSector?.name ?? '',
+          sector_id: sectorId,
           product_code: productoPrincipal || undefined,
+          product_indicator_code: productoPrincipalIndicatorCode || undefined,
           mga_formulation_data: {
             ...currentMgaData,
             identificacion: {
@@ -726,6 +763,7 @@ export default function CreateProjectModal({
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
+          product_indicator_code: productoPrincipalIndicatorCode || undefined,
           mga_formulation_data: {
             ...currentMgaData,
             identificacion: {
@@ -747,6 +785,7 @@ export default function CreateProjectModal({
           sector: selectedSector?.name ?? '',
           sector_id: sectorId,
           product_code: productoPrincipal || undefined,
+          product_indicator_code: productoPrincipalIndicatorCode || undefined,
           proceso_id: parseInt(proceso, 10),
           objeto: objeto.trim(),
           localizaciones: localizaciones,
@@ -1189,7 +1228,10 @@ export default function CreateProjectModal({
                 const nCode = p.codigo_del_producto.trim().toLowerCase();
                 return nName.includes(nQuery) || nQuery.includes(nName) || nCode === nQuery;
               });
-              if (prod) setProductoPrincipal(prod.codigo_del_producto);
+              if (prod) {
+                setProductoPrincipal(prod.codigo_del_producto);
+                setProductoPrincipalIndicatorCode(prod.codigo_del_indicador_de_producto ?? '');
+              }
             }}
             htmlFor="project-producto-principal"
             required
@@ -1211,8 +1253,8 @@ export default function CreateProjectModal({
                   disabled={!sectorId || isLoadingProducts}
                   loading={isLoadingProducts}
                   options={productComboboxOptions}
-                  value={productoPrincipal}
-                  onChange={setProductoPrincipal}
+                  value={selectedProductRowId}
+                  onChange={handleProductSelect}
                 />
               </div>
               <button
@@ -1267,7 +1309,10 @@ export default function CreateProjectModal({
           open={isProductModalOpen}
           onClose={() => setIsProductModalOpen(false)}
           product={selectedProductData}
-          onSelect={setProductoPrincipal}
+          onSelect={(code, indicatorCode) => {
+            setProductoPrincipal(code);
+            setProductoPrincipalIndicatorCode(indicatorCode);
+          }}
         />
       )}
     </div>

@@ -123,8 +123,9 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		CodeBPIN:       req.CodeBPIN,
 		Sector:         req.Sector,
 		SectorID:       sectorID,
-		ProgramCode:    req.ProgramCode,
-		ProductCode:    req.ProductCode,
+		ProgramCode:          req.ProgramCode,
+		ProductCode:          req.ProductCode,
+		ProductIndicatorCode: req.ProductIndicatorCode,
 		Tipologia:      strings.TrimSpace(req.Tipologia),
 		TipoInversion:  strings.TrimSpace(req.TipoInversion),
 		FaseMaduracion: "PERFIL", // valor por defecto silencioso: el usuario no lo ve ni lo envía
@@ -413,6 +414,9 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	if req.ProductCode != nil {
 		project.ProductCode = req.ProductCode
 	}
+	if req.ProductIndicatorCode != nil {
+		project.ProductIndicatorCode = req.ProductIndicatorCode
+	}
 	if req.ProcesoID != nil && *req.ProcesoID != 0 {
 		project.ProcesoID = req.ProcesoID
 	}
@@ -613,8 +617,9 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 		Description:        p.Description,
 		CodeBPIN:           p.CodeBPIN,
 		Sector:             p.Sector,
-		ProgramCode:        p.ProgramCode,
-		ProductCode:        p.ProductCode,
+		ProgramCode:          p.ProgramCode,
+		ProductCode:          p.ProductCode,
+		ProductIndicatorCode: p.ProductIndicatorCode,
 		ProcesoID:          p.ProcesoID,
 		Tipologia:          p.Tipologia,
 		TipoInversion:      p.TipoInversion,

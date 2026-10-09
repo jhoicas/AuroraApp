@@ -316,6 +316,10 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 		prompt += fmt.Sprintf("\n%s", verbRule)
 	}
 
+	if riesgoRule := buildRiesgoRule(fieldKey, req.ProjectContext); riesgoRule != "" {
+		prompt += riesgoRule
+	}
+
 	if fieldKey == "objetivo_general" || fieldKey == "general_objective" {
 		if prob, ok := req.ProjectContext["problemDescription"].(string); ok && prob != "" {
 			prompt += fmt.Sprintf("\nPROBLEMA CENTRAL REGISTRADO: %s", prob)

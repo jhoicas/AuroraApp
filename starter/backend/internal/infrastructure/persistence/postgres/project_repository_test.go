@@ -38,7 +38,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 			general_objective TEXT,
 			situacion_existente TEXT,
 			magnitud_problema TEXT,
-			fase_maduracion TEXT DEFAULT 'PERFIL',
+			proceso_id INTEGER, tipologia TEXT, tipo_inversion TEXT, fase_maduracion TEXT DEFAULT 'PERFIL',
 			mga_formulation_data TEXT DEFAULT '{}',
 			status TEXT NOT NULL DEFAULT 'DRAFT',
 			created_at DATETIME NOT NULL,

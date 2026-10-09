@@ -25,6 +25,9 @@ type Project struct {
 	GeneralObjective   string         `gorm:"column:general_objective;type:text" json:"general_objective,omitempty"`
 	SituacionExistente string         `gorm:"column:situacion_existente;type:text" json:"situacion_existente,omitempty"`
 	MagnitudProblema   string         `gorm:"column:magnitud_problema;type:text" json:"magnitud_problema,omitempty"`
+	ProcesoID          *int           `gorm:"column:proceso_id;index" json:"proceso_id,omitempty"`
+	Tipologia          string         `gorm:"column:tipologia;type:varchar(255)" json:"tipologia,omitempty"`
+	TipoInversion      string         `gorm:"column:tipo_inversion;type:varchar(100)" json:"tipo_inversion,omitempty"`
 	FaseMaduracion     string         `gorm:"column:fase_maduracion;type:varchar(50);default:'PERFIL'" json:"fase_maduracion"`
 	MgaFormulationData datatypes.JSON `gorm:"type:jsonb;column:mga_formulation_data;default:'{}'" json:"mga_formulation_data"`
 	Status             string         `gorm:"column:status;type:varchar(50);not null;default:'DRAFT';index" json:"status"`

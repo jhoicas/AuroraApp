@@ -326,6 +326,9 @@ func ensureProjectsSchema(db *gorm.DB) {
 			general_objective TEXT,
 			situacion_existente TEXT,
 			magnitud_problema TEXT,
+			proceso_id INTEGER,
+			tipologia VARCHAR(255),
+			tipo_inversion VARCHAR(100),
 			fase_maduracion VARCHAR(50) DEFAULT 'PERFIL',
 			status VARCHAR(50) DEFAULT 'DRAFT',
 			created_at TIMESTAMPTZ,
@@ -345,6 +348,16 @@ func ensureProjectsSchema(db *gorm.DB) {
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS general_objective TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS situacion_existente TEXT`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS magnitud_problema TEXT`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS proceso_id INTEGER`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tipologia VARCHAR(255)`,
+		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tipo_inversion VARCHAR(100)`,
+		// Backfill: proyectos creados antes de tener columnas propias guardaban estos datos solo en el JSON MGA.
+		`UPDATE projects SET proceso_id = COALESCE(mga_formulation_data->'identificacion'->>'proceso_id', mga_formulation_data->>'proceso_id')::integer
+			WHERE proceso_id IS NULL AND COALESCE(mga_formulation_data->'identificacion'->>'proceso_id', mga_formulation_data->>'proceso_id') ~ '^[0-9]+$'`,
+		`UPDATE projects SET tipologia = COALESCE(mga_formulation_data->'identificacion'->>'tipologia', mga_formulation_data->>'tipologia')
+			WHERE (tipologia IS NULL OR tipologia = '') AND COALESCE(mga_formulation_data->'identificacion'->>'tipologia', mga_formulation_data->>'tipologia') IS NOT NULL`,
+		`UPDATE projects SET tipo_inversion = COALESCE(mga_formulation_data->'identificacion'->>'tipo_inversion', mga_formulation_data->>'tipo_inversion')
+			WHERE (tipo_inversion IS NULL OR tipo_inversion = '') AND COALESCE(mga_formulation_data->'identificacion'->>'tipo_inversion', mga_formulation_data->>'tipo_inversion') IS NOT NULL`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS fase_maduracion VARCHAR(50) DEFAULT 'PERFIL'`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'DRAFT'`,
 		`ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,

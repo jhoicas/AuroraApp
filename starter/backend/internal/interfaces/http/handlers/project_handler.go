@@ -125,10 +125,17 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		SectorID:       sectorID,
 		ProgramCode:    req.ProgramCode,
 		ProductCode:    req.ProductCode,
+		Tipologia:      strings.TrimSpace(req.Tipologia),
+		TipoInversion:  strings.TrimSpace(req.TipoInversion),
 		FaseMaduracion: "PERFIL", // valor por defecto silencioso: el usuario no lo ve ni lo envía
 		Status:         constants.ProjectStatusInFormulation,
 		CreatedAt:      now,
 		UpdatedAt:      now,
+	}
+
+	if req.ProcesoID != 0 {
+		procesoID := req.ProcesoID
+		project.ProcesoID = &procesoID
 	}
 
 	mgaMap := make(map[string]interface{})
@@ -406,6 +413,16 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	if req.ProductCode != nil {
 		project.ProductCode = req.ProductCode
 	}
+	if req.ProcesoID != nil && *req.ProcesoID != 0 {
+		project.ProcesoID = req.ProcesoID
+	}
+	// Tipología y tipo de inversión son inmutables una vez fijados: el PATCH solo los completa si faltan.
+	if req.Tipologia != nil && project.Tipologia == "" {
+		project.Tipologia = strings.TrimSpace(*req.Tipologia)
+	}
+	if req.TipoInversion != nil && project.TipoInversion == "" {
+		project.TipoInversion = strings.TrimSpace(*req.TipoInversion)
+	}
 	if req.MgaFormulationData != nil {
 		var existingMap map[string]interface{}
 		if len(project.MgaFormulationData) > 0 {
@@ -440,6 +457,7 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 		for k, v := range patchMap {
 			existingMap[k] = v
 		}
+		syncIdentityColumns(project, existingMap)
 
 		mergedBytes, err := json.Marshal(existingMap)
 		if err != nil {
@@ -462,6 +480,56 @@ func (h *ProjectHandler) Patch(c *fiber.Ctx) error {
 	prog, _ := repo.CalculateProgress(c.Context(), project.ID)
 
 	return c.JSON(toProjectResponse(*project, prog))
+}
+
+// identityFromMga lee proceso, tipología y tipo de inversión del JSON MGA (raíz o identificacion).
+func identityFromMga(mga map[string]interface{}) (proceso *int, tipologia, tipoInversion string) {
+	sources := []map[string]interface{}{mga}
+	if iden, ok := mga["identificacion"].(map[string]interface{}); ok {
+		sources = []map[string]interface{}{iden, mga}
+	}
+	for _, src := range sources {
+		if proceso == nil {
+			proceso = parseAnyToIntPtr(src["proceso_id"])
+		}
+		if tipologia == "" {
+			if s, ok := src["tipologia"].(string); ok {
+				tipologia = strings.TrimSpace(s)
+			}
+		}
+		if tipoInversion == "" {
+			if s, ok := src["tipo_inversion"].(string); ok {
+				tipoInversion = strings.TrimSpace(s)
+			}
+		}
+	}
+	return
+}
+
+// syncIdentityColumns mantiene las columnas del proyecto alineadas con el JSON MGA enviado por el cliente.
+// Proceso se actualiza; tipología y tipo de inversión solo se completan si estaban vacíos, y el JSON se
+// corrige para que no contradiga los valores inmutables ya guardados.
+func syncIdentityColumns(project *models.Project, mga map[string]interface{}) {
+	proceso, tipologia, tipoInversion := identityFromMga(mga)
+	if proceso != nil && *proceso != 0 {
+		project.ProcesoID = proceso
+	}
+	if project.Tipologia == "" && tipologia != "" {
+		project.Tipologia = tipologia
+	}
+	if project.TipoInversion == "" && tipoInversion != "" {
+		project.TipoInversion = tipoInversion
+	}
+	iden, ok := mga["identificacion"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	if project.Tipologia != "" {
+		iden["tipologia"] = project.Tipologia
+	}
+	if project.TipoInversion != "" {
+		iden["tipo_inversion"] = project.TipoInversion
+	}
 }
 
 func parseAnyToIntPtr(v interface{}) *int {
@@ -547,6 +615,9 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 		Sector:             p.Sector,
 		ProgramCode:        p.ProgramCode,
 		ProductCode:        p.ProductCode,
+		ProcesoID:          p.ProcesoID,
+		Tipologia:          p.Tipologia,
+		TipoInversion:      p.TipoInversion,
 		ProblemDescription: p.ProblemDescription,
 		GeneralObjective:   p.GeneralObjective,
 		SituacionExistente: p.SituacionExistente,
@@ -705,6 +776,18 @@ func toProjectResponse(p models.Project, progress ...int) dto.ProjectResponse {
 						},
 					}
 				}
+			}
+
+			// Proyectos previos a las columnas propias: se completan desde el JSON MGA.
+			jsonProceso, jsonTipologia, jsonTipoInv := identityFromMga(mgaData)
+			if resp.ProcesoID == nil {
+				resp.ProcesoID = jsonProceso
+			}
+			if resp.Tipologia == "" {
+				resp.Tipologia = jsonTipologia
+			}
+			if resp.TipoInversion == "" {
+				resp.TipoInversion = jsonTipoInv
 			}
 
 			resp.MgaFormulationData = &mgaData

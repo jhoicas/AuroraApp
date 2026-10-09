@@ -28,7 +28,7 @@ func pagingDB(t *testing.T) *gorm.DB {
 		`CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT NOT NULL)`,
 		`CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL, full_name TEXT NOT NULL)`,
 		`CREATE TABLE projects (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, creator_id TEXT NOT NULL, code_bpin TEXT, name TEXT NOT NULL,
-			sector TEXT, fase_maduracion TEXT, status TEXT NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, deleted_at DATETIME)`,
+			sector TEXT, proceso_id INTEGER, tipologia TEXT, tipo_inversion TEXT, fase_maduracion TEXT, status TEXT NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, deleted_at DATETIME)`,
 	} {
 		require.NoError(t, db.Exec(ddl).Error)
 	}

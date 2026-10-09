@@ -63,6 +63,9 @@ type ProjectResponse struct {
 	SectorID           *string `json:"sector_id,omitempty"`
 	ProgramCode        *string `json:"program_code,omitempty"`
 	ProductCode        *string `json:"product_code,omitempty"`
+	ProcesoID          *int    `json:"proceso_id,omitempty"`
+	Tipologia          string  `json:"tipologia,omitempty"`
+	TipoInversion      string  `json:"tipo_inversion,omitempty"`
 	ProblemDescription string  `json:"problem_description,omitempty"`
 	GeneralObjective   string  `json:"general_objective,omitempty"`
 	SituacionExistente string  `json:"situacion_existente,omitempty"`
@@ -100,6 +103,11 @@ type PatchProjectRequest struct {
 	Sector             *string                 `json:"sector,omitempty" validate:"omitempty,max=255"`
 	SectorID           *string                 `json:"sector_id,omitempty" validate:"omitempty,max=50"`
 	ProductCode        *string                 `json:"product_code,omitempty" validate:"omitempty,max=50"`
+	ProcesoID          *int                    `json:"proceso_id,omitempty"`
+	// Tipologia y TipoInversion solo se aceptan mientras el proyecto no los tenga fijados:
+	// una vez guardados son inmutables y el PATCH los ignora.
+	Tipologia     *string `json:"tipologia,omitempty" validate:"omitempty,max=255"`
+	TipoInversion *string `json:"tipo_inversion,omitempty" validate:"omitempty,max=100"`
 	MgaFormulationData *map[string]interface{} `json:"mga_formulation_data,omitempty"`
 }
 

@@ -13,6 +13,9 @@ export type Project = {
   sector_id?: string | null;
   program_code?: string | null;
   product_code?: string | null;
+  proceso_id?: number | null;
+  tipologia?: string;
+  tipo_inversion?: string;
   problem_description?: string;
   general_objective?: string;
   situacion_existente?: string;

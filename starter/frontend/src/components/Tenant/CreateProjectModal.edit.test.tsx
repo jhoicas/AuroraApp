@@ -80,4 +80,28 @@ describe('CreateProjectModal en modo edición', () => {
       expect(screen.getByDisplayValue('2201001 - Sedes educativas mejoradas')).toBeInTheDocument(),
     );
   });
+
+  it('resuelve el nombre del producto por código cuando no está en la lista del sector', async () => {
+    server.use(
+      http.get(apiUrl('/procesos'), () => HttpResponse.json({ data: [{ id: 5, name: 'Mejoramiento' }] })),
+      http.get(apiUrl('/catalog/sectors'), () => HttpResponse.json({ data: [SECTOR] })),
+      http.get(apiUrl('/catalog/products'), ({ request }) => {
+        const search = new URL(request.url).searchParams.get('search');
+        // La búsqueda por sector no trae el producto; la búsqueda por código sí.
+        return HttpResponse.json({
+          data:
+            search === '2201001'
+              ? [{ id: 'prod-1', sector: '99', codigo_producto: '2201001', producto: 'Sedes educativas mejoradas' }]
+              : [],
+          meta: { page: 1, limit: 5000, total: 0, last_page: 1 },
+        });
+      }),
+      http.post(apiUrl('/ai/ideation/suggest'), () => HttpResponse.json({ suggestions: {} })),
+    );
+    renderWithProviders(<CreateProjectModal open onClose={() => {}} editProject={project} />);
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('2201001 - Sedes educativas mejoradas')).toBeInTheDocument(),
+    );
+  });
 });

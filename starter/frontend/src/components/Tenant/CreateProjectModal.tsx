@@ -4,6 +4,7 @@ import AIAssistedField from '../AuroraAsistente/AIAssistedField';
 import SearchableCombobox, { type ComboboxOption } from '../Catalog/SearchableCombobox';
 import ProductDetailModal from './ProductDetailModal';
 
+import { api } from '../../lib/api';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuroraCopilotStore } from '../../store/auroraCopilotStore';
 import {
@@ -455,7 +456,31 @@ export default function CreateProjectModal({
     [filteredProducts],
   );
 
-  // Si el producto guardado no aparece en el catálogo del sector, se muestra igualmente su código.
+  // Edición: si el producto guardado no está en la lista filtrada del sector, se consulta el catálogo
+  // por su código para mostrar el nombre en lugar del código numérico.
+  const [orphanProductLabel, setOrphanProductLabel] = useState<{ code: string; label: string } | null>(null);
+  useEffect(() => {
+    if (!open || !isEdit || !productoPrincipal || isLoadingProducts) return;
+    if (productOptions.some((o) => o.value === productoPrincipal)) return;
+    if (orphanProductLabel?.code === productoPrincipal) return;
+    const code = productoPrincipal;
+    let cancelled = false;
+    api
+      .get<{ data?: { codigo_producto?: string; producto?: string }[] }>('/catalog/products', {
+        params: { page: 1, limit: 50, search: code },
+      })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const row = (data.data ?? []).find((r) => (r.codigo_producto ?? '').trim() === code.trim());
+        if (row?.producto) setOrphanProductLabel({ code, label: `${code.trim()} - ${row.producto.trim()}` });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isEdit, productoPrincipal, isLoadingProducts, productOptions, orphanProductLabel]);
+
+  // Si el producto guardado no aparece en el catálogo del sector, se muestra igualmente (nombre si se pudo resolver).
   const productComboboxOptions: ComboboxOption[] = useMemo(() => {
     const hydrated = hydratedProductRef.current;
     if (
@@ -468,8 +493,9 @@ export default function CreateProjectModal({
     ) {
       return productOptions;
     }
-    return [{ value: productoPrincipal, label: productoPrincipal, code: productoPrincipal }, ...productOptions];
-  }, [productOptions, productoPrincipal, isLoadingProducts, sectorId]);
+    const label = orphanProductLabel?.code === productoPrincipal ? orphanProductLabel.label : productoPrincipal;
+    return [{ value: productoPrincipal, label, code: productoPrincipal }, ...productOptions];
+  }, [productOptions, productoPrincipal, isLoadingProducts, sectorId, orphanProductLabel]);
 
   // Sincronizar selectedProductData con el producto principal seleccionado (exclusivo de filteredProducts)
   useEffect(() => {
@@ -648,7 +674,7 @@ export default function CreateProjectModal({
       setFormError('Debe seleccionar al menos una localización con su respectiva región.');
       return;
     }
-    if (!tipologiaProyecto) {
+    if (!tipologiaProyecto && !isEdit) {
       setFormError('La tipología de proyecto es obligatoria.');
       return;
     }
@@ -1108,9 +1134,8 @@ export default function CreateProjectModal({
               required
               value={tipologiaProyecto}
               onChange={(e) => handleTipologiaChange(e.target.value)}
-              // En edición no se modifica; solo se habilita si el proyecto no tiene tipología guardada,
-              // porque es obligatoria y de otro modo no se podría guardar.
-              disabled={(isEdit && !!editValues.tipologia) || (!isEdit && !!projectSuggestions)}
+              // En edición nunca es editable (el backend además la trata como inmutable).
+              disabled={isEdit || !!projectSuggestions}
               className="w-full rounded border border-gray-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-60"
             >
               <option value="">Selecciona una tipología</option>

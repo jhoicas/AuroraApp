@@ -34,7 +34,7 @@ func TestAdminSettingsForbiddenForNonSuperAdmin(t *testing.T) {
 
 	roles := []string{
 		constants.RoleTenantAdmin, constants.RoleFormulador, constants.RoleEvaluador,
-		constants.RoleAnalista, constants.RoleViewer,
+		constants.RoleViewer,
 	}
 	for _, role := range roles {
 		for _, method := range []string{"GET", "PUT"} {

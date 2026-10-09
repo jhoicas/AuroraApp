@@ -27,7 +27,7 @@ const FEATURES: Feature[] = [
     icon: 'shield_person',
     title: 'Roles y seguridad',
     description:
-      'Gestión multi-tenant con RBAC: Super Admin, formuladores, evaluadores y analistas con acceso granular y trazabilidad.',
+      'Gestión multi-tenant con RBAC: Super Admin, formuladores y evaluadores con acceso granular y trazabilidad.',
   },
 ];
 

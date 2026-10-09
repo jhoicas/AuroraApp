@@ -87,14 +87,13 @@ export type UpdateModulePayload = Partial<{
 }>;
 
 /** Roles asignables desde la UI (SUPER_ADMIN no se asigna nunca). */
-export const ASSIGNABLE_ROLES = ['TENANT_ADMIN', 'FORMULADOR', 'EVALUADOR', 'ANALISTA', 'VIEWER'] as const;
-export const TEMPLATE_ROLES = ['FORMULADOR', 'EVALUADOR', 'ANALISTA', 'VIEWER'] as const;
+export const ASSIGNABLE_ROLES = ['TENANT_ADMIN', 'FORMULADOR', 'EVALUADOR', 'VIEWER'] as const;
+export const TEMPLATE_ROLES = ['FORMULADOR', 'EVALUADOR', 'VIEWER'] as const;
 
 export const ROLE_LABELS: Record<string, string> = {
   TENANT_ADMIN: 'Administrador de entidad',
   FORMULADOR: 'Formulador',
   EVALUADOR: 'Evaluador',
-  ANALISTA: 'Analista',
   VIEWER: 'Solo lectura',
 };
 

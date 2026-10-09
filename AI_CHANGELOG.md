@@ -21,6 +21,13 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-10-09 - Claude - Sincronización de permisos al cambiar de rol y eliminación del rol ANALISTA
+
+- **Problema 1:** al cambiar el rol de un usuario conservaba los permisos granulares del anterior. **Fix:** `updateUser` (vías Tenant Admin y Super Admin) llama a `syncRolePermissions`: borra todos los `user_module_permissions` del usuario y copia los defaults del nuevo rol (los administradores quedan sin filas, se resuelven por rol); el cambio de rol ya revocaba sesiones (`token_version`+1) y registra `permissions_synced` en la auditoría.
+- **Problema 2:** rol ANALISTA eliminado. Constante, seed de roles, manifiesto de módulos (defaults, `nonAdminRoles`, `knownRoles`), plantillas de rol y UI (`ASSIGNABLE_ROLES`, `TEMPLATE_ROLES`, etiquetas, `Roles`) sin referencias. Migración de arranque `RetireRemovedRoles` (después de `EnsureModulesSeed`): reasigna todos los usuarios ANALISTA (incluidos los de borrado lógico) a FORMULADOR con su matriz de defaults y sesiones revocadas, borra `role_module_defaults` del rol y el rol (evita el conflicto de FK) y audita `ROLE_RETIRED`. Idempotente.
+- **Tests:** sincronización por rol (Tenant Admin y Super Admin), migración ANALISTA→FORMULADOR, rol rechazado por la API, manifiesto sin ANALISTA; ajustados los que usaban el rol.
+- **Riesgos:** los JWT existentes con rol ANALISTA siguen firmados hasta expirar o hasta que `ValidateSession` los rechace por `token_version`. Las plantillas de rol personalizadas del ANALISTA se descartan con el rol. La sincronización descarta también permisos personalizados del usuario al cambiar de rol (es lo pedido).
+
 ### 2026-10-07 - Claude - Fix: tabla document_templates ausente (SQLSTATE 42P01)
 
 - **Síntoma:** los endpoints de plantillas respondían 500: `relation "document_templates" does not exist`.

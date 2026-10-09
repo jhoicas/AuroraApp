@@ -36,8 +36,6 @@ function formatRoleLabel(role: string | undefined): string {
       return 'Formulador';
     case 'EVALUADOR':
       return 'Evaluador';
-    case 'ANALISTA':
-      return 'Analista';
     case 'VIEWER':
       return 'Consulta';
     default:

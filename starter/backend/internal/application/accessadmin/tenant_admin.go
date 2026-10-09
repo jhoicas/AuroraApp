@@ -187,11 +187,14 @@ func (s *Service) updateUser(ctx context.Context, actor Actor, scope *uuid.UUID,
 			if err := tx.Model(&models.User{}).Where("id = ?", u.ID).Updates(updates).Error; err != nil {
 				return err
 			}
-			// Pasar a un rol no admin: completar permisos faltantes con los defaults del rol.
-			if _, roleChanged := changes["role"]; roleChanged && newRole != constants.RoleTenantAdmin {
-				if err := s.fillMissingRoleDefaults(tx, u.ID, newRole, actor.UserID, now); err != nil {
+			// Cambio de rol: los permisos por usuario se sincronizan con la matriz del nuevo rol
+			// (se descartan los del rol anterior; no se conserva nada heredado).
+			if _, roleChanged := changes["role"]; roleChanged {
+				granted, err := s.syncRolePermissions(tx, u.ID, newRole, actor.UserID, now)
+				if err != nil {
 					return err
 				}
+				changes["permissions_synced"] = granted
 			}
 			if err := s.audit(tx, actor, u.TenantID, &u.ID, nil, models.AuditUserUpdated, map[string]any{"changes": changes}); err != nil {
 				return err
@@ -215,36 +218,17 @@ func (s *Service) updateUser(ctx context.Context, actor Actor, scope *uuid.UUID,
 	return view, nil
 }
 
-// fillMissingRoleDefaults inserta los defaults del rol solo para los módulos sin fila.
-func (s *Service) fillMissingRoleDefaults(tx *gorm.DB, userID uuid.UUID, roleCode string, grantedBy uuid.UUID, now time.Time) error {
-	var defaults []models.RoleModuleDefault
-	if err := tx.Joins("JOIN roles r ON r.id = role_module_defaults.role_id").
-		Where("r.code = ?", roleCode).Find(&defaults).Error; err != nil {
-		return err
+// syncRolePermissions deja al usuario con la matriz de permisos de su rol: borra TODOS sus
+// permisos por usuario (los del rol anterior) y, si el rol no es administrador, le copia los
+// defaults del nuevo rol. Los administradores se resuelven por rol y quedan sin filas.
+func (s *Service) syncRolePermissions(tx *gorm.DB, userID uuid.UUID, roleCode string, grantedBy uuid.UUID, now time.Time) (int, error) {
+	if err := tx.Where("user_id = ?", userID).Delete(&models.UserModulePermission{}).Error; err != nil {
+		return 0, err
 	}
-	var have []models.UserModulePermission
-	if err := tx.Select("module_id").Where("user_id = ?", userID).Find(&have).Error; err != nil {
-		return err
+	if isAdminRole(roleCode) {
+		return 0, nil
 	}
-	exists := make(map[uuid.UUID]struct{}, len(have))
-	for _, h := range have {
-		exists[h.ModuleID] = struct{}{}
-	}
-	var rows []models.UserModulePermission
-	for _, d := range defaults {
-		if _, ok := exists[d.ModuleID]; ok {
-			continue
-		}
-		gb := grantedBy
-		rows = append(rows, models.UserModulePermission{
-			ID: uuid.New(), UserID: userID, ModuleID: d.ModuleID, ActionFlags: d.ActionFlags,
-			GrantedBy: &gb, CreatedAt: now, UpdatedAt: now,
-		})
-	}
-	if len(rows) == 0 {
-		return nil
-	}
-	return tx.CreateInBatches(rows, 100).Error
+	return s.copyRoleDefaults(tx, userID, roleCode, grantedBy, now)
 }
 
 // TenantSetUserPassword cambia la contraseña de un usuario del tenant (revoca sus sesiones).
@@ -391,7 +375,7 @@ func (s *Service) RoleTemplates(ctx context.Context) ([]RoleTemplate, error) {
 		return nil, err
 	}
 	byRole := map[string]*RoleTemplate{}
-	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleAnalista, constants.RoleViewer} {
+	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleViewer} {
 		byRole[code] = &RoleTemplate{Role: code, Modules: map[string]TemplateAction{}}
 	}
 	for _, r := range rows {
@@ -402,7 +386,7 @@ func (s *Service) RoleTemplates(ctx context.Context) ([]RoleTemplate, error) {
 		t.Modules[r.ModuleCode] = TemplateAction{CanView: r.CanView, CanCreate: r.CanCreate, CanEdit: r.CanEdit, CanDelete: r.CanDelete}
 	}
 	out := make([]RoleTemplate, 0, len(byRole))
-	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleAnalista, constants.RoleViewer} {
+	for _, code := range []string{constants.RoleFormulador, constants.RoleEvaluador, constants.RoleViewer} {
 		out = append(out, *byRole[code])
 	}
 	return out, nil

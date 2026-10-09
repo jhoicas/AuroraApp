@@ -454,6 +454,7 @@ func TestSuperAdmin_UpdateUserAndRoleTemplates(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, name, v.FullName)
 	require.Equal(t, constants.RoleEvaluador, v.Role)
+	require.Equal(t, roleDefaultsByModule(t, e, constants.RoleEvaluador), permsByModule(t, e, e.userB.ID), "la vía Super Admin también sincroniza permisos")
 
 	sa := constants.RoleSuperAdmin
 	_, err = e.svc.UpdateUser(context.Background(), actor, e.userB.ID, accessadmin.TenantUpdateUserInput{RoleCode: &sa})
@@ -461,8 +462,100 @@ func TestSuperAdmin_UpdateUserAndRoleTemplates(t *testing.T) {
 
 	tpl, err := e.svc.RoleTemplates(context.Background())
 	require.NoError(t, err)
-	require.Len(t, tpl, 4)
+	require.Len(t, tpl, 3, "sin ANALISTA")
 	require.Equal(t, constants.RoleFormulador, tpl[0].Role)
 	require.True(t, tpl[0].Modules[modules.CodeProjects].CanDelete)
-	require.False(t, tpl[3].Modules[modules.CodeProjects].CanCreate)
+	require.Equal(t, constants.RoleViewer, tpl[2].Role)
+	require.False(t, tpl[2].Modules[modules.CodeProjects].CanCreate)
+}
+
+func permsByModule(t *testing.T, e *tenantEnv, userID uuid.UUID) map[string]models.ActionFlags {
+	t.Helper()
+	var rows []struct {
+		Code string
+		models.ActionFlags
+	}
+	require.NoError(t, e.db.Table("user_module_permissions AS p").
+		Select("m.code AS code, p.can_view, p.can_create, p.can_edit, p.can_delete").
+		Joins("JOIN modules m ON m.id = p.module_id").Where("p.user_id = ?", userID).Scan(&rows).Error)
+	out := map[string]models.ActionFlags{}
+	for _, r := range rows {
+		out[r.Code] = r.ActionFlags
+	}
+	return out
+}
+
+func roleDefaultsByModule(t *testing.T, e *tenantEnv, role string) map[string]models.ActionFlags {
+	t.Helper()
+	var rows []struct {
+		Code string
+		models.ActionFlags
+	}
+	require.NoError(t, e.db.Table("role_module_defaults AS d").
+		Select("m.code AS code, d.can_view, d.can_create, d.can_edit, d.can_delete").
+		Joins("JOIN modules m ON m.id = d.module_id").Joins("JOIN roles r ON r.id = d.role_id").
+		Where("r.code = ?", role).Scan(&rows).Error)
+	out := map[string]models.ActionFlags{}
+	for _, r := range rows {
+		out[r.Code] = r.ActionFlags
+	}
+	return out
+}
+
+// Al cambiar el rol, el usuario conserva SOLO la matriz del nuevo rol (nada del anterior).
+func TestTenantAdmin_RoleChangeSyncsPermissionsToNewRole(t *testing.T) {
+	e := newTenantEnv(t, httpmw.EnforceOn)
+	tok := tenantToken(t, e.adminA, constants.RoleTenantAdmin, 0)
+	path := "/api/v1/tenant/users/" + e.userA.ID.String() // FORMULADOR con permisos por defecto
+
+	// Pasa a EVALUADOR y se le otorga un permiso extra personalizado.
+	status, _ := e.call(t, "PATCH", path, tok, map[string]any{"role_code": constants.RoleEvaluador})
+	require.Equal(t, 200, status)
+	require.Equal(t, roleDefaultsByModule(t, e, constants.RoleEvaluador), permsByModule(t, e, e.userA.ID))
+	status, _ = e.call(t, "PUT", path+"/permissions", tok, map[string]any{
+		"permissions": []map[string]any{{"module_code": modules.CodeReports, "can_view": true, "can_create": true, "can_edit": true, "can_delete": true}},
+	})
+	require.Equal(t, 200, status)
+	require.True(t, permsByModule(t, e, e.userA.ID)[modules.CodeReports].CanDelete)
+
+	// EVALUADOR → FORMULADOR: se borran los permisos anteriores (incluido el extra) y quedan los del FORMULADOR.
+	status, _ = e.call(t, "PATCH", path, tok, map[string]any{"role_code": constants.RoleFormulador})
+	require.Equal(t, 200, status)
+	got := permsByModule(t, e, e.userA.ID)
+	require.Equal(t, roleDefaultsByModule(t, e, constants.RoleFormulador), got)
+	require.False(t, got[modules.CodeReports].CanDelete, "el permiso extra del rol anterior no sobrevive")
+	require.True(t, got[modules.CodeMGAIdentificacion].CanEdit, "recibe la edición del FORMULADOR")
+
+	// FORMULADOR → VIEWER: pierde la escritura.
+	status, _ = e.call(t, "PATCH", path, tok, map[string]any{"role_code": constants.RoleViewer})
+	require.Equal(t, 200, status)
+	got = permsByModule(t, e, e.userA.ID)
+	require.Equal(t, roleDefaultsByModule(t, e, constants.RoleViewer), got)
+	for code, f := range got {
+		require.False(t, f.CanCreate || f.CanEdit || f.CanDelete, code)
+	}
+
+	// → TENANT_ADMIN: se resuelve por rol, sin filas por usuario.
+	status, _ = e.call(t, "PATCH", path, tok, map[string]any{"role_code": constants.RoleTenantAdmin})
+	require.Equal(t, 200, status)
+	require.Empty(t, permsByModule(t, e, e.userA.ID))
+
+	// Un PATCH que no cambia el rol no toca los permisos.
+	status, _ = e.call(t, "PATCH", path, tok, map[string]any{"role_code": constants.RoleViewer})
+	require.Equal(t, 200, status)
+	before := permsByModule(t, e, e.userA.ID)
+	status, _ = e.call(t, "PATCH", path, tok, map[string]any{"full_name": "Solo nombre"})
+	require.Equal(t, 200, status)
+	require.Equal(t, before, permsByModule(t, e, e.userA.ID))
+}
+
+func TestTenantAdmin_AnalistaRoleNoLongerExists(t *testing.T) {
+	e := newTenantEnv(t, httpmw.EnforceOn)
+	tok := tenantToken(t, e.adminA, constants.RoleTenantAdmin, 0)
+	status, _ := e.call(t, "PATCH", "/api/v1/tenant/users/"+e.userA.ID.String(), tok, map[string]any{"role_code": "ANALISTA"})
+	require.Equal(t, 400, status)
+	status, _ = e.call(t, "POST", "/api/v1/tenant/users", tok, map[string]any{
+		"email": "an@x.co", "full_name": "Ana Lista", "password": "secreto123", "role_code": "ANALISTA",
+	})
+	require.Equal(t, 400, status)
 }

@@ -130,17 +130,15 @@ const (
 var nonAdminRoles = []string{
 	constants.RoleFormulador,
 	constants.RoleEvaluador,
-	constants.RoleAnalista,
 	constants.RoleViewer,
 }
 
 // readAll: todos los roles no admin conservan acceso de lectura (no se pierde
 // el acceso que tenían antes de PBAC); w define las acciones de escritura.
-func defaults(formulador, evaluador, analista, viewer Actions) map[string]Actions {
+func defaults(formulador, evaluador, viewer Actions) map[string]Actions {
 	return map[string]Actions{
 		constants.RoleFormulador: formulador,
 		constants.RoleEvaluador:  evaluador,
-		constants.RoleAnalista:   analista,
 		constants.RoleViewer:     viewer,
 	}
 }
@@ -149,27 +147,27 @@ func defaults(formulador, evaluador, analista, viewer Actions) map[string]Action
 // padres antes que hijos.
 var Manifest = []Def{
 	{Code: CodeProjects, Name: "Proyectos", Description: "Tablero y gestión de proyectos de inversión", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/projects", Order: 10,
-		Defaults: defaults(Full, V, V, V)},
+		Defaults: defaults(Full, V, V)},
 
 	{Code: CodeMGA, Name: "Formulación MGA", Description: "Formulación de proyectos con la Metodología General Ajustada", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/projects/:id/formulation", Order: 20,
-		Defaults: defaults(VCE, V, V, V)},
+		Defaults: defaults(VCE, V, V)},
 	{Code: CodeMGAIdentificacion, Name: "Identificación", Description: "Etapa 1 MGA: identificación del problema", Kind: KindSection, Scope: ScopeTenant, Parent: CodeMGA, Route: "/tenant/projects/:id/formulation#identificacion", Order: 21,
-		Defaults: defaults(VCE, V, V, V)},
+		Defaults: defaults(VCE, V, V)},
 	{Code: CodeMGAPreparacion, Name: "Preparación", Description: "Etapa 2 MGA: preparación", Kind: KindSection, Scope: ScopeTenant, Parent: CodeMGA, Route: "/tenant/projects/:id/formulation#preparacion", Order: 22,
-		Defaults: defaults(VCE, V, V, V)},
+		Defaults: defaults(VCE, V, V)},
 	{Code: CodeMGAEvaluacion, Name: "Evaluación", Description: "Etapa 3 MGA: evaluación", Kind: KindSection, Scope: ScopeTenant, Parent: CodeMGA, Route: "/tenant/projects/:id/formulation#evaluacion", Order: 23,
-		Defaults: defaults(VCE, VCE, V, V)},
+		Defaults: defaults(VCE, VCE, V)},
 	{Code: CodeMGAProgramacion, Name: "Programación", Description: "Etapa 4 MGA: programación", Kind: KindSection, Scope: ScopeTenant, Parent: CodeMGA, Route: "/tenant/projects/:id/formulation#programacion", Order: 24,
-		Defaults: defaults(VCE, V, V, V)},
+		Defaults: defaults(VCE, V, V)},
 	{Code: CodeMGAPresentar, Name: "Presentar", Description: "Etapa 5 MGA: presentación del proyecto", Kind: KindSection, Scope: ScopeTenant, Parent: CodeMGA, Route: "/tenant/projects/:id/formulation#presentar", Order: 25,
-		Defaults: defaults(VCE, V, V, V)},
+		Defaults: defaults(VCE, V, V)},
 
 	{Code: CodeCatalog, Name: "Catálogo DNP", Description: "Consulta del catálogo oficial del DNP", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/catalog", Order: 30,
-		Defaults: defaults(V, V, V, V)},
+		Defaults: defaults(V, V, V)},
 	{Code: CodeAI, Name: "Exploración MGA", Description: "Exploración MGA y asistente Aurora", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/ai", Order: 40,
-		Defaults: defaults(VCE, VC, VC, V)},
+		Defaults: defaults(VCE, VC, V)},
 	{Code: CodeReports, Name: "Reportes", Description: "Reportes de inversión y seguimiento", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/reports", Order: 50,
-		Defaults: defaults(V, V, VC, V)},
+		Defaults: defaults(V, V, V)},
 	{Code: CodeUsers, Name: "Usuarios y permisos", Description: "Administración de usuarios y permisos de la entidad", Kind: KindModule, Scope: ScopeTenant, Route: "/tenant/users", Order: 60,
 		Defaults: map[string]Actions{}}, // solo TENANT_ADMIN
 
@@ -223,7 +221,6 @@ var knownRoles = map[string]struct{}{
 	constants.RoleTenantAdmin: {},
 	constants.RoleFormulador:  {},
 	constants.RoleEvaluador:   {},
-	constants.RoleAnalista:    {},
 	constants.RoleViewer:      {},
 }
 

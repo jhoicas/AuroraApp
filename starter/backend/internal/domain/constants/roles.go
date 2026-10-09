@@ -6,6 +6,5 @@ const (
 	RoleTenantAdmin = "TENANT_ADMIN"
 	RoleFormulador  = "FORMULADOR"
 	RoleEvaluador   = "EVALUADOR"
-	RoleAnalista    = "ANALISTA"
 	RoleViewer      = "VIEWER"
 )

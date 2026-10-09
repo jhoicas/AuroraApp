@@ -242,6 +242,12 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("ensure modules seed: %w", err)
 	}
 
+	// Roles eliminados (p. ej. ANALISTA): sus usuarios pasan al rol sucesor y el rol se borra.
+	// Después del seed de módulos, que provee los defaults del rol sucesor.
+	if err := RetireRemovedRoles(db); err != nil {
+		return nil, fmt.Errorf("retire removed roles: %w", err)
+	}
+
 	log.Println("PostgreSQL connected and migrated via DATABASE_URL")
 	return db, nil
 }

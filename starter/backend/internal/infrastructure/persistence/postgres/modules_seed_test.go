@@ -199,13 +199,13 @@ func TestEnsureModulesSeed_DoesNotOverrideCustomizations(t *testing.T) {
 
 func TestEnsureModulesSeed_NewModuleIsBackfilledAndRemovedIsDeactivated(t *testing.T) {
 	db := newModulesTestDB(t)
-	_, users := seedTenantWithUsers(t, db, constants.RoleAnalista)
+	_, users := seedTenantWithUsers(t, db, constants.RoleEvaluador)
 	require.NoError(t, EnsureModulesSeed(db))
 
 	next := append([]modules.Def(nil), modules.Manifest...)
 	next = append(next, modules.Def{
 		Code: "nuevo", Name: "Nuevo", Kind: modules.KindModule, Scope: modules.ScopeTenant, Route: "/tenant/nuevo", Order: 70,
-		Defaults: map[string]modules.Actions{constants.RoleAnalista: modules.VC},
+		Defaults: map[string]modules.Actions{constants.RoleEvaluador: modules.VC},
 	})
 	// Se retira "reports" del manifiesto.
 	filtered := next[:0:0]
@@ -318,4 +318,93 @@ func TestEnsureModulesSeed_SystemFlagsAndCustomModules(t *testing.T) {
 	require.Equal(t, 77, reports.SortOrder)
 	require.True(t, reports.IsSystem)
 	require.Equal(t, modules.SeedVersion+2, reports.SeedVersion)
+}
+
+func TestRetireRemovedRoles_MigratesAnalistaUsersToFormulador(t *testing.T) {
+	db := newModulesTestDB(t)
+	require.NoError(t, EnsureSystemRoles(db))
+
+	var n int64
+	db.Model(&models.Role{}).Where("code = ?", "ANALISTA").Count(&n)
+	require.Zero(t, n, "el seed de roles ya no crea ANALISTA")
+
+	// Datos heredados: rol ANALISTA con defaults y usuarios (uno con borrado lógico).
+	now := time.Now().UTC()
+	analista := models.Role{ID: uuid.New(), Code: "ANALISTA", Name: "Analista", CreatedAt: now, UpdatedAt: now}
+	require.NoError(t, db.Create(&analista).Error)
+	require.NoError(t, EnsureModulesSeed(db))
+	var projects models.Module
+	require.NoError(t, db.Where("code = ?", modules.CodeProjects).First(&projects).Error)
+	require.NoError(t, db.Create(&models.RoleModuleDefault{RoleID: analista.ID, ModuleID: projects.ID,
+		ActionFlags: models.ActionFlags{CanView: true, CanDelete: true}}).Error)
+
+	tenant, users := seedTenantWithUsers(t, db, constants.RoleViewer, constants.RoleViewer, constants.RoleEvaluador)
+	for _, u := range users[:2] {
+		require.NoError(t, db.Model(&models.User{}).Where("id = ?", u.ID).Update("role_id", analista.ID).Error)
+		// Permisos viejos (del rol anterior) que no deben sobrevivir.
+		require.NoError(t, db.Create(&models.UserModulePermission{UserID: u.ID, ModuleID: projects.ID,
+			ActionFlags: models.ActionFlags{CanView: true, CanDelete: true}, CreatedAt: now, UpdatedAt: now}).Error)
+	}
+	require.NoError(t, db.Delete(&models.User{}, "id = ?", users[1].ID).Error) // borrado lógico
+	_ = tenant
+
+	require.NoError(t, RetireRemovedRoles(db))
+
+	// El rol y sus defaults desaparecen.
+	db.Model(&models.Role{}).Where("code = ?", "ANALISTA").Count(&n)
+	require.Zero(t, n)
+	db.Model(&models.RoleModuleDefault{}).Where("role_id = ?", analista.ID).Count(&n)
+	require.Zero(t, n)
+
+	var formulador models.Role
+	require.NoError(t, db.Where("code = ?", constants.RoleFormulador).First(&formulador).Error)
+
+	// Ambos usuarios (incluido el eliminado lógicamente) quedan como FORMULADOR con sesiones revocadas.
+	for _, u := range users[:2] {
+		var got models.User
+		require.NoError(t, db.Unscoped().First(&got, "id = ?", u.ID).Error)
+		require.Equal(t, formulador.ID, got.RoleID)
+		require.Equal(t, 1, got.TokenVersion)
+	}
+	var other models.User
+	require.NoError(t, db.First(&other, "id = ?", users[2].ID).Error)
+	require.Equal(t, 0, other.TokenVersion, "otros usuarios no se tocan")
+
+	// El usuario activo tiene exactamente la matriz del FORMULADOR (sin el permiso heredado).
+	var perms []models.UserModulePermission
+	require.NoError(t, db.Where("user_id = ?", users[0].ID).Find(&perms).Error)
+	var defaults []models.RoleModuleDefault
+	require.NoError(t, db.Where("role_id = ?", formulador.ID).Find(&defaults).Error)
+	require.Len(t, perms, len(defaults))
+	want := map[string]models.ActionFlags{}
+	for _, d := range defaults {
+		want[d.ModuleID.String()] = d.ActionFlags
+	}
+	for _, p := range perms {
+		require.Equal(t, want[p.ModuleID.String()], p.ActionFlags)
+	}
+	for _, p := range perms {
+		if p.ModuleID == projects.ID {
+			require.True(t, p.CanCreate && p.CanEdit && p.CanDelete, "projects: Full del FORMULADOR, no el del rol retirado")
+		}
+	}
+
+	var audits int64
+	db.Model(&models.AccessAuditLog{}).Where("action = ?", models.AuditRoleRetired).Count(&audits)
+	require.EqualValues(t, 1, audits)
+
+	// Idempotente: una segunda corrida no hace nada.
+	require.NoError(t, RetireRemovedRoles(db))
+	db.Model(&models.AccessAuditLog{}).Where("action = ?", models.AuditRoleRetired).Count(&audits)
+	require.EqualValues(t, 1, audits)
+}
+
+func TestManifestHasNoAnalistaRole(t *testing.T) {
+	for _, d := range modules.Manifest {
+		_, ok := d.Defaults["ANALISTA"]
+		require.False(t, ok, d.Code)
+	}
+	for _, r := range modules.NonAdminRoles() {
+		require.NotEqual(t, "ANALISTA", r)
+	}
 }

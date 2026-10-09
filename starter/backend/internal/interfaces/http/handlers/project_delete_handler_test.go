@@ -71,7 +71,7 @@ func TestProjectDelete(t *testing.T) {
 
 	t.Run("viewer y otros roles reciben 403", func(t *testing.T) {
 		id := newProject("protegido")
-		for _, role := range []string{"VIEWER", "EVALUADOR", "ANALISTA", "SUPER_ADMIN"} {
+		for _, role := range []string{"VIEWER", "EVALUADOR", "SUPER_ADMIN"} {
 			require.Equal(t, http.StatusForbidden, call(viewer, tenant, role, id), role)
 		}
 		require.False(t, isDeleted(id))

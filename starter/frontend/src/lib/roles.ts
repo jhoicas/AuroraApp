@@ -4,7 +4,6 @@ export const Roles = {
   TenantAdmin: 'TENANT_ADMIN',
   Formulador: 'FORMULADOR',
   Evaluador: 'EVALUADOR',
-  Analista: 'ANALISTA',
   Viewer: 'VIEWER',
 } as const;
 

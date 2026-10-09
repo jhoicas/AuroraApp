@@ -25,7 +25,6 @@ var systemRoles = []roleSeed{
 	{Code: constants.RoleTenantAdmin, Name: "Administrador de entidad", Description: "Administra un tenant"},
 	{Code: constants.RoleFormulador, Name: "Formulador", Description: "Formula proyectos de inversión"},
 	{Code: constants.RoleEvaluador, Name: "Evaluador", Description: "Evalúa proyectos"},
-	{Code: constants.RoleAnalista, Name: "Analista", Description: "Analiza proyectos"},
 	{Code: constants.RoleViewer, Name: "Visualizador", Description: "Solo lectura"},
 }
 

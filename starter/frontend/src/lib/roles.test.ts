@@ -88,7 +88,6 @@ describe('Roles', () => {
       TenantAdmin: 'TENANT_ADMIN',
       Formulador: 'FORMULADOR',
       Evaluador: 'EVALUADOR',
-      Analista: 'ANALISTA',
       Viewer: 'VIEWER',
     });
   });

@@ -322,7 +322,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 			prompt += fmt.Sprintf("\nPROBLEMA CENTRAL REGISTRADO: %s", prob2)
 		}
 	}
-	
+
 	if req.IsList {
 		optionsStr := fmt.Sprintf("%v", req.ListOptions)
 		prompt += fmt.Sprintf("\nDebes elegir la opción más adecuada de este catálogo: %s. REGLA ESTRICTA DE FORMATO: Devuelve la respuesta utilizando EXCLUSIVAMENTE este formato: CODIGO|||Explicación detallada y amigable para el usuario de por qué se eligió esta opción (no menciones el código en la explicación).", optionsStr)
@@ -344,7 +344,7 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 	}
 	// Loggear la petición en AI usage si es necesario
 	now := time.Now().UTC()
-	
+
 	usageLog := models.AiUsageLog{
 		ID:        uuid.New(),
 		UserID:    userID,

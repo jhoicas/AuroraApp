@@ -736,6 +736,14 @@ export default function IndicadoresDecisionTab({ project }: { project: Project }
     return bestId;
   }, [ahpScores]);
 
+  // La alternativa de la sección 03 es la activa de la evaluación multicriterio (sección 02):
+  // se auto-selecciona y el campo queda bloqueado.
+  useEffect(() => {
+    if (bestAhpId && bestAhpId !== alternativaSeleccionadaId) {
+      setAlternativaSeleccionadaId(bestAhpId);
+    }
+  }, [bestAhpId, alternativaSeleccionadaId]);
+
   // ─── Empty state ────────────────────────────────────────────────────────
   if (alternatives.length === 0) {
     return (
@@ -1015,8 +1023,8 @@ export default function IndicadoresDecisionTab({ project }: { project: Project }
             </label>
             <select
               value={alternativaSeleccionadaId}
-              onChange={(e) => setAlternativaSeleccionadaId(e.target.value)}
-              className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-[#2980b9] bg-white"
+              disabled
+              className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none bg-slate-100 text-slate-600 cursor-not-allowed"
             >
               <option value="">-- Seleccione una alternativa --</option>
               {alternatives.map((alt: any) => (

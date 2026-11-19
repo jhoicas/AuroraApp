@@ -21,6 +21,12 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-11-19 - Cursor - Fix ruta duplicada admin.settings en manifiesto PBAC
+
+- **Causa:** `admin.settings` y `admin.settings.general` compartían `Route: "/admin/settings"`, y `ValidateManifest` abortaba el arranque (`ensure modules seed`).
+- **Fix:** `admin.settings.general` → `/admin/settings/general`; `admin.settings.ai` se mantiene en `/admin/settings/ai`; `SeedVersion` 8. Frontend: ruta `settings/general` + redirect `/admin/settings` → `/admin/settings/general`.
+- **Validación:** `go test ./internal/domain/modules/` OK.
+
 ### 2026-11-18 - Cursor - Configuración dinámica de IA (Gemini/Anthropic) desde Super Admin
 
 - **Objetivo:** Dejar de depender solo de `.env` para `GEMINI_*` / `ANTHROPIC_*` y administrar claves/modelos desde el panel Super Admin.

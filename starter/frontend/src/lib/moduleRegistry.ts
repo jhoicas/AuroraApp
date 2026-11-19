@@ -163,6 +163,7 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.settings': {
     icon: 'settings',
     routes: [
+      { path: 'settings', redirectTo: '/admin/settings/general' },
       { path: 'security', Component: lz.comingSoon },
       { path: 'reports', Component: lz.comingSoon },
     ],
@@ -170,7 +171,7 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
     titlePrefixes: ['/admin/security'],
   },
   'admin.settings.general': {
-    routes: [{ path: 'settings', Component: lz.adminSettings }],
+    routes: [{ path: 'settings/general', Component: lz.adminSettings }],
   },
   'admin.settings.ai': {
     routes: [{ path: 'settings/ai', Component: lz.aiSettings }],

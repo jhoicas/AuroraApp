@@ -15,7 +15,7 @@ import (
 
 // SeedVersion identifica la versión del manifiesto. Súbela cada vez que cambies
 // Manifest: el seed solo re-sincroniza módulos con seed_version menor.
-const SeedVersion = 7
+const SeedVersion = 8
 
 // Kind de un nodo del manifiesto.
 const (
@@ -196,7 +196,7 @@ var Manifest = []Def{
 	{Code: CodeAdminUsers, Name: "Usuarios", Description: "Usuarios y permisos de todas las entidades", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/users", Order: 135},
 	{Code: CodeAdminAI, Name: "Gestión IA Aurora", Description: "Gestión de la base de conocimiento de IA", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/ai", Order: 140},
 	{Code: CodeAdminSettings, Name: "Settings", Description: "Configuración de la plataforma", Kind: KindModule, Scope: ScopePlatform, Route: "/admin/settings", Order: 150},
-	{Code: CodeAdminSettings + ".general", Name: "General", Description: "Banner, sesión y mantenimiento", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminSettings, Route: "/admin/settings", Order: 151},
+	{Code: CodeAdminSettings + ".general", Name: "General", Description: "Banner, sesión y mantenimiento", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminSettings, Route: "/admin/settings/general", Order: 151},
 	{Code: CodeAdminSettingsAI, Name: "Configuración IA", Description: "API keys y modelos de Gemini y Anthropic", Kind: KindSection, Scope: ScopePlatform, Parent: CodeAdminSettings, Route: "/admin/settings/ai", Order: 152},
 }
 

@@ -37,6 +37,7 @@ const lz = {
   adminModules: lazy(() => import('../pages/admin/ModulesPage')),
   usersAdmin: lazy(() => import('../pages/admin/UsersAdminPage')),
   adminSettings: lazy(() => import('../pages/admin/AdminSettingsPage')),
+  aiSettings: lazy(() => import('../pages/admin/AISettingsPage')),
   roleTemplates: lazy(() => import('../pages/admin/RoleTemplatesPage')),
   adminProjects: lazy(() => import('../pages/admin/AdminProjectsPage')),
   adminProjectDetail: lazy(() => import('../pages/admin/AdminProjectDetailPage')),
@@ -162,11 +163,17 @@ export const moduleRegistry: Record<string, RegistryEntry> = {
   'admin.settings': {
     icon: 'settings',
     routes: [
-      { path: 'settings', Component: lz.adminSettings },
       { path: 'security', Component: lz.comingSoon },
       { path: 'reports', Component: lz.comingSoon },
     ],
+    activePrefixes: ['/admin/settings', '/admin/security', '/admin/reports'],
     titlePrefixes: ['/admin/security'],
+  },
+  'admin.settings.general': {
+    routes: [{ path: 'settings', Component: lz.adminSettings }],
+  },
+  'admin.settings.ai': {
+    routes: [{ path: 'settings/ai', Component: lz.aiSettings }],
   },
 };
 

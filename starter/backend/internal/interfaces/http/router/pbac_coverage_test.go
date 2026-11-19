@@ -53,7 +53,7 @@ func TestEveryBusinessRouteRequiresPermission(t *testing.T) {
 	RegisterAdminTenantRoutes(app, nil, secret)
 	RegisterAdminLocationRoutes(app, nil, secret, guard)
 	RegisterProjectRoutes(app, nil, secret, guard)
-	RegisterAIRoutes(app, nil, &config.Config{JWTSecret: secret}, guard)
+	RegisterAIRoutes(app, nil, &config.Config{JWTSecret: secret}, guard, nil)
 	RegisterCatalogRoutes(app, nil, secret, guard)
 	RegisterMgaCatalogRoutes(app, nil, secret, guard)
 

@@ -12,6 +12,12 @@ const DefaultEmbeddingDimensions = 384
 // NewEmbeddingProvider selecciona el proveedor open-source según configuración.
 // NO usa OpenAI.
 func NewEmbeddingProvider(cfg *config.Config) EmbeddingProvider {
+	return NewEmbeddingProviderWithGeminiSource(cfg, nil)
+}
+
+// NewEmbeddingProviderWithGeminiSource igual que NewEmbeddingProvider, pero si el
+// proveedor es Gemini y hay source, resuelve la API key en runtime (BD → env).
+func NewEmbeddingProviderWithGeminiSource(cfg *config.Config, geminiSource GeminiAPIKeySource) EmbeddingProvider {
 	if cfg == nil {
 		return NewMockEmbeddingProvider()
 	}
@@ -27,6 +33,10 @@ func NewEmbeddingProvider(cfg *config.Config) EmbeddingProvider {
 		log.Printf("embeddings: Ollama (%s @ %s)", cfg.EmbeddingModel, cfg.OllamaBaseURL)
 		return NewOllamaEmbeddingProvider(cfg.OllamaBaseURL, cfg.EmbeddingModel)
 	case "gemini":
+		if geminiSource != nil {
+			log.Println("embeddings: Gemini (runtime credentials, 384 dims)")
+			return NewResolvingGeminiEmbeddingProvider(geminiSource)
+		}
 		if cfg.GeminiApiKey != "" {
 			log.Println("embeddings: Gemini (GEMINI_EMBEDDING_MODEL, 384 dims)")
 			return NewGeminiEmbeddingProvider(cfg.GeminiApiKey)

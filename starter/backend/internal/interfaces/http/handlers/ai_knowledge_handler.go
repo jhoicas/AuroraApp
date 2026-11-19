@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"aurora-backend/internal/application/aisettings"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/models"
 	"aurora-backend/internal/domain/services"
@@ -23,10 +24,15 @@ type AIKnowledgeHandler struct {
 	telemetry *services.TelemetryService
 }
 
-func NewAIKnowledgeHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AIKnowledgeHandler {
+func NewAIKnowledgeHandler(
+	db *gorm.DB,
+	cfg *config.Config,
+	telemetry *services.TelemetryService,
+	aiSettings *aisettings.Service,
+) *AIKnowledgeHandler {
 	return NewAIKnowledgeHandlerWithDeps(
 		postgres.NewAiKnowledgeRepository(db),
-		services.NewEmbeddingProvider(cfg),
+		services.NewEmbeddingProviderWithGeminiSource(cfg, aiSettings),
 		telemetry,
 	)
 }

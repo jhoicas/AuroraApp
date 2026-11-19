@@ -1,6 +1,6 @@
 # AuroraApp
 
-Plataforma multi-tenant de **formulación de proyectos de inversión pública (MGA)** con asistente IA (Aurora Copilot), catálogos DNP, evaluación financiera nativa (VPN/TIR) y panel de auditoría.
+Plataforma multi-tenant de **formulación de proyectos de inversión pública (MGA)** con asistente IA (Aurora Copilot), catálogos DNP, evaluación financiera nativa (VPN/TIR) y panel de auditoría. t
 
 ## Stack
 

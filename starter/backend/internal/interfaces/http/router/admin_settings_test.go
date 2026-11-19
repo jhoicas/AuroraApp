@@ -30,7 +30,7 @@ func signTestToken(t *testing.T, secret, role string) string {
 func TestAdminSettingsForbiddenForNonSuperAdmin(t *testing.T) {
 	const secret = "test-secret"
 	app := fiber.New()
-	RegisterSystemSettingsRoutes(app, nil, secret)
+	RegisterSystemSettingsRoutes(app, nil, nil, secret)
 
 	roles := []string{
 		constants.RoleTenantAdmin, constants.RoleFormulador, constants.RoleEvaluador,
@@ -50,6 +50,16 @@ func TestAdminSettingsForbiddenForNonSuperAdmin(t *testing.T) {
 		resp, err := app.Test(httptest.NewRequest(method, "/api/v1/admin/settings", nil), -1)
 		require.NoError(t, err)
 		require.Equal(t, 401, resp.StatusCode)
+	}
+
+	for _, role := range roles {
+		for _, method := range []string{"GET", "PUT"} {
+			req := httptest.NewRequest(method, "/api/v1/admin/settings/ai", nil)
+			req.Header.Set("Authorization", "Bearer "+signTestToken(t, secret, role))
+			resp, err := app.Test(req, -1)
+			require.NoError(t, err)
+			require.Equal(t, 403, resp.StatusCode, "%s /ai %s", method, role)
+		}
 	}
 }
 

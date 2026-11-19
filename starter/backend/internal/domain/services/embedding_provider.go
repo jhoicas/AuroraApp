@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -211,6 +212,40 @@ func NewGeminiEmbeddingProvider(apiKey string) *GeminiEmbeddingProvider {
 		model:  model,
 		client: &http.Client{Timeout: 45 * time.Second},
 	}
+}
+
+// GeminiAPIKeySource resuelve la API key de Gemini en runtime (BD → env).
+type GeminiAPIKeySource interface {
+	GeminiCredentials(ctx context.Context) (apiKey, model string, err error)
+}
+
+// ResolvingGeminiEmbeddingProvider obtiene la API key justo antes de embeber.
+type ResolvingGeminiEmbeddingProvider struct {
+	source GeminiAPIKeySource
+	inner  *GeminiEmbeddingProvider
+}
+
+func NewResolvingGeminiEmbeddingProvider(source GeminiAPIKeySource) *ResolvingGeminiEmbeddingProvider {
+	return &ResolvingGeminiEmbeddingProvider{
+		source: source,
+		inner:  NewGeminiEmbeddingProvider(""),
+	}
+}
+
+func (p *ResolvingGeminiEmbeddingProvider) Dimensions() int {
+	return DefaultEmbeddingDimensions
+}
+
+func (p *ResolvingGeminiEmbeddingProvider) Embed(text string) ([]float32, error) {
+	if p.source == nil {
+		return nil, fmt.Errorf("API Key de Gemini no configurada en el sistema")
+	}
+	apiKey, _, err := p.source.GeminiCredentials(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	p.inner.apiKey = apiKey
+	return p.inner.Embed(text)
 }
 
 func (p *GeminiEmbeddingProvider) Dimensions() int {

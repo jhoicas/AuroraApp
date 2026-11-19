@@ -1,6 +1,7 @@
 package router
 
 import (
+	"aurora-backend/internal/application/aisettings"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/modules"
@@ -14,13 +15,19 @@ import (
 
 // RegisterAIRoutes registra el asistente IA. Usar el asistente (chat, sugerencias,
 // historial, grafo) se considera "view" del módulo ai; la telemetría del cliente no se controla.
-func RegisterAIRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, guard *httpmw.AccessGuard) {
+func RegisterAIRoutes(
+	app *fiber.App,
+	db *gorm.DB,
+	cfg *config.Config,
+	guard *httpmw.AccessGuard,
+	aiSettings *aisettings.Service,
+) {
 	telemetry := services.NewTelemetryService(db)
-	h := handlers.NewAIHandler(db, telemetry, cfg)
-	kh := handlers.NewAIKnowledgeHandler(db, cfg, telemetry)
+	h := handlers.NewAIHandler(db, telemetry, cfg, aiSettings)
+	kh := handlers.NewAIKnowledgeHandler(db, cfg, telemetry, aiSettings)
 	th := handlers.NewAITelemetryHandler(telemetry)
-	aurora := handlers.NewAuroraChatHandler(db, cfg, telemetry)
-	ideation := handlers.NewIdeationHandler(db, cfg, telemetry)
+	aurora := handlers.NewAuroraChatHandler(db, cfg, telemetry, aiSettings)
+	ideation := handlers.NewIdeationHandler(db, cfg, telemetry, aiSettings)
 
 	ai := app.Group("/api/v1/ai",
 		httpmw.RequireAuth(cfg.JWTSecret),

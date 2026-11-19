@@ -78,8 +78,8 @@ func TestProductionConstructorsWireDependencies(t *testing.T) {
 	telemetry := services.NewTelemetryServiceWithRepo(newCaptureUsageRepo(), 8)
 	defer telemetry.Close()
 
-	assert.NotNil(t, NewAIKnowledgeHandler(db, cfg, telemetry))
-	assert.NotNil(t, NewAuroraChatHandler(db, cfg, telemetry))
+	assert.NotNil(t, NewAIKnowledgeHandler(db, cfg, telemetry, nil))
+	assert.NotNil(t, NewAuroraChatHandler(db, cfg, telemetry, nil))
 	assert.NotNil(t, NewAIAuditHandler(db))
 	assert.NotNil(t, NewProjectEvaluationHandler(db))
 	assert.NotNil(t, NewAITelemetryHandler(telemetry))

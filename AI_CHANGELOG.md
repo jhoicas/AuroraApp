@@ -21,6 +21,16 @@ Registro compartido de cambios realizados por GitHub Copilot, Cursor y Antigravi
 
 <!-- Las IAs agregan nuevas entradas inmediatamente debajo de este comentario. -->
 
+### 2026-11-18 - Cursor - Configuración dinámica de IA (Gemini/Anthropic) desde Super Admin
+
+- **Objetivo:** Dejar de depender solo de `.env` para `GEMINI_*` / `ANTHROPIC_*` y administrar claves/modelos desde el panel Super Admin.
+- **Backend:** se reutiliza `system_settings` con filas por clave (`GEMINI_API_KEY`, `GEMINI_MODEL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`), campo `description` en el modelo, servicio `aisettings` (caché 10s, fallback a env/config, enmascarado `••••••••••••xxxx`, upsert que ignora valores enmascarados), endpoints `GET/PUT /api/v1/admin/settings/ai` (SUPER_ADMIN), clientes `ResolvingAnthropicClient` / `ResolvingGeminiClient` y embedding Gemini resolviendo en runtime.
+- **PBAC:** `SeedVersion` 7; secciones `admin.settings.general` y `admin.settings.ai`.
+- **Frontend:** `AISettingsPage`, `aiSettingsApi`, registro en `moduleRegistry` (ruta `/admin/settings/ai` bajo Settings).
+- **Docs/env:** comentarios de fallback en `starter/backend/.env.example` y `starter/.env.example`.
+- **Validación:** tests de `aisettings` (glebarez/sqlite) y 403 de `/admin/settings/ai`; `go test` / `tsc -b` en esta sesión.
+- **Riesgos:** hace falta reiniciar el backend para seed de módulos (SeedVersion 7). Claves vacías en PUT sí sobrescriben. Sin ADR nuevo (reuso de `system_settings`).
+
 ### 2026-10-09 - Claude - Cadena de Valor: Tipología A con entregables, actividades y costeo matricial
 
 - **Frontend** ([CadenaValorTab.tsx](starter/frontend/src/components/Tenant/MGA/CadenaValorTab.tsx)): jerarquía Alternativa → Objetivos específicos (solo lectura, siempre expandidos) → Productos → Entregables/Actividades → Costos. "Adicionar producto" está en la cabecera del objetivo y abre un borrador (Etapa Preinversión/Inversión/Operación, nombre desde catálogo con la desambiguación por `codigo_indicador_producto` y `()` del principal, complemento, descripción, "Medido a través de" solo lectura, cantidad, localización, población con botón de población objetivo, radio Acumulativo/No acumulativo y descripción); el producto se agrega al guardarlo (requiere producto seleccionado).

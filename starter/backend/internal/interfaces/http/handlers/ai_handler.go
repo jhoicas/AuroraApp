@@ -3,11 +3,11 @@ package handlers
 import (
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"aurora-backend/internal/application/aisettings"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/constants"
 	"aurora-backend/internal/domain/models"
@@ -23,22 +23,29 @@ import (
 )
 
 type AIHandler struct {
-	db        *gorm.DB
-	telemetry *services.TelemetryService
-	repo      KnowledgeStore
-	embedder  services.EmbeddingProvider
-	dnp       DnpDictionaryReader
+	db         *gorm.DB
+	telemetry  *services.TelemetryService
+	repo       KnowledgeStore
+	embedder   services.EmbeddingProvider
+	dnp        DnpDictionaryReader
+	aiSettings *aisettings.Service
 }
 
-func NewAIHandler(db *gorm.DB, telemetry *services.TelemetryService, cfg *config.Config) *AIHandler {
+func NewAIHandler(
+	db *gorm.DB,
+	telemetry *services.TelemetryService,
+	cfg *config.Config,
+	aiSettings *aisettings.Service,
+) *AIHandler {
 	repo := postgres.NewAiKnowledgeRepository(db)
-	embedder := services.NewEmbeddingProvider(cfg)
+	embedder := services.NewEmbeddingProviderWithGeminiSource(cfg, aiSettings)
 	return &AIHandler{
-		db:        db,
-		telemetry: telemetry,
-		repo:      repo,
-		embedder:  embedder,
-		dnp:       postgres.NewDnpDictionaryRepository(db),
+		db:         db,
+		telemetry:  telemetry,
+		repo:       repo,
+		embedder:   embedder,
+		dnp:        postgres.NewDnpDictionaryRepository(db),
+		aiSettings: aiSettings,
 	}
 }
 
@@ -362,17 +369,12 @@ func (h *AIHandler) SuggestField(c *fiber.Ctx) error {
 }
 
 func (h *AIHandler) callLLM(prompt string) (string, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("GEMINI_API_KEY no configurada")
+	if h.aiSettings == nil {
+		return "", fmt.Errorf("API Key de Gemini no configurada en el sistema")
 	}
-	client := llm.NewGeminiClient(apiKey, "")
+	client := llm.NewResolvingGeminiClient(h.aiSettings)
 	messages := []llm.Message{{Role: "user", Content: prompt}}
-	resp, err := client.Chat("", messages)
-	if err != nil {
-		return "", err
-	}
-	return resp, nil
+	return client.Chat("", messages)
 }
 
 func min(a, b int) int {

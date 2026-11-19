@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"aurora-backend/internal/application/aisettings"
 	appai "aurora-backend/internal/application/ai"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/models"
@@ -31,17 +32,31 @@ type AuroraChatHandler struct {
 	db        *gorm.DB
 }
 
-func NewAuroraChatHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *AuroraChatHandler {
+func NewAuroraChatHandler(
+	db *gorm.DB,
+	cfg *config.Config,
+	telemetry *services.TelemetryService,
+	aiSettings *aisettings.Service,
+) *AuroraChatHandler {
+	anthropic, gemini := buildLLMClients(aiSettings, cfg)
 	return NewAuroraChatHandlerWithDeps(
 		postgres.NewAiKnowledgeRepository(db),
 		postgres.NewAiChatRepository(db),
-		services.NewEmbeddingProvider(cfg),
-		llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
-		llm.NewGeminiClient(cfg.GeminiApiKey, cfg.GeminiModel),
+		services.NewEmbeddingProviderWithGeminiSource(cfg, aiSettings),
+		anthropic,
+		gemini,
 		telemetry,
 		cfg,
 		db,
 	)
+}
+
+func buildLLMClients(aiSettings *aisettings.Service, cfg *config.Config) (LLMClient, LLMClient) {
+	if aiSettings != nil {
+		return llm.NewResolvingAnthropicClient(aiSettings), llm.NewResolvingGeminiClient(aiSettings)
+	}
+	return llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
+		llm.NewGeminiClient(cfg.GeminiApiKey, cfg.GeminiModel)
 }
 
 // NewAuroraChatHandlerWithDeps inyección explícita de dependencias (tests / DI).

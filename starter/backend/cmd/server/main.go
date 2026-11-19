@@ -5,6 +5,7 @@ import (
 
 	"aurora-backend/internal/application/access"
 	"aurora-backend/internal/application/accessadmin"
+	"aurora-backend/internal/application/aisettings"
 	"aurora-backend/internal/application/systemsettings"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/infrastructure/persistence/postgres"
@@ -44,10 +45,14 @@ func main() {
 
 	// Configuración global + modo mantenimiento (antes de cualquier ruta de negocio).
 	settingsSvc := systemsettings.NewService(db)
+	aiSettingsSvc := aisettings.NewService(db, cfg)
+	if err := aisettings.EnsureSchema(db); err != nil {
+		log.Printf("aisettings schema: %v", err)
+	}
 	app.Use(httpmw.MaintenanceGuard(cfg.JWTSecret, func(c *fiber.Ctx) bool {
 		return settingsSvc.Cached(c.Context()).MaintenanceMode
 	}))
-	router.RegisterSystemSettingsRoutes(app, settingsSvc, cfg.JWTSecret)
+	router.RegisterSystemSettingsRoutes(app, settingsSvc, aiSettingsSvc, cfg.JWTSecret)
 
 	// PBAC (ADR-0001): servicio de acceso con caché de 30 s y guard por ruta.
 	// PBAC_ENFORCE: enforce (por defecto) | log (dry-run) | off.
@@ -77,7 +82,7 @@ func main() {
 	router.RegisterDocumentTemplateRoutes(app, db, cfg.JWTSecret, guard)
 
 	// Paso 5 — Asistente IA
-	router.RegisterAIRoutes(app, db, cfg, guard)
+	router.RegisterAIRoutes(app, db, cfg, guard, aiSettingsSvc)
 
 	// Paso 6 — Catálogo DNP (solo lectura)
 	router.RegisterCatalogRoutes(app, db, cfg.JWTSecret, guard)

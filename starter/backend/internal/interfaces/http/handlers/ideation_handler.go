@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"aurora-backend/internal/application/aisettings"
 	appai "aurora-backend/internal/application/ai"
 	"aurora-backend/internal/config"
 	"aurora-backend/internal/domain/models"
@@ -37,13 +38,19 @@ type IdeationHandler struct {
 }
 
 // NewIdeationHandler constructor con dependencias de producción.
-func NewIdeationHandler(db *gorm.DB, cfg *config.Config, telemetry *services.TelemetryService) *IdeationHandler {
+func NewIdeationHandler(
+	db *gorm.DB,
+	cfg *config.Config,
+	telemetry *services.TelemetryService,
+	aiSettings *aisettings.Service,
+) *IdeationHandler {
+	anthropic, gemini := buildLLMClients(aiSettings, cfg)
 	return &IdeationHandler{
 		repo:      postgres.NewAiKnowledgeRepository(db),
 		chatRepo:  postgres.NewAiChatRepository(db),
-		embedder:  services.NewEmbeddingProvider(cfg),
-		anthropic: llm.NewAnthropicClient(cfg.AnthropicApiKey, cfg.AnthropicModel),
-		gemini:    llm.NewGeminiClient(cfg.GeminiApiKey, cfg.GeminiModel),
+		embedder:  services.NewEmbeddingProviderWithGeminiSource(cfg, aiSettings),
+		anthropic: anthropic,
+		gemini:    gemini,
 		telemetry: telemetry,
 		cfg:       cfg,
 		db:        db,
